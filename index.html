@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RunP8 Care Assistant</title>
+  <meta
+    name="description"
+    content="Voice-first care assistant for daily notes, medication logging, bowel movement logging, and calm assist support."
+  />
+  <style>
+    * { box-sizing: border-box; }
+
+    :root{
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-2: #f8fbff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #dbe4ee;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #15803d;
+      --green-bg: #f0fdf4;
+      --amber: #b45309;
+      --amber-bg: #fffbeb;
+      --red: #b91c1c;
+      --red-bg: #fef2f2;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #f7fbff 0%, #f1f5f9 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100%;
+    }
+
+    .shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .status-pill {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.92rem;
+      color: var(--muted);
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr 0.9fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .main-card {
+      padding: 22px;
+    }
+
+    .side-card {
+      padding: 20px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eff6ff;
+      color: var(--blue-dark);
+      border: 1px solid #bfdbfe;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .main-title {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .main-subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 680px;
+    }
+
+    .listen-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    button {
+      border: 0;
+      outline: 0;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .speak-btn {
+      background: var(--blue);
+      color: white;
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-weight: 700;
+      min-width: 150px;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+    }
+
+    .speak-btn:hover {
+      background: var(--blue-dark);
+    }
+
+    .secondary-btn {
+      background: #eef2f7;
+      color: var(--text);
+      border: 1px solid var(--line);
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-weight: 600;
+      min-width: 120px;
+    }
+
+    .danger-soft {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 1px solid #fecaca;
+    }
+
+    .io-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 10px;
+    }
+
+    .panel {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .transcript,
+    .response {
+      min-height: 88px;
+      white-space: pre-wrap;
+    }
+
+    .response {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .text-entry {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .text-entry input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font: inherit;
+      background: white;
+      color: var(--text);
+    }
+
+    .text-entry input:focus {
+      outline: 2px solid rgba(37, 99, 235, 0.16);
+      border-color: #93c5fd;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .quick-btn {
+      text-align: left;
+      padding: 16px;
+      border-radius: 16px;
+      background: white;
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+      min-height: 96px;
+    }
+
+    .quick-btn strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .quick-btn span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.35;
+      font-size: 0.92rem;
+    }
+
+    .quick-btn.active {
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+
+    .side-card h2 {
+      margin: 0 0 14px;
+      font-size: 1.1rem;
+    }
+
+    .priority-list {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .priority-item {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .priority-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .priority-item span {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .tip-box {
+      border-radius: 14px;
+      padding: 14px;
+      background: var(--amber-bg);
+      border: 1px solid #fde68a;
+      color: var(--amber);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    .confirm-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .confirm-btn {
+      background: var(--green);
+      color: white;
+      padding: 13px 18px;
+      border-radius: 14px;
+      font-weight: 700;
+    }
+
+    .confirm-btn:hover {
+      background: #166534;
+    }
+
+    .ghost-btn {
+      background: white;
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 13px 18px;
+      border-radius: 14px;
+      font-weight: 600;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .saved-log {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: var(--green-bg);
+      border: 1px solid #bbf7d0;
+      color: var(--green);
+      display: none;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 920px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        padding: 14px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .main-title {
+        font-size: 1.6rem;
+      }
+
+      .quick-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .text-entry {
+        grid-template-columns: 1fr;
+      }
+
+      .listen-row,
+      .confirm-bar {
+        flex-direction: column;
+      }
+
+      .speak-btn,
+      .secondary-btn,
+      .confirm-btn,
+      .ghost-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <h1>RunP8 — Care Assistant</h1>
+        <p>Voice-first support for documentation, medication logs, bowel logs, and calm assist guidance.</p>
+      </div>
+      <div class="status-pill">Phase 1 Main Screen</div>
+    </div>
+
+    <section class="hero">
+      <div class="card main-card">
+        <div class="eyebrow">🎤 Voice-First Workflow</div>
+        <h2 class="main-title">Here’s what needs attention right now.</h2>
+        <p class="main-subtitle">
+          Speak naturally. RunP8 will guide the workflow, generate structured responses,
+          and ask for confirmation before anything is saved.
+        </p>
+
+        <div class="listen-row">
+          <button id="speakBtn" class="speak-btn">🎤 Speak</button>
+          <button id="stopBtn" class="secondary-btn">Stop</button>
+          <button id="listenBtn" class="secondary-btn">🔊 Read Response</button>
+        </div>
+
+        <div class="io-grid">
+          <div class="panel">
+            <h3>Transcript</h3>
+            <p id="transcript" class="transcript">Waiting for voice input or typed command…</p>
+          </div>
+
+          <div class="panel">
+            <h3>P8 Response</h3>
+            <p id="response" class="response">
+Welcome to RunP8 Care Assistant.
+
+You can say things like:
+• “Start daily note for Mrs. Smith”
+• “Log medication for Mrs. Smith”
+• “Mrs. Smith had a bowel movement”
+• “She’s getting upset”
+            </p>
+          </div>
+        </div>
+
+        <div class="text-entry">
+          <input
+            id="manualInput"
+            type="text"
+            placeholder='Type here, for example: "Mrs. Smith had a bowel movement"'
+          />
+          <button id="sendBtn" class="secondary-btn">Send</button>
+        </div>
+
+        <div class="confirm-bar">
+          <button id="confirmBtn" class="confirm-btn">Confirm & Save</button>
+          <button id="clearBtn" class="ghost-btn">Clear</button>
+        </div>
+
+        <div id="savedLog" class="saved-log"></div>
+
+        <div class="quick-actions">
+          <button class="quick-btn" data-mode="daily-note">
+            <strong>Start Daily Note</strong>
+            <span>Generate a professional daily narrative from guided voice answers.</span>
+          </button>
+
+          <button class="quick-btn" data-mode="medication">
+            <strong>Log Medication</strong>
+            <span>Record medication administration with confirmation and caregiver accountability.</span>
+          </button>
+
+          <button class="quick-btn" data-mode="bowel">
+            <strong>Log Bowel Movement</strong>
+            <span>Capture size, consistency, and unusual findings using a simple guided flow.</span>
+          </button>
+
+          <button class="quick-btn" data-mode="calm-assist">
+            <strong>Calm Assist</strong>
+            <span>Get real-time guidance when a resident is upset, delayed, confused, or escalating.</span>
+          </button>
+        </div>
+
+        <p class="footer-note">
+          This is the main screen shell only. It uses demo logic for now so you can feel the flow before connecting a real backend.
+        </p>
+      </div>
+
+      <aside class="card side-card">
+        <h2>Priority Actions</h2>
+
+        <div class="priority-list">
+          <div class="priority-item">
+            <strong>Daily narrative pending</strong>
+            <span>1 resident still needs a completed shift summary.</span>
+          </div>
+
+          <div class="priority-item">
+            <strong>Medication review</strong>
+            <span>PM medication flow should always confirm giver = signer before save.</span>
+          </div>
+
+          <div class="priority-item">
+            <strong>Calm reminder</strong>
+            <span>If a resident is slow to respond, pause before repeating. Silence is not always refusal.</span>
+          </div>
+        </div>
+
+        <div class="tip-box">
+          <strong>Care tip:</strong><br />
+          Speak slowly. Use one short sentence. Give the resident time to process before repeating.
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const transcriptEl = document.getElementById('transcript');
+    const responseEl = document.getElementById('response');
+    const manualInput = document.getElementById('manualInput');
+    const savedLog = document.getElementById('savedLog');
+
+    const speakBtn = document.getElementById('speakBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const listenBtn = document.getElementById('listenBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    const quickButtons = document.querySelectorAll('.quick-btn');
+
+    let currentMode = '';
+    let pendingSave = '';
+
+    function setMode(mode) {
+      currentMode = mode;
+      quickButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+
+      if (mode === 'daily-note') {
+        responseEl.textContent =
+`Daily Note mode is ready.
+
+Suggested prompt:
+“How was Mrs. Smith today?”
+
+Then continue with:
+• appetite
+• mood
+• behavior changes
+• notable events`;
+        pendingSave = 'Daily note draft prepared.';
+      }
+
+      if (mode === 'medication') {
+        responseEl.textContent =
+`Medication mode is ready.
+
+Suggested voice examples:
+• “Give Mrs. Smith her PM medications”
+• “Log PRN Tylenol for pain”
+• “Metformin refused”
+
+RunP8 should confirm medication, status, and caregiver before saving.`;
+        pendingSave = 'Medication log draft prepared.';
+      }
+
+      if (mode === 'bowel') {
+        responseEl.textContent =
+`Bowel Movement mode is ready.
+
+Suggested voice example:
+“Mrs. Smith had a bowel movement.”
+
+RunP8 should then ask:
+• size
+• consistency
+• unusual findings
+• final confirm`;
+        pendingSave = 'Bowel movement log draft prepared.';
+      }
+
+      if (mode === 'calm-assist') {
+        responseEl.textContent =
+`Calm Assist mode is ready.
+
+Suggested voice examples:
+• “She’s not responding”
+• “She wants the pill again”
+• “She’s getting upset”
+
+RunP8 should respond with short, calm, de-escalation guidance.`;
+        pendingSave = 'Calm assist guidance prepared.';
+      }
+    }
+
+    quickButtons.forEach(btn => {
+      btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+
+    function generateResponse(input) {
+      const text = input.trim();
+      const lower = text.toLowerCase();
+
+      if (!text) {
+        return {
+          reply: 'Please say or type something to continue.',
+          save: ''
+        };
+      }
+
+      if (lower.includes('bowel')) {
+        return {
+          reply:
+`Bowel movement observed.
+
+Please capture:
+• size: small, medium, or large
+• consistency: formed, soft, loose, or watery
+• unusual findings: blood, pain, straining, or none
+
+Say the details, then confirm to save.`,
+          save: `Bowel movement entry started from transcript:\n${text}`
+        };
+      }
+
+      if (
+        lower.includes('medication') ||
+        lower.includes('gave meds') ||
+        lower.includes('pm meds') ||
+        lower.includes('prn') ||
+        lower.includes('pill')
+      ) {
+        return {
+          reply:
+`Medication flow detected.
+
+RunP8 should verify:
+• resident
+• medication
+• dose or schedule
+• given / refused / held
+• caregiver identity
+
+Then ask for final confirm before saving.`,
+          save: `Medication entry started from transcript:\n${text}`
+        };
+      }
+
+      if (
+        lower.includes('upset') ||
+        lower.includes('agitated') ||
+        lower.includes('not responding') ||
+        lower.includes('confused') ||
+        lower.includes('wants her medication again')
+      ) {
+        return {
+          reply:
+`Calm Assist guidance:
+
+Pause and speak slowly.
+Use one short sentence.
+Do not argue or correct directly.
+Offer reassurance and give time to process.
+If needed, step back and try again in a few minutes.`,
+          save: `Calm assist event noted from transcript:\n${text}`
+        };
+      }
+
+      if (
+        lower.includes('daily note') ||
+        lower.includes('daily narrative') ||
+        lower.includes('today') ||
+        lower.includes('appetite') ||
+        lower.includes('mood')
+      ) {
+        return {
+          reply:
+`Daily narrative workflow started.
+
+Please describe:
+• overall condition
+• appetite
+• mood or behavior
+• notable events
+
+RunP8 will turn your answers into a clean professional note.`,
+          save: `Daily note workflow started from transcript:\n${text}`
+        };
+      }
+
+      return {
+        reply:
+`RunP8 understood your request.
+
+Next step:
+confirm the workflow or choose one of the quick actions below:
+• Start Daily Note
+• Log Medication
+• Log Bowel Movement
+• Calm Assist`,
+        save: `General workflow started from transcript:\n${text}`
+      };
+    }
+
+    function processInput(text) {
+      transcriptEl.textContent = text;
+      const result = generateResponse(text);
+      responseEl.textContent = result.reply;
+      pendingSave = result.save;
+      savedLog.style.display = 'none';
+      savedLog.textContent = '';
+    }
+
+    sendBtn.addEventListener('click', () => {
+      processInput(manualInput.value);
+      manualInput.value = '';
+    });
+
+    manualInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        processInput(manualInput.value);
+        manualInput.value = '';
+      }
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      const time = new Date().toLocaleString();
+      const finalText = pendingSave || 'No active workflow to save.';
+      savedLog.style.display = 'block';
+      savedLog.textContent = `Saved at ${time}\n\n${finalText}`;
+    });
+
+    clearBtn.addEventListener('click', () => {
+      transcriptEl.textContent = 'Waiting for voice input or typed command…';
+      responseEl.textContent =
+`Welcome to RunP8 Care Assistant.
+
+You can say things like:
+• “Start daily note for Mrs. Smith”
+• “Log medication for Mrs. Smith”
+• “Mrs. Smith had a bowel movement”
+• “She’s getting upset”`;
+      pendingSave = '';
+      currentMode = '';
+      quickButtons.forEach(btn => btn.classList.remove('active'));
+      savedLog.style.display = 'none';
+      savedLog.textContent = '';
+    });
+
+    function speakText(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    listenBtn.addEventListener('click', () => {
+      speakText(responseEl.textContent);
+    });
+
+    let recognition = null;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        speakBtn.textContent = 'Listening...';
+      };
+
+      recognition.onend = () => {
+        speakBtn.textContent = '🎤 Speak';
+      };
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        processInput(text);
+      };
+
+      recognition.onerror = (event) => {
+        responseEl.textContent = `Voice input error: ${event.error}. You can still type your request below.`;
+      };
+
+      speakBtn.addEventListener('click', () => {
+        recognition.start();
+      });
+
+      stopBtn.addEventListener('click', () => {
+        recognition.stop();
+      });
+    } else {
+      speakBtn.addEventListener('click', () => {
+        responseEl.textContent = 'Voice recognition is not supported in this browser. Please use the text input below.';
+      });
+
+      stopBtn.addEventListener('click', () => {
+        responseEl.textContent = 'Nothing to stop in this browser. Use typed input below.';
+      });
+    }
+  </script>
+</body>
+</html>
