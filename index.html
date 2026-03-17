@@ -1,755 +1,332 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>RunP8 — Care Assistant</title>
-  <meta
-    name="description"
-    content="Voice-first support for documentation, medication logs, bowel logs, and calm assist guidance."
-  />
-  <style>
-    * { box-sizing: border-box; }
-
-    :root{
-      --bg: #f4f7fb;
-      --panel: #ffffff;
-      --panel-2: #f8fbff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --line: #dbe4ee;
-      --blue: #2563eb;
-      --blue-dark: #1d4ed8;
-      --green: #15803d;
-      --green-bg: #f0fdf4;
-      --amber: #b45309;
-      --amber-bg: #fffbeb;
-      --red: #b91c1c;
-      --red-bg: #fef2f2;
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-      --radius: 18px;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(180deg, #f7fbff 0%, #f1f5f9 100%);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      min-height: 100%;
-    }
-
-    .shell {
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 22px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 22px;
-    }
-
-    .brand {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-size: 1.8rem;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-    }
-
-    .brand p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.98rem;
-    }
-
-    .status-pill {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-size: 0.92rem;
-      color: var(--muted);
-      box-shadow: var(--shadow);
-      white-space: nowrap;
-    }
-
-    .awareness-panel {
-      margin: 0 0 18px;
-      padding: 18px;
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
-
-    .awareness-head h3 {
-      margin: 0 0 6px;
-      font-size: 1.08rem;
-    }
-
-    .awareness-head p {
-      margin: 0 0 14px;
-      color: var(--muted);
-      font-size: 0.95rem;
-      line-height: 1.45;
-    }
-
-    .awareness-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-
-    .awareness-col {
-      border-radius: 16px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      min-height: 170px;
-    }
-
-    .awareness-col.danger {
-      background: #fef2f2;
-      border-color: #fecaca;
-    }
-
-    .awareness-col.warning {
-      background: #fffbeb;
-      border-color: #fde68a;
-    }
-
-    .awareness-col.success {
-      background: #f0fdf4;
-      border-color: #bbf7d0;
-    }
-
-    .awareness-title {
-      font-weight: 800;
-      font-size: 0.96rem;
-      margin-bottom: 10px;
-    }
-
-    .awareness-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .awareness-item {
-      background: rgba(255,255,255,0.82);
-      border: 1px solid rgba(15, 23, 42, 0.06);
-      border-radius: 12px;
-      padding: 11px 12px;
-    }
-
-    .awareness-item strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.93rem;
-    }
-
-    .awareness-item span {
-      display: block;
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.35;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1.35fr 0.9fr;
-      gap: 18px;
-      margin-bottom: 18px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
-
-    .main-card {
-      padding: 22px;
-    }
-
-    .side-card {
-      padding: 20px;
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #eff6ff;
-      color: var(--blue-dark);
-      border: 1px solid #bfdbfe;
-      padding: 8px 12px;
-      border-radius: 999px;
-      font-size: 0.88rem;
-      font-weight: 600;
-      margin-bottom: 14px;
-    }
-
-    .main-title {
-      margin: 0 0 8px;
-      font-size: 2rem;
-      line-height: 1.1;
-      letter-spacing: -0.03em;
-    }
-
-    .main-subtitle {
-      margin: 0 0 18px;
-      color: var(--muted);
-      font-size: 1rem;
-      max-width: 680px;
-    }
-
-    .listen-row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    button {
-      border: 0;
-      outline: 0;
-      cursor: pointer;
-      font: inherit;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    .speak-btn {
-      background: var(--blue);
-      color: white;
-      padding: 14px 18px;
-      border-radius: 14px;
-      font-weight: 700;
-      min-width: 150px;
-      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
-    }
-
-    .speak-btn:hover {
-      background: var(--blue-dark);
-    }
-
-    .secondary-btn {
-      background: #eef2f7;
-      color: var(--text);
-      border: 1px solid var(--line);
-      padding: 14px 18px;
-      border-radius: 14px;
-      font-weight: 600;
-      min-width: 120px;
-    }
-
-    .io-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-      margin-top: 10px;
-    }
-
-    .panel {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-    }
-
-    .panel h3 {
-      margin: 0 0 8px;
-      font-size: 1rem;
-    }
-
-    .panel p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .transcript,
-    .response {
-      min-height: 88px;
-      white-space: pre-wrap;
-    }
-
-    .response {
-      color: var(--text);
-      font-weight: 500;
-    }
-
-    .workflow-box {
-      display: none;
-      background: #ffffff;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      margin-top: 14px;
-    }
-
-    .workflow-box h3 {
-      margin: 0 0 8px;
-      font-size: 1rem;
-    }
-
-    .workflow-box p {
-      margin: 0 0 12px;
-      color: var(--muted);
-    }
-
-    .workflow-summary {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #f8fbff;
-      padding: 12px;
-      min-height: 60px;
-      white-space: pre-wrap;
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .text-entry {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-    }
-
-    .text-entry input {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px 16px;
-      font: inherit;
-      background: white;
-      color: var(--text);
-    }
-
-    .text-entry input:focus {
-      outline: 2px solid rgba(37, 99, 235, 0.16);
-      border-color: #93c5fd;
-    }
-
-    .quick-actions {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 18px;
-    }
-
-    .quick-btn {
-      text-align: left;
-      padding: 16px;
-      border-radius: 16px;
-      background: white;
-      border: 1px solid var(--line);
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
-      min-height: 96px;
-    }
-
-    .quick-btn strong {
-      display: block;
-      font-size: 1rem;
-      margin-bottom: 6px;
-    }
-
-    .quick-btn span {
-      display: block;
-      color: var(--muted);
-      line-height: 1.35;
-      font-size: 0.92rem;
-    }
-
-    .quick-btn.active {
-      border-color: #93c5fd;
-      background: #eff6ff;
-    }
-
-    .side-card h2 {
-      margin: 0 0 14px;
-      font-size: 1.1rem;
-    }
-
-    .priority-list {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-
-    .priority-item {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px 14px;
-    }
-
-    .priority-item strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.96rem;
-    }
-
-    .priority-item span {
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.35;
-    }
-
-    .tip-box {
-      border-radius: 14px;
-      padding: 14px;
-      background: var(--amber-bg);
-      border: 1px solid #fde68a;
-      color: var(--amber);
-      font-size: 0.95rem;
-      line-height: 1.45;
-    }
-
-    .confirm-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .confirm-btn {
-      background: var(--green);
-      color: white;
-      padding: 13px 18px;
-      border-radius: 14px;
-      font-weight: 700;
-    }
-
-    .confirm-btn:hover {
-      background: #166534;
-    }
-
-    .ghost-btn {
-      background: white;
-      border: 1px solid var(--line);
-      color: var(--text);
-      padding: 13px 18px;
-      border-radius: 14px;
-      font-weight: 600;
-    }
-
-    .footer-note {
-      margin-top: 18px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-
-    .saved-log {
-      margin-top: 18px;
-      padding: 16px;
-      border-radius: 16px;
-      background: var(--green-bg);
-      border: 1px solid #bbf7d0;
-      color: var(--green);
-      display: none;
-      white-space: pre-wrap;
-    }
-
-    @media (max-width: 920px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .quick-actions {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .awareness-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .shell {
-        padding: 14px;
-      }
-
-      .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .main-title {
-        font-size: 1.6rem;
-      }
-
-      .quick-actions {
-        grid-template-columns: 1fr;
-      }
-
-      .text-entry {
-        grid-template-columns: 1fr;
-      }
-
-      .listen-row,
-      .confirm-bar {
-        flex-direction: column;
-      }
-
-      .speak-btn,
-      .secondary-btn,
-      .confirm-btn,
-      .ghost-btn {
-        width: 100%;
-      }
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>RunP8 Care</title>
+
+<style>
+* { box-sizing: border-box; }
+
+:root{
+  --bg:#f4f7fb;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --line:#dbe4ee;
+
+  --blue:#2563eb;
+  --green:#15803d;
+  --amber:#b45309;
+  --red:#b91c1c;
+}
+
+body{
+  margin:0;
+  font-family:system-ui;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.shell{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+
+/* HEADER */
+h1{
+  margin:0 0 6px;
+}
+
+.subtitle{
+  color:var(--muted);
+  margin-bottom:16px;
+}
+
+/* ALERT BAR */
+.alert-bar{
+  display:grid;
+  gap:8px;
+  margin-bottom:16px;
+}
+
+.alert-item{
+  padding:12px;
+  border-radius:12px;
+  font-weight:600;
+  border:1px solid var(--line);
+}
+
+.alert-item.danger{
+  background:#fef2f2;
+  color:#991b1b;
+}
+
+.alert-item.warning{
+  background:#fffbeb;
+  color:#92400e;
+}
+
+.alert-item.info{
+  background:#eff6ff;
+  color:#1d4ed8;
+}
+
+/* CHAT */
+.chat{
+  background:var(--card);
+  border-radius:20px;
+  border:1px solid var(--line);
+  padding:16px;
+}
+
+.bubble{
+  margin-bottom:12px;
+}
+
+.label{
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+}
+
+.content{
+  padding:12px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  margin-top:6px;
+}
+
+/* INPUT */
+.input-box{
+  margin-top:14px;
+  border:2px solid #cbd5e1;
+  border-radius:16px;
+  padding:14px;
+}
+
+input{
+  width:100%;
+  border:none;
+  outline:none;
+  font-size:16px;
+}
+
+/* BUTTONS */
+.actions{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+
+button{
+  border:none;
+  padding:10px 14px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.primary{
+  background:var(--blue);
+  color:white;
+}
+
+.secondary{
+  background:#eef2f7;
+}
+
+/* CABINET */
+.cabinet{
+  margin-top:20px;
+  border:1px solid var(--line);
+  border-radius:16px;
+}
+
+.cabinet-header{
+  padding:12px;
+  cursor:pointer;
+  background:#fff;
+}
+
+.cabinet-body{
+  display:none;
+  padding:12px;
+  background:#f9fbff;
+}
+
+.cabinet-body.open{
+  display:block;
+}
+
+/* WORKFLOW */
+.workflow{
+  display:none;
+  margin-top:14px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8fbff;
+}
+
+.choice{
+  margin-top:8px;
+}
+
+.choice button{
+  margin:4px;
+}
+</style>
 </head>
+
 <body>
-  <div class="shell">
-    <div class="topbar">
-      <div class="brand">
-        <h1>RunP8 — Care Assistant</h1>
-        <p>Voice-first support for documentation, medication logs, bowel logs, and calm assist guidance.</p>
-      </div>
-      <div class="status-pill">Phase 1 Main Screen</div>
-    </div>
 
-    <section class="awareness-panel">
-      <div class="awareness-head">
-        <h3>System Awareness</h3>
-        <p>P8 keeps track of what needs attention, what is in progress, and what has been completed.</p>
-      </div>
+<div class="shell">
 
-      <div class="awareness-grid">
-        <div class="awareness-col danger">
-          <div class="awareness-title">Needs Attention</div>
-          <div id="needsAttention" class="awareness-list"></div>
-        </div>
+<h1>RunP8 Care</h1>
+<div class="subtitle">Simple outside. Powerful inside.</div>
 
-        <div class="awareness-col warning">
-          <div class="awareness-title">In Progress</div>
-          <div id="inProgress" class="awareness-list"></div>
-        </div>
+<!-- ALERT BAR -->
+<div id="alertBar" class="alert-bar"></div>
 
-        <div class="awareness-col success">
-          <div class="awareness-title">Completed Today</div>
-          <div id="completedToday" class="awareness-list"></div>
-        </div>
-      </div>
-    </section>
+<!-- CHAT -->
+<div class="chat">
 
-    <section class="hero">
-      <div class="card main-card">
-        <div class="eyebrow">🎤 Voice-First Workflow</div>
-        <h2 class="main-title">Here’s what needs attention right now.</h2>
-        <p class="main-subtitle">
-          Speak naturally. RunP8 will guide the workflow, generate structured responses,
-          and ask for confirmation before anything is saved.
-        </p>
+<div class="bubble">
+<div class="label">What you said</div>
+<div id="transcript" class="content">Waiting...</div>
+</div>
 
-        <div class="listen-row">
-          <button id="speakBtn" class="speak-btn">🎤 Speak</button>
-          <button id="stopBtn" class="secondary-btn">Stop</button>
-          <button id="listenBtn" class="secondary-btn">🔊 Read Response</button>
-        </div>
+<div class="bubble">
+<div class="label">P8 Guidance</div>
+<div id="response" class="content">
+P8 helps caregivers stay organized and not miss important care tasks.
+</div>
+</div>
 
-        <div class="io-grid">
-          <div class="panel">
-            <h3>Transcript</h3>
-            <p id="transcript" class="transcript">Waiting for voice input or typed command…</p>
-          </div>
+<!-- WORKFLOW -->
+<div id="workflow" class="workflow"></div>
 
-          <div class="panel">
-            <h3>P8 Response</h3>
-            <p id="response" class="response">
-Welcome to RunP8 Care Assistant.
+<!-- INPUT -->
+<div class="input-box">
+<input id="input" placeholder='Type or speak: "Mrs Smith had bowel movement"' />
+</div>
 
-You can say things like:
-• “Start daily note for Mrs. Smith”
-• “Log medication for Mrs. Smith”
-• “Mrs. Smith had a bowel movement”
-• “She’s getting upset”
-            </p>
-          </div>
-        </div>
+<div class="actions">
+<button class="primary" onclick="send()">Send</button>
+<button class="secondary" onclick="speak()">🎤 Speak</button>
+<button class="secondary" onclick="scan()">📷 Scan</button>
+<button class="secondary" onclick="toggleCabinet()">🗂 Cabinet</button>
+</div>
 
-        <div id="workflowBox" class="workflow-box">
-          <h3>Guided Workflow</h3>
-          <p id="workflowPrompt">P8 is ready for the next required detail.</p>
-          <div id="workflowSummary" class="workflow-summary">No active workflow yet.</div>
-        </div>
+</div>
 
-        <div class="text-entry">
-          <input
-            id="manualInput"
-            type="text"
-            placeholder='Type here, for example: "Mrs. Smith had a bowel movement"'
-          />
-          <button id="sendBtn" class="secondary-btn">Send</button>
-        </div>
+<!-- CABINET -->
+<div class="cabinet">
+<div class="cabinet-header" onclick="toggleCabinet()">P8 Cabinet</div>
+<div id="cabinetBody" class="cabinet-body">
+<div id="cabinetContent">System details hidden until needed</div>
+</div>
+</div>
 
-        <div class="confirm-bar">
-          <button id="confirmBtn" class="confirm-btn">Confirm & Save</button>
-          <button id="clearBtn" class="ghost-btn">Clear</button>
-        </div>
+</div>
 
-        <div id="savedLog" class="saved-log"></div>
+<script>
 
-        <div class="quick-actions">
-          <button class="quick-btn" data-mode="daily-note">
-            <strong>Start Daily Note</strong>
-            <span>Generate a professional daily narrative from guided voice answers.</span>
-          </button>
+/* ALERTS */
+const alerts = [
+  {type:"danger", text:"Mrs Smith missed PM medication"},
+  {type:"warning", text:"Refill needed: 10 pills left"},
+  {type:"info", text:"Rash cream scheduled tonight"}
+];
 
-          <button class="quick-btn" data-mode="medication">
-            <strong>Log Medication</strong>
-            <span>Record medication administration with confirmation and caregiver accountability.</span>
-          </button>
+function renderAlerts(){
+  const bar = document.getElementById("alertBar");
+  bar.innerHTML = alerts.map(a =>
+    `<div class="alert-item ${a.type}">${a.text}</div>`
+  ).join("");
+}
 
-          <button class="quick-btn" data-mode="bowel">
-            <strong>Log Bowel Movement</strong>
-            <span>Capture size, consistency, and unusual findings using a simple guided flow.</span>
-          </button>
+renderAlerts();
 
-          <button class="quick-btn" data-mode="calm-assist">
-            <strong>Calm Assist</strong>
-            <span>Get real-time guidance when a resident is upset, delayed, confused, or escalating.</span>
-          </button>
-        </div>
+/* INPUT */
+function send(){
+  const text = document.getElementById("input").value;
+  process(text);
+}
 
-        <p class="footer-note">
-          This is a working Phase 1 prototype. The goal is to make care documentation faster, clearer, and less stressful.
-        </p>
-      </div>
+/* SPEECH */
+function speak(){
+  alert("Voice simulation for now");
+}
 
-      <aside class="card side-card">
-        <h2>Priority Actions</h2>
+/* SCAN */
+function scan(){
+  document.getElementById("response").textContent =
+  "Scan received. P8 will extract relevant data only.";
+}
 
-        <div class="priority-list">
-          <div class="priority-item">
-            <strong>Daily narrative pending</strong>
-            <span>1 resident still needs a completed shift summary.</span>
-          </div>
+/* CABINET */
+function toggleCabinet(){
+  const el = document.getElementById("cabinetBody");
+  el.classList.toggle("open");
+}
 
-          <div class="priority-item">
-            <strong>Medication review</strong>
-            <span>PM medication flow should always confirm giver = signer before save.</span>
-          </div>
+/* WORKFLOW */
+function process(text){
+  document.getElementById("transcript").textContent = text;
 
-          <div class="priority-item">
-            <strong>Calm reminder</strong>
-            <span>If a resident is slow to respond, pause before repeating. Silence is not always refusal.</span>
-          </div>
-        </div>
+  const lower = text.toLowerCase();
 
-        <div class="tip-box">
-          <strong>Care tip:</strong><br />
-          Speak slowly. Use one short sentence. Give the resident time to process before repeating.
-        </div>
-      </aside>
-    </section>
+  if(lower.includes("bowel")){
+    showBowel();
+  }
+  else if(lower.includes("med")){
+    showMed();
+  }
+  else{
+    document.getElementById("response").textContent =
+    "P8 understands. Workflow will open only if needed.";
+  }
+}
+
+function showBowel(){
+  const wf = document.getElementById("workflow");
+  wf.style.display = "block";
+
+  wf.innerHTML = `
+  <b>Bowel Workflow</b><br/>
+  Size:<br/>
+  <div class="choice">
+    <button onclick="select('Small')">Small</button>
+    <button onclick="select('Medium')">Medium</button>
+    <button onclick="select('Large')">Large</button>
   </div>
+  `;
+}
 
-  <script>
-    const transcriptEl = document.getElementById('transcript');
-    const responseEl = document.getElementById('response');
-    const manualInput = document.getElementById('manualInput');
-    const savedLog = document.getElementById('savedLog');
+function showMed(){
+  const wf = document.getElementById("workflow");
+  wf.style.display = "block";
 
-    const speakBtn = document.getElementById('speakBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const listenBtn = document.getElementById('listenBtn');
-    const sendBtn = document.getElementById('sendBtn');
-    const confirmBtn = document.getElementById('confirmBtn');
-    const clearBtn = document.getElementById('clearBtn');
+  wf.innerHTML = `
+  <b>Medication Workflow</b><br/>
+  Status:<br/>
+  <div class="choice">
+    <button onclick="select('Given')">Given</button>
+    <button onclick="select('Missed')">Missed</button>
+  </div>
+  `;
+}
 
-    const workflowBox = document.getElementById('workflowBox');
-    const workflowPrompt = document.getElementById('workflowPrompt');
-    const workflowSummary = document.getElementById('workflowSummary');
+function select(value){
+  document.getElementById("response").textContent =
+  "Selected: " + value + ". Confirm & Save next.";
+}
 
-    const quickButtons = document.querySelectorAll('.quick-btn');
+</script>
 
-    const awarenessState = {
-      needsAttention: [
-        {
-          title: "Mrs. Smith — PM meds not logged",
-          detail: "No confirmed administration has been recorded yet."
-        },
-        {
-          title: "Daily note pending",
-          detail: "One resident still needs a completed shift narrative."
-        }
-      ],
-      inProgress: [
-        {
-          title: "Bowel log started",
-          detail: "Awaiting size and consistency details before save."
-        }
-      ],
-      completedToday: [
-        {
-          title: "AM meds completed",
-          detail: "Morning medication was confirmed and saved."
-        },
-        {
-          title: "Breakfast note saved",
-          detail: "Resident meal observation was recorded successfully."
-        }
-      ]
-    };
-
-    let currentMode = '';
-    let pendingSave = '';
-    let activeWorkflow = null;
-
-    function renderAwarenessList(targetId, items) {
-      const target = document.getElementById(targetId);
-      if (!target) return;
-
-      if (!items.length) {
-        target.innerHTML = `
-          <div class="awareness-item">
-            <strong>Nothing here right now</strong>
-            <span>P8 does not see any items in this section.</span>
-          </div>
-        `;
-        return;
-      }
-
-      target.innerHTML = items.map(item => `
-        <div class="awareness-item">
-          <strong>${item.title}</strong>
-          <span>${item.detail}</span>
-        </div>
-      `).join('');
-    }
-
-    function renderAwarenessPanel() {
-      renderAwarenessList("needsAttention", awarenessState.needsAttention);
-      renderAwarenessList("inProgress", awarenessState.inProgress);
-      renderAwarenessList("completedToday", awarenessState.completedToday);
-    }
-
-    function moveItem(fromKey, toKey, titleMatch, replacementItem = null) {
-      const index = awarenessState[fromKey].findIndex(item => item.title === titleMatch);
-      if (index === -1) return;
-
-      const [item] = awarenessState[fromKey].splice(index, 1);
-      awarenessState[toKey].unshift(replacementItem || item);
-      renderAwarenessPanel();
-    }
-
-    function setMode(mode) {
-      currentMode
+</body>
+</html>
