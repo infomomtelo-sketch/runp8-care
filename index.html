@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>RunP8 Care Assistant</title>
+  <title>RunP8 — Care Assistant</title>
   <meta
     name="description"
-    content="Voice-first care assistant for daily notes, medication logging, bowel movement logging, and calm assist support."
+    content="Voice-first support for documentation, medication logs, bowel logs, and calm assist guidance."
   />
   <style>
     * { box-sizing: border-box; }
@@ -40,7 +40,7 @@
     }
 
     .shell {
-      max-width: 1100px;
+      max-width: 1140px;
       margin: 0 auto;
       padding: 22px;
     }
@@ -81,6 +81,86 @@
       color: var(--muted);
       box-shadow: var(--shadow);
       white-space: nowrap;
+    }
+
+    .awareness-panel {
+      margin: 0 0 18px;
+      padding: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .awareness-head h3 {
+      margin: 0 0 6px;
+      font-size: 1.08rem;
+    }
+
+    .awareness-head p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    .awareness-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .awareness-col {
+      border-radius: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      min-height: 170px;
+    }
+
+    .awareness-col.danger {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    .awareness-col.warning {
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+
+    .awareness-col.success {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .awareness-title {
+      font-weight: 800;
+      font-size: 0.96rem;
+      margin-bottom: 10px;
+    }
+
+    .awareness-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .awareness-item {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 12px;
+      padding: 11px 12px;
+    }
+
+    .awareness-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.93rem;
+    }
+
+    .awareness-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.35;
     }
 
     .hero {
@@ -177,12 +257,6 @@
       min-width: 120px;
     }
 
-    .danger-soft {
-      background: var(--red-bg);
-      color: var(--red);
-      border: 1px solid #fecaca;
-    }
-
     .io-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -217,6 +291,36 @@
     .response {
       color: var(--text);
       font-weight: 500;
+    }
+
+    .workflow-box {
+      display: none;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .workflow-box h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .workflow-box p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .workflow-summary {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fbff;
+      padding: 12px;
+      min-height: 60px;
+      white-space: pre-wrap;
+      color: var(--text);
+      font-weight: 600;
     }
 
     .text-entry {
@@ -370,6 +474,10 @@
       .quick-actions {
         grid-template-columns: repeat(2, 1fr);
       }
+
+      .awareness-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 640px) {
@@ -418,6 +526,30 @@
       <div class="status-pill">Phase 1 Main Screen</div>
     </div>
 
+    <section class="awareness-panel">
+      <div class="awareness-head">
+        <h3>System Awareness</h3>
+        <p>P8 keeps track of what needs attention, what is in progress, and what has been completed.</p>
+      </div>
+
+      <div class="awareness-grid">
+        <div class="awareness-col danger">
+          <div class="awareness-title">Needs Attention</div>
+          <div id="needsAttention" class="awareness-list"></div>
+        </div>
+
+        <div class="awareness-col warning">
+          <div class="awareness-title">In Progress</div>
+          <div id="inProgress" class="awareness-list"></div>
+        </div>
+
+        <div class="awareness-col success">
+          <div class="awareness-title">Completed Today</div>
+          <div id="completedToday" class="awareness-list"></div>
+        </div>
+      </div>
+    </section>
+
     <section class="hero">
       <div class="card main-card">
         <div class="eyebrow">🎤 Voice-First Workflow</div>
@@ -451,6 +583,12 @@ You can say things like:
 • “She’s getting upset”
             </p>
           </div>
+        </div>
+
+        <div id="workflowBox" class="workflow-box">
+          <h3>Guided Workflow</h3>
+          <p id="workflowPrompt">P8 is ready for the next required detail.</p>
+          <div id="workflowSummary" class="workflow-summary">No active workflow yet.</div>
         </div>
 
         <div class="text-entry">
@@ -492,7 +630,7 @@ You can say things like:
         </div>
 
         <p class="footer-note">
-          This is the main screen shell only. It uses demo logic for now so you can feel the flow before connecting a real backend.
+          This is a working Phase 1 prototype. The goal is to make care documentation faster, clearer, and less stressful.
         </p>
       </div>
 
@@ -537,283 +675,81 @@ You can say things like:
     const confirmBtn = document.getElementById('confirmBtn');
     const clearBtn = document.getElementById('clearBtn');
 
+    const workflowBox = document.getElementById('workflowBox');
+    const workflowPrompt = document.getElementById('workflowPrompt');
+    const workflowSummary = document.getElementById('workflowSummary');
+
     const quickButtons = document.querySelectorAll('.quick-btn');
+
+    const awarenessState = {
+      needsAttention: [
+        {
+          title: "Mrs. Smith — PM meds not logged",
+          detail: "No confirmed administration has been recorded yet."
+        },
+        {
+          title: "Daily note pending",
+          detail: "One resident still needs a completed shift narrative."
+        }
+      ],
+      inProgress: [
+        {
+          title: "Bowel log started",
+          detail: "Awaiting size and consistency details before save."
+        }
+      ],
+      completedToday: [
+        {
+          title: "AM meds completed",
+          detail: "Morning medication was confirmed and saved."
+        },
+        {
+          title: "Breakfast note saved",
+          detail: "Resident meal observation was recorded successfully."
+        }
+      ]
+    };
 
     let currentMode = '';
     let pendingSave = '';
+    let activeWorkflow = null;
+
+    function renderAwarenessList(targetId, items) {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      if (!items.length) {
+        target.innerHTML = `
+          <div class="awareness-item">
+            <strong>Nothing here right now</strong>
+            <span>P8 does not see any items in this section.</span>
+          </div>
+        `;
+        return;
+      }
+
+      target.innerHTML = items.map(item => `
+        <div class="awareness-item">
+          <strong>${item.title}</strong>
+          <span>${item.detail}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderAwarenessPanel() {
+      renderAwarenessList("needsAttention", awarenessState.needsAttention);
+      renderAwarenessList("inProgress", awarenessState.inProgress);
+      renderAwarenessList("completedToday", awarenessState.completedToday);
+    }
+
+    function moveItem(fromKey, toKey, titleMatch, replacementItem = null) {
+      const index = awarenessState[fromKey].findIndex(item => item.title === titleMatch);
+      if (index === -1) return;
+
+      const [item] = awarenessState[fromKey].splice(index, 1);
+      awarenessState[toKey].unshift(replacementItem || item);
+      renderAwarenessPanel();
+    }
 
     function setMode(mode) {
-      currentMode = mode;
-      quickButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === mode);
-      });
-
-      if (mode === 'daily-note') {
-        responseEl.textContent =
-`Daily Note mode is ready.
-
-Suggested prompt:
-“How was Mrs. Smith today?”
-
-Then continue with:
-• appetite
-• mood
-• behavior changes
-• notable events`;
-        pendingSave = 'Daily note draft prepared.';
-      }
-
-      if (mode === 'medication') {
-        responseEl.textContent =
-`Medication mode is ready.
-
-Suggested voice examples:
-• “Give Mrs. Smith her PM medications”
-• “Log PRN Tylenol for pain”
-• “Metformin refused”
-
-RunP8 should confirm medication, status, and caregiver before saving.`;
-        pendingSave = 'Medication log draft prepared.';
-      }
-
-      if (mode === 'bowel') {
-        responseEl.textContent =
-`Bowel Movement mode is ready.
-
-Suggested voice example:
-“Mrs. Smith had a bowel movement.”
-
-RunP8 should then ask:
-• size
-• consistency
-• unusual findings
-• final confirm`;
-        pendingSave = 'Bowel movement log draft prepared.';
-      }
-
-      if (mode === 'calm-assist') {
-        responseEl.textContent =
-`Calm Assist mode is ready.
-
-Suggested voice examples:
-• “She’s not responding”
-• “She wants the pill again”
-• “She’s getting upset”
-
-RunP8 should respond with short, calm, de-escalation guidance.`;
-        pendingSave = 'Calm assist guidance prepared.';
-      }
-    }
-
-    quickButtons.forEach(btn => {
-      btn.addEventListener('click', () => setMode(btn.dataset.mode));
-    });
-
-    function generateResponse(input) {
-      const text = input.trim();
-      const lower = text.toLowerCase();
-
-      if (!text) {
-        return {
-          reply: 'Please say or type something to continue.',
-          save: ''
-        };
-      }
-
-      if (lower.includes('bowel')) {
-        return {
-          reply:
-`Bowel movement observed.
-
-Please capture:
-• size: small, medium, or large
-• consistency: formed, soft, loose, or watery
-• unusual findings: blood, pain, straining, or none
-
-Say the details, then confirm to save.`,
-          save: `Bowel movement entry started from transcript:\n${text}`
-        };
-      }
-
-      if (
-        lower.includes('medication') ||
-        lower.includes('gave meds') ||
-        lower.includes('pm meds') ||
-        lower.includes('prn') ||
-        lower.includes('pill')
-      ) {
-        return {
-          reply:
-`Medication flow detected.
-
-RunP8 should verify:
-• resident
-• medication
-• dose or schedule
-• given / refused / held
-• caregiver identity
-
-Then ask for final confirm before saving.`,
-          save: `Medication entry started from transcript:\n${text}`
-        };
-      }
-
-      if (
-        lower.includes('upset') ||
-        lower.includes('agitated') ||
-        lower.includes('not responding') ||
-        lower.includes('confused') ||
-        lower.includes('wants her medication again')
-      ) {
-        return {
-          reply:
-`Calm Assist guidance:
-
-Pause and speak slowly.
-Use one short sentence.
-Do not argue or correct directly.
-Offer reassurance and give time to process.
-If needed, step back and try again in a few minutes.`,
-          save: `Calm assist event noted from transcript:\n${text}`
-        };
-      }
-
-      if (
-        lower.includes('daily note') ||
-        lower.includes('daily narrative') ||
-        lower.includes('today') ||
-        lower.includes('appetite') ||
-        lower.includes('mood')
-      ) {
-        return {
-          reply:
-`Daily narrative workflow started.
-
-Please describe:
-• overall condition
-• appetite
-• mood or behavior
-• notable events
-
-RunP8 will turn your answers into a clean professional note.`,
-          save: `Daily note workflow started from transcript:\n${text}`
-        };
-      }
-
-      return {
-        reply:
-`RunP8 understood your request.
-
-Next step:
-confirm the workflow or choose one of the quick actions below:
-• Start Daily Note
-• Log Medication
-• Log Bowel Movement
-• Calm Assist`,
-        save: `General workflow started from transcript:\n${text}`
-      };
-    }
-
-    function processInput(text) {
-      transcriptEl.textContent = text;
-      const result = generateResponse(text);
-      responseEl.textContent = result.reply;
-      pendingSave = result.save;
-      savedLog.style.display = 'none';
-      savedLog.textContent = '';
-    }
-
-    sendBtn.addEventListener('click', () => {
-      processInput(manualInput.value);
-      manualInput.value = '';
-    });
-
-    manualInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        processInput(manualInput.value);
-        manualInput.value = '';
-      }
-    });
-
-    confirmBtn.addEventListener('click', () => {
-      const time = new Date().toLocaleString();
-      const finalText = pendingSave || 'No active workflow to save.';
-      savedLog.style.display = 'block';
-      savedLog.textContent = `Saved at ${time}\n\n${finalText}`;
-    });
-
-    clearBtn.addEventListener('click', () => {
-      transcriptEl.textContent = 'Waiting for voice input or typed command…';
-      responseEl.textContent =
-`Welcome to RunP8 Care Assistant.
-
-You can say things like:
-• “Start daily note for Mrs. Smith”
-• “Log medication for Mrs. Smith”
-• “Mrs. Smith had a bowel movement”
-• “She’s getting upset”`;
-      pendingSave = '';
-      currentMode = '';
-      quickButtons.forEach(btn => btn.classList.remove('active'));
-      savedLog.style.display = 'none';
-      savedLog.textContent = '';
-    });
-
-    function speakText(text) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      window.speechSynthesis.speak(utterance);
-    }
-
-    listenBtn.addEventListener('click', () => {
-      speakText(responseEl.textContent);
-    });
-
-    let recognition = null;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        speakBtn.textContent = 'Listening...';
-      };
-
-      recognition.onend = () => {
-        speakBtn.textContent = '🎤 Speak';
-      };
-
-      recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        processInput(text);
-      };
-
-      recognition.onerror = (event) => {
-        responseEl.textContent = `Voice input error: ${event.error}. You can still type your request below.`;
-      };
-
-      speakBtn.addEventListener('click', () => {
-        recognition.start();
-      });
-
-      stopBtn.addEventListener('click', () => {
-        recognition.stop();
-      });
-    } else {
-      speakBtn.addEventListener('click', () => {
-        responseEl.textContent = 'Voice recognition is not supported in this browser. Please use the text input below.';
-      });
-
-      stopBtn.addEventListener('click', () => {
-        responseEl.textContent = 'Nothing to stop in this browser. Use typed input below.';
-      });
-    }
-  </script>
-</body>
-</html>
+      currentMode
