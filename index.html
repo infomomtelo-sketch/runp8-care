@@ -1,540 +1,1255 @@
-<script>
-  const drawer = document.getElementById('drawer');
-  const drawerBackdrop = document.getElementById('drawerBackdrop');
-  const openDrawerBtn = document.getElementById('openDrawerBtn');
-  const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RunP8 Care</title>
+  <meta
+    name="description"
+    content="RunP8 Care professional layout - chat-first care assistant with records tab, left drawer navigation, and voice-ready input."
+  />
+  <style>
+    * { box-sizing: border-box; }
 
-  function openDrawer() {
-    drawer.classList.add('open');
-    drawerBackdrop.classList.add('open');
-    document.body.classList.add('drawer-open');
-  }
+    :root{
+      --bg:#f4f6f9;
+      --panel:#ffffff;
+      --panel-soft:#f8fafc;
+      --text:#0f172a;
+      --muted:#667085;
+      --line:#e2e8f0;
+      --blue:#2563eb;
+      --blue-soft:#eaf2ff;
+      --danger:#b91c1c;
+      --danger-soft:#fef2f2;
+      --warn:#b45309;
+      --warn-soft:#fffbeb;
+      --info:#1d4ed8;
+      --info-soft:#eff6ff;
+      --shadow:0 12px 34px rgba(15,23,42,.08);
+      --radius:22px;
+    }
 
-  function closeDrawer() {
-    drawer.classList.remove('open');
-    drawerBackdrop.classList.remove('open');
-    document.body.classList.remove('drawer-open');
-  }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-  openDrawerBtn.addEventListener('click', openDrawer);
-  closeDrawerBtn.addEventListener('click', closeDrawer);
-  drawerBackdrop.addEventListener('click', closeDrawer);
+    body.drawer-open {
+      overflow: hidden;
+    }
 
-  const tabChat = document.getElementById('tabChat');
-  const tabRecords = document.getElementById('tabRecords');
-  const viewChat = document.getElementById('viewChat');
-  const viewRecords = document.getElementById('viewRecords');
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 16px 24px;
+    }
 
-  function setTab(tabName) {
-    const isChat = tabName === 'chat';
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(244,246,249,.92);
+      backdrop-filter: blur(10px);
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0 12px;
+      border-bottom: 1px solid rgba(226,232,240,.8);
+    }
 
-    tabChat.classList.toggle('active', isChat);
-    tabRecords.classList.toggle('active', !isChat);
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
 
-    tabChat.setAttribute('aria-selected', isChat ? 'true' : 'false');
-    tabRecords.setAttribute('aria-selected', !isChat ? 'true' : 'false');
+    .brand {
+      min-width: 0;
+    }
 
-    viewChat.classList.toggle('active', isChat);
-    viewRecords.classList.toggle('active', !isChat);
-  }
+    .brand-title {
+      margin: 0;
+      font-size: 1.6rem;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-  tabChat.addEventListener('click', () => setTab('chat'));
-  tabRecords.addEventListener('click', () => setTab('records'));
+    .brand-subtitle {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-  const transcriptEl = document.getElementById('transcript');
-  const responseEl = document.getElementById('response');
-  const manualInput = document.getElementById('manualInput');
-  const scanBtn = document.getElementById('scanBtn');
-  const fileInput = document.getElementById('fileInput');
-  const listenBtn = document.getElementById('listenBtn');
-  const speakBtn = document.getElementById('speakBtn');
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
 
-  let state = '';
-  let record = {};
-  let preferredLanguage = 'multi-lingual';
+    .alert-strip {
+      display: grid;
+      gap: 8px;
+      padding: 14px 0 4px;
+    }
 
-  function normalizeText(text) {
-    return text.trim();
-  }
+    .alert-item {
+      border-radius: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      font-size: .95rem;
+      font-weight: 600;
+      line-height: 1.35;
+      background: var(--panel);
+    }
 
-  function setTranscript(text) {
-    transcriptEl.textContent = text;
-  }
+    .alert-item.danger {
+      background: var(--danger-soft);
+      border-color: #fecaca;
+      color: #991b1b;
+    }
 
-  function setResponse(text) {
-    responseEl.textContent = text;
-  }
+    .alert-item.warning {
+      background: var(--warn-soft);
+      border-color: #fde68a;
+      color: #92400e;
+    }
 
-  function clearSession() {
-    state = '';
-    record = {};
-  }
+    .alert-item.info {
+      background: var(--info-soft);
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
 
-  function lower(text) {
-    return text.toLowerCase();
-  }
+    .project-header {
+      padding: 18px 0 6px;
+    }
 
-  function startMedicationFlow(residentName = 'Mrs. Smith') {
-    record = {
-      resident: residentName,
-      language: preferredLanguage,
-      medication: '',
-      administeredBy: '',
-      witnessConfirmed: '',
-      bowelMovement: '',
-      bowelSize: '',
-      bowelConsistency: '',
-      time: ''
-    };
+    .project-name {
+      margin: 0;
+      font-size: 2rem;
+      line-height: 1.04;
+      letter-spacing: -0.035em;
+    }
 
-    state = 'medication_name';
+    .project-copy {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+      max-width: 760px;
+    }
 
-    setResponse(
-`Medication workflow started.
+    .tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #eef2f6;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px;
+      margin: 16px 0 18px;
+    }
 
-Resident: ${record.resident}
+    .tab-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 10px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
 
-Please enter the medication name and dose.
-Example:
-Metformin 500 mg`
-    );
-  }
+    .tab-btn.active {
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: 0 4px 14px rgba(15,23,42,.06);
+    }
 
-  function startBowelFlow(residentName = 'Mrs. Smith') {
-    record = {
-      resident: residentName,
-      language: preferredLanguage,
-      medication: '',
-      administeredBy: '',
-      witnessConfirmed: '',
-      bowelMovement: 'Yes',
-      bowelSize: '',
-      bowelConsistency: '',
-      time: ''
-    };
+    .view {
+      display: none;
+    }
 
-    state = 'bowel_size';
+    .view.active {
+      display: block;
+    }
 
-    setResponse(
-`Bowel workflow started.
+    .chat-card,
+    .records-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
 
-Resident: ${record.resident}
+    .chat-thread {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      background: linear-gradient(180deg, #fff 0%, #fafcff 100%);
+      min-height: 360px;
+    }
 
-What is the bowel movement size?
-small / medium / large`
-    );
-  }
+    .bubble {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px 18px;
+      background: #fff;
+    }
 
-  function startDailyNoteFlow(residentName = 'Mrs. Smith') {
-    record = {
-      resident: residentName,
-      language: preferredLanguage,
-      dailyNote: '',
-      time: ''
-    };
+    .bubble.user {
+      background: #f8fbff;
+      border-color: #d9e7ff;
+    }
 
-    state = 'daily_note';
+    .bubble-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: .8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      color: var(--muted);
+    }
 
-    setResponse(
-`Daily note started.
+    .bubble-content {
+      white-space: pre-wrap;
+      line-height: 1.55;
+      min-height: 28px;
+    }
 
-Resident: ${record.resident}
+    .helper-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 2px;
+    }
 
-Enter the shift note. P8 will save it as a clean English care note.`
-    );
-  }
+    .helper-chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: .94rem;
+      cursor: pointer;
+    }
 
-  function detectResidentFromText(text) {
-    const t = lower(text);
+    .composer-wrap {
+      padding: 14px 18px 18px;
+      border-top: 1px solid #edf2f7;
+      background: #fff;
+    }
 
-    if (t.includes('mrs. smith') || t.includes('mrs smith')) return 'Mrs. Smith';
-    if (t.includes('john lawson')) return 'John Lawson';
+    .composer {
+      display: grid;
+      grid-template-columns: 56px 1fr 52px 52px;
+      gap: 10px;
+      align-items: center;
+      background: #fff;
+      border: 2px solid #d6dee8;
+      border-radius: 22px;
+      padding: 8px;
+      box-shadow: 0 8px 22px rgba(15,23,42,.06);
+    }
 
-    return 'Mrs. Smith';
-  }
+    .plus-btn,
+    .round-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 0;
+      background: #eef2f7;
+      color: var(--text);
+      font-size: 1.15rem;
+      cursor: pointer;
+    }
 
-  function saveMedicationRecord() {
-    record.time = new Date().toLocaleTimeString();
+    .voice-btn {
+      background: #111827;
+      color: #fff;
+    }
 
-    const notesBox = Array.from(document.querySelectorAll('.record-box')).find(box => {
-      const title = box.querySelector('h4');
-      return title && title.textContent.trim().toLowerCase() === 'notes';
-    });
+    .composer input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 1rem;
+      min-width: 0;
+    }
 
-    if (notesBox) {
-      const recordList = notesBox.querySelector('.record-list');
-      if (recordList) {
-        const item = document.createElement('div');
-        item.className = 'record-item';
-        item.innerHTML = `
-          <strong>${record.resident}</strong>
-          <span>
-            Medication: ${record.medication}. Administered by: ${record.administeredBy}. Witness confirmed: ${record.witnessConfirmed}. Bowel movement: ${record.bowelMovement}${record.bowelMovement === 'Yes' ? ` (${record.bowelSize}, ${record.bowelConsistency})` : ''}. Time: ${record.time}
-          </span>
-        `;
-        recordList.prepend(item);
+    .composer input::placeholder {
+      color: #8a94a6;
+    }
+
+    .composer-note {
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.4;
+      margin-top: 10px;
+    }
+
+    .records-head {
+      padding: 18px 18px 10px;
+      border-bottom: 1px solid #edf2f7;
+      background: linear-gradient(180deg, #fff 0%, #fafcff 100%);
+    }
+
+    .records-head h3 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .records-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .records-grid {
+      padding: 16px 18px 18px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .record-box {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    .record-box h4 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .record-box p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: .93rem;
+    }
+
+    .record-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .record-item {
+      border: 1px solid #edf2f7;
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 10px 12px;
+    }
+
+    .record-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: .92rem;
+    }
+
+    .record-item span {
+      color: var(--muted);
+      font-size: .87rem;
+      line-height: 1.35;
+    }
+
+    .footer {
+      margin-top: auto;
+      padding-top: 20px;
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.5;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+
+    .footer a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+      z-index: 40;
+    }
+
+    .drawer-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(86vw, 340px);
+      height: 100vh;
+      background: #f7f9fc;
+      border-right: 1px solid var(--line);
+      box-shadow: 0 18px 44px rgba(15,23,42,.16);
+      transform: translateX(-100%);
+      transition: transform .22s ease;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .drawer-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .drawer-search {
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 12px 14px;
+      color: var(--muted);
+    }
+
+    .drawer-section {
+      margin-bottom: 18px;
+    }
+
+    .drawer-section-title {
+      margin: 0 0 10px;
+      font-size: .82rem;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .drawer-nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .drawer-link {
+      border: 1px solid transparent;
+      border-radius: 14px;
+      background: transparent;
+      text-align: left;
+      padding: 12px 14px;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .drawer-link:hover,
+    .drawer-link.active {
+      background: #fff;
+      border-color: var(--line);
+      box-shadow: 0 6px 18px rgba(15,23,42,.05);
+    }
+
+    .drawer-foot {
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        padding-inline: 12px;
+      }
+
+      .brand-title {
+        font-size: 1.35rem;
+      }
+
+      .brand-subtitle {
+        font-size: .86rem;
+      }
+
+      .project-name {
+        font-size: 1.75rem;
+      }
+
+      .records-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .composer {
+        grid-template-columns: 48px 1fr 46px 46px;
       }
     }
+  </style>
+</head>
+<body>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
-    setResponse(
-`Record saved in English.
+  <aside class="drawer" id="drawer" aria-label="P8 navigation drawer">
+    <div class="drawer-top">
+      <div class="drawer-title">RunP8 Care</div>
+      <button class="icon-btn" id="closeDrawerBtn" aria-label="Close navigation">✕</button>
+    </div>
 
-Resident: ${record.resident}
-Medication: ${record.medication}
-Administered by: ${record.administeredBy}
-Witness confirmed: ${record.witnessConfirmed}
-Bowel movement: ${record.bowelMovement}
-Size: ${record.bowelSize || '-'}
-Consistency: ${record.bowelConsistency || '-'}
-Time: ${record.time}`
-    );
+    <div class="drawer-search" aria-label="Search drawer">Search</div>
 
-    setTab('records');
-    clearSession();
-  }
+    <div class="drawer-section">
+      <div class="drawer-section-title">Navigation</div>
+      <div class="drawer-nav">
+        <button class="drawer-link active" data-nav="home">Home</button>
+        <button class="drawer-link" data-nav="residents">Residents</button>
+        <button class="drawer-link" data-nav="medications">Medications</button>
+        <button class="drawer-link" data-nav="notes">Notes</button>
+        <button class="drawer-link" data-nav="tracker">Tracker</button>
+        <button class="drawer-link" data-nav="training">Training</button>
+      </div>
+    </div>
 
-  function saveDailyNoteRecord() {
-    record.time = new Date().toLocaleTimeString();
+    <div class="drawer-section">
+      <div class="drawer-section-title">System</div>
+      <div class="drawer-nav">
+        <button class="drawer-link" data-nav="alerts">Alerts</button>
+        <button class="drawer-link" data-nav="records">Records</button>
+        <button class="drawer-link" data-nav="sources">Sources</button>
+      </div>
+    </div>
 
-    const notesBox = Array.from(document.querySelectorAll('.record-box')).find(box => {
-      const title = box.querySelector('h4');
-      return title && title.textContent.trim().toLowerCase() === 'notes';
-    });
+    <div class="drawer-foot">
+      Private by default. Records open only when needed.
+    </div>
+  </aside>
 
-    if (notesBox) {
-      const recordList = notesBox.querySelector('.record-list');
-      if (recordList) {
-        const item = document.createElement('div');
-        item.className = 'record-item';
-        item.innerHTML = `
-          <strong>${record.resident}</strong>
-          <span>Daily note: ${record.dailyNote}. Time: ${record.time}</span>
-        `;
-        recordList.prepend(item);
-      }
+  <main class="app">
+    <header class="topbar">
+      <button class="icon-btn" id="openDrawerBtn" aria-label="Open navigation">☰</button>
+
+      <div class="brand">
+        <h1 class="brand-title">RunP8 Care</h1>
+        <p class="brand-subtitle">Simple outside. Powerful inside.</p>
+      </div>
+
+      <div class="top-actions">
+        <button class="icon-btn" aria-label="Share">⤴</button>
+        <button class="icon-btn" aria-label="More options">•••</button>
+      </div>
+    </header>
+
+    <section class="alert-strip" aria-label="Alerts and reminders">
+      <div class="alert-item danger">Mrs. Smith missed PM medication</div>
+      <div class="alert-item warning">Refill needed: 10 pills left</div>
+      <div class="alert-item info">Rash cream scheduled tonight</div>
+    </section>
+
+    <section class="project-header">
+      <h2 class="project-name">Health</h2>
+      <p class="project-copy">
+        A professional chat-first care workspace with visible navigation, structured records, and a multilingual, voice-ready care assistant.
+      </p>
+
+      <div class="tabs" role="tablist" aria-label="Main views">
+        <button class="tab-btn active" id="tabChat" role="tab" aria-selected="true">Chat</button>
+        <button class="tab-btn" id="tabRecords" role="tab" aria-selected="false">Records</button>
+      </div>
+    </section>
+
+    <section class="view active" id="viewChat">
+      <div class="chat-card">
+        <div class="chat-thread">
+          <div class="bubble user">
+            <span class="bubble-label">What you said</span>
+            <div class="bubble-content" id="transcript">Waiting for voice input, typed request, or captured file…</div>
+          </div>
+
+          <div class="bubble">
+            <span class="bubble-label">P8 Guidance</span>
+            <div class="bubble-content" id="response">P8 helps caregivers document clearly, stay organized, and avoid missing important care tasks.
+
+Try saying:
+• "Log medication for Mrs. Smith"
+• "Mrs. Smith had a bowel movement"
+• "Start daily note for Mrs. Smith"
+• "She’s getting upset"</div>
+          </div>
+
+          <div class="helper-row">
+            <button class="helper-chip" data-example="Log medication for Mrs. Smith">Log Medication</button>
+            <button class="helper-chip" data-example="Mrs. Smith had a bowel movement">Log Bowel</button>
+            <button class="helper-chip" data-example="Start daily note for Mrs. Smith">Start Daily Note</button>
+            <button class="helper-chip" data-example="She’s getting upset">Calm Assist</button>
+          </div>
+        </div>
+
+        <div class="composer-wrap">
+          <div class="composer">
+            <button class="plus-btn" id="scanBtn" aria-label="Add or scan">＋</button>
+            <input
+              id="manualInput"
+              aria-label="Message RunP8 Care"
+              placeholder="Message Health"
+              type="text"
+            />
+            <button class="round-btn" id="listenBtn" aria-label="Listen to response">🔊</button>
+            <button class="round-btn voice-btn" id="speakBtn" aria-label="Speak to P8">🎤</button>
+          </div>
+
+          <div class="composer-note">
+            Use chat for action. Use Records for structured system context.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="viewRecords">
+      <div class="records-card">
+        <div class="records-head">
+          <h3>Records</h3>
+          <p>
+            Structured system context stays here: residents, medications, notes, scanned documents, and care history.
+          </p>
+        </div>
+
+        <div class="records-grid">
+          <div class="record-box">
+            <h4>Residents</h4>
+            <p>Resident profiles, language preferences, care notes, and related history.</p>
+            <div class="record-list">
+              <div class="record-item">
+                <strong>Mrs. Smith</strong>
+                <span>PM medication pending review. Rash care item active.</span>
+              </div>
+              <div class="record-item">
+                <strong>John Lawson</strong>
+                <span>Tracker activity updated today. Follow-up note pending.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="record-box">
+            <h4>Medications</h4>
+            <p>Medication schedules, PRN timing, refill thresholds, and administration history.</p>
+            <div class="record-list" id="medicationsList">
+              <div class="record-item">
+                <strong>PM medication</strong>
+                <span>No confirmed administration recorded yet for one resident.</span>
+              </div>
+              <div class="record-item">
+                <strong>Metformin</strong>
+                <span>10 pills remaining. Refill should be started now.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="record-box">
+            <h4>Notes</h4>
+            <p>Daily narratives, structured logs, and shift documentation.</p>
+            <div class="record-list" id="notesList">
+              <div class="record-item">
+                <strong>Daily narrative pending</strong>
+                <span>One resident still needs a completed shift summary.</span>
+              </div>
+              <div class="record-item">
+                <strong>Care note</strong>
+                <span>One meal observation was saved successfully today.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="record-box">
+            <h4>Sources</h4>
+            <p>Reports, scans, uploads, and other files that give P8 structured context.</p>
+            <div class="record-list">
+              <div class="record-item">
+                <strong>Scanned medication label</strong>
+                <span>Awaiting extraction or verification when needed.</span>
+              </div>
+              <div class="record-item">
+                <strong>Doctor report</strong>
+                <span>Stored privately until opened by authorized workflow.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">HIPAA</a>
+        <a href="#">Support</a>
+      </div>
+      <div>RunP8 Care is designed to reveal only what is needed for the current task.</div>
+    </footer>
+
+    <input id="fileInput" type="file" accept="image/*,.pdf" />
+  </main>
+
+  <script>
+    const drawer = document.getElementById("drawer");
+    const drawerBackdrop = document.getElementById("drawerBackdrop");
+    const openDrawerBtn = document.getElementById("openDrawerBtn");
+    const closeDrawerBtn = document.getElementById("closeDrawerBtn");
+
+    const tabChat = document.getElementById("tabChat");
+    const tabRecords = document.getElementById("tabRecords");
+    const viewChat = document.getElementById("viewChat");
+    const viewRecords = document.getElementById("viewRecords");
+
+    const transcriptEl = document.getElementById("transcript");
+    const responseEl = document.getElementById("response");
+    const manualInput = document.getElementById("manualInput");
+    const scanBtn = document.getElementById("scanBtn");
+    const fileInput = document.getElementById("fileInput");
+    const listenBtn = document.getElementById("listenBtn");
+    const speakBtn = document.getElementById("speakBtn");
+    const notesList = document.getElementById("notesList");
+    const medicationsList = document.getElementById("medicationsList");
+
+    let state = "";
+    let record = {};
+    let preferredLanguage = "multi-lingual";
+
+    function openDrawer() {
+      drawer.classList.add("open");
+      drawerBackdrop.classList.add("open");
+      document.body.classList.add("drawer-open");
     }
 
-    setResponse(
-`Daily note saved in English.
-
-Resident: ${record.resident}
-Note: ${record.dailyNote}
-Time: ${record.time}`
-    );
-
-    setTab('records');
-    clearSession();
-  }
-
-  function processStateInput(text) {
-    if (state === 'medication_name') {
-      record.medication = text;
-      state = 'med_admin';
-      setResponse(
-`Medication captured.
-
-Who administered the medication?`
-      );
-      return true;
+    function closeDrawer() {
+      drawer.classList.remove("open");
+      drawerBackdrop.classList.remove("open");
+      document.body.classList.remove("drawer-open");
     }
 
-    if (state === 'med_admin') {
-      record.administeredBy = text;
-      state = 'med_confirm';
-      setResponse(
-`Please confirm policy requirement.
+    function setTab(tabName) {
+      const isChat = tabName === "chat";
 
-Confirm that ${record.medication} was administered by ${record.administeredBy}.
-Type: yes`
-      );
-      return true;
+      tabChat.classList.toggle("active", isChat);
+      tabRecords.classList.toggle("active", !isChat);
+
+      tabChat.setAttribute("aria-selected", isChat ? "true" : "false");
+      tabRecords.setAttribute("aria-selected", isChat ? "false" : "true");
+
+      viewChat.classList.toggle("active", isChat);
+      viewRecords.classList.toggle("active", !isChat);
     }
 
-    if (state === 'med_confirm') {
-      if (lower(text) !== 'yes') {
-        setResponse(
-`Confirmation is required before saving medication records.
-
-Type: yes`
-        );
-        return true;
-      }
-
-      record.witnessConfirmed = 'Yes';
-      state = 'bowel_yes_no';
-      setResponse(
-`Did the resident have a bowel movement?
-
-Type:
-yes
-or
-no`
-      );
-      return true;
+    function setTranscript(text) {
+      transcriptEl.textContent = text;
     }
 
-    if (state === 'bowel_yes_no') {
+    function setResponse(text) {
+      responseEl.textContent = text;
+    }
+
+    function clearFlow() {
+      state = "";
+      record = {};
+    }
+
+    function lower(text) {
+      return String(text || "").toLowerCase().trim();
+    }
+
+    function detectResident(text) {
       const t = lower(text);
+      if (t.includes("mrs. smith") || t.includes("mrs smith")) return "Mrs. Smith";
+      if (t.includes("john lawson")) return "John Lawson";
+      return "Mrs. Smith";
+    }
 
-      if (t === 'yes') {
-        record.bowelMovement = 'Yes';
-        state = 'bowel_size';
+    function prependRecord(listEl, title, detail) {
+      const item = document.createElement("div");
+      item.className = "record-item";
+
+      const strong = document.createElement("strong");
+      strong.textContent = title;
+
+      const span = document.createElement("span");
+      span.textContent = detail;
+
+      item.appendChild(strong);
+      item.appendChild(span);
+
+      listEl.prepend(item);
+    }
+
+    function saveMedicationRecord() {
+      record.time = new Date().toLocaleTimeString();
+
+      prependRecord(
+        medicationsList,
+        record.resident,
+        "Medication: " + record.medication +
+        " | Administered by: " + record.administeredBy +
+        " | Witness confirmed: " + record.witnessConfirmed +
+        " | Time: " + record.time
+      );
+
+      let bowelText = "No";
+      if (record.bowelMovement === "Yes") {
+        bowelText = "Yes | Size: " + record.bowelSize + " | Consistency: " + record.bowelConsistency;
+      }
+
+      prependRecord(
+        notesList,
+        record.resident,
+        "Medication saved in English. Bowel movement: " + bowelText + " | Time: " + record.time
+      );
+
+      setResponse(
+        "Record saved in English.\n\n" +
+        "Resident: " + record.resident + "\n" +
+        "Medication: " + record.medication + "\n" +
+        "Administered by: " + record.administeredBy + "\n" +
+        "Witness confirmed: " + record.witnessConfirmed + "\n" +
+        "Bowel movement: " + record.bowelMovement + "\n" +
+        "Size: " + (record.bowelSize || "-") + "\n" +
+        "Consistency: " + (record.bowelConsistency || "-") + "\n" +
+        "Time: " + record.time
+      );
+
+      setTab("records");
+      clearFlow();
+    }
+
+    function saveBowelOnlyRecord() {
+      record.time = new Date().toLocaleTimeString();
+
+      prependRecord(
+        notesList,
+        record.resident,
+        "Bowel movement saved in English. Size: " + record.bowelSize +
+        " | Consistency: " + record.bowelConsistency +
+        " | Time: " + record.time
+      );
+
+      setResponse(
+        "Bowel record saved in English.\n\n" +
+        "Resident: " + record.resident + "\n" +
+        "Bowel movement: Yes\n" +
+        "Size: " + record.bowelSize + "\n" +
+        "Consistency: " + record.bowelConsistency + "\n" +
+        "Time: " + record.time
+      );
+
+      setTab("records");
+      clearFlow();
+    }
+
+    function saveDailyNoteRecord() {
+      record.time = new Date().toLocaleTimeString();
+
+      prependRecord(
+        notesList,
+        record.resident,
+        "Daily note: " + record.dailyNote + " | Time: " + record.time
+      );
+
+      setResponse(
+        "Daily note saved in English.\n\n" +
+        "Resident: " + record.resident + "\n" +
+        "Note: " + record.dailyNote + "\n" +
+        "Time: " + record.time
+      );
+
+      setTab("records");
+      clearFlow();
+    }
+
+    function startMedicationFlow(residentName) {
+      record = {
+        resident: residentName,
+        medication: "",
+        administeredBy: "",
+        witnessConfirmed: "",
+        bowelMovement: "",
+        bowelSize: "",
+        bowelConsistency: "",
+        language: preferredLanguage,
+        time: ""
+      };
+
+      state = "medication_name";
+
+      setResponse(
+        "Medication workflow started.\n\n" +
+        "Resident: " + residentName + "\n\n" +
+        "Please enter the medication name and dose.\n" +
+        "Example: Metformin 500 mg"
+      );
+    }
+
+    function startBowelFlow(residentName) {
+      record = {
+        resident: residentName,
+        bowelMovement: "Yes",
+        bowelSize: "",
+        bowelConsistency: "",
+        language: preferredLanguage,
+        time: ""
+      };
+
+      state = "bowel_size";
+
+      setResponse(
+        "Bowel workflow started.\n\n" +
+        "Resident: " + residentName + "\n\n" +
+        "What is the bowel movement size?\n" +
+        "small / medium / large"
+      );
+    }
+
+    function startDailyNoteFlow(residentName) {
+      record = {
+        resident: residentName,
+        dailyNote: "",
+        language: preferredLanguage,
+        time: ""
+      };
+
+      state = "daily_note";
+
+      setResponse(
+        "Daily note started.\n\n" +
+        "Resident: " + residentName + "\n\n" +
+        "Enter the shift note. P8 will save it as a clean English care note."
+      );
+    }
+
+    function processFlowInput(text) {
+      if (state === "medication_name") {
+        record.medication = text;
+        state = "med_admin";
+        setResponse("Medication captured.\n\nWho administered the medication?");
+        return true;
+      }
+
+      if (state === "med_admin") {
+        record.administeredBy = text;
+        state = "med_confirm";
         setResponse(
-`What is the bowel movement size?
-
-small / medium / large`
+          "Please confirm policy requirement.\n\n" +
+          "Confirm that " + record.medication + " was administered by " + record.administeredBy + ".\n" +
+          "Type: yes"
         );
         return true;
       }
 
-      if (t === 'no') {
-        record.bowelMovement = 'No';
-        saveMedicationRecord();
-        return true;
-      }
-
-      setResponse(`Please answer yes or no.`);
-      return true;
-    }
-
-    if (state === 'bowel_size') {
-      record.bowelSize = text;
-      state = 'bowel_consistency';
-      setResponse(
-`What is the bowel movement consistency?
-
-soft / hard / loose / normal`
-      );
-      return true;
-    }
-
-    if (state === 'bowel_consistency') {
-      record.bowelConsistency = text;
-
-      if (record.medication) {
-        saveMedicationRecord();
-      } else {
-        record.time = new Date().toLocaleTimeString();
-
-        const notesBox = Array.from(document.querySelectorAll('.record-box')).find(box => {
-          const title = box.querySelector('h4');
-          return title && title.textContent.trim().toLowerCase() === 'notes';
-        });
-
-        if (notesBox) {
-          const recordList = notesBox.querySelector('.record-list');
-          if (recordList) {
-            const item = document.createElement('div');
-            item.className = 'record-item';
-            item.innerHTML = `
-              <strong>${record.resident}</strong>
-              <span>Bowel movement recorded: ${record.bowelSize}, ${record.bowelConsistency}. Time: ${record.time}</span>
-            `;
-            recordList.prepend(item);
-          }
+      if (state === "med_confirm") {
+        if (lower(text) !== "yes") {
+          setResponse("Confirmation is required before saving medication records.\n\nType: yes");
+          return true;
         }
 
+        record.witnessConfirmed = "Yes";
+        state = "bowel_yes_no";
+        setResponse("Did the resident have a bowel movement?\n\nType: yes or no");
+        return true;
+      }
+
+      if (state === "bowel_yes_no") {
+        const answer = lower(text);
+
+        if (answer === "yes") {
+          record.bowelMovement = "Yes";
+          state = "bowel_size";
+          setResponse("What is the bowel movement size?\n\nsmall / medium / large");
+          return true;
+        }
+
+        if (answer === "no") {
+          record.bowelMovement = "No";
+          saveMedicationRecord();
+          return true;
+        }
+
+        setResponse("Please answer yes or no.");
+        return true;
+      }
+
+      if (state === "bowel_size") {
+        record.bowelSize = text;
+        state = "bowel_consistency";
+        setResponse("What is the bowel movement consistency?\n\nsoft / hard / loose / normal");
+        return true;
+      }
+
+      if (state === "bowel_consistency") {
+        record.bowelConsistency = text;
+
+        if (record.medication) {
+          saveMedicationRecord();
+        } else {
+          saveBowelOnlyRecord();
+        }
+        return true;
+      }
+
+      if (state === "daily_note") {
+        record.dailyNote = text;
+        saveDailyNoteRecord();
+        return true;
+      }
+
+      return false;
+    }
+
+    function processInput(text) {
+      const clean = String(text || "").trim();
+      if (!clean) return;
+
+      setTranscript(clean);
+
+      if (processFlowInput(clean)) return;
+
+      const t = lower(clean);
+      const residentName = detectResident(clean);
+
+      if (
+        t.includes("medication") ||
+        t.includes("med ") ||
+        t === "med" ||
+        t.includes("prn") ||
+        t.includes("tylenol") ||
+        t.includes("pill")
+      ) {
+        startMedicationFlow(residentName);
+        return;
+      }
+
+      if (t.includes("bowel")) {
+        startBowelFlow(residentName);
+        return;
+      }
+
+      if (t.includes("daily note") || t.includes("narrative")) {
+        startDailyNoteFlow(residentName);
+        return;
+      }
+
+      if (
+        t.includes("upset") ||
+        t.includes("agitated") ||
+        t.includes("not responding")
+      ) {
         setResponse(
-`Bowel record saved in English.
-
-Resident: ${record.resident}
-Bowel movement: Yes
-Size: ${record.bowelSize}
-Consistency: ${record.bowelConsistency}
-Time: ${record.time}`
+          "Calm Assist recognized.\n\n" +
+          "Immediate guidance:\n" +
+          "• pause before repeating\n" +
+          "• use one short sentence\n" +
+          "• keep tone calm\n" +
+          "• reassure instead of arguing\n" +
+          "• document what changed after the resident settles"
         );
-
-        setTab('records');
-        clearSession();
+        return;
       }
 
-      return true;
-    }
-
-    if (state === 'daily_note') {
-      record.dailyNote = text;
-      saveDailyNoteRecord();
-      return true;
-    }
-
-    return false;
-  }
-
-  function processInput(text) {
-    const clean = normalizeText(text);
-    if (!clean) return;
-
-    setTranscript(clean);
-
-    if (processStateInput(clean)) return;
-
-    const l = lower(clean);
-    const residentName = detectResidentFromText(clean);
-
-    if (
-      l.includes('medication') ||
-      l.includes('med') ||
-      l.includes('prn') ||
-      l.includes('tylenol') ||
-      l.includes('pill')
-    ) {
-      startMedicationFlow(residentName);
-      return;
-    }
-
-    if (l.includes('bowel')) {
-      startBowelFlow(residentName);
-      return;
-    }
-
-    if (l.includes('daily note') || l.includes('narrative')) {
-      startDailyNoteFlow(residentName);
-      return;
-    }
-
-    if (
-      l.includes('upset') ||
-      l.includes('agitated') ||
-      l.includes('not responding')
-    ) {
-      setResponse(
-`Calm Assist recognized.
-
-Immediate guidance:
-• pause before repeating
-• use one short sentence
-• keep tone calm
-• reassure instead of arguing
-• document what changed after the resident settles`
-      );
-      return;
-    }
-
-    if (
-      l.includes('english') ||
-      l.includes('spanish') ||
-      l.includes('tagalog') ||
-      l.includes('multi lingual') ||
-      l.includes('multilingual')
-    ) {
-      preferredLanguage = 'multi-lingual';
-      setResponse(
-`Language mode is set for multilingual workflow.
-
-Supported:
-• English
-• Spanish
-• Tagalog
-
-Structured records will still be saved in English.`
-      );
-      return;
-    }
-
-    setResponse(
-`P8 understands the request, but no structured workflow was matched yet.
-
-Try:
-• Log medication for Mrs. Smith
-• Mrs. Smith had a bowel movement
-• Start daily note for Mrs. Smith`
-    );
-  }
-
-  manualInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      processInput(manualInput.value);
-      manualInput.value = '';
-    }
-  });
-
-  document.querySelectorAll('.helper-chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      processInput(btn.dataset.example);
-    });
-  });
-
-  scanBtn.addEventListener('click', () => fileInput.click());
-
-  fileInput.addEventListener('change', () => {
-    setTranscript('Captured file selected.');
-    setResponse(
-`Capture / scan received.
-
-P8 should use this as structured care context only.
-Examples:
-• medication label
-• doctor report
-• previous facility record
-• family note`
-    );
-  });
-
-  function speakText(text) {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    window.speechSynthesis.speak(utterance);
-  }
-
-  listenBtn.addEventListener('click', () => {
-    speakText(responseEl.textContent);
-  });
-
-  let recognition = null;
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      speakBtn.textContent = '◼';
-    };
-
-    recognition.onend = () => {
-      speakBtn.textContent = '🎤';
-    };
-
-    recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript;
-      processInput(text);
-    };
-
-    recognition.onerror = () => {
-      setResponse('Voice input had an error. You can still type or use scan.');
-    };
-
-    speakBtn.addEventListener('click', () => {
-      recognition.start();
-    });
-  } else {
-    speakBtn.addEventListener('click', () => {
-      setResponse('Voice recognition is not supported in this browser. You can still type or scan.');
-    });
-  }
-
-  document.querySelectorAll('.drawer-link').forEach(link => {
-    link.addEventListener('click', () => {
-      document.querySelectorAll('.drawer-link').forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
-
-      const section = link.dataset.nav;
-
-      if (section === 'records' || section === 'sources') {
-        setTab('records');
-      } else {
-        setTab('chat');
-        setResponse(`Opened ${section} from navigation.`);
+      if (
+        t.includes("english") ||
+        t.includes("spanish") ||
+        t.includes("tagalog") ||
+        t.includes("multi lingual") ||
+        t.includes("multilingual")
+      ) {
+        preferredLanguage = "multi-lingual";
+        setResponse(
+          "Language mode is set for multilingual workflow.\n\n" +
+          "Supported:\n" +
+          "• English\n" +
+          "• Spanish\n" +
+          "• Tagalog\n\n" +
+          "Structured records will still be saved in English."
+        );
+        return;
       }
 
-      closeDrawer();
+      setResponse(
+        "P8 understands the request, but no structured workflow was matched yet.\n\n" +
+        "Try:\n" +
+        "• Log medication for Mrs. Smith\n" +
+        "• Mrs. Smith had a bowel movement\n" +
+        "• Start daily note for Mrs. Smith"
+      );
+    }
+
+    function speakText(text) {
+      if (!("speechSynthesis" in window)) return;
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    openDrawerBtn.addEventListener("click", openDrawer);
+    closeDrawerBtn.addEventListener("click", closeDrawer);
+    drawerBackdrop.addEventListener("click", closeDrawer);
+
+    tabChat.addEventListener("click", function () {
+      setTab("chat");
     });
-  });
-</script>
+
+    tabRecords.addEventListener("click", function () {
+      setTab("records");
+    });
+
+    manualInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        processInput(manualInput.value);
+        manualInput.value = "";
+      }
+    });
+
+    document.querySelectorAll(".helper-chip").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        processInput(btn.dataset.example || "");
+      });
+    });
+
+    scanBtn.addEventListener("click", function () {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", function () {
+      setTranscript("Captured file selected.");
+      setResponse(
+        "Capture / scan received.\n\n" +
+        "P8 should use this as structured care context only.\n" +
+        "Examples:\n" +
+        "• medication label\n" +
+        "• doctor report\n" +
+        "• previous facility record\n" +
+        "• family note"
+      );
+    });
+
+    listenBtn.addEventListener("click", function () {
+      speakText(responseEl.textContent);
+    });
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = function () {
+        speakBtn.textContent = "◼";
+      };
+
+      recognition.onend = function () {
+        speakBtn.textContent = "🎤";
+      };
+
+      recognition.onresult = function (event) {
+        const text = event.results[0][0].transcript;
+        processInput(text);
+      };
+
+      recognition.onerror = function () {
+        setResponse("Voice input had an error. You can still type or use scan.");
+      };
+
+      speakBtn.addEventListener("click", function () {
+        recognition.start();
+      });
+    } else {
+      speakBtn.addEventListener("click", function () {
+        setResponse("Voice recognition is not supported in this browser. You can still type or scan.");
+      });
+    }
+
+    document.querySelectorAll(".drawer-link").forEach(function (link) {
+      link.addEventListener("click", function () {
+        document.querySelectorAll(".drawer-link").forEach(function (l) {
+          l.classList.remove("active");
+        });
+
+        link.classList.add("active");
+        const section = link.dataset.nav;
+
+        if (section === "records" || section === "sources") {
+          setTab("records");
+        } else {
+          setTab("chat");
+          setResponse("Opened " + section + " from navigation.");
+        }
+
+        closeDrawer();
+      });
+    });
+
+    setTab("chat");
+  </script>
+</body>
+</html>
