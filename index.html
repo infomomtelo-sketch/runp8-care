@@ -3,951 +3,1021 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>RunP8 Care</title>
+<title>CareReady — Title 22 RCFE Compliance</title>
+<meta name="description" content="Stay inspection-ready every day. CareReady tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
+  *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --blue:#3b5bdb;
-    --blue-dark:#2f4bc9;
-    --blue-light:#eef2ff;
-    --blue-mid:#4263eb;
-    --sidebar-bg:#3b5bdb;
-    --sidebar-text:#fff;
-    --sidebar-hover:rgba(255,255,255,0.15);
-    --sidebar-active:rgba(255,255,255,0.25);
-    --bg:#f4f6fb;
-    --white:#fff;
-    --border:#e2e8f0;
-    --text:#1e293b;
-    --text-muted:#64748b;
-    --text-light:#94a3b8;
-    --green:#22c55e;
-    --red:#ef4444;
-    --orange:#f97316;
-    --card-shadow:0 1px 3px rgba(0,0,0,0.08);
+    --teal:#0F6E56;--teal-light:#E1F5EE;--teal-mid:#1D9E75;
+    --amber:#BA7517;--amber-light:#FAEEDA;
+    --red:#A32D2D;--red-light:#FCEBEB;
+    --green:#3B6D11;--green-light:#EAF3DE;
+    --gray:#5F5E5A;--gray-light:#F1EFE8;--gray-bg:#F8F7F4;
+    --text:#1a1a18;--text2:#5F5E5A;--border:#e0ddd6;
+    --white:#fff;--radius:10px;--radius-lg:16px;
   }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden}
-
-  /* SIDEBAR */
-  #sidebar{width:260px;background:var(--sidebar-bg);display:flex;flex-direction:column;flex-shrink:0;transition:width .25s;overflow:hidden}
-  #sidebar.collapsed{width:60px}
-  .sidebar-header{padding:16px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.1);min-height:64px}
-  .org-icon{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0}
-  .org-name{color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:1;transition:opacity .2s}
-  #sidebar.collapsed .org-name{opacity:0;width:0}
-  .sidebar-nav{flex:1;overflow-y:auto;padding:8px 0}
-  .sidebar-nav::-webkit-scrollbar{width:4px}
-  .sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:4px}
-  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;color:rgba(255,255,255,0.85);font-size:14px;transition:background .15s;border-radius:6px;margin:1px 8px;white-space:nowrap;position:relative}
-  .nav-item:hover{background:var(--sidebar-hover);color:#fff}
-  .nav-item.active{background:var(--sidebar-active);color:#fff}
-  .nav-item svg{flex-shrink:0;width:18px;height:18px}
-  .nav-label{opacity:1;transition:opacity .2s}
-  #sidebar.collapsed .nav-label{opacity:0;width:0;overflow:hidden}
-  .nav-arrow{margin-left:auto;transition:transform .2s}
-  .nav-item.open .nav-arrow{transform:rotate(90deg)}
-  .nav-sub{padding-left:44px;overflow:hidden;max-height:0;transition:max-height .25s}
-  .nav-sub.open{max-height:200px}
-  .nav-sub-item{padding:7px 10px;font-size:13px;color:rgba(255,255,255,0.75);cursor:pointer;border-radius:5px;margin:1px 0}
-  .nav-sub-item:hover{color:#fff;background:var(--sidebar-hover)}
-  .nav-sub-item.active{color:#fff}
-  .sidebar-footer{padding:12px 14px;border-top:1px solid rgba(255,255,255,0.1);font-size:11px;color:rgba(255,255,255,0.45);text-align:center}
-  #sidebar.collapsed .sidebar-footer{display:none}
-
-  /* TOP BAR */
-  #topbar{height:64px;background:var(--sidebar-bg);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
-  .topbar-toggle{background:none;border:none;cursor:pointer;color:#fff;padding:6px;border-radius:6px;display:flex}
-  .topbar-toggle:hover{background:rgba(255,255,255,0.1)}
-  .topbar-divider{width:1px;height:24px;background:rgba(255,255,255,0.2)}
-  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .topbar-icon{background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.8);padding:6px;border-radius:6px;display:flex;position:relative}
-  .topbar-icon:hover{color:#fff;background:rgba(255,255,255,0.1)}
-  .avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
-  .avatar img{width:100%;height:100%;object-fit:cover}
-
-  /* MAIN */
-  #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-  #content{flex:1;overflow-y:auto;padding:24px}
-
-  /* PAGES */
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);background:var(--white);font-size:16px;line-height:1.6}
   .page{display:none}
   .page.active{display:block}
-  .page-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
-  .page-sub{font-size:14px;color:var(--text-muted);margin-bottom:20px}
 
-  /* CARDS */
-  .card{background:var(--white);border-radius:10px;border:1px solid var(--border);box-shadow:var(--card-shadow);padding:20px}
-  .card-sm{padding:14px 16px}
+  /* ===== NAV ===== */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:0;z-index:100}
+  .logo{font-size:1.2rem;font-weight:600;color:var(--teal);letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
+  .logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center}
+  .logo-icon svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2}
+  .nav-actions{display:flex;gap:12px;align-items:center}
+  .btn{padding:8px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+  .btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
+  .btn-outline:hover{border-color:var(--teal);color:var(--teal)}
+  .btn-primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .btn-primary:hover{background:#0a5442}
+  .btn-lg{padding:12px 28px;font-size:15px;border-radius:var(--radius)}
+  .btn-ghost{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px 10px;font-size:14px}
+  .btn-ghost:hover{color:var(--text)}
 
-  /* STAT CARDS */
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:20px}
-  .stat-card{background:var(--white);border-radius:10px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:6px}
-  .stat-label{font-size:12px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:.4px}
-  .stat-val{font-size:28px;font-weight:700;color:var(--text)}
-  .stat-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
-  .badge-green{background:#dcfce7;color:#16a34a}
-  .badge-blue{background:#dbeafe;color:#1d4ed8}
-  .badge-orange{background:#ffedd5;color:#c2410c}
-  .badge-gray{background:#f1f5f9;color:var(--text-muted)}
+  /* ===== LANDING ===== */
+  .hero{padding:80px 2rem 60px;text-align:center;max-width:720px;margin:0 auto}
+  .hero-badge{display:inline-block;background:var(--teal-light);color:var(--teal);font-size:13px;font-weight:500;padding:5px 14px;border-radius:20px;margin-bottom:24px}
+  .hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:700;line-height:1.15;letter-spacing:-1px;margin-bottom:20px;color:var(--text)}
+  .hero h1 span{color:var(--teal)}
+  .hero p{font-size:1.1rem;color:var(--text2);margin-bottom:36px;max-width:540px;margin-left:auto;margin-right:auto}
+  .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .hero-note{font-size:13px;color:var(--text2);margin-top:16px}
 
-  /* TABLE */
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th{text-align:left;padding:10px 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);border-bottom:1px solid var(--border)}
-  td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  tr:hover td{background:#f8fafc}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
-  .dot-green{background:var(--green)}
-  .dot-orange{background:var(--orange)}
-  .dot-red{background:var(--red)}
+  .features{padding:60px 2rem;background:var(--gray-bg)}
+  .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;max-width:1000px;margin:0 auto}
+  .feature-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem}
+  .feature-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:22px}
+  .feature-card h3{font-size:1rem;font-weight:600;margin-bottom:8px}
+  .feature-card p{font-size:14px;color:var(--text2);line-height:1.6}
 
-  /* PILLS */
-  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent}
-  .pill-active{background:var(--blue);color:#fff;border-color:var(--blue)}
-  .pill-inactive{background:var(--white);color:var(--text-muted);border-color:var(--border)}
-  .pill-inactive:hover{border-color:#94a3b8}
-  .filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .pricing{padding:60px 2rem;max-width:900px;margin:0 auto;text-align:center}
+  .pricing h2{font-size:1.8rem;font-weight:700;margin-bottom:8px}
+  .pricing-sub{color:var(--text2);margin-bottom:40px}
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+  .plan{border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;text-align:left}
+  .plan.featured{border-color:var(--teal);position:relative}
+  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;font-size:12px;font-weight:500;padding:3px 14px;border-radius:20px;white-space:nowrap}
+  .plan-name{font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .plan-price{font-size:2rem;font-weight:700;margin-bottom:4px}
+  .plan-price span{font-size:14px;font-weight:400;color:var(--text2)}
+  .plan-desc{font-size:13px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+  .plan ul{list-style:none;margin-bottom:24px}
+  .plan ul li{font-size:14px;padding:5px 0;display:flex;gap:8px;align-items:flex-start}
+  .plan ul li::before{content:"✓";color:var(--teal);font-weight:600;flex-shrink:0}
 
-  /* BUTTONS */
-  .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:background .15s}
-  .btn-primary{background:var(--blue);color:#fff}
-  .btn-primary:hover{background:var(--blue-dark)}
-  .btn-outline{background:var(--white);color:var(--text);border:1px solid var(--border)}
-  .btn-outline:hover{background:#f8fafc}
-  .btn-sm{padding:5px 12px;font-size:13px}
-  .btn-text{background:none;color:var(--blue);padding:0;font-weight:600;font-size:14px}
-  .btn-text:hover{text-decoration:underline}
+  /* ===== AUTH ===== */
+  .auth-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--gray-bg)}
+  .auth-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:420px}
+  .auth-card h2{font-size:1.4rem;font-weight:700;margin-bottom:6px}
+  .auth-card p{font-size:14px;color:var(--text2);margin-bottom:28px}
+  .form-group{margin-bottom:18px}
+  .form-group label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)}
+  .form-group input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;transition:border .15s;background:var(--white);color:var(--text)}
+  .form-group input:focus{border-color:var(--teal)}
+  .auth-switch{text-align:center;margin-top:20px;font-size:14px;color:var(--text2)}
+  .auth-switch a{color:var(--teal);cursor:pointer;text-decoration:underline}
+  .error-msg{background:var(--red-light);color:var(--red);font-size:13px;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;display:none}
+  .error-msg.show{display:block}
 
-  /* FORM */
-  .form-group{margin-bottom:16px}
-  label{font-size:13px;font-weight:500;color:var(--text-muted);display:block;margin-bottom:5px}
-  input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:14px;color:var(--text);background:var(--white);outline:none;transition:border .15s}
-  input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,91,219,0.1)}
-  textarea{resize:vertical;min-height:80px}
+  /* ===== APP SHELL ===== */
+  .app-shell{display:flex;min-height:calc(100vh - 65px)}
+  .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
+  .sidebar-facility{font-size:12px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+  .sidebar-facility strong{display:block;font-size:14px;color:var(--text);font-weight:600}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);font-size:14px;cursor:pointer;color:var(--text2);margin-bottom:2px;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+  .nav-item:hover{background:var(--white);color:var(--text)}
+  .nav-item.active{background:var(--white);color:var(--teal);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .nav-item svg{width:18px;height:18px;flex-shrink:0}
+  .main-content{flex:1;padding:2rem;overflow-y:auto;min-width:0}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+  .page-header h1{font-size:1.4rem;font-weight:700}
 
-  /* COURSES GRID */
-  .courses-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-  .course-card{background:var(--white);border-radius:10px;border:1px solid var(--border);overflow:hidden}
-  .course-top{background:var(--blue-light);padding:24px 20px;min-height:90px;display:flex;align-items:center;justify-content:center;text-align:center}
-  .course-top h3{color:var(--blue);font-size:15px;font-weight:600;line-height:1.3}
-  .course-top span{color:var(--text-muted);font-size:13px;display:block;margin-top:4px}
-  .course-bottom{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border)}
-  .status-dot{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500}
+  /* ===== DASHBOARD ===== */
+  .score-banner{background:linear-gradient(135deg,var(--teal) 0%,#0a5442 100%);border-radius:var(--radius-lg);padding:1.5rem 2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px}
+  .score-left h2{font-size:1rem;font-weight:500;opacity:.85;margin-bottom:4px}
+  .score-number{font-size:3rem;font-weight:700;line-height:1}
+  .score-sub{font-size:13px;opacity:.75;margin-top:6px}
+  .score-ring{width:80px;height:80px;position:relative}
+  .score-ring svg{transform:rotate(-90deg)}
+  .score-ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff}
 
-  /* TRACKER */
-  .tracker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-  .tracker-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer}
-  .tracker-card:hover{border-color:var(--blue)}
-  .tracker-icon{width:40px;height:40px;border-radius:8px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
-  .tracker-name{font-weight:600;font-size:14px}
-  .tracker-desc{font-size:12px;color:var(--text-muted);margin-top:3px}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+  .stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+  .stat-label{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .stat-value{font-size:1.6rem;font-weight:700}
+  .stat-value.danger{color:var(--red)}
+  .stat-value.warn{color:var(--amber)}
+  .stat-value.ok{color:var(--green)}
 
-  /* MODAL */
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
-  .modal-overlay.open{display:flex}
-  .modal{background:var(--white);border-radius:12px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
-  .modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-  .modal-header h3{font-size:16px;font-weight:600}
-  .modal-close{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1}
-  .modal-body{padding:20px}
-  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+  .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+  .card-title{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+  .alert-item{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
+  .alert-item:last-child{border:none}
+  .alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px}
+  .alert-dot.red{background:var(--red)}
+  .alert-dot.amber{background:var(--amber)}
+  .alert-dot.teal{background:var(--teal)}
+  .alert-text{font-size:13px}
+  .alert-text strong{display:block;font-weight:500}
+  .alert-text span{color:var(--text2);font-size:12px}
 
-  /* CHAT */
-  .chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 64px - 48px)}
-  .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
-  .chat-msg{max-width:80%;padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.5}
-  .chat-msg.user{background:var(--blue-light);align-self:flex-end;border-bottom-right-radius:3px}
-  .chat-msg.ai{background:#f1f5f9;align-self:flex-start;border-bottom-left-radius:3px}
-  .chat-label{font-size:11px;font-weight:600;letter-spacing:.6px;color:var(--text-muted);margin-bottom:4px}
-  .chat-input-row{padding:14px;background:var(--white);border-top:1px solid var(--border);display:flex;gap:10px}
-  .chat-input-row input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:25px;font-size:14px;outline:none}
-  .chat-input-row input:focus{border-color:var(--blue)}
-  .chat-send{padding:10px 22px;background:var(--blue);color:#fff;border:none;border-radius:25px;font-size:14px;font-weight:600;cursor:pointer}
-  .chat-send:hover{background:var(--blue-dark)}
+  .task-item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .task-item:last-child{border:none}
+  .task-check{width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+  .task-check.done{background:var(--teal);border-color:var(--teal)}
+  .task-check.done::after{content:"✓";color:#fff;font-size:11px;font-weight:700}
+  .task-text{flex:1;font-size:13px}
+  .task-text.done{text-decoration:line-through;color:var(--text2)}
+  .task-due{font-size:11px;color:var(--text2);white-space:nowrap}
+  .task-due.overdue{color:var(--red);font-weight:500}
 
-  /* CALENDAR */
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
-  .cal-day-name{font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 0;text-transform:uppercase}
-  .cal-day{padding:8px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--text);min-height:36px;display:flex;align-items:center;justify-content:center}
-  .cal-day:hover{background:var(--blue-light)}
-  .cal-day.today{background:var(--blue);color:#fff;font-weight:700}
-  .cal-day.other-month{color:var(--text-light)}
-  .cal-day.has-event::after{content:'';display:block;width:5px;height:5px;border-radius:50%;background:var(--green);margin:2px auto 0}
+  /* ===== CHECKLIST ===== */
+  .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .filter-btn{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid var(--border);background:var(--white);cursor:pointer;transition:all .15s;color:var(--text2)}
+  .filter-btn.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .checklist-section{margin-bottom:24px}
+  .checklist-section-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .checklist-section-title .count{background:var(--gray-light);padding:2px 8px;border-radius:10px;font-size:11px;color:var(--gray)}
+  .checklist-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;transition:border .15s}
+  .checklist-row:hover{border-color:var(--teal)}
+  .checklist-row.complete{opacity:.6}
+  .check-toggle{width:20px;height:20px;border:2px solid var(--border);border-radius:5px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  .check-toggle.done{background:var(--teal);border-color:var(--teal);color:#fff;font-size:12px;font-weight:700}
+  .checklist-info{flex:1;min-width:0}
+  .checklist-title{font-size:14px;font-weight:500}
+  .checklist-ref{font-size:12px;color:var(--text2);margin-top:2px}
+  .checklist-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .badge-teal{background:var(--teal-light);color:var(--teal)}
+  .badge-amber{background:var(--amber-light);color:var(--amber)}
+  .badge-red{background:var(--red-light);color:var(--red)}
+  .badge-green{background:var(--green-light);color:var(--green)}
+  .badge-gray{background:var(--gray-light);color:var(--gray)}
 
-  /* EMAR */
-  .emar-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
-  .emar-time{font-size:12px;color:var(--text-muted)}
-  .check-btn{width:28px;height:28px;border-radius:6px;border:2px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-  .check-btn.given{background:var(--green);border-color:var(--green);color:#fff}
-  .check-btn.refused{background:var(--red);border-color:var(--red);color:#fff}
+  /* ===== ONBOARDING ===== */
+  .onboard-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--gray-bg)}
+  .onboard-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:520px}
+  .onboard-step{font-size:12px;color:var(--teal);font-weight:600;margin-bottom:6px}
+  .onboard-card h2{font-size:1.4rem;font-weight:700;margin-bottom:6px}
+  .onboard-card p{font-size:14px;color:var(--text2);margin-bottom:24px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
-  /* RESPONSIVE */
-  @media(max-width:768px){
-    #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:200;transform:translateX(-100%);transition:transform .25s}
-    #sidebar.open{transform:translateX(0)}
-    #sidebar.collapsed{width:260px;transform:translateX(-100%)}
-    #sidebar.collapsed.open{transform:translateX(0)}
-    .stats-grid{grid-template-columns:repeat(2,1fr)}
-    .courses-grid{grid-template-columns:1fr}
-    .overlay-bg{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:199;display:none}
-    .overlay-bg.show{display:block}
-  }
-  @media(min-width:769px){
-    #sidebar{transform:none!important}
-  }
-
-  /* MISC */
-  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .section-title{font-size:16px;font-weight:600}
-  .empty-state{text-align:center;padding:40px 20px;color:var(--text-muted)}
-  .empty-state svg{width:48px;height:48px;color:var(--border);margin:0 auto 12px;display:block}
-  .row{display:flex;gap:14px;flex-wrap:wrap}
-  .col-half{flex:1;min-width:280px}
-  .alert{padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:14px}
-  .alert-info{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
-  .chat-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px;border-top:1px solid var(--border)}
-  .chip{padding:5px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:var(--white);color:var(--text-muted);transition:all .15s}
-  .chip:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
-  .progress-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:8px}
-  .progress-fill{height:100%;border-radius:3px;background:var(--blue);transition:width .4s}
-  .list-view table{display:block}
+  /* misc */
+  .section-title{font-size:1rem;font-weight:700;margin-bottom:6px;text-align:center}
+  .section-sub{font-size:14px;color:var(--text2);text-align:center;margin-bottom:40px}
+  .divider{border:none;border-top:1px solid var(--border);margin:60px 0}
+  .empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+  .progress-bar{height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;margin-top:4px}
+  .progress-fill{height:100%;border-radius:3px;background:var(--teal);transition:width .3s}
+  .progress-fill.warn{background:var(--amber)}
+  .progress-fill.danger{background:var(--red)}
+  .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--white);font-size:15px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--text)}
+  .btn-google:hover{border-color:var(--teal);background:var(--gray-bg)}
+  .auth-divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--text2);font-size:13px}
+  .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border)}
 </style>
 </head>
 <body>
 
-<div class="overlay-bg" id="overlayBg" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
-<aside id="sidebar">
-  <div class="sidebar-header">
-    <div class="org-icon">V</div>
-    <span class="org-name">Victoria's Care Home</span>
+<!-- NAV -->
+<nav id="main-nav">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+    </div>
+    CareReady
   </div>
-  <nav class="sidebar-nav">
-    <div class="nav-item active" onclick="navigate('dashboard',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      <span class="nav-label">Dashboard</span>
-    </div>
-    <div class="nav-item" onclick="navigate('notes',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span class="nav-label">Notes</span>
-    </div>
-    <div class="nav-item" onclick="navigate('nursing',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
-      <span class="nav-label">Nursing Notes</span>
-    </div>
-    <div class="nav-item" onclick="navigate('residents',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-      <span class="nav-label">Residents</span>
-    </div>
-    <div class="nav-item" onclick="toggleSub('trackerSub',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span class="nav-label">Tracker</span>
-      <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-    <div class="nav-sub" id="trackerSub">
-      <div class="nav-sub-item" onclick="navigate('tracker-bowel',null)">Bowel Tracker</div>
-      <div class="nav-sub-item" onclick="navigate('tracker-vitals',null)">Vitals</div>
-      <div class="nav-sub-item" onclick="navigate('tracker-hygiene',null)">Hygiene</div>
-      <div class="nav-sub-item" onclick="navigate('tracker-behavior',null)">Behavior</div>
-    </div>
-    <div class="nav-item" onclick="navigate('calendar',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span class="nav-label">Calendar</span>
-    </div>
-    <div class="nav-item" onclick="navigate('medications',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20H4a2 2 0 01-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 011.66.9l.82 1.2a2 2 0 001.66.9H20a2 2 0 012 2v3"/><circle cx="17" cy="17" r="5"/><path d="M17 15v4M15 17h4"/></svg>
-      <span class="nav-label">Medications</span>
-    </div>
-    <div class="nav-item" onclick="navigate('emar',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span class="nav-label">E-MAR</span>
-    </div>
-    <div class="nav-item" onclick="toggleSub('reportsSub',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-      <span class="nav-label">Reports</span>
-      <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-    <div class="nav-sub" id="reportsSub">
-      <div class="nav-sub-item" onclick="navigate('reports-daily',null)">Daily Reports</div>
-      <div class="nav-sub-item" onclick="navigate('reports-incident',null)">Incident Reports</div>
-      <div class="nav-sub-item" onclick="navigate('reports-compliance',null)">Compliance</div>
-    </div>
-    <div class="nav-item" onclick="navigate('training',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-      <span class="nav-label">Training</span>
-    </div>
-    <div class="nav-item" onclick="navigate('visitors',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-      <span class="nav-label">Visitors</span>
-    </div>
-    <div class="nav-item" onclick="navigate('tutorials',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-      <span class="nav-label">Tutorials (BETA)</span>
-    </div>
-  </nav>
-  <div class="sidebar-footer">v1.0.0 · Powered by RunP8</div>
-</aside>
+  <div class="nav-actions" id="nav-public">
+    <button class="btn btn-outline" onclick="showPage('login')">Log in</button>
+    <button class="btn btn-primary" onclick="showPage('signup')">Start free trial</button>
+  </div>
+  <div class="nav-actions" id="nav-app" style="display:none">
+    <span style="font-size:13px;color:var(--text2)" id="nav-user-email"></span>
+    <button class="btn btn-ghost" onclick="handleLogout()">Log out</button>
+  </div>
+</nav>
 
-<!-- MAIN -->
-<div id="main">
-  <!-- TOPBAR -->
-  <div id="topbar">
-    <button class="topbar-toggle" onclick="toggleSidebar()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-    <div class="topbar-divider"></div>
-    <div class="topbar-right">
-      <button class="topbar-icon" title="Language">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-      </button>
-      <button class="topbar-icon" title="Theme">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
-      <button class="topbar-icon" title="Settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      </button>
-      <button class="topbar-icon" title="Notifications">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      </button>
-      <div class="avatar" onclick="navigate('settings',null)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <button class="topbar-icon" title="Logout">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </button>
+<!-- ===== LANDING PAGE ===== -->
+<div id="page-landing" class="page active">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Built for RCFE & CBRC · Title 22 compliant · Fresno, CA</div>
+    <h1>The inspector has a system.<br><span>Now you do too.</span></h1>
+    <p>DSS doesn't call before they knock. CareReady keeps your facility inspection-ready every single day — staff certifications, resident records, medications, training, and compliance score all in one place.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Start 14-day free trial</button>
+      <button class="btn btn-outline btn-lg" onclick="showPage('login')">Log in</button>
     </div>
+    <p class="hero-note">No credit card required · Cancel anytime · Setup in 5 minutes</p>
   </div>
 
-  <!-- CONTENT -->
-  <div id="content">
-
-    <!-- DASHBOARD -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-title">Dashboard</div>
-      <div class="page-sub">Victoria's Care Home — overview</div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Residents</div><div class="stat-val">6</div><span class="stat-badge badge-blue">Active</span></div>
-        <div class="stat-card"><div class="stat-label">Staff on Duty</div><div class="stat-val">4</div><span class="stat-badge badge-green">On shift</span></div>
-        <div class="stat-card"><div class="stat-label">Meds Due Today</div><div class="stat-val">12</div><span class="stat-badge badge-orange">3 pending</span></div>
-        <div class="stat-card"><div class="stat-label">Incidents (30d)</div><div class="stat-val">2</div><span class="stat-badge badge-gray">Low</span></div>
-        <div class="stat-card"><div class="stat-label">Visitors Today</div><div class="stat-val">3</div><span class="stat-badge badge-blue">Checked in</span></div>
-        <div class="stat-card"><div class="stat-label">Training</div><div class="stat-val">78%</div><div class="progress-bar"><div class="progress-fill" style="width:78%"></div></div></div>
-      </div>
-      <div class="row">
-        <div class="col-half">
-          <div class="card">
-            <div class="section-header"><span class="section-title">Recent Notes</span><button class="btn-text btn" onclick="navigate('notes',null)">View all</button></div>
-            <table>
-              <thead><tr><th>Resident</th><th>Note</th><th>Time</th></tr></thead>
-              <tbody>
-                <tr><td>Mrs. Smith</td><td>Ate 75% of breakfast</td><td style="color:var(--text-muted);font-size:13px">8:30 AM</td></tr>
-                <tr><td>Mr. Johnson</td><td>Restless night, checked at 2am</td><td style="color:var(--text-muted);font-size:13px">7:15 AM</td></tr>
-                <tr><td>Mrs. Davis</td><td>Physical therapy completed</td><td style="color:var(--text-muted);font-size:13px">Yesterday</td></tr>
-              </tbody>
-            </table>
+  <!-- INSPECTION SCENARIO SECTION -->
+  <div style="background:#1a1a18;padding:60px 2rem;color:#fff">
+    <div style="max-width:800px;margin:0 auto;text-align:center">
+      <div style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;opacity:.5;margin-bottom:16px">What happens when DSS walks in</div>
+      <h2 style="font-size:1.6rem;font-weight:700;margin-bottom:40px;line-height:1.3">Without CareReady vs. With CareReady</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:left">
+        <div style="background:rgba(163,45,45,.15);border:1px solid rgba(163,45,45,.3);border-radius:var(--radius-lg);padding:1.5rem">
+          <div style="font-size:13px;font-weight:600;color:#f87171;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <span>😰</span> Without CareReady
+          </div>
+          <div style="font-size:13px;line-height:1.8;opacity:.8">
+            ❌ Scrambling through paper folders<br>
+            ❌ Hoping staff CPR certs are current<br>
+            ❌ Can't find the LIC 602 for room 3<br>
+            ❌ MAR has a gap from last Tuesday<br>
+            ❌ ISP hasn't been updated in 14 months<br>
+            ❌ Fire inspection certificate expired<br>
+            ❌ Citation. Fine. Panic.
           </div>
         </div>
-        <div class="col-half">
-          <div class="card">
-            <div class="section-header"><span class="section-title">Medications Due</span><button class="btn-text btn" onclick="navigate('emar',null)">E-MAR</button></div>
-            <table>
-              <thead><tr><th>Resident</th><th>Medication</th><th>Time</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>Mrs. Smith</td><td>Metoprolol 25mg</td><td>9:00 AM</td><td><span class="stat-badge badge-green">Given</span></td></tr>
-                <tr><td>Mr. Johnson</td><td>Donepezil 10mg</td><td>9:00 AM</td><td><span class="stat-badge badge-orange">Pending</span></td></tr>
-                <tr><td>Mrs. Lee</td><td>Lisinopril 5mg</td><td>12:00 PM</td><td><span class="stat-badge badge-gray">Upcoming</span></td></tr>
-              </tbody>
-            </table>
+        <div style="background:rgba(15,110,86,.15);border:1px solid rgba(15,110,86,.4);border-radius:var(--radius-lg);padding:1.5rem">
+          <div style="font-size:13px;font-weight:600;color:#6ee7b7;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <span>✅</span> With CareReady
+          </div>
+          <div style="font-size:13px;line-height:1.8;opacity:.8">
+            ✅ Open CareReady on your phone<br>
+            ✅ 94% inspection readiness score<br>
+            ✅ All staff certs current and on screen<br>
+            ✅ Every resident record up to date<br>
+            ✅ MAR complete — no gaps<br>
+            ✅ ISP reviewed last month<br>
+            ✅ Inspector leaves. No citations.
           </div>
         </div>
       </div>
+      <p style="margin-top:28px;opacity:.6;font-size:13px">One DSS citation costs $150–$1,000 per day. CareReady costs $49/month.</p>
     </div>
+  </div>
 
-    <!-- NOTES -->
-    <div class="page" id="page-notes">
-      <div class="section-header">
-        <div><div class="page-title">Notes</div><div class="page-sub">Daily care notes for all residents</div></div>
-        <button class="btn btn-primary" onclick="openModal('noteModal')">+ Add Note</button>
+  <!-- HOW IT WORKS -->
+  <div style="padding:60px 2rem;background:var(--gray-bg)">
+    <div style="max-width:860px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:40px">
+        <div class="section-title">How CareReady prepares your facility</div>
+        <div class="section-sub">A system that works every day — not just the day before an inspection</div>
       </div>
-      <div class="filter-row">
-        <span class="pill pill-active">All</span>
-        <span class="pill pill-inactive" onclick="filterPill(this,'notes')">Today</span>
-        <span class="pill pill-inactive" onclick="filterPill(this,'notes')">This Week</span>
-        <span class="pill pill-inactive" onclick="filterPill(this,'notes')">Mrs. Smith</span>
-        <span class="pill pill-inactive" onclick="filterPill(this,'notes')">Mr. Johnson</span>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Date/Time</th><th>Resident</th><th>Note</th><th>Author</th><th></th></tr></thead>
-          <tbody id="notesTbody">
-            <tr><td>Jun 10, 8:30 AM</td><td>Mrs. Smith</td><td>Ate 75% of breakfast. Good mood today.</td><td>Maria C.</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
-            <tr><td>Jun 10, 7:15 AM</td><td>Mr. Johnson</td><td>Restless night, checked every 2 hours. No falls.</td><td>James T.</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
-            <tr><td>Jun 9, 4:00 PM</td><td>Mrs. Davis</td><td>Physical therapy completed. Range of motion improving.</td><td>Maria C.</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
-            <tr><td>Jun 9, 2:30 PM</td><td>Mrs. Lee</td><td>Refused afternoon snack. Drank water.</td><td>Alex R.</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- NURSING NOTES -->
-    <div class="page" id="page-nursing">
-      <div class="section-header">
-        <div><div class="page-title">Nursing Notes</div><div class="page-sub">Clinical nursing observations and assessments</div></div>
-        <button class="btn btn-primary" onclick="openModal('nursingModal')">+ New Nursing Note</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Date</th><th>Resident</th><th>Observation</th><th>Vital Signs</th><th>RN</th></tr></thead>
-          <tbody>
-            <tr><td>Jun 10</td><td>Mrs. Smith</td><td>BP elevated, monitoring closely. Alert and oriented x3.</td><td>BP 145/92 · HR 78 · O2 97%</td><td>Linda M., RN</td></tr>
-            <tr><td>Jun 10</td><td>Mr. Johnson</td><td>Dementia progression noted. Increased confusion in evening hours.</td><td>BP 128/80 · HR 72 · O2 98%</td><td>Linda M., RN</td></tr>
-            <tr><td>Jun 9</td><td>Mrs. Davis</td><td>Post-fall assessment completed. No new injuries found.</td><td>BP 118/76 · HR 68 · O2 99%</td><td>Linda M., RN</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- RESIDENTS -->
-    <div class="page" id="page-residents">
-      <div class="section-header">
-        <div><div class="page-title">Residents</div><div class="page-sub">6 active residents</div></div>
-        <button class="btn btn-primary" onclick="openModal('residentModal')">+ Add Resident</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Name</th><th>Room</th><th>Admission</th><th>Primary Diagnosis</th><th>Care Level</th><th></th></tr></thead>
-          <tbody>
-            <tr><td><strong>Mrs. Eleanor Smith</strong></td><td>101</td><td>Jan 15, 2024</td><td>Hypertension, Type 2 Diabetes</td><td><span class="stat-badge badge-orange">High</span></td><td><button class="btn btn-outline btn-sm" onclick="navigate('resident-detail',null)">View</button></td></tr>
-            <tr><td><strong>Mr. Robert Johnson</strong></td><td>102</td><td>Mar 3, 2024</td><td>Alzheimer's Disease (Stage 3)</td><td><span class="stat-badge badge-red" style="background:#fee2e2;color:#dc2626">Memory</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td><strong>Mrs. Helen Davis</strong></td><td>103</td><td>Feb 20, 2024</td><td>COPD, Osteoarthritis</td><td><span class="stat-badge badge-blue">Medium</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td><strong>Mrs. Grace Lee</strong></td><td>104</td><td>Apr 1, 2024</td><td>Parkinson's Disease</td><td><span class="stat-badge badge-orange">High</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td><strong>Mr. Frank Wilson</strong></td><td>105</td><td>May 10, 2024</td><td>Post-stroke rehabilitation</td><td><span class="stat-badge badge-blue">Medium</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td><strong>Mrs. Betty Garcia</strong></td><td>106</td><td>Jun 1, 2024</td><td>Dementia, Congestive Heart Failure</td><td><span class="stat-badge badge-red" style="background:#fee2e2;color:#dc2626">High</span></td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- TRACKER -->
-    <div class="page" id="page-tracker-bowel">
-      <div class="page-title">Bowel Tracker</div>
-      <div class="page-sub">Log and monitor bowel movements for all residents</div>
-      <div class="filter-row">
-        <span class="pill pill-active">Today</span>
-        <span class="pill pill-inactive">This Week</span>
-        <span class="pill pill-inactive">All Residents</span>
-        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openModal('bowelModal')">+ Log Entry</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Time</th><th>Resident</th><th>Type</th><th>Amount</th><th>Notes</th><th>Staff</th></tr></thead>
-          <tbody>
-            <tr><td>7:00 AM</td><td>Mrs. Smith</td><td><span class="stat-badge badge-green">Normal</span></td><td>Medium</td><td>No issues</td><td>Maria C.</td></tr>
-            <tr><td>8:15 AM</td><td>Mr. Johnson</td><td><span class="stat-badge badge-orange">Loose</span></td><td>Small</td><td>2nd time today</td><td>James T.</td></tr>
-            <tr><td>9:30 AM</td><td>Mrs. Garcia</td><td><span class="stat-badge badge-green">Normal</span></td><td>Large</td><td>—</td><td>Alex R.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="page" id="page-tracker-vitals">
-      <div class="page-title">Vitals Tracker</div>
-      <div class="page-sub">Blood pressure, heart rate, O2 saturation, temperature</div>
-      <div class="filter-row">
-        <span class="pill pill-active">Today</span>
-        <span class="pill pill-inactive">Last 7 Days</span>
-        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openModal('vitalsModal')">+ Log Vitals</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Time</th><th>Resident</th><th>BP</th><th>HR</th><th>O2</th><th>Temp</th><th>Staff</th></tr></thead>
-          <tbody>
-            <tr><td>8:00 AM</td><td>Mrs. Smith</td><td>145/92</td><td>78 bpm</td><td>97%</td><td>98.4°F</td><td>Linda M.</td></tr>
-            <tr><td>8:10 AM</td><td>Mr. Johnson</td><td>128/80</td><td>72 bpm</td><td>98%</td><td>98.1°F</td><td>Linda M.</td></tr>
-            <tr><td>8:20 AM</td><td>Mrs. Davis</td><td>118/76</td><td>68 bpm</td><td>99%</td><td>97.9°F</td><td>Linda M.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="page" id="page-tracker-hygiene">
-      <div class="page-title">Hygiene Tracker</div>
-      <div class="page-sub">Daily hygiene routines and personal care records</div>
-      <div class="card" style="margin-top:16px">
-        <table>
-          <thead><tr><th>Date</th><th>Resident</th><th>Bath/Shower</th><th>Oral Care</th><th>Hair</th><th>Nails</th><th>Staff</th></tr></thead>
-          <tbody>
-            <tr><td>Jun 10</td><td>Mrs. Smith</td><td><span class="dot dot-green"></span>Done</td><td><span class="dot dot-green"></span>Done</td><td><span class="dot dot-green"></span>Done</td><td>—</td><td>Maria C.</td></tr>
-            <tr><td>Jun 10</td><td>Mr. Johnson</td><td><span class="dot dot-green"></span>Done</td><td><span class="dot dot-orange"></span>Refused</td><td>—</td><td>—</td><td>James T.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="page" id="page-tracker-behavior">
-      <div class="page-title">Behavior Tracker</div>
-      <div class="page-sub">Behavioral incidents and observations</div>
-      <div class="card" style="margin-top:16px">
-        <table>
-          <thead><tr><th>Date/Time</th><th>Resident</th><th>Behavior</th><th>Trigger</th><th>Intervention</th><th>Staff</th></tr></thead>
-          <tbody>
-            <tr><td>Jun 10, 2:30 PM</td><td>Mr. Johnson</td><td><span class="stat-badge badge-orange">Agitation</span></td><td>Unfamiliar staff</td><td>Redirection, calming music</td><td>Maria C.</td></tr>
-            <tr><td>Jun 9, 6:00 PM</td><td>Mrs. Garcia</td><td><span class="stat-badge badge-red" style="background:#fee2e2;color:#dc2626">Aggression</span></td><td>Sundowning</td><td>Quiet environment, medication review</td><td>Alex R.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- CALENDAR -->
-    <div class="page" id="page-calendar">
-      <div class="section-header">
-        <div><div class="page-title">Calendar</div><div class="page-sub">Appointments, activities, and events</div></div>
-        <button class="btn btn-primary" onclick="openModal('eventModal')">+ Add Event</button>
-      </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">← Prev</button>
-          <strong id="calMonthLabel" style="font-size:15px"></strong>
-          <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next →</button>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;position:relative">
+          <div style="width:32px;height:32px;background:var(--teal);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin-bottom:14px">1</div>
+          <h3 style="font-size:1rem;font-weight:600;margin-bottom:8px">Set up your facility</h3>
+          <p style="font-size:13px;color:var(--text2)">Enter your facility type (RCFE or CBRC), add your staff and residents. CareReady automatically loads every Title 22 requirement that applies to your facility type.</p>
         </div>
-        <div class="cal-grid" id="calGrid"></div>
-      </div>
-      <div class="card" style="margin-top:14px">
-        <div class="section-title" style="margin-bottom:12px">Upcoming Events</div>
-        <table>
-          <thead><tr><th>Date</th><th>Event</th><th>Resident</th><th>Notes</th></tr></thead>
-          <tbody>
-            <tr><td>Jun 11</td><td>Doctor Visit - Dr. Patel</td><td>Mrs. Smith</td><td>BP follow-up</td></tr>
-            <tr><td>Jun 12</td><td>Physical Therapy</td><td>Mrs. Davis</td><td>Twice weekly</td></tr>
-            <tr><td>Jun 13</td><td>Family Visit</td><td>Mr. Johnson</td><td>Son visiting 2pm</td></tr>
-            <tr><td>Jun 14</td><td>Group Activity - Bingo</td><td>All Residents</td><td>3:00 PM in common area</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- MEDICATIONS -->
-    <div class="page" id="page-medications">
-      <div class="section-header">
-        <div><div class="page-title">Medications</div><div class="page-sub">Active medication profiles for all residents</div></div>
-        <button class="btn btn-primary" onclick="openModal('medModal')">+ Add Medication</button>
-      </div>
-      <div class="filter-row">
-        <span class="pill pill-active">All Residents</span>
-        <span class="pill pill-inactive">Mrs. Smith</span>
-        <span class="pill pill-inactive">Mr. Johnson</span>
-        <span class="pill pill-inactive">Mrs. Davis</span>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Resident</th><th>Medication</th><th>Dose</th><th>Frequency</th><th>Route</th><th>Prescribed By</th><th>Refill</th></tr></thead>
-          <tbody>
-            <tr><td>Mrs. Smith</td><td>Metoprolol</td><td>25mg</td><td>Twice daily</td><td>Oral</td><td>Dr. Patel</td><td><span class="stat-badge badge-green">Good</span></td></tr>
-            <tr><td>Mrs. Smith</td><td>Metformin</td><td>500mg</td><td>With meals</td><td>Oral</td><td>Dr. Patel</td><td><span class="stat-badge badge-green">Good</span></td></tr>
-            <tr><td>Mr. Johnson</td><td>Donepezil</td><td>10mg</td><td>Once nightly</td><td>Oral</td><td>Dr. Chen</td><td><span class="stat-badge badge-orange">Low</span></td></tr>
-            <tr><td>Mr. Johnson</td><td>Memantine</td><td>20mg</td><td>Twice daily</td><td>Oral</td><td>Dr. Chen</td><td><span class="stat-badge badge-green">Good</span></td></tr>
-            <tr><td>Mrs. Davis</td><td>Tiotropium</td><td>18mcg</td><td>Once daily</td><td>Inhaled</td><td>Dr. Reyes</td><td><span class="stat-badge badge-green">Good</span></td></tr>
-            <tr><td>Mrs. Lee</td><td>Carbidopa/Levodopa</td><td>25/100mg</td><td>3x daily</td><td>Oral</td><td>Dr. Kim</td><td><span class="stat-badge badge-red" style="background:#fee2e2;color:#dc2626">Order</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- E-MAR -->
-    <div class="page" id="page-emar">
-      <div class="page-title">E-MAR</div>
-      <div class="page-sub">Electronic Medication Administration Record — Jun 10, 2025</div>
-      <div class="filter-row">
-        <span class="pill pill-active">All</span>
-        <span class="pill pill-inactive">Pending</span>
-        <span class="pill pill-inactive">Given</span>
-        <span class="pill pill-inactive">Refused</span>
-      </div>
-      <div class="card">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;padding:8px 0;border-bottom:2px solid var(--border);font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px">
-          <div>Resident / Medication</div><div>Dose / Route</div><div>Scheduled</div><div>Status</div>
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem">
+          <div style="width:32px;height:32px;background:var(--teal);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin-bottom:14px">2</div>
+          <h3 style="font-size:1rem;font-weight:600;margin-bottom:8px">Track everything daily</h3>
+          <p style="font-size:13px;color:var(--text2)">Log medication administration, update staff certifications, complete resident records. CareReady alerts you before anything expires — 90, 30, and 7 days in advance.</p>
         </div>
-        <div id="emarRows"></div>
-      </div>
-    </div>
-
-    <!-- REPORTS -->
-    <div class="page" id="page-reports-daily">
-      <div class="page-title">Daily Reports</div>
-      <div class="page-sub">End-of-shift summaries and daily care reports</div>
-      <div class="card" style="margin-top:16px">
-        <table>
-          <thead><tr><th>Date</th><th>Shift</th><th>Prepared By</th><th>Residents</th><th>Incidents</th><th></th></tr></thead>
-          <tbody>
-            <tr><td>Jun 10</td><td>AM (7am–3pm)</td><td>Maria C.</td><td>6</td><td>0</td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td>Jun 9</td><td>PM (3pm–11pm)</td><td>James T.</td><td>6</td><td>1</td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td>Jun 9</td><td>NOC (11pm–7am)</td><td>Alex R.</td><td>6</td><td>0</td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="page" id="page-reports-incident">
-      <div class="page-title">Incident Reports</div>
-      <div class="page-sub">Falls, injuries, and critical incidents</div>
-      <div class="card" style="margin-top:16px">
-        <table>
-          <thead><tr><th>Date</th><th>Resident</th><th>Incident</th><th>Severity</th><th>Reported By</th><th></th></tr></thead>
-          <tbody>
-            <tr><td>Jun 9</td><td>Mrs. Davis</td><td>Near-fall in bathroom</td><td><span class="stat-badge badge-orange">Minor</span></td><td>James T.</td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-            <tr><td>Jun 5</td><td>Mr. Johnson</td><td>Wandering at night</td><td><span class="stat-badge badge-blue">Low</span></td><td>Alex R.</td><td><button class="btn btn-outline btn-sm">View</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="page" id="page-reports-compliance">
-      <div class="page-title">Compliance Reports</div>
-      <div class="page-sub">State licensing and regulatory compliance tracking</div>
-      <div class="card" style="margin-top:16px">
-        <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">Licensing Status</div><div class="stat-val" style="font-size:20px;color:var(--green)">✓ Current</div></div>
-          <div class="stat-card"><div class="stat-label">Last Inspection</div><div class="stat-val" style="font-size:18px">Mar 2025</div></div>
-          <div class="stat-card"><div class="stat-label">Open Citations</div><div class="stat-val">0</div><span class="stat-badge badge-green">Clear</span></div>
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem">
+          <div style="width:32px;height:32px;background:var(--teal);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin-bottom:14px">3</div>
+          <h3 style="font-size:1rem;font-weight:600;margin-bottom:8px">Know your score</h3>
+          <p style="font-size:13px;color:var(--text2)">Your inspection readiness score updates in real time. See exactly what an inspector would find — and fix it before they knock. No surprises.</p>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem">
+          <div style="width:32px;height:32px;background:var(--teal);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin-bottom:14px">4</div>
+          <h3 style="font-size:1rem;font-weight:600;margin-bottom:8px">Open it when they arrive</h3>
+          <p style="font-size:13px;color:var(--text2)">When the inspector walks in with their laptop — you open CareReady on yours. Every record, every certificate, every log ready to show. You have a system too.</p>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- TRAINING -->
-    <div class="page" id="page-training">
-      <div class="section-header">
-        <div><div class="page-title">Training</div><div class="page-sub">Staff training courses and certifications</div></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-outline">≡ List</button>
-          <button class="btn btn-outline">⊞ Grid</button>
+  <!-- FEATURES -->
+  <div class="features">
+    <div style="text-align:center;margin-bottom:36px">
+      <div class="section-title">Everything Title 22 requires — for RCFE & CBRC</div>
+      <div class="section-sub">Built by a certified facility administrator who has lived every inspection</div>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--teal-light)">📋</div>
+        <h3>Title 22 compliance checklist</h3>
+        <p>Every requirement pre-loaded and tied to the exact CCR regulation code — administrator, staff, residents, medications, and facility. Updated when Title 22 changes.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--red-light)">📊</div>
+        <h3>Inspection readiness score</h3>
+        <p>Real-time score shows exactly where your facility stands. When the inspector opens their laptop — you open CareReady. Now you both have a system.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--amber-light)">⏰</div>
+        <h3>Expiration alerts</h3>
+        <p>CPR expired 3 months ago — citation. ISP not updated after a fall — citation. CareReady alerts you 90, 30, and 7 days before anything expires.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--green-light)">💊</div>
+        <h3>Digital MAR</h3>
+        <p>Log every medication administration with timestamp and caregiver initials. Complete audit trail. No paper gaps. Inspector asks for the MAR — you pull it up in seconds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--teal-light)">👥</div>
+        <h3>Staff certification tracking</h3>
+        <p>CPR, First Aid, LiveScan, TB tests, mandated reporter, caregiver training hours — tracked per employee. Know exactly who is certified and who is due for renewal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--amber-light)">📁</div>
+        <h3>Resident records</h3>
+        <p>LIC 601, LIC 602, ISP, admission agreements — every required form tracked. Inspector asks for room 3's records — you pull them up instantly, no folder digging.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--red-light)">🚨</div>
+        <h3>Incident reports</h3>
+        <p>Falls, medication errors, behavioral incidents — documented properly with DSS reporting flags, timestamps, and corrective action tracking. Everything by the book.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--green-light)">🔄</div>
+        <h3>Title 22 auto-updates</h3>
+        <p>When DSS updates Title 22 regulations, CareReady updates your checklist automatically and notifies you. You stay current — even when the rules change overnight.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:var(--teal-light)">🤖</div>
+        <h3>AI compliance assistant</h3>
+        <p>Ask any Title 22 question and get an instant answer with the exact regulation reference. Available 24/7 — even at 2am the night before an inspection.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pricing" style="max-width:1100px">
+    <div class="section-title">Pricing built for care facility operators</div>
+    <div class="pricing-sub">Less than the cost of one DSS citation fine · 14-day free trial · No credit card required</div>
+
+    <!-- Main 4 plans -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:32px">
+
+      <div class="plan">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$49<span>/mo</span></div>
+        <div class="plan-desc">1 facility · Perfect for small operators</div>
+        <ul>
+          <li>Digital MAR</li>
+          <li>Resident records (LIC 601/602, ISP)</li>
+          <li>Staff certification tracking</li>
+          <li>Compliance dashboard</li>
+          <li>Expiration alerts</li>
+          <li>Incident reports</li>
+          <li>Audit log</li>
+        </ul>
+        <button class="btn btn-outline" style="width:100%" onclick="showPage('signup')">Start free trial</button>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-badge">Most popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$79<span>/mo</span></div>
+        <div class="plan-desc">Up to 3 facilities · RCFE & CBRC</div>
+        <ul>
+          <li>Everything in Starter</li>
+          <li>Caregiver training courses</li>
+          <li>Training hour tracking</li>
+          <li>Auto-certificates per course</li>
+          <li>DSS inspection log</li>
+          <li>Multi-facility dashboard</li>
+          <li>Training directory</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%" onclick="showPage('signup')">Start free trial</button>
+      </div>
+
+      <div class="plan" style="border-color:#BA7517;position:relative">
+        <div class="plan-badge" style="background:#BA7517">Title 22 Specialist</div>
+        <div class="plan-name" style="color:#BA7517">Specialist</div>
+        <div class="plan-price">$149<span>/mo</span></div>
+        <div class="plan-desc">Up to 5 facilities · Full compliance power</div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>AI compliance assistant</li>
+          <li>Title 22 auto-updates</li>
+          <li>DSS Inspection Simulator</li>
+          <li>Regulation change alerts</li>
+          <li>Pharmacy label scanner (MAR)</li>
+          <li>Priority support</li>
+        </ul>
+        <button class="btn" style="width:100%;background:#BA7517;color:#fff;border-color:#BA7517" onclick="showPage('signup')">Start free trial</button>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">Agency</div>
+        <div class="plan-price">$249<span>/mo</span></div>
+        <div class="plan-desc">Unlimited facilities · For large operators</div>
+        <ul>
+          <li>Everything in Specialist</li>
+          <li>Unlimited facilities</li>
+          <li>Multi-facility compliance score</li>
+          <li>Staff training reports</li>
+          <li>Custom checklists</li>
+          <li>White-label option</li>
+          <li>Dedicated support</li>
+        </ul>
+        <button class="btn btn-outline" style="width:100%" onclick="showPage('signup')">Start free trial</button>
+      </div>
+
+    </div>
+
+    <!-- Administrator Certification separate section -->
+    <div style="background:linear-gradient(135deg,#1a1a18 0%,#2d2d2a 100%);border-radius:var(--radius-lg);padding:2rem;color:#fff;margin-bottom:32px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
+        <span style="font-size:24px">🎓</span>
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;opacity:.6;margin-bottom:3px">Coming soon · Pending DSS vendor approval</div>
+          <div style="font-size:1.2rem;font-weight:700">Administrator Certification Training</div>
         </div>
       </div>
-      <div class="filter-row">
-        <span class="pill pill-active">All Status</span>
-        <span class="pill pill-inactive">Not Started</span>
-        <span class="pill pill-inactive">In Progress</span>
-        <span class="pill pill-inactive">Completed</span>
+      <p style="opacity:.75;font-size:14px;margin-bottom:20px;max-width:600px">DSS-accredited administrator certification courses — initial and continuing education — fully integrated with your CareReady compliance record. Hours auto-logged. Certificate auto-stored.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+        <div style="background:rgba(255,255,255,.08);border-radius:var(--radius);padding:1rem">
+          <div style="font-size:12px;opacity:.6;margin-bottom:4px">CE Renewal · 40 hours</div>
+          <div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;opacity:.7"> /person</span></div>
+          <div style="font-size:12px;opacity:.6;margin-top:4px">RCFE & ARF administrators</div>
+        </div>
+        <div style="background:rgba(255,255,255,.08);border-radius:var(--radius);padding:1rem">
+          <div style="font-size:12px;opacity:.6;margin-bottom:4px">Initial Certification · 80 hours</div>
+          <div style="font-size:1.4rem;font-weight:700">$599<span style="font-size:13px;font-weight:400;opacity:.7"> /person</span></div>
+          <div style="font-size:12px;opacity:.6;margin-top:4px">Become a certified RCFE administrator</div>
+        </div>
+        <div style="background:rgba(255,255,255,.08);border-radius:var(--radius);padding:1rem">
+          <div style="font-size:12px;opacity:.6;margin-bottom:4px">CBRC Administrator · 40 hours</div>
+          <div style="font-size:1.4rem;font-weight:700">$299<span style="font-size:13px;font-weight:400;opacity:.7"> /person</span></div>
+          <div style="font-size:12px;opacity:.6;margin-top:4px">Community Board & Care</div>
+        </div>
       </div>
-      <div class="courses-grid" id="coursesGrid"></div>
+      <button class="btn" style="margin-top:20px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="alert('We will notify you when administrator certification courses are available!')">Notify me when available</button>
     </div>
 
-    <!-- VISITORS -->
-    <div class="page" id="page-visitors">
-      <div class="section-header">
-        <div><div class="page-title">Visitors</div><div class="page-sub">Visitor log and check-in/check-out</div></div>
-        <button class="btn btn-primary" onclick="openModal('visitorModal')">+ Check In Visitor</button>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Visitor Name</th><th>Visiting</th><th>Relationship</th><th>Check In</th><th>Check Out</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>Sarah Johnson</td><td>Mr. Johnson</td><td>Daughter</td><td>10:30 AM</td><td>12:15 PM</td><td><span class="stat-badge badge-gray">Left</span></td></tr>
-            <tr><td>Tom Smith</td><td>Mrs. Smith</td><td>Son</td><td>1:00 PM</td><td>—</td><td><span class="stat-badge badge-green">In Building</span></td></tr>
-            <tr><td>Dr. Patel</td><td>Mrs. Smith</td><td>Physician</td><td>2:30 PM</td><td>—</td><td><span class="stat-badge badge-blue">In Building</span></td></tr>
-          </tbody>
-        </table>
+    <!-- Comparison note -->
+    <div style="background:var(--teal-light);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;display:flex;gap:14px;align-items:flex-start">
+      <span style="font-size:20px;flex-shrink:0">💡</span>
+      <div style="font-size:13px;color:var(--teal)">
+        <strong>The math is simple:</strong> One DSS citation costs $150–$1,000 per day. CareReady Starter is $49/month. A single inspection pass pays for 2+ years of CareReady. Most operators recover their subscription cost on their very first inspection.
       </div>
     </div>
+  </div>
 
-    <!-- TUTORIALS -->
-    <div class="page" id="page-tutorials">
-      <div class="page-title">Tutorials <span style="font-size:12px;font-weight:500;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;vertical-align:middle">BETA</span></div>
-      <div class="page-sub">Video guides for using RunP8 Care</div>
-      <div class="courses-grid" style="margin-top:16px">
-        <div class="course-card"><div class="course-top"><h3>Getting Started with RunP8 Care<span>5 min</span></h3></div><div class="course-bottom"><div class="status-dot"><span class="dot dot-green"></span>Available</div><button class="btn-text btn">Watch</button></div></div>
-        <div class="course-card"><div class="course-top"><h3>Adding and Managing Residents<span>8 min</span></h3></div><div class="course-bottom"><div class="status-dot"><span class="dot dot-green"></span>Available</div><button class="btn-text btn">Watch</button></div></div>
-        <div class="course-card"><div class="course-top"><h3>Using E-MAR for Medications<span>10 min</span></h3></div><div class="course-bottom"><div class="status-dot"><span class="dot dot-green"></span>Available</div><button class="btn-text btn">Watch</button></div></div>
-        <div class="course-card"><div class="course-top"><h3>Documenting Incidents<span>6 min</span></h3></div><div class="course-bottom"><div class="status-dot"><span class="dot dot-orange"></span>Coming Soon</div><button class="btn-text btn" style="color:var(--text-muted)">Soon</button></div></div>
-      </div>
-    </div>
+  <div style="text-align:center;padding:60px 2rem;background:var(--teal);color:#fff">
+    <div style="font-size:1.6rem;font-weight:700;margin-bottom:10px">Ready before the next inspection?</div>
+    <div style="opacity:.85;margin-bottom:28px;font-size:1rem">Start your 14-day free trial — no credit card required.</div>
+    <button class="btn" style="background:#fff;color:var(--teal);font-weight:600;padding:14px 32px;font-size:15px;border-radius:var(--radius)" onclick="showPage('signup')">Get started free</button>
+  </div>
 
-  </div><!-- /content -->
-</div><!-- /main -->
-
-<!-- MODALS -->
-<div class="modal-overlay" id="noteModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Add Note</h3><button class="modal-close" onclick="closeModal('noteModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Resident</label><select><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option><option>Mrs. Helen Davis</option><option>Mrs. Grace Lee</option><option>Mr. Frank Wilson</option><option>Mrs. Betty Garcia</option></select></div>
-      <div class="form-group"><label>Note Type</label><select><option>Daily Note</option><option>Behavior</option><option>Meal/Nutrition</option><option>Incident</option><option>General</option></select></div>
-      <div class="form-group"><label>Note</label><textarea placeholder="Enter care note..."></textarea></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('noteModal')">Cancel</button><button class="btn btn-primary" onclick="saveNote()">Save Note</button></div>
+  <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
+    © 2025 CareReady · RunP8 LLC · <a href="/legal" style="color:var(--teal)">Privacy</a> · <a href="/legal" style="color:var(--teal)">Terms</a> · <a href="/legal" style="color:var(--teal)">Disclaimer</a> · Built for RCFE & CBRC operators · Title 22 compliant
   </div>
 </div>
 
-<div class="modal-overlay" id="bowelModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Log Bowel Movement</h3><button class="modal-close" onclick="closeModal('bowelModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Resident</label><select><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option><option>Mrs. Helen Davis</option><option>Mrs. Grace Lee</option><option>Mr. Frank Wilson</option><option>Mrs. Betty Garcia</option></select></div>
-      <div class="form-group"><label>Type</label><select><option>Normal</option><option>Loose</option><option>Hard</option><option>Diarrhea</option><option>Constipated</option></select></div>
-      <div class="form-group"><label>Amount</label><select><option>Small</option><option>Medium</option><option>Large</option></select></div>
-      <div class="form-group"><label>Notes</label><textarea placeholder="Any additional observations..."></textarea></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('bowelModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('bowelModal')">Save</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="vitalsModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Log Vitals</h3><button class="modal-close" onclick="closeModal('vitalsModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Resident</label><select><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option><option>Mrs. Helen Davis</option></select></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>BP (Systolic)</label><input type="number" placeholder="e.g. 128"/></div>
-        <div class="form-group"><label>BP (Diastolic)</label><input type="number" placeholder="e.g. 80"/></div>
-        <div class="form-group"><label>Heart Rate (bpm)</label><input type="number" placeholder="e.g. 72"/></div>
-        <div class="form-group"><label>O2 Saturation (%)</label><input type="number" placeholder="e.g. 98"/></div>
-        <div class="form-group"><label>Temperature (°F)</label><input type="number" step="0.1" placeholder="e.g. 98.4"/></div>
-        <div class="form-group"><label>Weight (lbs)</label><input type="number" placeholder="optional"/></div>
+<!-- ===== LOGIN ===== -->
+<div id="page-login" class="page">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Welcome back</h2>
+      <p>Log in to your CareReady account</p>
+      <div class="error-msg" id="login-error"></div>
+      <button class="btn-google" onclick="handleGoogleAuth('login-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+      <div class="auth-divider"><span>or</span></div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="login-email" placeholder="admin@yourfacility.com"/>
       </div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('vitalsModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('vitalsModal')">Save Vitals</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="residentModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Add Resident</h3><button class="modal-close" onclick="closeModal('residentModal')">×</button></div>
-    <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>First Name</label><input placeholder="First name"/></div>
-        <div class="form-group"><label>Last Name</label><input placeholder="Last name"/></div>
-        <div class="form-group"><label>Date of Birth</label><input type="date"/></div>
-        <div class="form-group"><label>Room Number</label><input placeholder="e.g. 107"/></div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••"/>
       </div>
-      <div class="form-group"><label>Primary Diagnosis</label><input placeholder="Primary diagnosis"/></div>
-      <div class="form-group"><label>Care Level</label><select><option>Low</option><option>Medium</option><option>High</option><option>Memory Care</option></select></div>
-      <div class="form-group"><label>Emergency Contact</label><input placeholder="Name and phone number"/></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
+      <div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Start free trial</a></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('residentModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('residentModal')">Add Resident</button></div>
   </div>
 </div>
 
-<div class="modal-overlay" id="medModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Add Medication</h3><button class="modal-close" onclick="closeModal('medModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Resident</label><select><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option><option>Mrs. Helen Davis</option></select></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>Medication Name</label><input placeholder="e.g. Lisinopril"/></div>
-        <div class="form-group"><label>Dosage</label><input placeholder="e.g. 10mg"/></div>
-        <div class="form-group"><label>Frequency</label><select><option>Once daily</option><option>Twice daily</option><option>Three times daily</option><option>As needed</option><option>With meals</option><option>At bedtime</option></select></div>
-        <div class="form-group"><label>Route</label><select><option>Oral</option><option>Topical</option><option>Inhaled</option><option>Injection</option><option>Sublingual</option></select></div>
+<!-- ===== SIGNUP ===== -->
+<div id="page-signup" class="page">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Start your free trial</h2>
+      <p>14 days free · No credit card required</p>
+      <div class="error-msg" id="signup-error"></div>
+      <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+      <div class="auth-divider"><span>or</span></div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="signup-email" placeholder="admin@yourfacility.com"/>
       </div>
-      <div class="form-group"><label>Prescribing Physician</label><input placeholder="Dr. name"/></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('medModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('medModal')">Add Medication</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="eventModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Add Event</h3><button class="modal-close" onclick="closeModal('eventModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Event Title</label><input placeholder="e.g. Doctor Visit"/></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>Date</label><input type="date"/></div>
-        <div class="form-group"><label>Time</label><input type="time"/></div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Create a password"/>
       </div>
-      <div class="form-group"><label>Resident (optional)</label><select><option>All Residents</option><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option></select></div>
-      <div class="form-group"><label>Notes</label><textarea placeholder="Additional details..."></textarea></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
+      <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('eventModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('eventModal')">Save Event</button></div>
   </div>
 </div>
 
-<div class="modal-overlay" id="visitorModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Check In Visitor</h3><button class="modal-close" onclick="closeModal('visitorModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Visitor Name</label><input placeholder="Full name"/></div>
-      <div class="form-group"><label>Visiting Resident</label><select><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option><option>Mrs. Helen Davis</option></select></div>
-      <div class="form-group"><label>Relationship</label><input placeholder="e.g. Son, Daughter, Physician"/></div>
-      <div class="form-group"><label>ID Verified</label><select><option>Yes</option><option>No</option></select></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('visitorModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('visitorModal')">Check In</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="nursingModal">
-  <div class="modal">
-    <div class="modal-header"><h3>Add Nursing Note</h3><button class="modal-close" onclick="closeModal('nursingModal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Resident</label><select><option>Mrs. Eleanor Smith</option><option>Mr. Robert Johnson</option><option>Mrs. Helen Davis</option></select></div>
-      <div class="form-group"><label>Observation</label><textarea placeholder="Clinical observation..."></textarea></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>BP</label><input placeholder="e.g. 128/80"/></div>
-        <div class="form-group"><label>HR</label><input placeholder="e.g. 72 bpm"/></div>
-        <div class="form-group"><label>O2</label><input placeholder="e.g. 98%"/></div>
-        <div class="form-group"><label>Temp</label><input placeholder="e.g. 98.4°F"/></div>
+<!-- ===== ONBOARDING ===== -->
+<div id="page-onboard" class="page">
+  <div class="onboard-wrap">
+    <div class="onboard-card">
+      <div class="onboard-step">Step 1 of 1 · Setup</div>
+      <h2>Tell us about your facility</h2>
+      <p>This information helps CareReady load the correct Title 22 requirements for your RCFE.</p>
+      <div class="form-group">
+        <label>Facility type</label>
+        <select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)">
+          <option value="rcfe">RCFE — Residential Care Facility for the Elderly</option>
+          <option value="cbrc">CBRC — Community Board and Care</option>
+          <option value="arf">ARF — Adult Residential Facility</option>
+        </select>
       </div>
+      <div class="form-group">
+        <label>Facility name</label>
+        <input type="text" id="ob-name" placeholder="Sunrise Care Home"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>License number</label>
+          <input type="text" id="ob-license" placeholder="197XXXXXX"/>
+        </div>
+        <div class="form-group">
+          <label>Facility capacity</label>
+          <input type="number" id="ob-capacity" placeholder="6"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="ob-address" placeholder="1234 Main St, Fresno, CA 93701"/>
+      </div>
+      <div class="form-group">
+        <label>Administrator name</label>
+        <input type="text" id="ob-admin-name" placeholder="Jane Smith"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Certificate number</label>
+          <input type="text" id="ob-cert" placeholder="RCFE-XXXXXX"/>
+        </div>
+        <div class="form-group">
+          <label>Certificate expiry</label>
+          <input type="date" id="ob-cert-expiry"/>
+        </div>
+      </div>
+      <div class="error-msg" id="ob-error"></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleOnboard()">Set up my facility →</button>
     </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('nursingModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('nursingModal')">Save Note</button></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="page-app" class="page">
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-facility">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;color:var(--text2)">Facility</div>
+        <strong id="sidebar-facility-name">—</strong>
+        <div id="sidebar-facility-type" style="font-size:11px;color:var(--teal);font-weight:500;margin-top:3px"></div>
+      </div>
+      <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" id="nav-checklist" onclick="switchTab('checklist')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Compliance
+      </button>
+      <button class="nav-item" id="nav-staff" onclick="switchTab('staff')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Staff
+      </button>
+      <button class="nav-item" id="nav-residents" onclick="switchTab('residents')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Residents
+      </button>
+      <button class="nav-item" id="nav-incidents" onclick="switchTab('incidents')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Incidents
+      </button>
+    </div>
+
+    <div class="main-content">
+
+      <!-- DASHBOARD TAB -->
+      <div id="tab-dashboard">
+        <div class="page-header">
+          <h1>Compliance dashboard</h1>
+          <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button>
+        </div>
+
+        <div class="score-banner">
+          <div class="score-left">
+            <h2>Inspection readiness score</h2>
+            <div class="score-number" id="dash-score">—</div>
+            <div class="score-sub" id="dash-score-sub">Loading compliance data...</div>
+          </div>
+          <div>
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="8"/>
+              <circle id="score-arc" cx="40" cy="40" r="34" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="stat-grid" id="dash-stats">
+          <div class="stat-card">
+            <div class="stat-label">Tasks overdue</div>
+            <div class="stat-value danger" id="stat-overdue">0</div>
+            <div class="progress-bar"><div class="progress-fill danger" id="prog-overdue" style="width:0%"></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Due this month</div>
+            <div class="stat-value warn" id="stat-due-month">0</div>
+            <div class="progress-bar"><div class="progress-fill warn" id="prog-month" style="width:0%"></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value ok" id="stat-done">0</div>
+            <div class="progress-bar"><div class="progress-fill" id="prog-done" style="width:0%"></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total items</div>
+            <div class="stat-value" id="stat-total">27</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Urgent alerts <span class="badge badge-red" id="alert-count">0</span></div>
+            <div id="alert-list"><div class="empty">No urgent alerts — great work!</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Today's tasks</div>
+            <div id="today-tasks"><div class="empty">No tasks due today</div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px" class="card">
+          <div class="card-title">Compliance by category</div>
+          <div id="category-breakdown"></div>
+        </div>
+      </div>
+
+      <!-- CHECKLIST TAB -->
+      <div id="tab-checklist" style="display:none">
+        <div class="page-header">
+          <h1>Title 22 compliance checklist</h1>
+          <button class="btn btn-primary" style="font-size:13px" onclick="addCustomTask()">+ Add task</button>
+        </div>
+        <div class="filter-bar" id="checklist-filters">
+          <button class="filter-btn active" onclick="filterChecklist('all',this)">All</button>
+          <button class="filter-btn" onclick="filterChecklist('administrator',this)">Administrator</button>
+          <button class="filter-btn" onclick="filterChecklist('staff',this)">Staff</button>
+          <button class="filter-btn" onclick="filterChecklist('residents',this)">Residents</button>
+          <button class="filter-btn" onclick="filterChecklist('medication',this)">Medications</button>
+          <button class="filter-btn" onclick="filterChecklist('facility',this)">Facility</button>
+        </div>
+        <div id="checklist-body"></div>
+      </div>
+
+      <!-- STAFF TAB -->
+      <div id="tab-staff" style="display:none">
+        <div class="page-header">
+          <h1>Staff & certifications</h1>
+          <button class="btn btn-primary" style="font-size:13px">+ Add staff</button>
+        </div>
+        <div class="empty" style="margin-top:40px">
+          <div style="font-size:2rem;margin-bottom:12px">👥</div>
+          <div style="font-weight:500;margin-bottom:6px">No staff added yet</div>
+          <div>Add caregivers to track certifications, TB tests, CPR, and training hours</div>
+        </div>
+      </div>
+
+      <!-- RESIDENTS TAB -->
+      <div id="tab-residents" style="display:none">
+        <div class="page-header">
+          <h1>Residents</h1>
+          <button class="btn btn-primary" style="font-size:13px">+ Add resident</button>
+        </div>
+        <div class="empty" style="margin-top:40px">
+          <div style="font-size:2rem;margin-bottom:12px">🏠</div>
+          <div style="font-weight:500;margin-bottom:6px">No residents added yet</div>
+          <div>Add residents to track admission agreements, LIC 601/602, ISPs, and medications</div>
+        </div>
+      </div>
+
+      <!-- INCIDENTS TAB -->
+      <div id="tab-incidents" style="display:none">
+        <div class="page-header">
+          <h1>Incident reports</h1>
+          <button class="btn btn-primary" style="font-size:13px">+ Report incident</button>
+        </div>
+        <div class="empty" style="margin-top:40px">
+          <div style="font-size:2rem;margin-bottom:12px">📋</div>
+          <div style="font-weight:500;margin-bottom:6px">No incidents on record</div>
+          <div>Falls, medication errors, behavioral incidents, and DSS-reportable events go here</div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
 <script>
-// NAV
-function navigate(page, el) {
+const SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let currentUser = null;
+let currentFacility = null;
+let checklistItems = [];
+let complianceTasks = [];
+let activeFilter = 'all';
+
+const CATEGORY_LABELS = {
+  administrator:'Administrator',staff:'Staff',residents:'Residents',
+  medication:'Medications',facility:'Facility',inspection:'Inspections'
+};
+
+function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + page);
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (el) el.classList.add('active');
-  if (window.innerWidth < 769) closeSidebar();
+  document.getElementById('page-'+name).classList.add('active');
 }
 
-function toggleSub(id, el) {
-  const sub = document.getElementById(id);
-  const isOpen = sub.classList.contains('open');
-  document.querySelectorAll('.nav-sub').forEach(s => s.classList.remove('open'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
-  if (!isOpen) { sub.classList.add('open'); el.classList.add('open'); }
+function switchTab(name) {
+  ['dashboard','checklist','staff','residents','incidents'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name?'block':'none';
+    document.getElementById('nav-'+t).classList.toggle('active', t===name);
+  });
+  if(name==='dashboard') refreshDashboard();
+  if(name==='checklist') renderChecklist(activeFilter);
 }
 
-// SIDEBAR
-let sidebarOpen = false;
-function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  const ob = document.getElementById('overlayBg');
-  if (window.innerWidth < 769) {
-    sidebarOpen = !sidebarOpen;
-    sb.classList.toggle('open', sidebarOpen);
-    ob.classList.toggle('show', sidebarOpen);
+async function handleGoogleAuth(errId) {
+  const redirectTo = window.location.origin + window.location.pathname;
+  const {error} = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+  if(error){
+    const err = document.getElementById(errId);
+    if(err){err.textContent=error.message;err.classList.add('show');}
+  }
+}
+
+async function handleSignup() {
+  const email = document.getElementById('signup-email').value.trim();
+  const pass = document.getElementById('signup-password').value;
+  const err = document.getElementById('signup-error');
+  err.classList.remove('show');
+  if(!email||!pass){err.textContent='Please fill in all fields.';err.classList.add('show');return;}
+  const {data,error} = await sb.auth.signUp({email,password:pass});
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  currentUser = data.user;
+  showPage('onboard');
+}
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.classList.remove('show');
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  currentUser = data.user;
+  await loadApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  currentUser=null; currentFacility=null;
+  document.getElementById('nav-app').style.display='none';
+  document.getElementById('nav-public').style.display='flex';
+  showPage('landing');
+}
+
+async function handleOnboard() {
+  const name = document.getElementById('ob-name').value.trim();
+  const err = document.getElementById('ob-error');
+  err.classList.remove('show');
+  if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
+  const facilityType = document.getElementById('ob-type').value;
+  const {data,error} = await sb.from('facilities').insert({
+    user_id: currentUser.id,
+    name,
+    facility_type: facilityType,
+    license_number: document.getElementById('ob-license').value,
+    capacity: parseInt(document.getElementById('ob-capacity').value)||null,
+    address: document.getElementById('ob-address').value,
+  }).select().single();
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  currentFacility = data;
+  await seedComplianceTasks(data.id);
+  await loadApp();
+}
+
+async function seedComplianceTasks(facilityId) {
+  const facilityType = currentFacility ? currentFacility.facility_type : 'rcfe';
+  const {data:items} = await sb.from('checklist_items').select('*').eq('facility_type', facilityType);
+  if(!items) return;
+  const tasks = items.map(item => ({
+    facility_id: facilityId,
+    checklist_item_id: item.id,
+    title: item.title,
+    category: item.category,
+    completed: false,
+    priority: item.frequency==='daily'?'high':'medium',
+    due_date: getDefaultDueDate(item.frequency)
+  }));
+  await sb.from('compliance_tasks').insert(tasks);
+}
+
+function getDefaultDueDate(freq) {
+  const d = new Date();
+  if(freq==='daily') d.setDate(d.getDate()+1);
+  else if(freq==='weekly') d.setDate(d.getDate()+7);
+  else if(freq==='monthly') d.setMonth(d.getMonth()+1);
+  else if(freq==='annual') d.setFullYear(d.getFullYear()+1);
+  else d.setMonth(d.getMonth()+1);
+  return d.toISOString().split('T')[0];
+}
+
+async function loadApp() {
+  document.getElementById('nav-public').style.display='none';
+  document.getElementById('nav-app').style.display='flex';
+  document.getElementById('nav-user-email').textContent = currentUser.email;
+
+  if(!currentFacility) {
+    const {data} = await sb.from('facilities').select('*').eq('user_id',currentUser.id).limit(1).single();
+    if(!data){showPage('onboard');return;}
+    currentFacility = data;
+  }
+
+  document.getElementById('sidebar-facility-name').textContent = currentFacility.name;
+  const typeLabels = {rcfe:'RCFE',cbrc:'CBRC',arf:'ARF',snf:'SNF'};
+  document.getElementById('sidebar-facility-type').textContent = typeLabels[currentFacility.facility_type]||'RCFE';
+
+  const {data:items} = await sb.from('checklist_items').select('*');
+  checklistItems = items||[];
+
+  const {data:tasks} = await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
+  complianceTasks = tasks||[];
+
+  showPage('app');
+  refreshDashboard();
+}
+
+function refreshDashboard() {
+  const total = complianceTasks.length;
+  const done = complianceTasks.filter(t=>t.completed).length;
+  const today = new Date().toISOString().split('T')[0];
+  const thisMonth = new Date(); thisMonth.setMonth(thisMonth.getMonth()+1);
+  const overdue = complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length;
+  const dueMonth = complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=thisMonth.toISOString().split('T')[0]).length;
+
+  const score = total>0 ? Math.round((done/total)*100) : 0;
+  document.getElementById('dash-score').textContent = score+'%';
+  document.getElementById('dash-score-sub').textContent = `${done} of ${total} requirements complete`;
+
+  const arc = 2*Math.PI*34;
+  document.getElementById('score-arc').style.strokeDashoffset = arc*(1-score/100);
+
+  document.getElementById('stat-overdue').textContent = overdue;
+  document.getElementById('stat-due-month').textContent = dueMonth;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('prog-overdue').style.width = total>0?Math.round((overdue/total)*100)+'%':'0%';
+  document.getElementById('prog-month').style.width = total>0?Math.round((dueMonth/total)*100)+'%':'0%';
+  document.getElementById('prog-done').style.width = total>0?Math.round((done/total)*100)+'%':'0%';
+
+  // Alerts
+  const urgent = complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).slice(0,5);
+  document.getElementById('alert-count').textContent = urgent.length;
+  const alertList = document.getElementById('alert-list');
+  if(urgent.length===0){
+    alertList.innerHTML='<div class="empty">No urgent alerts — great work!</div>';
   } else {
-    sb.classList.toggle('collapsed');
+    alertList.innerHTML = urgent.map(t=>`
+      <div class="alert-item">
+        <div class="alert-dot red"></div>
+        <div class="alert-text">
+          <strong>${t.title}</strong>
+          <span>Overdue since ${t.due_date}</span>
+        </div>
+      </div>`).join('');
   }
-}
-function closeSidebar() {
-  const sb = document.getElementById('sidebar');
-  const ob = document.getElementById('overlayBg');
-  sidebarOpen = false;
-  sb.classList.remove('open');
-  ob.classList.remove('show');
-}
 
-// MODALS
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-});
-
-// FILTER PILLS
-function filterPill(el, section) {
-  el.closest('.filter-row').querySelectorAll('.pill').forEach(p => {
-    p.classList.remove('pill-active'); p.classList.add('pill-inactive');
-  });
-  el.classList.remove('pill-inactive'); el.classList.add('pill-active');
-}
-
-// CALENDAR
-let calYear = 2025, calMonth = 5;
-function buildCal() {
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('calMonthLabel').textContent = months[calMonth] + ' ' + calYear;
-  const grid = document.getElementById('calGrid');
-  grid.innerHTML = '';
-  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'cal-day-name'; el.textContent = d; grid.appendChild(el);
-  });
-  const first = new Date(calYear, calMonth, 1).getDay();
-  const days = new Date(calYear, calMonth+1, 0).getDate();
-  const today = new Date(); const isCurrentMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
-  for (let i = 0; i < first; i++) {
-    const el = document.createElement('div'); el.className = 'cal-day other-month'; grid.appendChild(el);
+  // Today tasks
+  const todayTasks = complianceTasks.filter(t=>t.due_date===today).slice(0,5);
+  const todayEl = document.getElementById('today-tasks');
+  if(todayTasks.length===0){
+    todayEl.innerHTML='<div class="empty">No tasks due today</div>';
+  } else {
+    todayEl.innerHTML = todayTasks.map(t=>`
+      <div class="task-item">
+        <div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)"></div>
+        <div class="task-text ${t.completed?'done':''}">${t.title}</div>
+        <div class="task-due ${t.due_date<today&&!t.completed?'overdue':''}">${t.due_date}</div>
+      </div>`).join('');
   }
-  const eventDays = [11,12,13,14];
-  for (let d = 1; d <= days; d++) {
-    const el = document.createElement('div'); el.className = 'cal-day';
-    el.textContent = d;
-    if (isCurrentMonth && d === today.getDate()) el.classList.add('today');
-    if (eventDays.includes(d)) el.classList.add('has-event');
-    grid.appendChild(el);
-  }
-}
-function changeMonth(dir) { calMonth += dir; if (calMonth > 11) { calMonth=0; calYear++; } if (calMonth < 0) { calMonth=11; calYear--; } buildCal(); }
-buildCal();
 
-// E-MAR
-const emarData = [
-  {res:'Mrs. Smith',med:'Metoprolol 25mg',route:'Oral',time:'9:00 AM',status:'given'},
-  {res:'Mrs. Smith',med:'Metformin 500mg',route:'Oral',time:'With Breakfast',status:'given'},
-  {res:'Mr. Johnson',med:'Donepezil 10mg',route:'Oral',time:'9:00 AM',status:'pending'},
-  {res:'Mr. Johnson',med:'Memantine 20mg',route:'Oral',time:'9:00 AM',status:'pending'},
-  {res:'Mrs. Davis',med:'Tiotropium 18mcg',route:'Inhaled',time:'8:00 AM',status:'given'},
-  {res:'Mrs. Lee',med:'Carbidopa/Levodopa',route:'Oral',time:'8:00 AM',status:'given'},
-  {res:'Mrs. Lee',med:'Carbidopa/Levodopa',route:'Oral',time:'12:00 PM',status:'upcoming'},
-  {res:'Mrs. Garcia',med:'Aricept 5mg',route:'Oral',time:'9:00 AM',status:'refused'},
-];
-function buildEmar() {
-  const container = document.getElementById('emarRows');
-  container.innerHTML = emarData.map((r,i) => `
-    <div class="emar-row">
-      <div><strong>${r.res}</strong><div style="font-size:12px;color:var(--text-muted)">${r.med}</div></div>
-      <div style="font-size:13px">${r.med.split(' ').slice(-1)[0]} · ${r.route}</div>
-      <div class="emar-time">${r.time}</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="check-btn ${r.status==='given'?'given':''}" onclick="emarMark(${i},'given')" title="Given">✓</button>
-        <button class="check-btn ${r.status==='refused'?'refused':''}" onclick="emarMark(${i},'refused')" title="Refused">✗</button>
-        ${r.status==='upcoming'?'<span class="stat-badge badge-gray" style="font-size:11px">Upcoming</span>':''}
-        ${r.status==='given'?'<span class="stat-badge badge-green" style="font-size:11px">Given</span>':''}
-        ${r.status==='pending'?'<span class="stat-badge badge-orange" style="font-size:11px">Pending</span>':''}
-        ${r.status==='refused'?'<span class="stat-badge" style="background:#fee2e2;color:#dc2626;font-size:11px">Refused</span>':''}
+  // Category breakdown
+  const cats = ['administrator','staff','residents','medication','facility'];
+  const catHtml = cats.map(cat=>{
+    const catTasks = complianceTasks.filter(t=>t.category===cat);
+    const catDone = catTasks.filter(t=>t.completed).length;
+    const pct = catTasks.length>0?Math.round((catDone/catTasks.length)*100):0;
+    const cl = pct===100?'':'pct<50?danger:warn';
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${CATEGORY_LABELS[cat]}</span>
+        <span style="color:var(--text2)">${catDone}/${catTasks.length}</span>
       </div>
-    </div>
-  `).join('');
-}
-function emarMark(i, status) {
-  emarData[i].status = emarData[i].status === status ? 'pending' : status;
-  buildEmar();
-}
-buildEmar();
-
-// TRAINING COURSES
-const courses = [
-  {title:'Dementia Care: This is Your Brain on Music',hours:1,status:'completed'},
-  {title:'Dementia-Related Behaviors',hours:3,status:'completed'},
-  {title:'Dementia: Causes, Symptoms and Types',hours:2,status:'completed'},
-  {title:'Dementia: Getting Through the Day',hours:2,status:'in-progress'},
-  {title:'Medication Management in Assisted Living',hours:2,status:'in-progress'},
-  {title:'Fall Prevention and Safety',hours:1,status:'not-started'},
-  {title:'Infection Control and Prevention',hours:2,status:'not-started'},
-  {title:'Emergency Preparedness',hours:1,status:'not-started'},
-  {title:'Resident Rights and Dignity',hours:1,status:'completed'},
-  {title:'Documentation and Record Keeping',hours:2,status:'completed'},
-  {title:'Abuse and Neglect Prevention',hours:2,status:'not-started'},
-  {title:'Nutrition and Hydration in Elder Care',hours:1,status:'in-progress'},
-  {title:'Mental Health Awareness',hours:2,status:'not-started'},
-  {title:'End of Life Care Basics',hours:3,status:'not-started'},
-];
-function buildCourses() {
-  const grid = document.getElementById('coursesGrid');
-  const statusMap = {
-    completed:{dot:'dot-green',label:'Completed',btn:'Go'},
-    'in-progress':{dot:'dot-orange',label:'In Progress',btn:'Continue'},
-    'not-started':{dot:'dot-red',label:'Not Started',btn:'Start'},
-  };
-  grid.innerHTML = courses.map(c => {
-    const s = statusMap[c.status];
-    return `<div class="course-card">
-      <div class="course-top"><h3>${c.title}<span>${c.hours} hour${c.hours>1?'s':''}</span></h3></div>
-      <div class="course-bottom">
-        <div class="status-dot"><span class="dot ${s.dot}"></span>${s.label}</div>
-        <button class="btn-text btn">${s.btn}</button>
+      <div class="progress-bar">
+        <div class="progress-fill ${pct<50?'danger':pct<80?'warn':''}" style="width:${pct}%"></div>
       </div>
     </div>`;
   }).join('');
+  document.getElementById('category-breakdown').innerHTML = catHtml;
 }
-buildCourses();
 
-// SAVE NOTE DEMO
-function saveNote() {
-  closeModal('noteModal');
+function renderChecklist(filter) {
+  activeFilter = filter;
+  const cats = filter==='all'
+    ? ['administrator','staff','residents','medication','facility']
+    : [filter];
+
+  const body = document.getElementById('checklist-body');
+  body.innerHTML = cats.map(cat=>{
+    const tasks = complianceTasks.filter(t=>t.category===cat);
+    if(!tasks.length) return '';
+    const today = new Date().toISOString().split('T')[0];
+    const rows = tasks.map(t=>{
+      const overdue = !t.completed&&t.due_date&&t.due_date<today;
+      const item = checklistItems.find(i=>i.id===t.checklist_item_id)||{};
+      return `<div class="checklist-row ${t.completed?'complete':''}">
+        <div class="check-toggle ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)">${t.completed?'✓':''}</div>
+        <div class="checklist-info">
+          <div class="checklist-title">${t.title}</div>
+          <div class="checklist-ref">${item.regulation_reference||''} · ${item.frequency||''}</div>
+        </div>
+        <div class="checklist-meta">
+          ${overdue?`<span class="badge badge-red">Overdue</span>`:''}
+          ${t.completed?`<span class="badge badge-green">Complete</span>`:''}
+          ${!t.completed&&!overdue?`<span class="badge badge-gray">Due ${t.due_date||'—'}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="checklist-section">
+      <div class="checklist-section-title">
+        ${CATEGORY_LABELS[cat]}
+        <span class="count">${tasks.filter(t=>t.completed).length}/${tasks.length}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
 }
+
+function filterChecklist(cat, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChecklist(cat);
+}
+
+async function toggleTask(id, el) {
+  const task = complianceTasks.find(t=>t.id===id);
+  if(!task) return;
+  task.completed = !task.completed;
+  task.completed_at = task.completed ? new Date().toISOString() : null;
+  await sb.from('compliance_tasks').update({
+    completed: task.completed,
+    completed_at: task.completed_at
+  }).eq('id',id);
+  el.classList.toggle('done', task.completed);
+  if(task.completed) el.textContent='✓'; else el.textContent='';
+  renderChecklist(activeFilter);
+  refreshDashboard();
+}
+
+function addCustomTask() {
+  const title = prompt('Task title:');
+  if(!title) return;
+  const cat = prompt('Category (administrator/staff/residents/medication/facility):','facility');
+  sb.from('compliance_tasks').insert({
+    facility_id: currentFacility.id,
+    title, category:cat||'facility',
+    completed:false,
+    due_date: new Date(Date.now()+30*86400000).toISOString().split('T')[0]
+  }).select().single().then(({data})=>{
+    if(data){ complianceTasks.push(data); renderChecklist(activeFilter); }
+  });
+}
+
+// Init
+(async ()=>{
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    await loadApp();
+  }
+})();
 </script>
 </body>
 </html>
