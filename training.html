@@ -1,1 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CareReady — Training Center</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0F6E56;--teal-light:#E1F5EE;--teal-mid:#1D9E75;
+  --amber:#BA7517;--amber-light:#FAEEDA;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --green:#3B6D11;--green-light:#EAF3DE;
+  --gray:#5F5E5A;--gray-light:#F1EFE8;--gray-bg:#F8F7F4;
+  --text:#1a1a18;--text2:#5F5E5A;--border:#e0ddd6;
+  --white:#fff;--radius:10px;--radius-lg:16px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);background:var(--gray-bg);font-size:15px;line-height:1.6}
 
+nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:0;z-index:100}
+.logo{font-size:1.1rem;font-weight:600;color:var(--teal);display:flex;align-items:center;gap:8px}
+.logo-icon{width:30px;height:30px;background:var(--teal);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2}
+.btn{padding:8px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+.btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
+.btn-primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-primary:hover{background:#0a5442}
+
+.hero{background:linear-gradient(135deg,var(--teal) 0%,#0a5442 100%);color:#fff;padding:3rem 2rem;text-align:center}
+.hero h1{font-size:1.8rem;font-weight:700;margin-bottom:8px}
+.hero p{opacity:.85;font-size:1rem;max-width:560px;margin:0 auto 24px}
+.filter-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.filter-btn{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:#fff;cursor:pointer;transition:all .15s}
+.filter-btn.active,.filter-btn:hover{background:#fff;color:var(--teal);border-color:#fff}
+
+.main{max-width:960px;margin:0 auto;padding:2rem}
+.section-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:12px;margin-top:28px}
+
+.course-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:14px;overflow:hidden;transition:box-shadow .15s}
+.course-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.course-header{display:flex;align-items:center;gap:14px;padding:1.25rem;cursor:pointer}
+.course-icon{width:44px;height:44px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px}
+.course-meta{flex:1;min-width:0}
+.course-title{font-size:15px;font-weight:600;margin-bottom:3px}
+.course-sub{font-size:12px;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap}
+.course-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.badge-teal{background:var(--teal-light);color:var(--teal)}
+.badge-amber{background:var(--amber-light);color:var(--amber)}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-gray{background:var(--gray-light);color:var(--gray)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.chevron{font-size:18px;color:var(--text2);transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+
+.course-body{display:none;border-top:1px solid var(--border);padding:1.5rem}
+.course-body.open{display:block}
+.course-desc{font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.7}
+.reg-ref{font-size:12px;color:var(--teal);font-weight:500;margin-bottom:20px}
+
+.steps-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px}
+.step-item{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-content{}
+.step-content strong{display:block;font-size:14px;font-weight:600;margin-bottom:3px}
+.step-content p{font-size:13px;color:var(--text2);line-height:1.6}
+
+.resources-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.resource-link{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1.5px solid var(--teal);border-radius:20px;font-size:13px;color:var(--teal);text-decoration:none;font-weight:500;transition:all .15s}
+.resource-link:hover{background:var(--teal);color:#fff}
+
+.hours-pill{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)}
+.hours-pill svg{width:14px;height:14px}
+
+.empty{text-align:center;padding:60px 2rem;color:var(--text2)}
+.loading{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+
+.role-icons{administrator:'🏛️',caregiver:'👤',cook:'🍳',all:'👥'}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+    </div>
+    CareReady · Training Center
+  </div>
+  <a href="/" class="btn btn-outline" style="font-size:13px;text-decoration:none">← Back to Dashboard</a>
+</nav>
+
+<div class="hero">
+  <h1>📚 Title 22 Training Center</h1>
+  <p>Step-by-step training guides for every requirement. Know exactly what to do, when to do it, and where to get certified.</p>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="filterCourses('all',this)">All</button>
+    <button class="filter-btn" onclick="filterCourses('rcfe',this)">RCFE</button>
+    <button class="filter-btn" onclick="filterCourses('cbrc',this)">CBRC</button>
+    <button class="filter-btn" onclick="filterCourses('administrator',this)">Administrator</button>
+    <button class="filter-btn" onclick="filterCourses('caregiver',this)">Caregivers</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="courses-container"><div class="loading">Loading training courses...</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let allCourses = [];
+let activeFilter = 'all';
+
+const ROLE_ICONS = {administrator:'🏛️', caregiver:'👤', cook:'🍳', all:'👥'};
+const FREQ_LABELS = {on_hire:'Required at hire', annual:'Annual', biennial:'Every 2 years', one_time:'One time', on_admission:'At admission'};
+const FREQ_BADGES = {on_hire:'badge-amber', annual:'badge-teal', biennial:'badge-gray', one_time:'badge-green', on_admission:'badge-amber'};
+const TYPE_LABELS = {rcfe:'RCFE', cbrc:'CBRC', both:'RCFE & CBRC'};
+
+async function loadCourses() {
+  const {data, error} = await sb.from('training_courses').select('*').order('facility_type').order('role').order('title');
+  if(error){
+    document.getElementById('courses-container').innerHTML = '<div class="empty">Could not load training courses. Please run the training schema in Supabase first.</div>';
+    return;
+  }
+  allCourses = data || [];
+  renderCourses();
+}
+
+function filterCourses(filter, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = filter;
+  renderCourses();
+}
+
+function renderCourses() {
+  let courses = allCourses;
+  if(activeFilter === 'rcfe') courses = courses.filter(c => c.facility_type === 'rcfe' || c.facility_type === 'both');
+  else if(activeFilter === 'cbrc') courses = courses.filter(c => c.facility_type === 'cbrc' || c.facility_type === 'both');
+  else if(activeFilter === 'administrator') courses = courses.filter(c => c.role === 'administrator');
+  else if(activeFilter === 'caregiver') courses = courses.filter(c => c.role === 'caregiver' || c.role === 'all');
+
+  if(!courses.length) {
+    document.getElementById('courses-container').innerHTML = '<div class="empty">No training courses found for this filter.</div>';
+    return;
+  }
+
+  // Group by role
+  const groups = {};
+  courses.forEach(c => {
+    const key = c.role;
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(c);
+  });
+
+  const roleOrder = ['administrator','caregiver','cook','all'];
+  const roleLabels = {administrator:'Administrator Training',caregiver:'Caregiver Training',cook:'Food Handler Training',all:'All Staff Training'};
+
+  let html = '';
+  roleOrder.forEach(role => {
+    if(!groups[role]) return;
+    html += `<div class="section-label">${roleLabels[role]||role}</div>`;
+    groups[role].forEach(course => {
+      const steps = Array.isArray(course.steps) ? course.steps : (course.steps ? JSON.parse(course.steps) : []);
+      const resources = Array.isArray(course.resources) ? course.resources : (course.resources ? JSON.parse(course.resources) : []);
+      const icon = ROLE_ICONS[course.role] || '📋';
+      const freqBadge = FREQ_BADGES[course.frequency] || 'badge-gray';
+      const freqLabel = FREQ_LABELS[course.frequency] || course.frequency;
+      const deadline = course.deadline_days > 0 ? `· Complete within ${course.deadline_days} days of hire` : '';
+
+      const stepsHtml = steps.map(s => `
+        <div class="step-item">
+          <div class="step-num">${s.step}</div>
+          <div class="step-content">
+            <strong>${s.title}</strong>
+            <p>${s.detail}</p>
+          </div>
+        </div>`).join('');
+
+      const resourcesHtml = resources.length ? `
+        <div class="resources-row">
+          ${resources.map(r => r.url ? `<a href="${r.url}" target="_blank" class="resource-link">🔗 ${r.label}</a>` : `<span class="resource-link">📞 ${r.phone}</span>`).join('')}
+        </div>` : '';
+
+      html += `
+        <div class="course-card">
+          <div class="course-header" onclick="toggleCourse('${course.id}')">
+            <div class="course-icon" style="background:var(--teal-light)">${icon}</div>
+            <div class="course-meta">
+              <div class="course-title">${course.title}</div>
+              <div class="course-sub">
+                <span class="hours-pill">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  ${course.hours_required} hours
+                </span>
+                <span>${TYPE_LABELS[course.facility_type]||course.facility_type}</span>
+                <span>${course.regulation_reference}</span>
+                ${deadline}
+              </div>
+            </div>
+            <div class="course-right">
+              ${course.is_certifiable ? '<span class="badge badge-green">Certificate required</span>' : ''}
+              <span class="badge ${freqBadge}">${freqLabel}</span>
+              <span class="chevron" id="chev-${course.id}">⌄</span>
+            </div>
+          </div>
+          <div class="course-body" id="body-${course.id}">
+            <p class="course-desc">${course.description}</p>
+            <div class="reg-ref">📋 ${course.regulation_reference}</div>
+            ${steps.length ? `<div class="steps-title">Step-by-step guide</div>${stepsHtml}` : ''}
+            ${resourcesHtml}
+          </div>
+        </div>`;
+    });
+  });
+
+  document.getElementById('courses-container').innerHTML = html;
+}
+
+function toggleCourse(id) {
+  const body = document.getElementById('body-'+id);
+  const chev = document.getElementById('chev-'+id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+loadCourses();
+</script>
+</body>
+</html>
