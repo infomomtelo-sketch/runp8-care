@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CareReady — Legal</title>
+<title>Title22 — Legal</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -56,7 +56,7 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
     <div class="logo-icon">
       <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
     </div>
-    CareReady
+    Title22
   </div>
   <a href="/" class="btn">← Back to app</a>
 </nav>
@@ -75,16 +75,16 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
   <div id="section-privacy" class="legal-section active">
     <div class="legal-header">
       <h1>Privacy Policy</h1>
-      <p>How CareReady collects, uses, and protects your information</p>
+      <p>How Title22 collects, uses, and protects your information</p>
       <span class="effective">Effective: June 1, 2025</span>
     </div>
 
     <div class="highlight">
-      <p><strong>Summary:</strong> CareReady collects only what is necessary to provide compliance tracking services. We do not sell your data. Facility and resident information is encrypted and accessible only to authorized users.</p>
+      <p><strong>Summary:</strong> Title22 collects only what is necessary to provide compliance tracking services. We do not sell your data. Facility and resident information is encrypted and accessible only to authorized users.</p>
     </div>
 
     <h2>1. Who We Are</h2>
-    <p>CareReady ("we," "us," or "our") is a software-as-a-service platform operated by RunP8 LLC, providing Title 22 compliance tracking tools for licensed residential care facilities in California. Our platform is accessible at careready.pages.dev and any associated domains.</p>
+    <p>Title22 ("we," "us," or "our") is a software-as-a-service platform operated by RunP8 LLC, providing Title 22 compliance tracking tools for licensed residential care facilities in California. Our platform is accessible at careready.pages.dev and any associated domains.</p>
 
     <h2>2. Information We Collect</h2>
     <h3>2.1 Account Information</h3>
@@ -127,7 +127,7 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
 
     <h2>3. How We Use Your Information</h2>
     <ul>
-      <li>To provide and maintain the CareReady compliance tracking platform</li>
+      <li>To provide and maintain the Title22 compliance tracking platform</li>
       <li>To send compliance alerts, expiration reminders, and regulatory update notifications</li>
       <li>To process subscription payments through Stripe</li>
       <li>To improve the platform based on usage patterns</li>
@@ -167,15 +167,15 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
     </ul>
 
     <h2>8. Children's Privacy</h2>
-    <p>CareReady is not directed at children under 13. We do not knowingly collect information from children.</p>
+    <p>Title22 is not directed at children under 13. We do not knowingly collect information from children.</p>
 
     <h2>9. Changes to This Policy</h2>
-    <p>We will notify all users by email and in-app notification when this Privacy Policy is updated. Continued use of CareReady after changes constitutes acceptance of the updated policy.</p>
+    <p>We will notify all users by email and in-app notification when this Privacy Policy is updated. Continued use of Title22 after changes constitutes acceptance of the updated policy.</p>
 
     <div class="contact-box">
       <h3>Privacy questions?</h3>
-      <p style="margin-bottom:6px">Contact us at: <strong>privacy@careready.app</strong></p>
-      <p style="margin:0">RunP8 LLC · Fresno, CA · careready.app</p>
+      <p style="margin-bottom:6px">Contact us at: <strong>privacy@title22.app</strong></p>
+      <p style="margin:0">RunP8 LLC · Fresno, CA · title22.app</p>
     </div>
   </div>
 
@@ -183,34 +183,34 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
   <div id="section-terms" class="legal-section">
     <div class="legal-header">
       <h1>Terms of Service</h1>
-      <p>The agreement between you and CareReady</p>
+      <p>The agreement between you and Title22</p>
       <span class="effective">Effective: June 1, 2025</span>
     </div>
 
     <div class="warning">
-      <p><strong>Important:</strong> CareReady is a compliance tracking tool only. It does not guarantee regulatory compliance, inspection outcomes, or legal advice. You are solely responsible for your facility's compliance with Title 22 and all applicable regulations.</p>
+      <p><strong>Important:</strong> Title22 is a compliance tracking tool only. It does not guarantee regulatory compliance, inspection outcomes, or legal advice. You are solely responsible for your facility's compliance with Title 22 and all applicable regulations.</p>
     </div>
 
     <h2>1. Acceptance of Terms</h2>
-    <p>By accessing or using CareReady, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform. These terms apply to all users including facility administrators, operators, and staff.</p>
+    <p>By accessing or using Title22, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform. These terms apply to all users including facility administrators, operators, and staff.</p>
 
     <h2>2. Description of Service</h2>
-    <p>CareReady provides software tools to help licensed residential care facilities track compliance with California Title 22 regulations. Features include compliance checklists, staff certification tracking, resident record management, medication administration records, incident reporting, and training guides.</p>
+    <p>Title22 provides software tools to help licensed residential care facilities track compliance with California Title 22 regulations. Features include compliance checklists, staff certification tracking, resident record management, medication administration records, incident reporting, and training guides.</p>
 
     <h2>3. No Compliance Guarantee</h2>
     <div class="warning">
-      <p><strong>CareReady does not guarantee that use of the platform will result in regulatory compliance, passing DSS inspections, or avoidance of citations.</strong> Title 22 regulations are complex and subject to change. Users are solely responsible for verifying compliance with current regulations and consulting with qualified legal or regulatory advisors as needed.</p>
+      <p><strong>Title22 does not guarantee that use of the platform will result in regulatory compliance, passing DSS inspections, or avoidance of citations.</strong> Title 22 regulations are complex and subject to change. Users are solely responsible for verifying compliance with current regulations and consulting with qualified legal or regulatory advisors as needed.</p>
     </div>
 
     <h2>4. Regulation Updates</h2>
-    <p>CareReady makes reasonable efforts to keep checklist items current with Title 22 regulations. However, we do not guarantee that all regulatory updates will be reflected immediately. Users should independently verify regulatory requirements through official CDSS sources at cdss.ca.gov.</p>
+    <p>Title22 makes reasonable efforts to keep checklist items current with Title 22 regulations. However, we do not guarantee that all regulatory updates will be reflected immediately. Users should independently verify regulatory requirements through official CDSS sources at cdss.ca.gov.</p>
 
     <h2>5. User Responsibilities</h2>
     <p>You agree to:</p>
     <ul>
       <li>Provide accurate and current facility, staff, and resident information</li>
       <li>Maintain the confidentiality of your account credentials</li>
-      <li>Use CareReady only for lawful purposes related to facility compliance</li>
+      <li>Use Title22 only for lawful purposes related to facility compliance</li>
       <li>Not share account access with unauthorized individuals</li>
       <li>Independently verify all compliance requirements with official sources</li>
       <li>Promptly update records when staff, resident, or facility information changes</li>
@@ -225,14 +225,14 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
     <p>All plans include a 14-day free trial. Subscriptions renew automatically. You may cancel at any time — cancellation takes effect at the end of the current billing period. No refunds for partial months.</p>
 
     <h2>7. Resident Data and Confidentiality</h2>
-    <p>You acknowledge that resident information entered into CareReady is confidential. You are responsible for ensuring that your use of CareReady complies with all applicable privacy laws including HIPAA, CCPA, and California Welfare and Institutions Code requirements for resident confidentiality.</p>
+    <p>You acknowledge that resident information entered into Title22 is confidential. You are responsible for ensuring that your use of Title22 complies with all applicable privacy laws including HIPAA, CCPA, and California Welfare and Institutions Code requirements for resident confidentiality.</p>
 
     <h2>8. Limitation of Liability</h2>
-    <p>To the maximum extent permitted by law, RunP8 LLC and CareReady shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including but not limited to DSS citations, fines, license revocations, or legal proceedings resulting from compliance failures.</p>
-    <p>Our total liability to you for any claims arising from use of CareReady shall not exceed the amount you paid us in the 3 months preceding the claim.</p>
+    <p>To the maximum extent permitted by law, RunP8 LLC and Title22 shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including but not limited to DSS citations, fines, license revocations, or legal proceedings resulting from compliance failures.</p>
+    <p>Our total liability to you for any claims arising from use of Title22 shall not exceed the amount you paid us in the 3 months preceding the claim.</p>
 
     <h2>9. Indemnification</h2>
-    <p>You agree to indemnify and hold harmless RunP8 LLC, its officers, employees, and agents from any claims, damages, or expenses arising from your use of CareReady, your violation of these terms, or your facility's regulatory compliance failures.</p>
+    <p>You agree to indemnify and hold harmless RunP8 LLC, its officers, employees, and agents from any claims, damages, or expenses arising from your use of Title22, your violation of these terms, or your facility's regulatory compliance failures.</p>
 
     <h2>10. Termination</h2>
     <p>We may suspend or terminate your account for violation of these terms, non-payment, or conduct that harms other users or the platform. You may terminate your account at any time by contacting support.</p>
@@ -245,8 +245,8 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
 
     <div class="contact-box">
       <h3>Questions about these terms?</h3>
-      <p style="margin-bottom:6px">Contact: <strong>legal@careready.app</strong></p>
-      <p style="margin:0">RunP8 LLC · Fresno, CA · careready.app</p>
+      <p style="margin-bottom:6px">Contact: <strong>legal@title22.app</strong></p>
+      <p style="margin:0">RunP8 LLC · Fresno, CA · title22.app</p>
     </div>
   </div>
 
@@ -254,39 +254,39 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
   <div id="section-disclaimer" class="legal-section">
     <div class="legal-header">
       <h1>Compliance Disclaimer</h1>
-      <p>Important limitations of the CareReady platform</p>
+      <p>Important limitations of the Title22 platform</p>
       <span class="effective">Effective: June 1, 2025</span>
     </div>
 
     <div class="warning">
-      <p><strong>Read carefully before using CareReady for compliance purposes.</strong></p>
+      <p><strong>Read carefully before using Title22 for compliance purposes.</strong></p>
     </div>
 
     <h2>Not Legal Advice</h2>
-    <p>CareReady is a software tool — not a law firm, regulatory consultant, or legal advisor. Nothing in the CareReady platform constitutes legal advice. The checklists, guides, and training materials provided are for informational purposes only.</p>
+    <p>Title22 is a software tool — not a law firm, regulatory consultant, or legal advisor. Nothing in the Title22 platform constitutes legal advice. The checklists, guides, and training materials provided are for informational purposes only.</p>
     <p>For legal advice regarding Title 22 compliance, DSS citations, or regulatory matters, consult a qualified attorney licensed in California.</p>
 
     <h2>Not a Guarantee of Compliance</h2>
-    <p>Completing all items in CareReady does not guarantee that your facility will pass a DSS inspection or avoid citations. Regulatory compliance is complex and depends on many factors beyond what any software tool can track.</p>
+    <p>Completing all items in Title22 does not guarantee that your facility will pass a DSS inspection or avoid citations. Regulatory compliance is complex and depends on many factors beyond what any software tool can track.</p>
 
     <h2>Regulation Currency</h2>
-    <p>CareReady makes reasonable efforts to keep compliance checklists current with California Title 22 regulations. However:</p>
+    <p>Title22 makes reasonable efforts to keep compliance checklists current with California Title 22 regulations. However:</p>
     <ul>
       <li>Title 22 regulations are updated periodically by the California Department of Social Services</li>
-      <li>There may be a delay between a regulatory update and its reflection in CareReady</li>
+      <li>There may be a delay between a regulatory update and its reflection in Title22</li>
       <li>Local DSS offices may interpret regulations differently</li>
       <li>Emergency regulatory changes may occur without advance notice</li>
     </ul>
     <p>Always verify current requirements directly at <strong>cdss.ca.gov</strong> and with your regional DSS Community Care Licensing office.</p>
 
     <h2>MAR and Medication Records</h2>
-    <p>CareReady's digital Medication Administration Record (MAR) is a tracking tool. It does not replace physician orders, pharmacy consultations, or professional medical judgment. Medication errors can have serious consequences — always follow physician orders and facility protocols.</p>
+    <p>Title22's digital Medication Administration Record (MAR) is a tracking tool. It does not replace physician orders, pharmacy consultations, or professional medical judgment. Medication errors can have serious consequences — always follow physician orders and facility protocols.</p>
 
     <h2>Training Content</h2>
-    <p>Training guides in CareReady are for informational purposes. Caregiver training tracked in CareReady does not automatically qualify as DSS-approved administrator certification training. Administrator certification requires completion of an approved program through a DSS-authorized vendor.</p>
+    <p>Training guides in Title22 are for informational purposes. Caregiver training tracked in Title22 does not automatically qualify as DSS-approved administrator certification training. Administrator certification requires completion of an approved program through a DSS-authorized vendor.</p>
 
     <h2>DSS Is the Authority</h2>
-    <p>The California Department of Social Services Community Care Licensing Division is the sole authority on Title 22 compliance for residential care facilities. CareReady is not affiliated with, endorsed by, or approved by DSS or any California state agency.</p>
+    <p>The California Department of Social Services Community Care Licensing Division is the sole authority on Title 22 compliance for residential care facilities. Title22 is not affiliated with, endorsed by, or approved by DSS or any California state agency.</p>
 
     <div class="highlight">
       <p><strong>When in doubt, contact your regional DSS Community Care Licensing office directly.</strong> Their contact information is available at ccld.ca.gov.</p>
@@ -307,16 +307,16 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
   <div id="section-hipaa" class="legal-section">
     <div class="legal-header">
       <h1>HIPAA & Privacy Notice</h1>
-      <p>How CareReady handles protected health information</p>
+      <p>How Title22 handles protected health information</p>
       <span class="effective">Effective: June 1, 2025</span>
     </div>
 
     <div class="highlight">
-      <p><strong>CareReady is a Business Associate under HIPAA.</strong> We take the protection of resident health information seriously and are committed to maintaining the privacy and security of all protected health information (PHI) entered into our platform.</p>
+      <p><strong>Title22 is a Business Associate under HIPAA.</strong> We take the protection of resident health information seriously and are committed to maintaining the privacy and security of all protected health information (PHI) entered into our platform.</p>
     </div>
 
     <h2>What Is PHI?</h2>
-    <p>Protected Health Information (PHI) includes any information that relates to a resident's health condition, care, or payment for care that can be linked to a specific individual. In CareReady this includes:</p>
+    <p>Protected Health Information (PHI) includes any information that relates to a resident's health condition, care, or payment for care that can be linked to a specific individual. In Title22 this includes:</p>
     <ul>
       <li>Resident names combined with medical information</li>
       <li>Medication records and administration logs (MAR)</li>
@@ -326,12 +326,12 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
     </ul>
 
     <h2>Business Associate Agreement (BAA)</h2>
-    <p>As a covered entity operating an RCFE or CBRC, your facility is subject to HIPAA. CareReady acts as your Business Associate when processing PHI on your behalf. By using CareReady you agree to our Business Associate Agreement terms, which are incorporated into these terms of service.</p>
-    <p>If you require a signed BAA for your records, contact us at <strong>legal@careready.app</strong></p>
+    <p>As a covered entity operating an RCFE or CBRC, your facility is subject to HIPAA. Title22 acts as your Business Associate when processing PHI on your behalf. By using Title22 you agree to our Business Associate Agreement terms, which are incorporated into these terms of service.</p>
+    <p>If you require a signed BAA for your records, contact us at <strong>legal@title22.app</strong></p>
 
     <h2>How We Protect PHI</h2>
     <ul>
-      <li><strong>Encryption in transit:</strong> All data transmitted to/from CareReady is encrypted using TLS 1.3</li>
+      <li><strong>Encryption in transit:</strong> All data transmitted to/from Title22 is encrypted using TLS 1.3</li>
       <li><strong>Encryption at rest:</strong> All stored data is encrypted using AES-256</li>
       <li><strong>Access controls:</strong> Row-level security ensures each facility only sees its own residents</li>
       <li><strong>Audit logs:</strong> All access to resident records is logged with timestamp and user ID</li>
@@ -342,15 +342,15 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
     <h2>Your HIPAA Responsibilities</h2>
     <p>As the covered entity, your facility is responsible for:</p>
     <ul>
-      <li>Obtaining resident consent for entering their information into CareReady</li>
-      <li>Training staff on appropriate use of resident data in CareReady</li>
-      <li>Limiting access to CareReady to authorized staff only</li>
+      <li>Obtaining resident consent for entering their information into Title22</li>
+      <li>Training staff on appropriate use of resident data in Title22</li>
+      <li>Limiting access to Title22 to authorized staff only</li>
       <li>Reporting any suspected data breaches to us immediately</li>
       <li>Ensuring your facility's own HIPAA policies cover use of third-party software</li>
     </ul>
 
     <h2>Breach Notification</h2>
-    <p>In the event of a data breach affecting PHI, CareReady will notify affected facilities within 60 days of discovery as required by HIPAA. We will provide details of the breach, what information was affected, and steps taken to address it.</p>
+    <p>In the event of a data breach affecting PHI, Title22 will notify affected facilities within 60 days of discovery as required by HIPAA. We will provide details of the breach, what information was affected, and steps taken to address it.</p>
 
     <h2>California Confidentiality Laws</h2>
     <p>In addition to HIPAA, California imposes additional confidentiality requirements on residential care facilities under:</p>
@@ -359,11 +359,11 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
       <li>California Confidentiality of Medical Information Act (CMIA)</li>
       <li>California Consumer Privacy Act (CCPA)</li>
     </ul>
-    <p>CareReady's security practices are designed to support compliance with all of these requirements.</p>
+    <p>Title22's security practices are designed to support compliance with all of these requirements.</p>
 
     <div class="contact-box">
       <h3>HIPAA or privacy concerns?</h3>
-      <p style="margin-bottom:6px">Contact our Privacy Officer: <strong>privacy@careready.app</strong></p>
+      <p style="margin-bottom:6px">Contact our Privacy Officer: <strong>privacy@title22.app</strong></p>
       <p style="margin:0">We respond to all privacy inquiries within 5 business days.</p>
     </div>
   </div>
@@ -372,46 +372,46 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
   <div id="section-cookies" class="legal-section">
     <div class="legal-header">
       <h1>Cookie Policy</h1>
-      <p>How CareReady uses cookies and local storage</p>
+      <p>How Title22 uses cookies and local storage</p>
       <span class="effective">Effective: June 1, 2025</span>
     </div>
 
     <h2>What Are Cookies?</h2>
-    <p>Cookies are small text files stored on your device when you visit a website. CareReady uses minimal cookies strictly necessary to operate the platform.</p>
+    <p>Cookies are small text files stored on your device when you visit a website. Title22 uses minimal cookies strictly necessary to operate the platform.</p>
 
     <h2>Cookies We Use</h2>
     <h3>Essential cookies (required)</h3>
     <ul>
-      <li><strong>Authentication token:</strong> Keeps you logged in to your CareReady account (Supabase auth session)</li>
+      <li><strong>Authentication token:</strong> Keeps you logged in to your Title22 account (Supabase auth session)</li>
       <li><strong>Session cookie:</strong> Maintains your active session while using the app</li>
     </ul>
     <p>These cookies cannot be disabled as they are required for the platform to function.</p>
 
     <h3>Analytics (none)</h3>
-    <p>CareReady does not use Google Analytics, Facebook Pixel, or any third-party tracking or advertising cookies. We do not track you across other websites.</p>
+    <p>Title22 does not use Google Analytics, Facebook Pixel, or any third-party tracking or advertising cookies. We do not track you across other websites.</p>
 
     <h2>Local Storage</h2>
-    <p>CareReady uses browser local storage to remember your preferences such as last selected facility and UI settings. This data stays on your device and is not transmitted to our servers.</p>
+    <p>Title22 uses browser local storage to remember your preferences such as last selected facility and UI settings. This data stays on your device and is not transmitted to our servers.</p>
 
     <h2>Third-Party Cookies</h2>
     <p>Stripe (payment processing) may set cookies during the checkout process. These are governed by Stripe's own cookie policy.</p>
 
     <h2>Managing Cookies</h2>
-    <p>You can control cookies through your browser settings. Disabling essential cookies will prevent you from logging in to CareReady. Most browsers allow you to view, delete, and block cookies through their settings menu.</p>
+    <p>You can control cookies through your browser settings. Disabling essential cookies will prevent you from logging in to Title22. Most browsers allow you to view, delete, and block cookies through their settings menu.</p>
 
     <div class="contact-box">
       <h3>Cookie questions?</h3>
-      <p style="margin:0">Contact: <strong>privacy@careready.app</strong></p>
+      <p style="margin:0">Contact: <strong>privacy@title22.app</strong></p>
     </div>
   </div>
 
 </div>
 
 <footer>
-  © 2025 CareReady · RunP8 LLC · Fresno, CA ·
+  © 2025 Title22 · RunP8 LLC · Fresno, CA ·
   <a href="#" onclick="showSection('privacy',document.querySelector('.tab'))" style="color:var(--teal)">Privacy</a> ·
   <a href="#" onclick="showSection('terms',document.querySelectorAll('.tab')[1])" style="color:var(--teal)">Terms</a> ·
-  <a href="mailto:legal@careready.app" style="color:var(--teal)">legal@careready.app</a>
+  <a href="mailto:legal@title22.app" style="color:var(--teal)">legal@title22.app</a>
 </footer>
 
 <script>
