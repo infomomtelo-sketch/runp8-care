@@ -1,1 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CareReady — Legal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0F6E56;--teal-light:#E1F5EE;
+  --gray-bg:#F8F7F4;--text:#1a1a18;--text2:#5F5E5A;
+  --border:#e0ddd6;--white:#fff;--radius:10px;--radius-lg:16px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);background:var(--gray-bg);font-size:15px;line-height:1.7}
+nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:0;z-index:100}
+.logo{font-size:1.1rem;font-weight:600;color:var(--teal);display:flex;align-items:center;gap:8px}
+.logo-icon{width:30px;height:30px;background:var(--teal);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2}
+.btn{padding:7px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--text);text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
 
+/* TAB NAV */
+.tab-bar{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;gap:0;overflow-x:auto}
+.tab{padding:14px 20px;font-size:14px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:all .15s}
+.tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.tab:hover{color:var(--teal)}
+
+.page-wrap{max-width:800px;margin:0 auto;padding:2.5rem 2rem}
+.legal-section{display:none}
+.legal-section.active{display:block}
+
+.legal-header{margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
+.legal-header h1{font-size:1.6rem;font-weight:700;margin-bottom:6px}
+.legal-header p{color:var(--text2);font-size:14px}
+.effective{display:inline-block;background:var(--teal-light);color:var(--teal);font-size:12px;font-weight:500;padding:3px 12px;border-radius:20px;margin-top:8px}
+
+h2{font-size:1.1rem;font-weight:600;margin:2rem 0 10px;color:var(--text)}
+h3{font-size:1rem;font-weight:600;margin:1.5rem 0 8px;color:var(--text)}
+p{margin-bottom:12px;color:var(--text2)}
+ul,ol{margin:0 0 14px 20px;color:var(--text2)}
+li{margin-bottom:6px;font-size:14px}
+strong{color:var(--text);font-weight:600}
+.highlight{background:var(--teal-light);border-left:3px solid var(--teal);padding:14px 18px;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}
+.highlight p{margin:0;color:var(--text);font-size:14px}
+.warning{background:#FCEBEB;border-left:3px solid #A32D2D;padding:14px 18px;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}
+.warning p{margin:0;color:#A32D2D;font-size:14px}
+.contact-box{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-top:2rem}
+.contact-box h3{margin-top:0}
+footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-top:1px solid var(--border);margin-top:3rem}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+    </div>
+    CareReady
+  </div>
+  <a href="/" class="btn">← Back to app</a>
+</nav>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showSection('privacy',this)">Privacy Policy</div>
+  <div class="tab" onclick="showSection('terms',this)">Terms of Service</div>
+  <div class="tab" onclick="showSection('disclaimer',this)">Disclaimer</div>
+  <div class="tab" onclick="showSection('hipaa',this)">HIPAA Notice</div>
+  <div class="tab" onclick="showSection('cookies',this)">Cookie Policy</div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- ===== PRIVACY POLICY ===== -->
+  <div id="section-privacy" class="legal-section active">
+    <div class="legal-header">
+      <h1>Privacy Policy</h1>
+      <p>How CareReady collects, uses, and protects your information</p>
+      <span class="effective">Effective: June 1, 2025</span>
+    </div>
+
+    <div class="highlight">
+      <p><strong>Summary:</strong> CareReady collects only what is necessary to provide compliance tracking services. We do not sell your data. Facility and resident information is encrypted and accessible only to authorized users.</p>
+    </div>
+
+    <h2>1. Who We Are</h2>
+    <p>CareReady ("we," "us," or "our") is a software-as-a-service platform operated by RunP8 LLC, providing Title 22 compliance tracking tools for licensed residential care facilities in California. Our platform is accessible at careready.pages.dev and any associated domains.</p>
+
+    <h2>2. Information We Collect</h2>
+    <h3>2.1 Account Information</h3>
+    <ul>
+      <li>Name and email address (collected at signup)</li>
+      <li>Google account information (if using Google Sign-In)</li>
+      <li>Billing information (processed securely by Stripe — we never store card numbers)</li>
+    </ul>
+
+    <h3>2.2 Facility Information</h3>
+    <ul>
+      <li>Facility name, license number, address, and capacity</li>
+      <li>Administrator name and certification details</li>
+      <li>Facility type (RCFE, CBRC, ARF)</li>
+    </ul>
+
+    <h3>2.3 Staff Information</h3>
+    <ul>
+      <li>Staff names, roles, and hire dates</li>
+      <li>Certification dates and expiry dates (CPR, First Aid, TB tests, etc.)</li>
+      <li>Training completion records</li>
+      <li>Background check clearance dates (not the background check results themselves)</li>
+    </ul>
+
+    <h3>2.4 Resident Information</h3>
+    <ul>
+      <li>Resident names, dates of birth, and room assignments</li>
+      <li>Admission dates and emergency contact information</li>
+      <li>Care plan and service plan dates</li>
+      <li>Medication records and administration logs (MAR)</li>
+      <li>Physician information</li>
+    </ul>
+
+    <h3>2.5 Usage Information</h3>
+    <ul>
+      <li>Log data including IP address, browser type, pages visited</li>
+      <li>Audit trail of actions taken within the platform</li>
+      <li>Device and session information</li>
+    </ul>
+
+    <h2>3. How We Use Your Information</h2>
+    <ul>
+      <li>To provide and maintain the CareReady compliance tracking platform</li>
+      <li>To send compliance alerts, expiration reminders, and regulatory update notifications</li>
+      <li>To process subscription payments through Stripe</li>
+      <li>To improve the platform based on usage patterns</li>
+      <li>To respond to support requests</li>
+      <li>To comply with legal obligations</li>
+    </ul>
+
+    <h2>4. How We Protect Your Information</h2>
+    <ul>
+      <li><strong>Encryption:</strong> All data is encrypted in transit (TLS 1.3) and at rest (AES-256)</li>
+      <li><strong>Row Level Security:</strong> Each facility's data is isolated — no facility can access another facility's data</li>
+      <li><strong>Access controls:</strong> Only authenticated, authorized users can access facility data</li>
+      <li><strong>Infrastructure:</strong> Hosted on Supabase (SOC 2 Type II certified) and Cloudflare</li>
+      <li><strong>No data selling:</strong> We never sell, rent, or trade your data to third parties</li>
+    </ul>
+
+    <h2>5. Data Sharing</h2>
+    <p>We share data only with:</p>
+    <ul>
+      <li><strong>Supabase:</strong> Database and authentication infrastructure</li>
+      <li><strong>Stripe:</strong> Payment processing (subject to Stripe's privacy policy)</li>
+      <li><strong>Cloudflare:</strong> Hosting and content delivery</li>
+      <li><strong>Anthropic Claude API:</strong> AI features only — no resident data is sent to the AI</li>
+    </ul>
+    <p>We do not share data with DSS, government agencies, or any third parties except as required by law.</p>
+
+    <h2>6. Data Retention</h2>
+    <p>We retain your data for as long as your account is active. Upon account cancellation, data is retained for 90 days then permanently deleted. You may request immediate deletion by contacting us.</p>
+
+    <h2>7. Your Rights (California Residents — CCPA)</h2>
+    <p>As a California resident you have the right to:</p>
+    <ul>
+      <li>Know what personal information we collect and how it is used</li>
+      <li>Request deletion of your personal information</li>
+      <li>Opt out of the sale of personal information (we do not sell data)</li>
+      <li>Non-discrimination for exercising your privacy rights</li>
+    </ul>
+
+    <h2>8. Children's Privacy</h2>
+    <p>CareReady is not directed at children under 13. We do not knowingly collect information from children.</p>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>We will notify all users by email and in-app notification when this Privacy Policy is updated. Continued use of CareReady after changes constitutes acceptance of the updated policy.</p>
+
+    <div class="contact-box">
+      <h3>Privacy questions?</h3>
+      <p style="margin-bottom:6px">Contact us at: <strong>privacy@careready.app</strong></p>
+      <p style="margin:0">RunP8 LLC · Fresno, CA · careready.app</p>
+    </div>
+  </div>
+
+  <!-- ===== TERMS OF SERVICE ===== -->
+  <div id="section-terms" class="legal-section">
+    <div class="legal-header">
+      <h1>Terms of Service</h1>
+      <p>The agreement between you and CareReady</p>
+      <span class="effective">Effective: June 1, 2025</span>
+    </div>
+
+    <div class="warning">
+      <p><strong>Important:</strong> CareReady is a compliance tracking tool only. It does not guarantee regulatory compliance, inspection outcomes, or legal advice. You are solely responsible for your facility's compliance with Title 22 and all applicable regulations.</p>
+    </div>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using CareReady, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform. These terms apply to all users including facility administrators, operators, and staff.</p>
+
+    <h2>2. Description of Service</h2>
+    <p>CareReady provides software tools to help licensed residential care facilities track compliance with California Title 22 regulations. Features include compliance checklists, staff certification tracking, resident record management, medication administration records, incident reporting, and training guides.</p>
+
+    <h2>3. No Compliance Guarantee</h2>
+    <div class="warning">
+      <p><strong>CareReady does not guarantee that use of the platform will result in regulatory compliance, passing DSS inspections, or avoidance of citations.</strong> Title 22 regulations are complex and subject to change. Users are solely responsible for verifying compliance with current regulations and consulting with qualified legal or regulatory advisors as needed.</p>
+    </div>
+
+    <h2>4. Regulation Updates</h2>
+    <p>CareReady makes reasonable efforts to keep checklist items current with Title 22 regulations. However, we do not guarantee that all regulatory updates will be reflected immediately. Users should independently verify regulatory requirements through official CDSS sources at cdss.ca.gov.</p>
+
+    <h2>5. User Responsibilities</h2>
+    <p>You agree to:</p>
+    <ul>
+      <li>Provide accurate and current facility, staff, and resident information</li>
+      <li>Maintain the confidentiality of your account credentials</li>
+      <li>Use CareReady only for lawful purposes related to facility compliance</li>
+      <li>Not share account access with unauthorized individuals</li>
+      <li>Independently verify all compliance requirements with official sources</li>
+      <li>Promptly update records when staff, resident, or facility information changes</li>
+    </ul>
+
+    <h2>6. Subscription and Billing</h2>
+    <ul>
+      <li><strong>Starter:</strong> $79/month — 1 facility</li>
+      <li><strong>Pro:</strong> $149/month — up to 3 facilities</li>
+      <li><strong>Agency:</strong> $299/month — unlimited facilities</li>
+    </ul>
+    <p>All plans include a 14-day free trial. Subscriptions renew automatically. You may cancel at any time — cancellation takes effect at the end of the current billing period. No refunds for partial months.</p>
+
+    <h2>7. Resident Data and Confidentiality</h2>
+    <p>You acknowledge that resident information entered into CareReady is confidential. You are responsible for ensuring that your use of CareReady complies with all applicable privacy laws including HIPAA, CCPA, and California Welfare and Institutions Code requirements for resident confidentiality.</p>
+
+    <h2>8. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by law, RunP8 LLC and CareReady shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including but not limited to DSS citations, fines, license revocations, or legal proceedings resulting from compliance failures.</p>
+    <p>Our total liability to you for any claims arising from use of CareReady shall not exceed the amount you paid us in the 3 months preceding the claim.</p>
+
+    <h2>9. Indemnification</h2>
+    <p>You agree to indemnify and hold harmless RunP8 LLC, its officers, employees, and agents from any claims, damages, or expenses arising from your use of CareReady, your violation of these terms, or your facility's regulatory compliance failures.</p>
+
+    <h2>10. Termination</h2>
+    <p>We may suspend or terminate your account for violation of these terms, non-payment, or conduct that harms other users or the platform. You may terminate your account at any time by contacting support.</p>
+
+    <h2>11. Governing Law</h2>
+    <p>These terms are governed by the laws of the State of California. Any disputes shall be resolved in Fresno County, California.</p>
+
+    <h2>12. Changes to Terms</h2>
+    <p>We will notify users of material changes to these terms with at least 14 days notice via email. Continued use after changes constitutes acceptance.</p>
+
+    <div class="contact-box">
+      <h3>Questions about these terms?</h3>
+      <p style="margin-bottom:6px">Contact: <strong>legal@careready.app</strong></p>
+      <p style="margin:0">RunP8 LLC · Fresno, CA · careready.app</p>
+    </div>
+  </div>
+
+  <!-- ===== DISCLAIMER ===== -->
+  <div id="section-disclaimer" class="legal-section">
+    <div class="legal-header">
+      <h1>Compliance Disclaimer</h1>
+      <p>Important limitations of the CareReady platform</p>
+      <span class="effective">Effective: June 1, 2025</span>
+    </div>
+
+    <div class="warning">
+      <p><strong>Read carefully before using CareReady for compliance purposes.</strong></p>
+    </div>
+
+    <h2>Not Legal Advice</h2>
+    <p>CareReady is a software tool — not a law firm, regulatory consultant, or legal advisor. Nothing in the CareReady platform constitutes legal advice. The checklists, guides, and training materials provided are for informational purposes only.</p>
+    <p>For legal advice regarding Title 22 compliance, DSS citations, or regulatory matters, consult a qualified attorney licensed in California.</p>
+
+    <h2>Not a Guarantee of Compliance</h2>
+    <p>Completing all items in CareReady does not guarantee that your facility will pass a DSS inspection or avoid citations. Regulatory compliance is complex and depends on many factors beyond what any software tool can track.</p>
+
+    <h2>Regulation Currency</h2>
+    <p>CareReady makes reasonable efforts to keep compliance checklists current with California Title 22 regulations. However:</p>
+    <ul>
+      <li>Title 22 regulations are updated periodically by the California Department of Social Services</li>
+      <li>There may be a delay between a regulatory update and its reflection in CareReady</li>
+      <li>Local DSS offices may interpret regulations differently</li>
+      <li>Emergency regulatory changes may occur without advance notice</li>
+    </ul>
+    <p>Always verify current requirements directly at <strong>cdss.ca.gov</strong> and with your regional DSS Community Care Licensing office.</p>
+
+    <h2>MAR and Medication Records</h2>
+    <p>CareReady's digital Medication Administration Record (MAR) is a tracking tool. It does not replace physician orders, pharmacy consultations, or professional medical judgment. Medication errors can have serious consequences — always follow physician orders and facility protocols.</p>
+
+    <h2>Training Content</h2>
+    <p>Training guides in CareReady are for informational purposes. Caregiver training tracked in CareReady does not automatically qualify as DSS-approved administrator certification training. Administrator certification requires completion of an approved program through a DSS-authorized vendor.</p>
+
+    <h2>DSS Is the Authority</h2>
+    <p>The California Department of Social Services Community Care Licensing Division is the sole authority on Title 22 compliance for residential care facilities. CareReady is not affiliated with, endorsed by, or approved by DSS or any California state agency.</p>
+
+    <div class="highlight">
+      <p><strong>When in doubt, contact your regional DSS Community Care Licensing office directly.</strong> Their contact information is available at ccld.ca.gov.</p>
+    </div>
+
+    <div class="contact-box">
+      <h3>Official regulatory resources</h3>
+      <ul style="margin:8px 0 0 16px">
+        <li>CDSS Title 22 Regulations: <strong>cdss.ca.gov</strong></li>
+        <li>Community Care Licensing: <strong>ccld.ca.gov</strong></li>
+        <li>DSS Licensing Complaints: <strong>1-844-538-8766</strong></li>
+        <li>Adult Protective Services: <strong>1-833-401-0832</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== HIPAA NOTICE ===== -->
+  <div id="section-hipaa" class="legal-section">
+    <div class="legal-header">
+      <h1>HIPAA & Privacy Notice</h1>
+      <p>How CareReady handles protected health information</p>
+      <span class="effective">Effective: June 1, 2025</span>
+    </div>
+
+    <div class="highlight">
+      <p><strong>CareReady is a Business Associate under HIPAA.</strong> We take the protection of resident health information seriously and are committed to maintaining the privacy and security of all protected health information (PHI) entered into our platform.</p>
+    </div>
+
+    <h2>What Is PHI?</h2>
+    <p>Protected Health Information (PHI) includes any information that relates to a resident's health condition, care, or payment for care that can be linked to a specific individual. In CareReady this includes:</p>
+    <ul>
+      <li>Resident names combined with medical information</li>
+      <li>Medication records and administration logs (MAR)</li>
+      <li>Physician names and orders</li>
+      <li>Incident reports involving health conditions</li>
+      <li>Care plans and service plans</li>
+    </ul>
+
+    <h2>Business Associate Agreement (BAA)</h2>
+    <p>As a covered entity operating an RCFE or CBRC, your facility is subject to HIPAA. CareReady acts as your Business Associate when processing PHI on your behalf. By using CareReady you agree to our Business Associate Agreement terms, which are incorporated into these terms of service.</p>
+    <p>If you require a signed BAA for your records, contact us at <strong>legal@careready.app</strong></p>
+
+    <h2>How We Protect PHI</h2>
+    <ul>
+      <li><strong>Encryption in transit:</strong> All data transmitted to/from CareReady is encrypted using TLS 1.3</li>
+      <li><strong>Encryption at rest:</strong> All stored data is encrypted using AES-256</li>
+      <li><strong>Access controls:</strong> Row-level security ensures each facility only sees its own residents</li>
+      <li><strong>Audit logs:</strong> All access to resident records is logged with timestamp and user ID</li>
+      <li><strong>No AI training:</strong> Resident data is never used to train AI models</li>
+      <li><strong>Minimum necessary:</strong> We access only the PHI necessary to provide our services</li>
+    </ul>
+
+    <h2>Your HIPAA Responsibilities</h2>
+    <p>As the covered entity, your facility is responsible for:</p>
+    <ul>
+      <li>Obtaining resident consent for entering their information into CareReady</li>
+      <li>Training staff on appropriate use of resident data in CareReady</li>
+      <li>Limiting access to CareReady to authorized staff only</li>
+      <li>Reporting any suspected data breaches to us immediately</li>
+      <li>Ensuring your facility's own HIPAA policies cover use of third-party software</li>
+    </ul>
+
+    <h2>Breach Notification</h2>
+    <p>In the event of a data breach affecting PHI, CareReady will notify affected facilities within 60 days of discovery as required by HIPAA. We will provide details of the breach, what information was affected, and steps taken to address it.</p>
+
+    <h2>California Confidentiality Laws</h2>
+    <p>In addition to HIPAA, California imposes additional confidentiality requirements on residential care facilities under:</p>
+    <ul>
+      <li>California Welfare and Institutions Code §5328 (mental health records)</li>
+      <li>California Confidentiality of Medical Information Act (CMIA)</li>
+      <li>California Consumer Privacy Act (CCPA)</li>
+    </ul>
+    <p>CareReady's security practices are designed to support compliance with all of these requirements.</p>
+
+    <div class="contact-box">
+      <h3>HIPAA or privacy concerns?</h3>
+      <p style="margin-bottom:6px">Contact our Privacy Officer: <strong>privacy@careready.app</strong></p>
+      <p style="margin:0">We respond to all privacy inquiries within 5 business days.</p>
+    </div>
+  </div>
+
+  <!-- ===== COOKIE POLICY ===== -->
+  <div id="section-cookies" class="legal-section">
+    <div class="legal-header">
+      <h1>Cookie Policy</h1>
+      <p>How CareReady uses cookies and local storage</p>
+      <span class="effective">Effective: June 1, 2025</span>
+    </div>
+
+    <h2>What Are Cookies?</h2>
+    <p>Cookies are small text files stored on your device when you visit a website. CareReady uses minimal cookies strictly necessary to operate the platform.</p>
+
+    <h2>Cookies We Use</h2>
+    <h3>Essential cookies (required)</h3>
+    <ul>
+      <li><strong>Authentication token:</strong> Keeps you logged in to your CareReady account (Supabase auth session)</li>
+      <li><strong>Session cookie:</strong> Maintains your active session while using the app</li>
+    </ul>
+    <p>These cookies cannot be disabled as they are required for the platform to function.</p>
+
+    <h3>Analytics (none)</h3>
+    <p>CareReady does not use Google Analytics, Facebook Pixel, or any third-party tracking or advertising cookies. We do not track you across other websites.</p>
+
+    <h2>Local Storage</h2>
+    <p>CareReady uses browser local storage to remember your preferences such as last selected facility and UI settings. This data stays on your device and is not transmitted to our servers.</p>
+
+    <h2>Third-Party Cookies</h2>
+    <p>Stripe (payment processing) may set cookies during the checkout process. These are governed by Stripe's own cookie policy.</p>
+
+    <h2>Managing Cookies</h2>
+    <p>You can control cookies through your browser settings. Disabling essential cookies will prevent you from logging in to CareReady. Most browsers allow you to view, delete, and block cookies through their settings menu.</p>
+
+    <div class="contact-box">
+      <h3>Cookie questions?</h3>
+      <p style="margin:0">Contact: <strong>privacy@careready.app</strong></p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  © 2025 CareReady · RunP8 LLC · Fresno, CA ·
+  <a href="#" onclick="showSection('privacy',document.querySelector('.tab'))" style="color:var(--teal)">Privacy</a> ·
+  <a href="#" onclick="showSection('terms',document.querySelectorAll('.tab')[1])" style="color:var(--teal)">Terms</a> ·
+  <a href="mailto:legal@careready.app" style="color:var(--teal)">legal@careready.app</a>
+</footer>
+
+<script>
+function showSection(name, btn) {
+  document.querySelectorAll('.legal-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
