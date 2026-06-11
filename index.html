@@ -175,6 +175,29 @@
   .progress-fill{height:100%;border-radius:3px;background:var(--teal);transition:width .3s}
   .progress-fill.warn{background:var(--amber)}
   .progress-fill.danger{background:var(--red)}
+
+  /* ===== MOBILE RESPONSIVE ===== */
+  @media(max-width:768px){
+    .app-shell{flex-direction:column}
+    .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);padding:.75rem;display:flex;flex-direction:row;align-items:center;gap:0;overflow-x:auto;position:sticky;top:65px;z-index:50;background:var(--gray-bg)}
+    .sidebar-facility{display:none}
+    .nav-item{flex-direction:column;gap:3px;padding:8px 12px;font-size:11px;flex-shrink:0;border-radius:var(--radius);min-width:60px;text-align:center}
+    .nav-item svg{width:20px;height:20px}
+    .main-content{padding:1rem}
+    .page-header h1{font-size:1.1rem}
+    .score-banner{padding:1rem}
+    .score-number{font-size:2rem}
+    .stat-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+    .two-col{grid-template-columns:1fr}
+    .checklist-row{flex-wrap:wrap;gap:8px}
+    .checklist-meta{width:100%;flex-direction:row;align-items:center;justify-content:flex-start}
+    .hero h1{font-size:1.6rem}
+    .plans{grid-template-columns:1fr}
+    .hide-mobile{display:none!important}
+    nav{padding:.75rem 1rem}
+    .filter-bar{gap:6px}
+    .filter-btn{padding:5px 10px;font-size:12px}
+  }
   /* MODAL */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
   .modal-overlay.open{display:flex}
@@ -207,13 +230,37 @@
     </div>
     Title22
   </div>
-  <div class="nav-actions" id="nav-public">
+  <div class="nav-actions" id="nav-public" style="display:none">
     <button class="btn btn-outline" onclick="showPage('login')">Log in</button>
     <button class="btn btn-primary" onclick="showPage('signup')">Start free trial</button>
   </div>
   <div class="nav-actions" id="nav-app" style="display:none">
-    <span style="font-size:13px;color:var(--text2)" id="nav-user-email"></span>
-    <button class="btn btn-ghost" onclick="handleLogout()">Log out</button>
+    <span style="font-size:13px;color:var(--text2);display:none" id="nav-user-email" class="hide-mobile"></span>
+    <div style="position:relative">
+      <button class="btn btn-ghost" onclick="toggleUserMenu()" id="user-menu-btn" style="display:flex;align-items:center;gap:8px;padding:6px 12px;border:1.5px solid var(--border);border-radius:var(--radius)">
+        <div style="width:28px;height:28px;background:var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700" id="user-avatar">E</div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="user-menu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--border);margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text)" id="menu-user-email"></div>
+          <div style="font-size:11px;color:var(--text2)" id="menu-facility-name"></div>
+        </div>
+        <button onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📊 Dashboard</button>
+        <button onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✅ Compliance</button>
+        <button onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👥 Staff</button>
+        <button onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
+        <button onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
+        <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+          <a href="/training" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📚 Training center</a>
+          <a href="/start" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏗 Open a facility</a>
+          <a href="/legal" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 Legal & privacy</a>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+          <button onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--red)" onmouseover="this.style.background='var(--red-light)'" onmouseout="this.style.background='none'">🚪 Log out</button>
+        </div>
+      </div>
+    </div>
   </div>
 </nav>
 
@@ -924,6 +971,20 @@ async function handleLogout() {
   showPage('landing');
 }
 
+function toggleUserMenu() {
+  const menu = document.getElementById('user-menu');
+  menu.style.display = menu.style.display==='none'?'block':'none';
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('user-menu-btn');
+  const menu = document.getElementById('user-menu');
+  if(menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.style.display='none';
+  }
+});
+
 async function handleOnboard() {
   const name = document.getElementById('ob-name').value.trim();
   const err = document.getElementById('ob-error');
@@ -982,6 +1043,17 @@ async function loadApp() {
   }
 
   document.getElementById('sidebar-facility-name').textContent = currentFacility.name;
+  // Update nav user menu
+  const email = currentUser.email||'';
+  const initial = email.charAt(0).toUpperCase();
+  const avatarEl = document.getElementById('user-avatar');
+  const menuEmail = document.getElementById('menu-user-email');
+  const menuFacility = document.getElementById('menu-facility-name');
+  const navEmail = document.getElementById('nav-user-email');
+  if(avatarEl) avatarEl.textContent = initial;
+  if(menuEmail) menuEmail.textContent = email;
+  if(menuFacility) menuFacility.textContent = currentFacility.name;
+  if(navEmail) navEmail.textContent = email;
   const typeLabels = {rcfe:'RCFE',cbrc:'CBRC',arf:'ARF',snf:'SNF'};
   document.getElementById('sidebar-facility-type').textContent = typeLabels[currentFacility.facility_type]||'RCFE';
 
@@ -1579,6 +1651,10 @@ async function saveNote() {
   if(session){
     currentUser = session.user;
     await loadApp();
+  } else {
+    // Not logged in — show landing page with public nav
+    document.getElementById('nav-public').style.display='flex';
+    document.getElementById('nav-app').style.display='none';
   }
 })();
 </script>
