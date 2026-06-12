@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Title22 — Title 22 RCFE Compliance</title>
@@ -220,7 +220,7 @@
   .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border)}
 </style>
 </head>
-<body>
+<body style="visibility:hidden">
 
 <!-- NAV -->
 <nav id="main-nav">
@@ -917,12 +917,25 @@ function showPage(name) {
 }
 
 function switchTab(name) {
+  // Make sure app page is showing
+  if(document.getElementById('page-app').style.display === 'none' ||
+     !document.getElementById('page-app').classList.contains('active')) {
+    showPage('app');
+  }
+  // Close user menu if open
+  const menu = document.getElementById('user-menu');
+  if(menu) menu.style.display='none';
+  // Switch tabs
   ['dashboard','checklist','staff','residents','incidents'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t===name?'block':'none';
-    document.getElementById('nav-'+t).classList.toggle('active', t===name);
+    const tab = document.getElementById('tab-'+t);
+    const nav = document.getElementById('nav-'+t);
+    if(tab) tab.style.display = t===name?'block':'none';
+    if(nav) nav.classList.toggle('active', t===name);
   });
   if(name==='dashboard') refreshDashboard();
   if(name==='checklist'){ renderExpiryBanner(); renderChecklist(activeFilter); }
+  // Scroll to top on mobile
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 async function handleGoogleAuth(errId) {
@@ -973,6 +986,7 @@ async function handleLogout() {
 
 function toggleUserMenu() {
   const menu = document.getElementById('user-menu');
+  if(!menu) return;
   menu.style.display = menu.style.display==='none'?'block':'none';
 }
 
@@ -1631,31 +1645,35 @@ async function saveNote() {
 
 // Init — handle Google OAuth callback + existing session
 (async ()=>{
-  // Listen for auth state changes (catches Google OAuth redirect)
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if(event === 'SIGNED_IN' && session && !currentUser) {
-      currentUser = session.user;
-      await loadApp();
-    }
-    if(event === 'SIGNED_OUT') {
-      currentUser = null;
-      currentFacility = null;
-      document.getElementById('nav-app').style.display = 'none';
-      document.getElementById('nav-public').style.display = 'flex';
-      showPage('landing');
-    }
-  });
-
-  // Check for existing session on page load
+  // Check for existing session FIRST
   const {data:{session}} = await sb.auth.getSession();
   if(session){
     currentUser = session.user;
     await loadApp();
   } else {
-    // Not logged in — show landing page with public nav
+    // Not logged in — show landing page
     document.getElementById('nav-public').style.display='flex';
     document.getElementById('nav-app').style.display='none';
+    showPage('landing');
   }
+  // Show body after auth check — no flash
+  document.body.style.visibility='visible';
+
+  // Listen for auth state changes (catches Google OAuth redirect)
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if(event === 'SIGNED_IN' && session && !currentUser) {
+      currentUser = session.user;
+      await loadApp();
+      document.body.style.visibility='visible';
+    }
+    if(event === 'SIGNED_OUT') {
+      currentUser = null;
+      currentFacility = null;
+      document.getElementById('nav-app').style.display='none';
+      document.getElementById('nav-public').style.display='flex';
+      showPage('landing');
+    }
+  });
 })();
 </script>
 
