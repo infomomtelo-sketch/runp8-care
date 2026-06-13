@@ -1026,6 +1026,14 @@ async function handleOnboard() {
   const err = document.getElementById('ob-error');
   err.classList.remove('show');
   if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
+  
+  // Re-fetch session in case currentUser lost reference
+  if(!currentUser){
+    const {data:{session}} = await sb.auth.getSession();
+    if(!session){err.textContent='Session expired. Please log in again.';err.classList.add('show');return;}
+    currentUser = session.user;
+  }
+
   const facilityType = document.getElementById('ob-type').value;
   const {data,error} = await sb.from('facilities').insert({
     user_id: currentUser.id,
