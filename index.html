@@ -1026,14 +1026,6 @@ async function handleOnboard() {
   const err = document.getElementById('ob-error');
   err.classList.remove('show');
   if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
-  
-  // Re-fetch session in case currentUser lost reference
-  if(!currentUser){
-    const {data:{session}} = await sb.auth.getSession();
-    if(!session){err.textContent='Session expired. Please log in again.';err.classList.add('show');return;}
-    currentUser = session.user;
-  }
-
   const facilityType = document.getElementById('ob-type').value;
   const {data,error} = await sb.from('facilities').insert({
     user_id: currentUser.id,
@@ -1298,367 +1290,107 @@ function renderExpiryBanner() {
 }
 
 // Title 22 Resources — where to get, cost, location info
-// COMPLETE TITLE 22 REQUIREMENT RESOURCES
-// Drop this entire object in as REQUIREMENT_RESOURCES in index.html
-
-const REQUIREMENT_RESOURCES = {
-
-  // ===== ADMINISTRATOR =====
-  'RCFE Administrator Certificate Current': {
-    what: 'RCFE Administrator Certificate — required to legally operate an RCFE',
-    where: [
-      {name:'CDSS Administrator Certification Bureau', address:'cdss.ca.gov/administrator-certification', phone:'(916) 653-9300', cost:'$100 state fee'},
-      {name:'CALA — CA Assisted Living Assoc (approved training)', address:'caassistedliving.org', phone:'(916) 925-2252', cost:'$300–$600 training'},
-      {name:'Care Preparedness Academy (online)', address:'carepreparedness.com', phone:'', cost:'$299–$499'},
-    ],
-    steps: 'Certificate expires every 2 years. Renewal requires 40 CE hours. Submit form LIC 9214A with proof of CE hours to CDSS. Allow 6–8 weeks processing.',
-    note: 'Operating with an expired administrator certificate is a Title 22 violation — citation issued immediately. Renew 90 days before expiration.',
-    form: 'LIC 9214A'
-  },
-  'Administrator Continuing Education Current': {
-    what: '40 hours of continuing education every 2 years for RCFE administrators',
-    where: [
-      {name:'CALA Online CE Courses', address:'caassistedliving.org/education', phone:'(916) 925-2252', cost:'$50–$200 per course'},
-      {name:'Care Preparedness Academy', address:'carepreparedness.com', phone:'', cost:'$99–$299 bundle'},
-      {name:'CAHF Education', address:'cahf.org', phone:'', cost:'Varies'},
-    ],
-    steps: 'Complete 40 CE hours before certificate expiration. Keep certificates for each course. Submit with LIC 9214A renewal application.',
-    note: 'At least 20 of the 40 hours must be in topics directly related to care of residents.'
-  },
-  'Facility License Posted': {
-    what: 'Current DSS facility license must be posted in a visible location',
-    where: [
-      {name:'CDSS Community Care Licensing Division', address:'cdss.ca.gov/ccld', phone:'(559) 243-4900 (Fresno)', cost:'Free — included with license'},
-    ],
-    steps: 'Post the original license in a common area visible to residents, family, and visitors. If lost, request duplicate from your regional CCLD office.',
-    note: 'Inspector will check this on every visit. Frame it — makes it look intentional and professional.'
-  },
-  'Admission Agreement on File': {
-    what: 'Written admission agreement signed by resident/responsible party before or at admission',
-    where: [
-      {name:'CDSS Sample Admission Agreement', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC9150.pdf', phone:'', cost:'Free template'},
-    ],
-    steps: 'Use LIC 9150 as a template. Must include: services provided, fees, refund policy, discharge criteria. Both parties sign before move-in.',
-    note: 'Keep original signed copy in resident file. Provide copy to resident/family. Update and re-sign if terms change.',
-    form: 'LIC 9150'
-  },
-  'Grievance Procedure Posted': {
-    what: 'Written grievance procedure must be posted and provided to residents',
-    where: [
-      {name:'CDSS Grievance Requirements', address:'cdss.ca.gov', phone:'(559) 243-4900', cost:'Free'},
-    ],
-    steps: 'Post grievance procedure in a common area. Provide copy to each resident at admission. Must include steps to file, timeline for response, and contact for CCLD if unresolved.',
-    note: 'Title 22 §87468. Inspector will ask residents if they know how to file a grievance.'
-  },
-  'Emergency Disaster Plan Current': {
-    what: 'Written emergency and disaster plan updated annually',
-    where: [
-      {name:'CDSS Emergency Plan Template', address:'cdss.ca.gov/emergency-preparedness', phone:'', cost:'Free'},
-      {name:'Fresno County OES', address:'fresnocountyca.gov/emergency', phone:'(559) 600-3190', cost:'Free'},
-    ],
-    steps: 'Update plan annually. Include: evacuation routes, staff assignments, resident evacuation needs, utility shutoffs, contact lists, backup power. Practice drills twice per year.',
-    note: 'Must include specific evacuation plan for each resident based on mobility needs.',
-    form: 'LIC 200'
-  },
-  'Fire Drill Completed': {
-    what: 'Fire and evacuation drills — required twice per year, different times of day',
-    where: [
-      {name:'Fresno Fire Department', address:'914 H St, Fresno CA', phone:'(559) 621-4300', cost:'Free consultation'},
-    ],
-    steps: 'Conduct drill. Document date, time, staff present, residents present, time to evacuate, issues noted, corrective actions. Keep drill records for 3 years.',
-    note: 'One drill must be during sleeping hours. Document everything — inspector will ask for records.',
-    form: 'Drill Log (keep in facility binder)'
-  },
-  'Resident Rights Posted': {
-    what: 'Resident Bill of Rights must be posted and provided to each resident',
-    where: [
-      {name:'CDSS Resident Rights — LIC 613A', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC613A.pdf', phone:'', cost:'Free'},
-    ],
-    steps: 'Post LIC 613A in a common area. Provide signed copy to each resident at admission. Keep signed acknowledgment in resident file.',
-    note: 'Must be posted in English and any other language spoken by 10% or more of residents.',
-    form: 'LIC 613A'
-  },
-
-  // ===== STAFF =====
+let REQUIREMENT_RESOURCES = {};
+try { REQUIREMENT_RESOURCES = {
   'TB Test on Hire': {
-    what: 'Tuberculin skin test (TST) or IGRA blood test — required before first day of work',
+    what: 'Tuberculin skin test (TST) or IGRA blood test',
     where: [
-      {name:'Fresno County Dept of Public Health', address:'1221 Fulton Mall, Fresno CA 93721', phone:'(559) 600-3200', cost:'Free–$15'},
-      {name:'CVS MinuteClinic', address:'Multiple Fresno locations', phone:'1-866-389-2727', cost:'$35–$65'},
-      {name:'Any Urgent Care', address:'Multiple Fresno locations', phone:'', cost:'$20–$50'},
+      {name:'Fresno County Dept of Public Health', address:'1221 Fulton Mall, Fresno CA', phone:'(559) 600-3200', cost:'Free–$15'},
+      {name:'Any Urgent Care or CVS MinuteClinic', address:'Multiple Fresno locations', phone:'', cost:'$20–$40'},
     ],
-    steps: 'Get tested before first day. Skin test must be read by provider 48–72 hours after placement. Get written result. Keep in personnel file.',
-    note: 'Positive test requires chest X-ray follow-up. Does not automatically disqualify — needs physician clearance.'
+    steps: 'Get tested before first day of work. Skin test must be read by provider 48–72 hrs after placement. Keep written result on file.',
+    note: 'Positive test requires chest X-ray follow-up. Does not automatically disqualify staff.'
   },
   'Annual TB Test': {
-    what: 'Annual TB screening required every 12 months',
+    what: 'Annual TB screening — TST or IGRA blood test',
     where: [
-      {name:'Fresno County Dept of Public Health', address:'1221 Fulton Mall, Fresno CA 93721', phone:'(559) 600-3200', cost:'Free–$15'},
-      {name:'CVS MinuteClinic', address:'Multiple Fresno locations', phone:'1-866-389-2727', cost:'$35–$65'},
+      {name:'Fresno County Dept of Public Health', address:'1221 Fulton Mall, Fresno CA', phone:'(559) 600-3200', cost:'Free–$15'},
+      {name:'Any Urgent Care', address:'Multiple Fresno locations', phone:'', cost:'$20–$40'},
     ],
-    steps: 'Due every 12 months from previous test date. Keep written result in personnel file. Verbal confirmation not sufficient for Title 22.',
-    note: 'Track expiration dates — inspector will check every staff member\'s TB test date.'
-  },
-  'CPR Certification Current': {
-    what: 'In-person CPR/AED certification — hands-on component required',
-    where: [
-      {name:'American Red Cross — Fresno', address:'redcross.org/take-a-class', phone:'1-800-733-2767', cost:'$40–$80'},
-      {name:'American Heart Association', address:'cpr.heart.org/en/course-finder', phone:'', cost:'$40–$70'},
-      {name:'Fresno City College Community Education', address:'fresnocitycollege.edu', phone:'(559) 442-4600', cost:'$30–$60'},
-    ],
-    steps: 'Must be in-person — online-only CPR does NOT meet Title 22. Certificate valid 2 years. At least one certified person on duty at ALL times including nights/weekends.',
-    note: 'Heartsaver CPR AED (Red Cross) or BLS (AHA) both qualify. Keep certificates in personnel files.'
+    steps: 'Due every 12 months from previous test date. CareReady alerts 30 days before due.',
+    note: 'Keep written result — verbal confirmation not sufficient for Title 22.'
   },
   'First Aid Certification Current': {
-    what: 'Standard First Aid certification — must include hands-on practice',
+    what: 'Standard First Aid certificate — must be hands-on course',
     where: [
-      {name:'American Red Cross — Fresno', address:'redcross.org/take-a-class', phone:'1-800-733-2767', cost:'$30–$80'},
+      {name:'American Red Cross — Fresno', address:'redcross.org/take-a-class', phone:'1-800-RED-CROSS', cost:'$30–$80'},
       {name:'American Heart Association', address:'cpr.heart.org', phone:'', cost:'$30–$60'},
-      {name:'Fresno Fire Dept Community Training', address:'Call for schedule', phone:'(559) 621-4300', cost:'Free–$20'},
+      {name:'Fresno Fire Department Community Training', address:'Call for schedule', phone:'(559) 621-4300', cost:'Free–$20'},
     ],
     steps: 'Certificate valid 2 years. At least one certified person must be on duty at ALL times — including nights and weekends.',
-    note: 'Online-only First Aid does NOT meet Title 22 requirement. Must include hands-on skills practice.'
+    note: 'Online-only First Aid does not meet Title 22 requirement. Must include hands-on practice.'
+  },
+  'CPR Certification Current': {
+    what: 'In-person CPR/AED certification — hands-on required',
+    where: [
+      {name:'American Red Cross — Fresno', address:'redcross.org/take-a-class', phone:'1-800-RED-CROSS', cost:'$40–$80'},
+      {name:'American Heart Association', address:'cpr.heart.org/en/course-finder', phone:'', cost:'$40–$70'},
+    ],
+    steps: 'Certificate valid 2 years. Online-only CPR does NOT meet Title 22 — must be in-person. Cover all shifts 24/7.',
+    note: 'Heartsaver CPR AED (Red Cross) or BLS (AHA) both meet Title 22 requirements.'
   },
   'Mandated Reporter Training': {
-    what: 'AB 1207 Elder & Dependent Adult Abuse Mandated Reporter Training',
+    what: 'AB 1207 Elder/Dependent Adult Abuse Mandated Reporter Training',
     where: [
       {name:'FREE Online — mandatedreporterca.com', address:'mandatedreporterca.com', phone:'', cost:'FREE'},
-      {name:'CDSS Training Portal', address:'cdss.ca.gov/training', phone:'', cost:'FREE'},
     ],
-    steps: 'Complete before or within 7 days of hire. Takes ~2 hours online. Print certificate immediately and keep in personnel file. Renew every 2 years.',
-    note: 'To report abuse call APS: 1-833-401-0832. Must follow up in writing within 2 working days of oral report.'
+    steps: 'Complete before or within 7 days of hire. Takes approx 2 hours online. Print certificate and keep in staff file.',
+    note: 'To report abuse: Adult Protective Services (APS) 1-833-401-0832. Follow up in writing within 2 working days.'
   },
   'LiveScan Background Check Cleared': {
-    what: 'Criminal background check via LiveScan fingerprinting — required BEFORE working with residents',
+    what: 'Criminal background check via LiveScan fingerprinting',
     where: [
       {name:'Fresno County Sheriff — LiveScan', address:'2200 Fresno St, Fresno CA', phone:'(559) 600-3080', cost:'$25–$50'},
-      {name:'UPS Store (LiveScan locations)', address:'Multiple Fresno locations — ups.com/livescan', phone:'', cost:'$20–$40'},
-      {name:'Local Police Departments', address:'Call ahead to confirm LiveScan availability', phone:'', cost:'$20–$35'},
+      {name:'UPS Store (many locations do LiveScan)', address:'Multiple Fresno locations', phone:'', cost:'$20–$40'},
+      {name:'Local police departments', address:'Call ahead', phone:'', cost:'$20–$35'},
     ],
-    steps: 'Staff CANNOT work until clearance letter is received. Use ORI number specific to RCFE/CBRC from your CCLD office. Keep clearance letter in personnel file forever.',
-    note: 'Request ORI number from CCLD before sending staff for LiveScan. Wrong ORI = wrong background check = must redo.'
+    steps: 'Must be completed BEFORE staff starts working with residents. Use ORI number from DSS for RCFE/CBRC clearance.',
+    note: 'Staff cannot begin working until clearance is received. Keep clearance letter in personnel file.'
   },
   'Food Handler Certification Current': {
-    what: 'California Food Handler Card — required for all staff who handle food',
+    what: 'California Food Handler Card — required for any staff handling food',
     where: [
       {name:'StateFoodSafety.com (online)', address:'statefoodsafety.com', phone:'', cost:'$7–$15'},
-      {name:'ServSafe Food Handler (online)', address:'servsafe.com/food-handler', phone:'', cost:'$15'},
+      {name:'ServSafe (online)', address:'servsafe.com/food-handler', phone:'', cost:'$15'},
       {name:'eFoodHandlers (online)', address:'efoodhandlers.com', phone:'', cost:'$9'},
     ],
-    steps: 'Online course takes 1–2 hours. Pass with 70%+. Card valid 3 years. All staff who prepare, serve, or handle food must have current card.',
-    note: 'Use only California-accredited providers. Check provider is on CA approved list before enrolling.'
+    steps: 'Online course takes 1–2 hours. Pass with 70%+. Card valid 3 years. All food-handling staff must have current card.',
+    note: 'California-accredited providers only. Check that provider is on CA approved list.'
   },
-  'Caregiver Training Hours Current': {
-    what: '16 hours of caregiver training required — 8 hours before working alone with residents',
+  'RCFE Administrator Certificate Current': {
+    what: 'RCFE Administrator Certificate issued by CDSS',
     where: [
-      {name:'Care Preparedness Academy', address:'carepreparedness.com', phone:'', cost:'$49–$149'},
-      {name:'CALA Training', address:'caassistedliving.org', phone:'(916) 925-2252', cost:'Varies'},
-      {name:'Fresno City College', address:'fresnocitycollege.edu/caregiving', phone:'(559) 442-4600', cost:'$50–$200'},
+      {name:'CDSS Administrator Certification Bureau', address:'cdss.ca.gov', phone:'916-653-9300', cost:'$100 state fee'},
+      {name:'CALA — approved training provider', address:'caassistedliving.org', phone:'', cost:'$300–$600 for training'},
     ],
-    steps: 'New staff: 8 hours before working alone, remaining 8 hours within first 4 weeks. Keep training certificates in personnel file. Document topics covered.',
-    note: 'Training must cover: personal care, nutrition, safety, residents\' rights, reporting requirements, and dementia care basics.'
+    steps: 'Certificate expires every 2 years. Renewal requires 40 CE hours. Submit LIC 9214A with proof of CE hours.',
+    note: 'Operating with expired administrator certificate is a Title 22 violation. Renew 90 days before expiration.'
   },
-  'Health Screening on Hire': {
-    what: 'Health screening to confirm staff is free of communicable diseases',
-    where: [
-      {name:'Any physician or urgent care', address:'Multiple Fresno locations', phone:'', cost:'$50–$150'},
-      {name:'Fresno County Public Health', address:'1221 Fulton Mall, Fresno CA', phone:'(559) 600-3200', cost:'Sliding scale'},
-    ],
-    steps: 'Completed before first day of work. Document clearance in personnel file. TB test counts toward this requirement but does not replace full screening.',
-    note: 'Staff with active tuberculosis, skin infections, or other communicable conditions cannot work until cleared by physician.'
-  },
-
-  // ===== RESIDENTS =====
-  'Pre-Admission Appraisal (LIC 601)': {
-    what: 'LIC 601 — Pre-Admission Appraisal completed before or at time of admission',
-    where: [
-      {name:'Download LIC 601 (free)', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC601.pdf', phone:'', cost:'Free'},
-    ],
-    steps: 'Complete before move-in. Assesses: resident needs, health status, mobility, behavior, medication needs, and whether facility can meet needs. Administrator signs.',
-    note: 'Required for EVERY resident. If needs exceed what RCFE can provide, resident cannot be admitted. Keep original in resident file.',
-    form: 'LIC 601'
-  },
-  'Physician Report (LIC 602)': {
-    what: 'LIC 602 — Physician Report signed by licensed physician within 30 days of admission',
-    where: [
-      {name:'Download LIC 602 (free)', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC602.pdf', phone:'', cost:'Free'},
-    ],
-    steps: 'Give blank LIC 602 to resident\'s physician before or at admission. Physician must complete and sign within 30 days. File original. Update after significant health changes or annually.',
-    note: 'Nurse practitioners may sign in some cases — verify with your CCLD regional office. Missing LIC 602 is one of the most common citation causes.',
-    form: 'LIC 602'
-  },
-  'ISP — Individualized Service Plan': {
-    what: 'Individualized Service Plan — written care plan required within 30 days of admission',
-    where: [
-      {name:'CDSS ISP Guidelines', address:'cdss.ca.gov', phone:'(559) 243-4900', cost:'Free'},
-    ],
-    steps: 'Complete within 30 days of admission. Include: care needs, services provided, staff responsibilities, goals, review schedule. Review annually or after any significant change in condition.',
-    note: 'ISP must be updated after: falls, hospitalization, significant health change, or resident/family request. Inspector will check date of last review.'
-  },
-  'Admission Agreement Signed': {
-    what: 'Signed admission agreement on file before or at time of admission',
-    where: [
-      {name:'CDSS LIC 9150 Template', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC9150.pdf', phone:'', cost:'Free template'},
-    ],
-    steps: 'Use LIC 9150 as base template. Both administrator and resident/responsible party sign. Provide copy to resident. Keep original in file.',
-    note: 'Must include fees, services, discharge policy, and refund policy. Must be updated if any terms change.',
-    form: 'LIC 9150'
-  },
-  'Resident Emergency Card': {
-    what: 'Emergency information card for each resident — must be immediately accessible',
-    where: [
-      {name:'CDSS LIC 627', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC627.pdf', phone:'', cost:'Free'},
-    ],
-    steps: 'Complete LIC 627 for each resident. Include: emergency contacts, physician, hospital preference, diagnoses, medications, allergies. Keep accessible at all times — not buried in a file.',
-    note: 'Inspector will ask to see this immediately. Many facilities keep these in a binder by the front door.',
-    form: 'LIC 627'
-  },
-  'Resident Personal Rights Signed': {
-    what: 'Resident must sign acknowledgment of personal rights at admission',
-    where: [
-      {name:'CDSS LIC 613A', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC613A.pdf', phone:'', cost:'Free'},
-    ],
-    steps: 'Provide LIC 613A to resident at admission. Resident or responsible party signs. Keep signed copy in resident file.',
-    note: 'Inspector will check for signed copy in every resident file.',
-    form: 'LIC 613A'
-  },
-
-  // ===== MEDICATIONS =====
-  'MAR — Medication Administration Record Current': {
-    what: 'Medication Administration Record — must be completed for every medication given',
-    where: [
-      {name:'Title22 Digital MAR (built-in)', address:'title22.app', phone:'', cost:'Included in subscription'},
-      {name:'CDSS MAR Requirements — Title 22 §87465', address:'cdss.ca.gov', phone:'', cost:'Free info'},
-    ],
-    steps: 'Log every medication: date, time, medication name, dose, route, caregiver initials. No gaps allowed. If dose missed, document reason. Keep MARs for 3 years.',
-    note: 'A single gap in the MAR is a citation. Use Title22\'s digital MAR to prevent gaps. Inspector will review last 30 days minimum.'
-  },
-  'Medication Storage Locked': {
-    what: 'All medications must be stored in locked storage — prescription and OTC',
-    where: [
-      {name:'Amazon — Medication Lock Boxes', address:'amazon.com', phone:'', cost:'$20–$80'},
-      {name:'Walmart Pharmacy Section', address:'Local Walmart', phone:'', cost:'$15–$50'},
-    ],
-    steps: 'All medications locked at all times. Controlled substances in a separate double-locked cabinet. Only authorized staff have keys. Document who has access.',
-    note: 'This includes vitamins and OTC medications. Inspector will check locks during every visit.'
-  },
-  'Medication Destruction Log': {
-    what: 'Log of all medications disposed of — required when resident leaves or medication discontinued',
-    where: [
-      {name:'Title22 Destruction Log Template', address:'title22.app', phone:'', cost:'Included'},
-      {name:'Fresno Safe Medication Disposal', address:'fresnopd.org/drug-disposal', phone:'(559) 621-7000', cost:'Free drop-off'},
-    ],
-    steps: 'Document: date, resident name, medication, quantity destroyed, method of disposal, two witness signatures. Never flush medications — use approved disposal site.',
-    note: 'Two staff must witness and sign every medication destruction. Inspector will ask for this log.'
-  },
-  'Medication Orders Current': {
-    what: 'Current signed physician orders for all resident medications',
-    where: [
-      {name:'Resident\'s prescribing physician', address:'', phone:'', cost:'Free — part of medical care'},
-    ],
-    steps: 'Obtain signed order for every medication before administering. Orders must include: medication name, dose, frequency, route, purpose. Renew annually or when changed.',
-    note: 'Administering medication without a current physician order is a serious Title 22 violation. Keep orders in resident medication file.'
-  },
-  'Physician Orders for PRN Medications': {
-    what: 'PRN (as-needed) medications require specific physician orders with criteria for administration',
-    where: [
-      {name:'Resident\'s prescribing physician', address:'', phone:'', cost:'Free — part of medical care'},
-    ],
-    steps: 'PRN order must specify: exact criteria for giving medication, maximum dose, frequency, what to monitor. Document every PRN dose in MAR with reason given.',
-    note: 'Inspector will look at PRN documentation carefully — must document why PRN was given, not just that it was given.'
-  },
-
-  // ===== FACILITY =====
   'Fire Safety Inspection Current': {
     what: 'Annual fire safety inspection by local fire department or approved inspector',
     where: [
-      {name:'Fresno Fire Department — Fire Prevention Bureau', address:'914 H St, Fresno CA 93721', phone:'(559) 621-4300', cost:'Varies by facility size — call for quote'},
+      {name:'Fresno Fire Department — Fire Prevention', address:'914 H St, Fresno CA', phone:'(559) 621-4300', cost:'Varies by facility size'},
     ],
-    steps: 'Call Fresno Fire to schedule annual inspection. Inspector checks: smoke detectors, fire extinguishers (charged/tagged), exit signs, sprinklers, emergency lighting, evacuation routes. Post certificate visibly.',
-    note: 'Schedule before certificate expires — not after. Fresno Fire can be booked 4–6 weeks out.'
+    steps: 'Schedule annual inspection. Post certificate in visible location. Keep previous inspection reports on file.',
+    note: 'Inspector checks: smoke detectors, fire extinguishers, exit signs, sprinklers, emergency lighting.'
   },
-  'Fire Extinguishers Inspected': {
-    what: 'Fire extinguishers must be inspected annually by certified company and monthly by staff',
+  'Physician Report (LIC 602)': {
+    what: 'LIC 602 — Physician Report on admission',
     where: [
-      {name:'Fresno Fire Protection', address:'Fresno, CA', phone:'(559) 237-0500', cost:'$20–$50 per extinguisher'},
-      {name:'Valley Fire Equipment', address:'Fresno, CA', phone:'(559) 486-9400', cost:'$20–$45 per extinguisher'},
+      {name:'Download LIC 602 form', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC602.pdf', phone:'', cost:'Free'},
     ],
-    steps: 'Annual professional inspection with tag. Monthly staff inspection — check pressure gauge is in green, pin is intact, no damage. Document monthly checks in log.',
-    note: 'Keep monthly inspection log. Inspector will check tags AND your monthly log.'
+    steps: 'Must be completed by resident physician within 30 days of admission. Keep original in resident file. Update annually or after health changes.',
+    note: 'Form must be signed by licensed physician. Nurse practitioner signatures may be accepted — verify with your DSS regional office.'
   },
-  'Smoke Detectors Tested': {
-    what: 'Smoke detectors tested monthly — required in all sleeping rooms and common areas',
+  'Pre-Admission Appraisal (LIC 601)': {
+    what: 'LIC 601 — Pre-Admission Appraisal',
     where: [
-      {name:'Test yourself — press test button monthly', address:'', phone:'', cost:'Free'},
-      {name:'Home Depot (replacement detectors)', address:'Local Home Depot', phone:'', cost:'$15–$40 each'},
+      {name:'Download LIC 601 form', address:'cdss.ca.gov/cdssweb/entres/forms/English/LIC601.pdf', phone:'', cost:'Free'},
     ],
-    steps: 'Test every smoke detector monthly. Document date tested, which detectors, result, and staff name. Replace batteries annually or when chirping.',
-    note: 'Title 22 requires interconnected smoke detectors — if one sounds, all sound. Inspector will test random detectors.'
+    steps: 'Complete before or at time of admission. Assesses resident needs, health status, and appropriateness for RCFE placement.',
+    note: 'Keep original in resident file. Required for every resident regardless of length of stay.'
   },
-  'Carbon Monoxide Detectors Current': {
-    what: 'CO detectors required in facilities with gas appliances or attached garages',
-    where: [
-      {name:'Home Depot', address:'Local Home Depot', phone:'', cost:'$20–$50 each'},
-      {name:'Walmart', address:'Local Walmart', phone:'', cost:'$15–$35 each'},
-    ],
-    steps: 'Install on each level of facility and near sleeping areas. Test monthly. Replace every 5–7 years (check manufacturer date). Document monthly tests.',
-    note: 'Replace immediately if alarm is triggered — do not reset and ignore.'
-  },
-  'First Aid Kit Stocked': {
-    what: 'Fully stocked first aid kit accessible at all times',
-    where: [
-      {name:'Walmart', address:'Local Walmart', phone:'', cost:'$15–$40'},
-      {name:'Costco (bulk supplies)', address:'Local Costco', phone:'', cost:'$20–$50'},
-      {name:'Amazon', address:'amazon.com', phone:'', cost:'$15–$60'},
-    ],
-    steps: 'Check kit monthly. Must include at minimum: bandages, gauze, antiseptic, gloves, scissors, tweezers, CPR mask, emergency blanket. Document monthly checks.',
-    note: 'Keep accessible — not locked away. Inspector will open kit and check contents.'
-  },
-  'Water Heater Temperature Set': {
-    what: 'Hot water must not exceed 120°F at resident-accessible faucets to prevent scalding',
-    where: [
-      {name:'Hardware store — thermometer', address:'Home Depot / Walmart', phone:'', cost:'$5–$15'},
-    ],
-    steps: 'Test hot water temperature at each resident faucet with thermometer. Document results. Set water heater to 120°F maximum. Recheck after any plumber work.',
-    note: 'Residents with dementia cannot feel scalding temperatures. This is a safety requirement, not just a paperwork one.'
-  },
-  'Pest Control Current': {
-    what: 'Regular pest control required — facility must be free of pests',
-    where: [
-      {name:'Fresno Pest Control', address:'Fresno, CA', phone:'(559) 222-6154', cost:'$80–$150/month'},
-      {name:'Terminix Fresno', address:'terminix.com', phone:'1-855-485-0378', cost:'$70–$130/month'},
-      {name:'Orkin Fresno', address:'orkin.com', phone:'1-800-675-4668', cost:'$80–$150/month'},
-    ],
-    steps: 'Schedule regular service (monthly recommended). Keep service records. Use only EPA-approved products safe for elderly residents. Notify residents before treatment.',
-    note: 'Inspector will look for evidence of pests. Any sighting = potential citation. Monthly service prevents this.'
-  },
-  'Vehicle Insurance Current': {
-    what: 'Current vehicle insurance required if facility transports residents',
-    where: [
-      {name:'Your current insurance provider', address:'', phone:'', cost:'Varies'},
-    ],
-    steps: 'Ensure policy covers commercial/non-emergency medical transport if applicable. Keep current insurance card in vehicle. Update when policy renews.',
-    note: 'If staff use personal vehicles to transport residents, their personal insurance may not cover this — verify with insurer.'
-  },
-
-  // ===== INSPECTIONS =====
-  'DSS Inspection Completed': {
-    what: 'DSS/CCLD unannounced inspection — required annually minimum',
-    where: [
-      {name:'CCLD Fresno Regional Office', address:'1225 E Divisadero St, Fresno CA 93721', phone:'(559) 243-4900', cost:'Free — mandatory'},
-    ],
-    steps: 'Inspections are unannounced. Be ready every day. When inspector arrives: greet professionally, offer to assist, provide requested records immediately. Don\'t argue during inspection — respond to citations in writing after.',
-    note: 'Use Title22\'s compliance dashboard to stay ready every day. Your score reflects what an inspector would find today.'
-  },
-  'Inspection Deficiencies Corrected': {
-    what: 'All deficiencies from previous inspection must be corrected by due date',
-    where: [
-      {name:'CCLD Fresno Regional Office', address:'1225 E Divisadero St, Fresno CA 93721', phone:'(559) 243-4900', cost:'Free'},
-    ],
-    steps: 'Submit Plan of Correction (POC) within timeframe specified. Correct deficiency. Document correction with date and how it was fixed. Submit proof if required.',
-    note: 'Uncorrected deficiencies from prior inspection = higher fines on next visit. Fix everything — document everything.'
-  },
-};
+}; } catch(e){ console.warn('Resources load error:', e); }
 
 function getResourceForTask(title) {
   // Try exact match first
@@ -2000,7 +1732,7 @@ function renderResidents() {
     const age = r.dob ? Math.floor((new Date() - new Date(r.dob)) / (365.25*24*60*60*1000)) : null;
     const admitDays = r.admission_date ? Math.floor((new Date() - new Date(r.admission_date)) / (24*60*60*1000)) : null;
 
-    const docInfo = {   'LIC 601': 'Pre-Admission Appraisal — complete before or at admission. Download free at cdss.ca.gov. Keep original in resident file.',   'LIC 602': 'Physician Report — must be signed by resident\'s doctor within 30 days of admission. Update annually or after health changes.',   'ISP': 'Individualized Service Plan — complete within 30 days of admission. Review annually or after any significant health change.' }; const docBadge = (label, val) => val === 'yes'   ? `<span class="badge badge-green">${label} ✓</span>`   : `<span class="badge badge-red" style="cursor:pointer" onclick="event.stopPropagation();this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">${label} ✗ — how?</span>      <div style="display:none;background:#fff8f8;border:1px solid #e8a0a0;border-radius:8px;padding:8px 10px;font-size:11px;color:var(--text);margin-top:4px;line-height:1.6;width:100%">        📋 <strong>${label}:</strong> ${docInfo[label]}      </div>`; = (label, val) => val === 'yes'
+    const docBadge = (label, val) => val === 'yes'
       ? `<span class="badge badge-green">${label} ✓</span>`
       : `<span class="badge badge-red">${label} ✗</span>`;
 
