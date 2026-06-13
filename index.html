@@ -865,16 +865,37 @@
         </div>
       </div>
 
-      <!-- RESIDENTS TAB -->
+     <!-- RESIDENTS TAB --
+     if(name==='residents') loadResidents();
       <div id="tab-residents" style="display:none">
         <div class="page-header">
           <h1>Residents</h1>
-          <button class="btn btn-primary" style="font-size:13px">+ Add resident</button>
+          <button class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button>
         </div>
-        <div class="empty" style="margin-top:40px">
-          <div style="font-size:2rem;margin-bottom:12px">🏠</div>
-          <div style="font-weight:500;margin-bottom:6px">No residents added yet</div>
-          <div>Add residents to track admission agreements, LIC 601/602, ISPs, and medications</div>
+
+        <!-- Summary bar -->
+        <div id="res-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div>
+            <div style="font-size:11px;color:var(--text2)">Residents</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div>
+            <div style="font-size:11px;color:var(--text2)">Docs complete</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div>
+            <div style="font-size:11px;color:var(--text2)">Docs missing</div>
+          </div>
+        </div>
+
+        <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
+
+        <div id="residents-empty" class="empty" style="margin-top:40px">
+          <div style="font-size:2.5rem;margin-bottom:12px">🏠</div>
+          <div style="font-weight:600;margin-bottom:6px">No residents yet</div>
+          <div style="margin-bottom:20px">Add residents to track LIC 601/602, ISPs, and care records</div>
+          <button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button>
         </div>
       </div>
 
@@ -934,6 +955,7 @@ function switchTab(name) {
   });
   if(name==='dashboard') refreshDashboard();
   if(name==='checklist'){ renderExpiryBanner(); renderChecklist(activeFilter); }
+ if(name==='residents') loadResidents();
   // Scroll to top on mobile
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1675,9 +1697,273 @@ async function saveNote() {
     }
   });
 })();
+// ===== RESIDENTS =====
+let residents = [];
+let currentResidentId = null;
+
+async function loadResidents() {
+  if(!currentFacility) return;
+  const {data} = await sb.from('residents').select('*').eq('facility_id', currentFacility.id).order('name');
+  residents = data || [];
+  renderResidents();
+}
+
+function renderResidents() {
+  const grid = document.getElementById('residents-grid');
+  const empty = document.getElementById('residents-empty');
+  const summary = document.getElementById('res-summary');
+
+  if(!residents.length) {
+    grid.style.display = 'none';
+    empty.style.display = 'block';
+    summary.style.display = 'none';
+    return;
+  }
+
+  grid.style.display = 'grid';
+  empty.style.display = 'none';
+  summary.style.display = 'flex';
+
+  const docsOk = residents.filter(r => r.lic601==='yes' && r.lic602==='yes' && r.isp==='yes').length;
+  document.getElementById('res-count').textContent = residents.length;
+  document.getElementById('res-docs-ok').textContent = docsOk;
+  document.getElementById('res-docs-missing').textContent = residents.length - docsOk;
+
+  grid.innerHTML = residents.map(r => {
+    const age = r.dob ? Math.floor((new Date() - new Date(r.dob)) / (365.25*24*60*60*1000)) : null;
+    const admitDays = r.admission_date ? Math.floor((new Date() - new Date(r.admission_date)) / (24*60*60*1000)) : null;
+
+    const docBadge = (label, val) => val === 'yes'
+      ? `<span class="badge badge-green">${label} ✓</span>`
+      : `<span class="badge badge-red">${label} ✗</span>`;
+
+    const ispWarning = () => {
+      if(!r.isp_review_date) return '';
+      const days = Math.floor((new Date() - new Date(r.isp_review_date)) / (24*60*60*1000));
+      if(days > 365) return `<div style="font-size:11px;color:var(--red);margin-top:6px">⚠ ISP overdue for review (${days} days ago)</div>`;
+      if(days > 300) return `<div style="font-size:11px;color:var(--amber);margin-top:6px">⏰ ISP review due soon</div>`;
+      return '';
+    };
+
+    const initials = r.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const colors = ['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
+    const color = colors[r.name.charCodeAt(0) % colors.length];
+
+    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer;transition:box-shadow .15s" 
+      onclick="viewResident('${r.id}')"
+      onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'"
+      onmouseout="this.style.boxShadow='none'">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
+          <div style="font-size:12px;color:var(--text2)">${r.preferred_name ? '"'+r.preferred_name+'"' : ''} ${r.room ? '· '+r.room : ''}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);text-align:right;flex-shrink:0">
+          ${age ? `<div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs old</div>` : ''}
+        </div>
+      </div>
+      ${r.diagnosis ? `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.diagnosis}</div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        ${docBadge('LIC 601', r.lic601)}
+        ${docBadge('LIC 602', r.lic602)}
+        ${docBadge('ISP', r.isp)}
+      </div>
+      ${ispWarning()}
+      ${admitDays !== null ? `<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()} · ${admitDays} days</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openResidentModal(resId) {
+  currentResidentId = resId || null;
+  const r = resId ? residents.find(x=>x.id===resId) : null;
+  document.getElementById('res-modal-title').textContent = r ? 'Edit resident' : 'Add resident';
+  document.getElementById('res-name').value = r?.name || '';
+  document.getElementById('res-preferred').value = r?.preferred_name || '';
+  document.getElementById('res-room').value = r?.room || '';
+  document.getElementById('res-dob').value = r?.dob || '';
+  document.getElementById('res-admission').value = r?.admission_date || '';
+  document.getElementById('res-diagnosis').value = r?.diagnosis || '';
+  document.getElementById('res-allergies').value = r?.allergies || '';
+  document.getElementById('res-lic601').value = r?.lic601 || 'no';
+  document.getElementById('res-lic602').value = r?.lic602 || 'no';
+  document.getElementById('res-isp').value = r?.isp || 'no';
+  document.getElementById('res-isp-date').value = r?.isp_review_date || '';
+  document.getElementById('res-modal-error').classList.remove('show');
+  document.getElementById('resident-modal').classList.add('open');
+}
+
+function closeResidentModal() {
+  document.getElementById('resident-modal').classList.remove('open');
+}
+
+async function saveResident() {
+  const name = document.getElementById('res-name').value.trim();
+  const err = document.getElementById('res-modal-error');
+  if(!name) { err.textContent='Name is required.'; err.classList.add('show'); return; }
+
+  const payload = {
+    facility_id: currentFacility.id,
+    name,
+    preferred_name: document.getElementById('res-preferred').value.trim() || null,
+    room: document.getElementById('res-room').value.trim() || null,
+    dob: document.getElementById('res-dob').value || null,
+    admission_date: document.getElementById('res-admission').value || null,
+    diagnosis: document.getElementById('res-diagnosis').value.trim() || null,
+    allergies: document.getElementById('res-allergies').value.trim() || null,
+    lic601: document.getElementById('res-lic601').value,
+    lic602: document.getElementById('res-lic602').value,
+    isp: document.getElementById('res-isp').value,
+    isp_review_date: document.getElementById('res-isp-date').value || null,
+  };
+
+  let error;
+  if(currentResidentId) {
+    const {error:e} = await sb.from('residents').update(payload).eq('id', currentResidentId);
+    error = e;
+    if(!e) { const idx = residents.findIndex(r=>r.id===currentResidentId); if(idx>-1) residents[idx]={...residents[idx],...payload}; }
+  } else {
+    const {data, error:e} = await sb.from('residents').insert(payload).select().single();
+    error = e;
+    if(!e && data) residents.push(data);
+  }
+
+  if(error) { err.textContent = error.message; err.classList.add('show'); return; }
+  closeResidentModal();
+  renderResidents();
+}
+
+function viewResident(id) {
+  const r = residents.find(x=>x.id===id);
+  if(!r) return;
+  currentResidentId = id;
+  document.getElementById('rd-name').textContent = r.name + (r.preferred_name ? ' "'+r.preferred_name+'"' : '');
+
+  const age = r.dob ? Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)) : null;
+  const badge = (label, val) => val==='yes'
+    ? `<span class="badge badge-green">${label} ✓ on file</span>`
+    : `<span class="badge badge-red">${label} ✗ missing</span>`;
+
+  document.getElementById('rd-body').innerHTML = `
+    <div style="display:grid;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        ${r.dob ? `<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>` : ''}
+        ${r.room ? `<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${r.room}</div></div>` : ''}
+        ${r.admission_date ? `<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>` : ''}
+        ${r.isp_review_date ? `<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>` : ''}
+      </div>
+      ${r.diagnosis ? `<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${r.diagnosis}</div></div>` : ''}
+      ${r.allergies ? `<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${r.allergies}</div></div>` : ''}
+      <div>
+        <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Required documents</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${badge('LIC 601', r.lic601)}
+          ${badge('LIC 602', r.lic602)}
+          ${badge('ISP', r.isp)}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('resident-detail-modal').classList.add('open');
+}
+
+function closeResidentDetail() {
+  document.getElementById('resident-detail-modal').classList.remove('open');
+}
+
+function editCurrentResident() {
+  closeResidentDetail();
+  openResidentModal(currentResidentId);
+}
 </script>
 
-<!-- ADD TASK MODAL -->
+<!-- RESIDENT MODAL -->
+<div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3 id="res-modal-title">Add resident</h3>
+      <button class="modal-close" onclick="closeResidentModal()">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Full name</label>
+        <input type="text" id="res-name" placeholder="e.g. Betty Divers"/>
+      </div>
+      <div class="form-group">
+        <label>Preferred name</label>
+        <input type="text" id="res-preferred" placeholder="e.g. Betty"/>
+      </div>
+      <div class="form-group">
+        <label>Room / bed</label>
+        <input type="text" id="res-room" placeholder="e.g. Room 1"/>
+      </div>
+      <div class="form-group">
+        <label>Date of birth</label>
+        <input type="date" id="res-dob"/>
+      </div>
+      <div class="form-group">
+        <label>Admission date</label>
+        <input type="date" id="res-admission"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Primary diagnosis</label>
+        <input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Allergies</label>
+        <input type="text" id="res-allergies" placeholder="e.g. Penicillin, Sulfa"/>
+      </div>
+      <div class="form-group">
+        <label>LIC 601 on file?</label>
+        <select id="res-lic601">
+          <option value="no">No — missing</option>
+          <option value="yes">Yes — on file</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>LIC 602 on file?</label>
+        <select id="res-lic602">
+          <option value="no">No — missing</option>
+          <option value="yes">Yes — on file</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ISP on file?</label>
+        <select id="res-isp">
+          <option value="no">No — missing</option>
+          <option value="yes">Yes — on file</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ISP last reviewed</label>
+        <input type="date" id="res-isp-date"/>
+      </div>
+    </div>
+    <div class="error-msg" id="res-modal-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeResidentModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveResident()">Save resident</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESIDENT DETAIL MODAL -->
+<div class="modal-overlay" id="resident-detail-modal" onclick="if(event.target===this)closeResidentDetail()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="rd-name">Resident</h3>
+      <button class="modal-close" onclick="closeResidentDetail()">×</button>
+    </div>
+    <div id="rd-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeResidentDetail()">Close</button>
+      <button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button>
+    </div>
+  </div>
+</div>
+ 
+ <!-- ADD TASK MODAL -->
 <div class="modal-overlay" id="add-task-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-header">
