@@ -1666,29 +1666,28 @@ async function saveNote() {
 }
 
 // Init — handle Google OAuth callback + existing session
+
 (async ()=>{
-  // Check for existing session FIRST
   const {data:{session}} = await sb.auth.getSession();
-  if(session){
+  if(session && session.user){
     currentUser = session.user;
     await loadApp();
   } else {
-    // Not logged in — show landing page
     document.getElementById('nav-public').style.display='flex';
     document.getElementById('nav-app').style.display='none';
     showPage('landing');
   }
-  // Show body after auth check — no flash
   document.body.style.visibility='visible';
 
-  // Listen for auth state changes (catches Google OAuth redirect)
   sb.auth.onAuthStateChange(async (event, session) => {
-    if(event === 'SIGNED_IN' && session && !currentUser) {
-      currentUser = session.user;
-      await loadApp();
+    if(event === 'SIGNED_IN' && session && session.user){
+      if(!currentUser){
+        currentUser = session.user;
+        await loadApp();
+      }
       document.body.style.visibility='visible';
     }
-    if(event === 'SIGNED_OUT') {
+    if(event === 'SIGNED_OUT'){
       currentUser = null;
       currentFacility = null;
       document.getElementById('nav-app').style.display='none';
