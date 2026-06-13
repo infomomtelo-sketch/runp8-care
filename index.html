@@ -7,7 +7,6 @@
 <meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
   :root{
     --teal:#0F6E56;--teal-light:#E1F5EE;--teal-mid:#1D9E75;
     --amber:#BA7517;--amber-light:#FAEEDA;
@@ -1661,13 +1660,22 @@ const REQUIREMENT_RESOURCES = {
 };
 
 function getResourceForTask(title) {
-  // Try exact match first
+  if(!title) return null;
+  const t = title.toLowerCase();
+  // Exact match
   if(REQUIREMENT_RESOURCES[title]) return REQUIREMENT_RESOURCES[title];
-  // Try partial match
-  const key = Object.keys(REQUIREMENT_RESOURCES).find(k => 
-    title.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(title.toLowerCase())
+  // Full partial match
+  const key = Object.keys(REQUIREMENT_RESOURCES).find(k =>
+    t.includes(k.toLowerCase()) || k.toLowerCase().includes(t)
   );
-  return key ? REQUIREMENT_RESOURCES[key] : null;
+  if(key) return REQUIREMENT_RESOURCES[key];
+  // Keyword match — find resource where any significant word matches
+  const words = t.split(/\s+/).filter(w => w.length > 4);
+  const kwKey = Object.keys(REQUIREMENT_RESOURCES).find(k => {
+    const kl = k.toLowerCase();
+    return words.some(w => kl.includes(w));
+  });
+  return kwKey ? REQUIREMENT_RESOURCES[kwKey] : null;
 }
 
 function toggleResource(id) {
