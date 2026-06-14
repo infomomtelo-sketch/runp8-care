@@ -82,7 +82,7 @@
   .error-msg.show{display:block}
 
   /* ===== APP SHELL ===== */
-  .app-shell{display:flex;min-height:calc(100vh - 65px)}
+  .app-shell{display:flex;min-height:calc(100vh - 65px);background:var(--gray-bg)}
   .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
   .sidebar-facility{font-size:12px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
   .sidebar-facility strong{display:block;font-size:14px;color:var(--text);font-weight:600}
@@ -90,7 +90,7 @@
   .nav-item:hover{background:var(--white);color:var(--text)}
   .nav-item.active{background:var(--white);color:var(--teal);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.06)}
   .nav-item svg{width:18px;height:18px;flex-shrink:0}
-  .main-content{flex:1;padding:2rem;overflow-y:auto;min-width:0}
+  .main-content{flex:1;padding:2rem;overflow-y:auto;min-width:0;max-width:1100px;margin:0 auto;width:100%;background:var(--gray-bg)}
   .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
   .page-header h1{font-size:1.4rem;font-weight:700}
 
@@ -856,12 +856,39 @@
       <div id="tab-staff" style="display:none">
         <div class="page-header">
           <h1>Staff & certifications</h1>
-          <button class="btn btn-primary" style="font-size:13px">+ Add staff</button>
+          <button class="btn btn-primary" style="font-size:13px" onclick="openStaffModal()">+ Add staff</button>
         </div>
-        <div class="empty" style="margin-top:40px">
-          <div style="font-size:2rem;margin-bottom:12px">👥</div>
-          <div style="font-weight:500;margin-bottom:6px">No staff added yet</div>
-          <div>Add caregivers to track certifications, TB tests, CPR, and training hours</div>
+
+        <!-- Expiry alert banner -->
+        <div id="staff-expiry-banner" style="margin-bottom:16px"></div>
+
+        <!-- Summary bar -->
+        <div id="staff-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="staff-count">0</div>
+            <div style="font-size:11px;color:var(--text2)">Active staff</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="staff-certs-ok">0</div>
+            <div style="font-size:11px;color:var(--text2)">Fully certified</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--amber)" id="staff-certs-soon">0</div>
+            <div style="font-size:11px;color:var(--text2)">Expiring soon</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="staff-certs-expired">0</div>
+            <div style="font-size:11px;color:var(--text2)">Expired</div>
+          </div>
+        </div>
+
+        <div id="staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
+
+        <div id="staff-empty" class="empty" style="margin-top:40px">
+          <div style="font-size:2.5rem;margin-bottom:12px">👥</div>
+          <div style="font-weight:600;margin-bottom:6px">No staff added yet</div>
+          <div style="margin-bottom:20px">Add caregivers to track certifications, TB tests, CPR, and training hours</div>
+          <button class="btn btn-primary" onclick="openStaffModal()">+ Add first staff member</button>
         </div>
       </div>
 
@@ -963,6 +990,7 @@ function switchTab(name) {
   if(name==='dashboard') refreshDashboard();
   if(name==='checklist'){ renderExpiryBanner(); renderChecklist(activeFilter); }
   if(name==='residents') loadResidents();
+  if(name==='staff') loadStaff();
 
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1397,6 +1425,15 @@ try { REQUIREMENT_RESOURCES = {
     steps: 'Complete before or at time of admission. Assesses resident needs, health status, and appropriateness for RCFE placement.',
     note: 'Keep original in resident file. Required for every resident regardless of length of stay.'
   },
+  'Individualized Service Plan (ISP)': {
+    what: 'ISP — care plan describing services, needs, and preferences for each resident',
+    where: [
+      {name:'Title22 ISP template', address:'Use the resident notes field to draft, then print for signature', phone:'', cost:'Included with Title22'},
+      {name:'CDSS RCFE regulations reference', address:'cdss.ca.gov/inforesources/community-care-licensing', phone:'', cost:'Free'},
+    ],
+    steps: 'Complete within 30 days of admission based on the LIC 601/602 assessments. Review and update annually, or sooner after any significant change in the resident condition.',
+    note: 'No state form — the ISP is facility-created but must be individualized for each resident and kept current.'
+  },
 }; } catch(e){ console.warn('Resources load error:', e); }
 
 function getResourceForTask(title) {
@@ -1413,6 +1450,45 @@ function toggleResource(id) {
   const el = document.getElementById('res-'+id);
   if(!el) return;
   el.style.display = el.style.display==='none'?'block':'none';
+}
+
+// Map short labels (used in staff/resident cards) to REQUIREMENT_RESOURCES keys
+const LABEL_TO_RESOURCE_KEY = {
+  'TB Test': 'Annual TB Test',
+  'CPR': 'CPR Certification Current',
+  'First Aid': 'First Aid Certification Current',
+  'LiveScan': 'LiveScan Background Check Cleared',
+  'Mandated Reporter': 'Mandated Reporter Training',
+  'Food Handler': 'Food Handler Certification Current',
+  '16hr Initial Training': 'RCFE Administrator Certificate Current',
+  'LIC 601': 'Pre-Admission Appraisal (LIC 601)',
+  'LIC 602': 'Physician Report (LIC 602)',
+  'ISP': 'Individualized Service Plan (ISP)',
+};
+
+function buildResourcePanel(res, panelId) {
+  if(!res) return '';
+  return `
+    <div id="${panelId}" style="display:none;border-top:1px solid var(--border);padding:12px;background:var(--gray-bg);border-radius:0 0 var(--radius) var(--radius);margin-top:8px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">📍 Where to get this · How much it costs</div>
+      ${res.where.map(w=>`
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${w.name}</div>
+            ${w.address?`<div style="font-size:12px;color:var(--text2);margin-top:2px">📌 ${w.address}</div>`:''}
+            ${w.phone?`<div style="font-size:12px;color:var(--teal);margin-top:2px">📞 ${w.phone}</div>`:''}
+          </div>
+          ${w.cost?`<div style="background:var(--green-light);color:var(--green);font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap">${w.cost}</div>`:''}
+        </div>`).join('')}
+      ${res.steps?`<div style="background:var(--teal-light);border-radius:8px;padding:10px 12px;margin-top:4px"><div style="font-size:11px;font-weight:600;color:var(--teal);margin-bottom:4px">HOW TO COMPLETE</div><div style="font-size:12px;color:var(--text)">${res.steps}</div></div>`:''}
+      ${res.note?`<div style="background:var(--amber-light);border-radius:8px;padding:8px 12px;margin-top:8px"><div style="font-size:12px;color:var(--amber)">⚠️ ${res.note}</div></div>`:''}
+    </div>`;
+}
+
+function getResourceByLabel(label) {
+  const key = LABEL_TO_RESOURCE_KEY[label];
+  if(key && REQUIREMENT_RESOURCES[key]) return REQUIREMENT_RESOURCES[key];
+  return getResourceForTask(label);
 }
 
 function renderChecklist(filter) {
@@ -1731,9 +1807,15 @@ function renderResidents() {
     const age = r.dob ? Math.floor((new Date() - new Date(r.dob)) / (365.25*24*60*60*1000)) : null;
     const admitDays = r.admission_date ? Math.floor((new Date() - new Date(r.admission_date)) / (24*60*60*1000)) : null;
 
-    const docBadge = (label, val) => val === 'yes'
-      ? `<span class="badge badge-green">${label} ✓</span>`
-      : `<span class="badge badge-red">${label} ✗</span>`;
+    const RES_FORM_LINKS = {
+      'LIC 601': 'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC601.pdf',
+      'LIC 602': 'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC602.pdf',
+    };
+    const docBadge = (label, val) => {
+      if(val === 'yes') return `<span class="badge badge-green">${label} ✓</span>`;
+      const link = RES_FORM_LINKS[label];
+      return `<span class="badge badge-red" style="display:inline-flex;align-items:center;gap:4px">${label} ✗${link?`<a href="${link}" target="_blank" onclick="event.stopPropagation()" style="color:inherit;text-decoration:underline;font-weight:600">📥</a>`:''}</span>`;
+    };
 
     const ispWarning = () => {
       if(!r.isp_review_date) return '';
@@ -1746,6 +1828,14 @@ function renderResidents() {
     const initials = r.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const colors = ['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
     const color = colors[r.name.charCodeAt(0) % colors.length];
+
+    const ispBadge = () => {
+      if(r.isp === 'yes') return `<span class="badge badge-green">ISP ✓</span>`;
+      const res = getResourceByLabel('ISP');
+      const panelId = 'rres-'+r.id.replace(/-/g,'_')+'-isp';
+      const btn = res ? `<button onclick="event.stopPropagation();toggleResource('${panelId}')" style="background:none;border:none;cursor:pointer;color:inherit;font-size:11px;padding:0 0 0 4px">📍</button>` : '';
+      return `<span class="badge badge-red" style="display:inline-flex;align-items:center">ISP ✗${btn}</span>${res?buildResourcePanel(res, panelId):''}`;
+    };
 
     return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer;transition:box-shadow .15s" 
       onclick="viewResident('${r.id}')"
@@ -1765,7 +1855,7 @@ function renderResidents() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         ${docBadge('LIC 601', r.lic601)}
         ${docBadge('LIC 602', r.lic602)}
-        ${docBadge('ISP', r.isp)}
+        ${ispBadge()}
       </div>
       ${ispWarning()}
       ${admitDays !== null ? `<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()} · ${admitDays} days</div>` : ''}
@@ -1839,9 +1929,15 @@ function viewResident(id) {
   document.getElementById('rd-name').textContent = r.name + (r.preferred_name ? ' "'+r.preferred_name+'"' : '');
 
   const age = r.dob ? Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)) : null;
-  const badge = (label, val) => val==='yes'
-    ? `<span class="badge badge-green">${label} ✓ on file</span>`
-    : `<span class="badge badge-red">${label} ✗ missing</span>`;
+  const RD_FORM_LINKS = {
+    'LIC 601': 'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC601.pdf',
+    'LIC 602': 'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC602.pdf',
+  };
+  const badge = (label, val) => {
+    if(val==='yes') return `<span class="badge badge-green">${label} ✓ on file</span>`;
+    const link = RD_FORM_LINKS[label];
+    return `<span class="badge badge-red" style="display:inline-flex;align-items:center;gap:4px">${label} ✗ missing${link?` <a href="${link}" target="_blank" style="color:inherit;text-decoration:underline;font-weight:600">📥 Get form</a>`:''}</span>`;
+  };
 
   document.getElementById('rd-body').innerHTML = `
     <div style="display:grid;gap:14px">
@@ -1873,6 +1969,301 @@ function closeResidentDetail() {
 function editCurrentResident() {
   closeResidentDetail();
   openResidentModal(currentResidentId);
+}
+
+// ===== STAFF =====
+let staffList = [];
+let currentStaffId = null;
+
+const ROLE_LABELS = {
+  caregiver:'Caregiver', administrator:'Administrator', cook:'Cook',
+  housekeeping:'Housekeeping', driver:'Driver', other:'Other'
+};
+
+async function loadStaff() {
+  if(!currentFacility) return;
+  const {data} = await sb.from('staff').select('*').eq('facility_id', currentFacility.id).order('name');
+  staffList = data || [];
+  renderStaff();
+}
+
+function staffCertStatus(s) {
+  // Returns {expired:[], soon:[], ok:true/false}
+  const today = new Date().toISOString().split('T')[0];
+  const in30 = new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+
+  const checks = [];
+  if(s.tb_test_due) checks.push({label:'TB Test', date:s.tb_test_due});
+  if(s.cpr_cert_expiry) checks.push({label:'CPR', date:s.cpr_cert_expiry});
+  if(s.first_aid_cert_expiry) checks.push({label:'First Aid', date:s.first_aid_cert_expiry});
+  if(s.food_handler_cert_expiry) checks.push({label:'Food Handler', date:s.food_handler_cert_expiry});
+
+  const expired = checks.filter(c=>c.date<today);
+  const soon = checks.filter(c=>c.date>=today&&c.date<=in30);
+
+  const missingDocs = [];
+  if(s.livescan_cleared!=='yes') missingDocs.push('LiveScan');
+  if(s.mandated_reporter_completed!=='yes') missingDocs.push('Mandated Reporter');
+  if(s.initial_training_completed!=='yes') missingDocs.push('16hr Training');
+
+  return {expired, soon, missingDocs, checks};
+}
+
+function renderStaffExpiryBanner() {
+  const banner = document.getElementById('staff-expiry-banner');
+  if(!banner) return;
+
+  let allExpired = [];
+  let allSoon = [];
+  staffList.filter(s=>s.active==='yes').forEach(s=>{
+    const status = staffCertStatus(s);
+    status.expired.forEach(c=>allExpired.push({...c, staff:s.name}));
+    status.soon.forEach(c=>allSoon.push({...c, staff:s.name}));
+  });
+
+  if(!allExpired.length && !allSoon.length) {
+    if(staffList.length===0){ banner.innerHTML=''; return; }
+    banner.innerHTML = `
+      <div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">✅</span>
+        <div>
+          <div style="font-weight:600;color:var(--green);font-size:14px">All staff certifications are current</div>
+          <div style="font-size:12px;color:var(--green);opacity:.8">No expiring certifications in the next 30 days</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  if(allExpired.length) {
+    html += `<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:18px">🚨</span>
+        <div style="font-weight:700;color:var(--red);font-size:14px">${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${allExpired.map(c=>`
+          <div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px">
+            <span style="color:var(--red);font-weight:600">⚠ ${c.staff} — ${c.label}</span>
+            <span style="color:var(--text2);margin-left:6px">Expired ${c.date}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(allSoon.length) {
+    html += `<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:18px">⏰</span>
+        <div style="font-weight:700;color:var(--amber);font-size:14px">${allSoon.length} certification${allSoon.length>1?'s':''} expiring within 30 days</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${allSoon.map(c=>`
+          <div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px">
+            <span style="color:var(--amber);font-weight:600">📋 ${c.staff} — ${c.label}</span>
+            <span style="color:var(--text2);margin-left:6px">${c.date}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  banner.innerHTML = html;
+}
+
+function renderStaff() {
+  const grid = document.getElementById('staff-grid');
+  const empty = document.getElementById('staff-empty');
+  const summary = document.getElementById('staff-summary');
+
+  renderStaffExpiryBanner();
+
+  const active = staffList.filter(s=>s.active==='yes');
+
+  if(!staffList.length) {
+    grid.style.display = 'none';
+    empty.style.display = 'block';
+    summary.style.display = 'none';
+    return;
+  }
+
+  grid.style.display = 'grid';
+  empty.style.display = 'none';
+  summary.style.display = 'flex';
+
+  let certsOk=0, certsSoon=0, certsExpired=0;
+  active.forEach(s=>{
+    const status = staffCertStatus(s);
+    if(status.expired.length) certsExpired++;
+    else if(status.soon.length || status.missingDocs.length) certsSoon++;
+    else certsOk++;
+  });
+
+  document.getElementById('staff-count').textContent = active.length;
+  document.getElementById('staff-certs-ok').textContent = certsOk;
+  document.getElementById('staff-certs-soon').textContent = certsSoon;
+  document.getElementById('staff-certs-expired').textContent = certsExpired;
+
+  grid.innerHTML = staffList.map(s => {
+    const status = staffCertStatus(s);
+    const initials = s.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const colors = ['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
+    const color = colors[s.name.charCodeAt(0) % colors.length];
+
+    let statusBadge = '';
+    if(s.active!=='yes') statusBadge = '<span class="badge badge-gray">Inactive</span>';
+    else if(status.expired.length) statusBadge = `<span class="badge badge-red">${status.expired.length} expired</span>`;
+    else if(status.soon.length || status.missingDocs.length) statusBadge = '<span class="badge badge-amber">Action needed</span>';
+    else statusBadge = '<span class="badge badge-green">✓ Compliant</span>';
+
+    const certRows = [
+      {label:'TB Test', date:s.tb_test_due, done:!!s.tb_test_date},
+      {label:'CPR', date:s.cpr_cert_expiry, done:!!s.cpr_cert_date},
+      {label:'First Aid', date:s.first_aid_cert_expiry, done:!!s.first_aid_cert_date},
+      {label:'LiveScan', done:s.livescan_cleared==='yes', noDate:true},
+      {label:'Mandated Reporter', done:s.mandated_reporter_completed==='yes', noDate:true},
+      {label:'16hr Initial Training', done:s.initial_training_completed==='yes', noDate:true},
+    ];
+
+    const today = new Date().toISOString().split('T')[0];
+    const in30 = new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+
+    const certHtml = certRows.map((c,idx)=>{
+      let icon, color2, text, needsAction=false;
+      if(c.noDate) {
+        icon = c.done ? '✓' : '✗';
+        color2 = c.done ? 'var(--green)' : 'var(--red)';
+        text = c.done ? 'Complete' : 'Missing';
+        needsAction = !c.done;
+      } else if(!c.date) {
+        icon = '—'; color2='var(--text2)'; text='Not set';
+        needsAction = true;
+      } else if(c.date < today) {
+        icon='⚠'; color2='var(--red)'; text='Expired '+c.date;
+        needsAction = true;
+      } else if(c.date <= in30) {
+        icon='⏰'; color2='var(--amber)'; text='Due '+c.date;
+        needsAction = true;
+      } else {
+        icon='✓'; color2='var(--green)'; text='Valid until '+c.date;
+      }
+
+      const res = needsAction ? getResourceByLabel(c.label) : null;
+      const panelId = 'sres-'+s.id.replace(/-/g,'_')+'-'+idx;
+      const resBtn = res ? `<button onclick="event.stopPropagation();toggleResource('${panelId}')" style="background:var(--teal-light);border:1px solid var(--teal);border-radius:6px;cursor:pointer;font-size:10px;color:var(--teal);padding:1px 6px;font-weight:500;margin-left:6px">📍</button>` : '';
+      const resPanel = res ? buildResourcePanel(res, panelId) : '';
+
+      return `<div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0">
+          <span style="color:var(--text2)">${c.label}</span>
+          <span style="color:${color2};font-weight:500;display:flex;align-items:center">${icon} ${text}${resBtn}</span>
+        </div>
+        ${resPanel}
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!=='yes'?'opacity:.5':''}">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div style="font-size:12px;color:var(--text2)">${ROLE_LABELS[s.role]||s.role||'Staff'}</div>
+        </div>
+        ${statusBadge}
+      </div>
+      <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+        ${certHtml}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${s.id}')">Edit</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openStaffModal(staffId) {
+  currentStaffId = staffId || null;
+  const s = staffId ? staffList.find(x=>x.id===staffId) : null;
+  document.getElementById('staff-modal-title').textContent = s ? 'Edit staff member' : 'Add staff member';
+  document.getElementById('staff-name').value = s?.name || '';
+  document.getElementById('staff-role').value = s?.role || 'caregiver';
+  document.getElementById('staff-hire-date').value = s?.hire_date || '';
+  document.getElementById('staff-phone').value = s?.phone || '';
+  document.getElementById('staff-active').value = s?.active || 'yes';
+
+  document.getElementById('staff-tb-date').value = s?.tb_test_date || '';
+  document.getElementById('staff-tb-due').value = s?.tb_test_due || '';
+
+  document.getElementById('staff-cpr-date').value = s?.cpr_cert_date || '';
+  document.getElementById('staff-cpr-expiry').value = s?.cpr_cert_expiry || '';
+
+  document.getElementById('staff-firstaid-date').value = s?.first_aid_cert_date || '';
+  document.getElementById('staff-firstaid-expiry').value = s?.first_aid_cert_expiry || '';
+
+  document.getElementById('staff-livescan').value = s?.livescan_cleared || 'no';
+  document.getElementById('staff-livescan-date').value = s?.livescan_date || '';
+
+  document.getElementById('staff-mandated').value = s?.mandated_reporter_completed || 'no';
+  document.getElementById('staff-mandated-date').value = s?.mandated_reporter_date || '';
+
+  document.getElementById('staff-foodhandler-expiry').value = s?.food_handler_cert_expiry || '';
+
+  document.getElementById('staff-training').value = s?.initial_training_completed || 'no';
+  document.getElementById('staff-training-hours').value = s?.initial_training_hours || '';
+
+  document.getElementById('staff-modal-error').classList.remove('show');
+  document.getElementById('staff-modal').classList.add('open');
+}
+
+function closeStaffModal() {
+  document.getElementById('staff-modal').classList.remove('open');
+}
+
+async function saveStaff() {
+  const name = document.getElementById('staff-name').value.trim();
+  const err = document.getElementById('staff-modal-error');
+  if(!name) { err.textContent='Name is required.'; err.classList.add('show'); return; }
+
+  const payload = {
+    facility_id: currentFacility.id,
+    name,
+    role: document.getElementById('staff-role').value,
+    hire_date: document.getElementById('staff-hire-date').value || null,
+    phone: document.getElementById('staff-phone').value.trim() || null,
+    active: document.getElementById('staff-active').value,
+
+    tb_test_date: document.getElementById('staff-tb-date').value || null,
+    tb_test_due: document.getElementById('staff-tb-due').value || null,
+
+    cpr_cert_date: document.getElementById('staff-cpr-date').value || null,
+    cpr_cert_expiry: document.getElementById('staff-cpr-expiry').value || null,
+
+    first_aid_cert_date: document.getElementById('staff-firstaid-date').value || null,
+    first_aid_cert_expiry: document.getElementById('staff-firstaid-expiry').value || null,
+
+    livescan_cleared: document.getElementById('staff-livescan').value,
+    livescan_date: document.getElementById('staff-livescan-date').value || null,
+
+    mandated_reporter_completed: document.getElementById('staff-mandated').value,
+    mandated_reporter_date: document.getElementById('staff-mandated-date').value || null,
+
+    food_handler_cert_expiry: document.getElementById('staff-foodhandler-expiry').value || null,
+
+    initial_training_completed: document.getElementById('staff-training').value,
+    initial_training_hours: parseFloat(document.getElementById('staff-training-hours').value) || 0,
+  };
+
+  let error;
+  if(currentStaffId) {
+    const {error:e} = await sb.from('staff').update(payload).eq('id', currentStaffId);
+    error = e;
+    if(!e) { const idx = staffList.findIndex(s=>s.id===currentStaffId); if(idx>-1) staffList[idx]={...staffList[idx],...payload}; }
+  } else {
+    const {data, error:e} = await sb.from('staff').insert(payload).select().single();
+    error = e;
+    if(!e && data) staffList.push(data);
+  }
+
+  if(error) { err.textContent = error.message; err.classList.add('show'); return; }
+  closeStaffModal();
+  renderStaff();
 }
 </script>
 
@@ -2011,6 +2402,133 @@ function editCurrentResident() {
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeResidentDetail()">Close</button>
       <button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="staff-modal-title">Add staff member</h3>
+      <button class="modal-close" onclick="closeStaffModal()">×</button>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Full name</label>
+        <input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/>
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="staff-role">
+          <option value="caregiver">Caregiver</option>
+          <option value="administrator">Administrator</option>
+          <option value="cook">Cook</option>
+          <option value="housekeeping">Housekeeping</option>
+          <option value="driver">Driver</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Hire date</label>
+        <input type="date" id="staff-hire-date"/>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" id="staff-phone" placeholder="(559) 555-0100"/>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="staff-active">
+          <option value="yes">Active</option>
+          <option value="no">Inactive / Terminated</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">TB Test</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label>Last test date</label>
+        <input type="date" id="staff-tb-date"/>
+      </div>
+      <div class="form-group">
+        <label>Next due date</label>
+        <input type="date" id="staff-tb-due"/>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">CPR Certification</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label>Certified on</label>
+        <input type="date" id="staff-cpr-date"/>
+      </div>
+      <div class="form-group">
+        <label>Expires on</label>
+        <input type="date" id="staff-cpr-expiry"/>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">First Aid Certification</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label>Certified on</label>
+        <input type="date" id="staff-firstaid-date"/>
+      </div>
+      <div class="form-group">
+        <label>Expires on</label>
+        <input type="date" id="staff-firstaid-expiry"/>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Background & training</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label>LiveScan cleared?</label>
+        <select id="staff-livescan">
+          <option value="no">No — pending</option>
+          <option value="yes">Yes — cleared</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>LiveScan date</label>
+        <input type="date" id="staff-livescan-date"/>
+      </div>
+      <div class="form-group">
+        <label>Mandated Reporter training</label>
+        <select id="staff-mandated">
+          <option value="no">No — incomplete</option>
+          <option value="yes">Yes — completed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Completed on</label>
+        <input type="date" id="staff-mandated-date"/>
+      </div>
+      <div class="form-group">
+        <label>Food Handler card expires</label>
+        <input type="date" id="staff-foodhandler-expiry"/>
+      </div>
+      <div class="form-group">
+        <label>16hr initial training</label>
+        <select id="staff-training">
+          <option value="no">No — incomplete</option>
+          <option value="yes">Yes — completed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Training hours logged</label>
+        <input type="number" id="staff-training-hours" placeholder="0" step="0.5"/>
+      </div>
+    </div>
+
+    <div class="error-msg" id="staff-modal-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaff()">Save staff member</button>
     </div>
   </div>
 </div>
