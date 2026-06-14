@@ -1815,7 +1815,45 @@ document.addEventListener('click', function(e) {
   if(dropdown && input && !dropdown.contains(e.target) && e.target!==input) {
     dropdown.classList.remove('open');
   }
+  const roleDropdown = document.getElementById('role-options-dropdown');
+  const roleInput = document.getElementById('staff-role-search');
+  if(roleDropdown && roleInput && !roleDropdown.contains(e.target) && e.target!==roleInput) {
+    roleDropdown.classList.remove('open');
+  }
 });
+
+function filterRoleOptions(query) {
+  const dropdown = document.getElementById('role-options-dropdown');
+  const q = (query||'').trim().toLowerCase();
+
+  let matches = ROLE_OPTIONS.filter(r => !q || r.label.toLowerCase().includes(q));
+
+  let html = matches.map(r => `
+    <div class="searchable-option" onclick="selectRoleOption('${r.value}', '${r.label.replace(/'/g,"\\'")}')">
+      ${r.label}
+    </div>`).join('');
+
+  if(q && !ROLE_OPTIONS.some(r=>r.label.toLowerCase()===q)) {
+    html += `<div class="searchable-option-custom" onclick="selectCustomRole('${query.replace(/'/g,"\\'")}')">+ Use custom role: "${query}"</div>`;
+  }
+
+  dropdown.innerHTML = html || '<div class="searchable-option-meta" style="padding:10px 12px">No matching roles</div>';
+  dropdown.classList.add('open');
+}
+
+function selectRoleOption(value, label) {
+  document.getElementById('staff-role').value = value;
+  document.getElementById('staff-role-search').value = label;
+  document.getElementById('role-options-dropdown').classList.remove('open');
+}
+
+function selectCustomRole(text) {
+  const slug = text.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  document.getElementById('staff-role').value = slug || 'other';
+  document.getElementById('staff-role-search').value = text.trim();
+  ROLE_LABELS[slug] = text.trim();
+  document.getElementById('role-options-dropdown').classList.remove('open');
+}
 
 function closeModal() {
   document.getElementById('add-task-modal').classList.remove('open');
@@ -2107,9 +2145,15 @@ let staffList = [];
 let currentStaffId = null;
 
 const ROLE_LABELS = {
-  caregiver:'Caregiver', administrator:'Administrator', cook:'Cook',
-  housekeeping:'Housekeeping', driver:'Driver', other:'Other'
+  caregiver:'Caregiver', lead_caregiver:'Lead Caregiver', night_caregiver:'Night Caregiver',
+  administrator:'Administrator', assistant_administrator:'Assistant Administrator',
+  med_tech:'Medication Technician', cook:'Cook', kitchen_aide:'Kitchen Aide',
+  housekeeping:'Housekeeping', laundry:'Laundry', driver:'Driver',
+  activities_director:'Activities Director', maintenance:'Maintenance',
+  office_admin:'Office Administrator', other:'Other'
 };
+
+const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value,label])=>({value,label}));
 
 async function loadStaff() {
   if(!currentFacility) return;
@@ -2314,7 +2358,9 @@ function openStaffModal(staffId) {
   const s = staffId ? staffList.find(x=>x.id===staffId) : null;
   document.getElementById('staff-modal-title').textContent = s ? 'Edit staff member' : 'Add staff member';
   document.getElementById('staff-name').value = s?.name || '';
-  document.getElementById('staff-role').value = s?.role || 'caregiver';
+  const roleVal = s?.role || 'caregiver';
+  document.getElementById('staff-role').value = roleVal;
+  document.getElementById('staff-role-search').value = ROLE_LABELS[roleVal] || roleVal;
   document.getElementById('staff-hire-date').value = s?.hire_date || '';
   document.getElementById('staff-phone').value = s?.phone || '';
   document.getElementById('staff-active').value = s?.active || 'yes';
@@ -2555,16 +2601,14 @@ async function saveStaff() {
         <label>Full name</label>
         <input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/>
       </div>
-      <div class="form-group">
+      <div class="form-group searchable-select">
         <label>Role</label>
-        <select id="staff-role">
-          <option value="caregiver">Caregiver</option>
-          <option value="administrator">Administrator</option>
-          <option value="cook">Cook</option>
-          <option value="housekeeping">Housekeeping</option>
-          <option value="driver">Driver</option>
-          <option value="other">Other</option>
-        </select>
+        <input type="text" id="staff-role-search" placeholder="Search or type a role..." 
+          oninput="filterRoleOptions(this.value)" 
+          onfocus="filterRoleOptions(this.value)"
+          autocomplete="off"/>
+        <input type="hidden" id="staff-role" value="caregiver"/>
+        <div class="searchable-dropdown" id="role-options-dropdown"></div>
       </div>
       <div class="form-group">
         <label>Hire date</label>
