@@ -11,7 +11,7 @@
   :root{
     --teal:#0F6E56;--teal-light:#E1F5EE;--teal-mid:#1D9E75;
     --amber:#BA7517;--amber-light:#FAEEDA;
-    --red:#A32D2D;--red-light:#FCEBEB; 
+    --red:#A32D2D;--red-light:#FCEBEB;
     --green:#3B6D11;--green-light:#EAF3DE;
     --gray:#5F5E5A;--gray-light:#F1EFE8;--gray-bg:#F8F7F4;
     --text:#1a1a18;--text2:#5F5E5A;--border:#e0ddd6;
@@ -791,7 +791,8 @@
       <div id="tab-checklist" style="display:none">
         <div class="page-header">
           <h1>Title 22 compliance</h1>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline" style="font-size:13px" onclick="recalculateDueDates()" title="Recalculate due dates based on each item's frequency">🔄 Recalculate dates</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="printChecklist()">🖨 Print report</button>
             <button class="btn btn-primary" style="font-size:13px" onclick="addCustomTask()">+ Add task</button>
           </div>
@@ -1080,25 +1081,79 @@ async function seedComplianceTasks(facilityId) {
   const facilityType = currentFacility ? currentFacility.facility_type : 'rcfe';
   const {data:items} = await sb.from('checklist_items').select('*').eq('facility_type', facilityType);
   if(!items) return;
+  const highPriority = ['daily','on_hire','on_admission'];
   const tasks = items.map(item => ({
     facility_id: facilityId,
     checklist_item_id: item.id,
     title: item.title,
     category: item.category,
     completed: false,
-    priority: item.frequency==='daily'?'high':'medium',
+    priority: highPriority.includes(item.frequency) ? 'high' : 'medium',
     due_date: getDefaultDueDate(item.frequency)
   }));
   await sb.from('compliance_tasks').insert(tasks);
 }
 
+async function recalculateDueDates() {
+  if(!currentFacility) return;
+  if(!confirm('This will recalculate due dates for all incomplete tasks based on their frequency (daily, weekly, monthly, annual, etc). Completed tasks will not be changed. Continue?')) return;
+
+  const highPriority = ['daily','on_hire','on_admission'];
+  let updated = 0;
+
+  for(const task of complianceTasks) {
+    if(task.completed) continue;
+    const item = checklistItems.find(i=>i.id===task.checklist_item_id);
+    if(!item) continue;
+    const newDue = getDefaultDueDate(item.frequency);
+    const newPriority = highPriority.includes(item.frequency) ? 'high' : 'medium';
+    if(task.due_date !== newDue) {
+      await sb.from('compliance_tasks').update({due_date:newDue, priority:newPriority}).eq('id',task.id);
+      task.due_date = newDue;
+      task.priority = newPriority;
+      updated++;
+    }
+  }
+
+  alert(`Updated due dates for ${updated} item${updated===1?'':'s'}.`);
+  renderExpiryBanner();
+  renderChecklist(activeFilter);
+  refreshDashboard();
+}
+
 function getDefaultDueDate(freq) {
   const d = new Date();
-  if(freq==='daily') d.setDate(d.getDate()+1);
-  else if(freq==='weekly') d.setDate(d.getDate()+7);
-  else if(freq==='monthly') d.setMonth(d.getMonth()+1);
-  else if(freq==='annual') d.setFullYear(d.getFullYear()+1);
-  else d.setMonth(d.getMonth()+1);
+  switch(freq) {
+    case 'daily':
+      d.setDate(d.getDate()+1);
+      break;
+    case 'weekly':
+      d.setDate(d.getDate()+7);
+      break;
+    case 'monthly':
+      d.setMonth(d.getMonth()+1);
+      break;
+    case 'quarterly':
+      d.setMonth(d.getMonth()+3);
+      break;
+    case 'annual':
+      d.setFullYear(d.getFullYear()+1);
+      break;
+    case 'biennial':
+      d.setFullYear(d.getFullYear()+2);
+      break;
+    case 'on_hire':
+    case 'on_admission':
+      // These should already be done at hire/admission — flag as due now
+      // so new facilities see them as action items to complete right away
+      break;
+    case 'as_needed':
+      // No fixed schedule — set far out so it doesn't clutter alerts
+      d.setFullYear(d.getFullYear()+1);
+      break;
+    default:
+      d.setMonth(d.getMonth()+1);
+  }
   return d.toISOString().split('T')[0];
 }
 
