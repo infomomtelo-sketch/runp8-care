@@ -211,6 +211,18 @@
   .modal .form-group input,.modal .form-group select,.modal .form-group textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:inherit}
   .modal .form-group input:focus,.modal .form-group select:focus,.modal .form-group textarea:focus{border-color:var(--teal)}
   .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  /* SEARCHABLE DROPDOWN */
+  .searchable-select{position:relative}
+  .searchable-select input{width:100%}
+  .searchable-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--teal);border-radius:var(--radius);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+  .searchable-dropdown.open{display:block}
+  .searchable-option{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)}
+  .searchable-option:last-child{border-bottom:none}
+  .searchable-option:hover,.searchable-option.highlighted{background:var(--teal-light)}
+  .searchable-option-meta{font-size:11px;color:var(--text2);margin-top:2px}
+  .searchable-option-custom{padding:8px 12px;font-size:13px;cursor:pointer;background:var(--gray-bg);color:var(--teal);font-weight:500;border-top:1px solid var(--border)}
+  .searchable-option-custom:hover{background:var(--teal-light)}
+  .searchable-group-label{padding:6px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);background:var(--gray-bg);position:sticky;top:0}
   .tip{position:relative;display:inline;border-bottom:1px dashed var(--teal);cursor:help;color:var(--teal);font-weight:500}
   .tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;font-size:12px;font-weight:400;padding:6px 12px;border-radius:8px;white-space:nowrap;z-index:999;opacity:0;pointer-events:none;transition:opacity .2s;max-width:280px;white-space:normal;text-align:center;line-height:1.4}
   .tip:hover::after{opacity:1}
@@ -1740,12 +1752,75 @@ function addCustomTask() {
   document.getElementById('modal-task-title').value = '';
   document.getElementById('modal-task-notes').value = '';
   document.getElementById('modal-task-cat').value = 'facility';
+  selectedChecklistItemId = null;
   document.getElementById('add-task-modal').classList.add('open');
   setTimeout(()=>document.getElementById('modal-task-title').focus(), 100);
 }
 
+let selectedChecklistItemId = null;
+
+function filterTaskOptions(query) {
+  const dropdown = document.getElementById('task-options-dropdown');
+  const q = (query||'').trim().toLowerCase();
+
+  // Existing task titles already on this facility's checklist (avoid duplicates)
+  const existingTitles = new Set(complianceTasks.map(t=>t.title.toLowerCase()));
+
+  // Match against the master Title 22 checklist items
+  let matches = checklistItems.filter(item => {
+    if(existingTitles.has(item.title.toLowerCase())) return false;
+    if(!q) return true;
+    return item.title.toLowerCase().includes(q) || (item.regulation_reference||'').toLowerCase().includes(q);
+  }).slice(0, 8);
+
+  let html = '';
+  if(matches.length) {
+    html += `<div class="searchable-group-label">Title 22 requirements</div>`;
+    html += matches.map(item => `
+      <div class="searchable-option" onclick="selectTaskOption('${item.id}', '${item.title.replace(/'/g,"\\'")}', '${item.category}')">
+        <div>${item.title}</div>
+        <div class="searchable-option-meta">${item.regulation_reference||''} ${item.frequency?'· '+item.frequency:''}</div>
+      </div>`).join('');
+  }
+
+  if(q) {
+    html += `<div class="searchable-option-custom" onclick="selectCustomTask('${q.replace(/'/g,"\\'")}')">+ Use custom task: "${query}"</div>`;
+  } else if(!matches.length) {
+    html += `<div class="searchable-option-meta" style="padding:10px 12px">Type to search Title 22 requirements, or enter a custom task title</div>`;
+  }
+
+  dropdown.innerHTML = html;
+  dropdown.classList.add('open');
+}
+
+function selectTaskOption(itemId, title, category) {
+  document.getElementById('modal-task-title').value = title;
+  document.getElementById('modal-task-cat').value = category;
+  selectedChecklistItemId = itemId;
+  document.getElementById('task-options-dropdown').classList.remove('open');
+}
+
+function selectCustomTask(text) {
+  // Keep whatever the user typed (preserve original casing from input)
+  const input = document.getElementById('modal-task-title');
+  selectedChecklistItemId = null;
+  document.getElementById('task-options-dropdown').classList.remove('open');
+  input.focus();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('task-options-dropdown');
+  const input = document.getElementById('modal-task-title');
+  if(dropdown && input && !dropdown.contains(e.target) && e.target!==input) {
+    dropdown.classList.remove('open');
+  }
+});
+
 function closeModal() {
   document.getElementById('add-task-modal').classList.remove('open');
+  const dropdown = document.getElementById('task-options-dropdown');
+  if(dropdown) dropdown.classList.remove('open');
 }
 
 async function saveCustomTask() {
@@ -1757,6 +1832,7 @@ async function saveCustomTask() {
   closeModal();
   const {data} = await sb.from('compliance_tasks').insert({
     facility_id: currentFacility.id,
+    checklist_item_id: selectedChecklistItemId,
     title, category:cat,
     completed:false,
     due_date: due,
@@ -2329,9 +2405,13 @@ async function saveStaff() {
       <h3>Add compliance task</h3>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
-    <div class="form-group">
+    <div class="form-group searchable-select">
       <label>Task title</label>
-      <input type="text" id="modal-task-title" placeholder="e.g. Fire extinguisher inspected"/>
+      <input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or type a custom task..." 
+        oninput="filterTaskOptions(this.value)" 
+        onfocus="filterTaskOptions(this.value)"
+        autocomplete="off"/>
+      <div class="searchable-dropdown" id="task-options-dropdown"></div>
     </div>
     <div class="form-group">
       <label>Category</label>
