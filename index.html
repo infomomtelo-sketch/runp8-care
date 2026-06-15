@@ -1300,6 +1300,68 @@ function renderExpiryBanner() {
   const banner = document.getElementById('expiry-banner');
   if(!banner) return;
 
+  // SETUP MODE: detect a brand-new facility — many on_hire/on_admission items
+  // overdue from day one. Show a friendly setup banner instead of a scary wall.
+  const onHireOrAdmission = complianceTasks.filter(t=>{
+    if(t.completed) return false;
+    const item = checklistItems.find(i=>i.id===t.checklist_item_id);
+    return item && (item.frequency==='on_hire' || item.frequency==='on_admission');
+  });
+  const isLikelyNewFacility = expired.length>0 && onHireOrAdmission.length>0
+    && onHireOrAdmission.length >= Math.ceil(expired.length*0.5);
+
+  if(isLikelyNewFacility && !window.__setupBannerDismissed) {
+    banner.innerHTML = `
+      <div style="background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:14px">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
+          <span style="font-size:24px">👋</span>
+          <div>
+            <div style="font-weight:700;color:var(--teal);font-size:15px;margin-bottom:4px">New facility setup — this is normal</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.6">These items show as "overdue" because they are normally completed <strong>before someone is hired or admitted</strong>. If your current staff and residents already have these on file from before you started using Title22, mark them complete below so your dashboard reflects reality.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" style="font-size:13px" onclick="bulkCompleteOnHireItems()">✓ I already have these on file — mark complete</button>
+          <button class="btn btn-outline" style="font-size:13px" onclick="dismissSetupBanner()">I'll handle these one by one</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  renderRegularExpiryBanner(banner, expired, critical, warning, upcoming);
+}
+
+function dismissSetupBanner() {
+  window.__setupBannerDismissed = true;
+  renderExpiryBanner();
+}
+
+async function bulkCompleteOnHireItems() {
+  const today = new Date().toISOString().split('T')[0];
+  const onHireOrAdmission = complianceTasks.filter(t=>{
+    if(t.completed) return false;
+    const item = checklistItems.find(i=>i.id===t.checklist_item_id);
+    return item && (item.frequency==='on_hire' || item.frequency==='on_admission') && t.due_date && t.due_date<=today;
+  });
+
+  if(!onHireOrAdmission.length) return;
+  if(!confirm(`Mark ${onHireOrAdmission.length} item${onHireOrAdmission.length>1?'s':''} as complete? Only do this if these requirements are already on file for your current staff and residents.`)) return;
+
+  const now = new Date().toISOString();
+  for(const task of onHireOrAdmission) {
+    task.completed = true;
+    task.completed_at = now;
+    await sb.from('compliance_tasks').update({completed:true, completed_at:now}).eq('id',task.id);
+  }
+
+  window.__setupBannerDismissed = true;
+  renderExpiryBanner();
+  renderChecklist(activeFilter);
+  refreshDashboard();
+}
+
+function renderRegularExpiryBanner(banner, expired, critical, warning, upcoming) {
+
   if(!expired.length && !critical.length && !warning.length && !upcoming.length) {
     banner.innerHTML = `
       <div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px">
@@ -1795,8 +1857,12 @@ function filterTaskOptions(query) {
 
   if(q) {
     html += `<div class="searchable-option-custom" onclick="selectCustomTask('${q.replace(/'/g,"\\'")}')">+ Use custom task: "${query}"</div>`;
-  } else if(!matches.length) {
-    html += `<div class="searchable-option-meta" style="padding:10px 12px">Type to search Title 22 requirements, or enter a custom task title</div>`;
+  }
+
+  if(!html) {
+    dropdown.classList.remove('open');
+    dropdown.innerHTML = '';
+    return;
   }
 
   dropdown.innerHTML = html;
@@ -2496,7 +2562,6 @@ async function deleteStaff(id, name) {
       <label>Task title</label>
       <input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or type a custom task..." 
         oninput="filterTaskOptions(this.value)" 
-        onfocus="filterTaskOptions(this.value)"
         autocomplete="off"/>
       <div class="searchable-dropdown" id="task-options-dropdown"></div>
     </div>
