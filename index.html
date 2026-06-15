@@ -264,6 +264,7 @@
         <button onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
         <button onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
         <button onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility</button>
+         <button onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
        <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
           <a href="/training" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📚 Training center</a>
           <a href="/start" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏗 Open a facility</a>
@@ -738,7 +739,11 @@
      <button class="nav-item" id="nav-facility" onclick="switchTab('facility')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Facility
+     <button class="nav-item" id="nav-medications" onclick="switchTab('medications')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>
+  Medications
       </button>
+     </button>
     </div>
 
     <div class="main-content">
@@ -973,6 +978,18 @@
               <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Address</div><div style="font-weight:500" id="fac-view-address">—</div></div>
             </div>
           </div>
+  <!-- MEDICATIONS TAB -->
+          <div id="tab-medications" style="display:none">
+            <div class="page-header">
+             <h1>Medications</h1>
+           </div>
+          <div id="medications-empty" class="empty" style="margin-top:40px">
+         <div style="font-size:2.5rem;margin-bottom:12px">💊</div>
+         <div style="font-weight:600;margin-bottom:6px">No residents to manage medications for</div>
+        <div>Add residents first, then prescribe medications here</div>
+       </div>
+       <div id="medications-list"></div>
+      </div>
           <div class="card">
             <div class="card-title">Administrator</div>
             <div style="display:grid;gap:10px;font-size:13px">
@@ -1026,14 +1043,15 @@ function switchTab(name) {
   document.getElementById('page-app').classList.add('active');
 
   // Hide all tabs
- ['dashboard','checklist','staff','residents','incidents','facility'].forEach(t => {
+['dashboard','checklist','staff','residents','incidents','facility','medications'].forEach(t => {
     const tab = document.getElementById('tab-'+t);
     const nav = document.getElementById('nav-'+t);
     if(tab) tab.style.display = 'none';
     if(nav) nav.classList.remove('active');
   });
-
-  // Show selected tab
+    
+ 
+ // Show selected tab
   const selected = document.getElementById('tab-'+name);
   const selectedNav = document.getElementById('nav-'+name);
   if(selected) selected.style.display = 'block';
@@ -1046,7 +1064,8 @@ function switchTab(name) {
   if(name==='residents') loadResidents();
   if(name==='staff') loadStaff();
   if(name==='facility') renderFacilityInfo();
-
+  if(name==='medications') loadMedications();
+ 
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -2616,6 +2635,133 @@ async function deleteStaff(id, name) {
   renderStaff();
 }
 
+let medicationsByResident = {};
+
+async function loadMedications() {
+  if(!currentFacility) return;
+  const {data} = await sb.from('medications').select('*').eq('facility_id', currentFacility.id).order('created_at');
+  const meds = data || [];
+  medicationsByResident = {};
+  meds.forEach(m => {
+    if(!medicationsByResident[m.resident_id]) medicationsByResident[m.resident_id] = [];
+    medicationsByResident[m.resident_id].push(m);
+  });
+  renderMedications();
+}
+
+function renderMedications() {
+  const list = document.getElementById('medications-list');
+  const empty = document.getElementById('medications-empty');
+
+  if(!residents.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = residents.map(r => {
+    const meds = medicationsByResident[r.id] || [];
+    const initials = r.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+
+    const medRows = meds.map(m => {
+      const isDiscontinued = m.status === 'discontinued';
+      const refillSoon = m.refill_date && getDaysUntil(m.refill_date) !== null && getDaysUntil(m.refill_date) <= 7 && !isDiscontinued;
+      return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)${isDiscontinued?';opacity:.5':''}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${m.medication_name}${isDiscontinued?' <span class="badge badge-gray">Discontinued</span>':''}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${[m.dosage, m.directions].filter(Boolean).join(' — ')}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap">
+            ${m.prescriber?`<span>Dr. ${m.prescriber}</span>`:''}
+            ${m.rx_number?`<span>Rx# ${m.rx_number}</span>`:''}
+            ${m.pharmacy?`<span>${m.pharmacy}</span>`:''}
+          </div>
+          ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px">⏰ Refill due ${m.refill_date}</div>`:''}
+        </div>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openMedModal('${r.id}','${m.id}')">Edit</button>
+      </div>`;
+    }).join('');
+
+    return `<div class="card" style="margin-bottom:14px">
+      <div class="card-title">
+        <span>${r.name}${r.room?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room}</span>`:''}</span>
+        <button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${r.id}')">+ Add medication</button>
+      </div>
+      ${meds.length ? medRows : '<div class="empty" style="padding:20px 0">No medications on file</div>'}
+    </div>`;
+  }).join('');
+}
+
+let currentMedResidentId = null;
+let currentMedId = null;
+
+function openMedModal(residentId, medId) {
+  currentMedResidentId = residentId;
+  currentMedId = medId || null;
+  const m = medId ? (medicationsByResident[residentId]||[]).find(x=>x.id===medId) : null;
+
+  document.getElementById('med-modal-title').textContent = m ? 'Edit medication' : 'Add medication';
+  document.getElementById('med-name').value = m?.medication_name || '';
+  document.getElementById('med-dosage').value = m?.dosage || '';
+  document.getElementById('med-directions').value = m?.directions || '';
+  document.getElementById('med-prescriber').value = m?.prescriber || '';
+  document.getElementById('med-rx').value = m?.rx_number || '';
+  document.getElementById('med-pharmacy').value = m?.pharmacy || '';
+  document.getElementById('med-start').value = m?.start_date || '';
+  document.getElementById('med-end').value = m?.end_date || '';
+  document.getElementById('med-refill').value = m?.refill_date || '';
+  document.getElementById('med-status').value = m?.status || 'active';
+  document.getElementById('med-modal-error').classList.remove('show');
+  document.getElementById('med-delete-btn').style.display = currentMedId ? 'inline-block' : 'none';
+  document.getElementById('med-modal').classList.add('open');
+}
+
+function closeMedModal() {
+  document.getElementById('med-modal').classList.remove('open');
+}
+
+async function saveMedication() {
+  const name = document.getElementById('med-name').value.trim();
+  const err = document.getElementById('med-modal-error');
+  if(!name) { err.textContent='Medication name is required.'; err.classList.add('show'); return; }
+
+  const payload = {
+    facility_id: currentFacility.id,
+    resident_id: currentMedResidentId,
+    medication_name: name,
+    dosage: document.getElementById('med-dosage').value.trim() || null,
+    directions: document.getElementById('med-directions').value.trim() || null,
+    prescriber: document.getElementById('med-prescriber').value.trim() || null,
+    rx_number: document.getElementById('med-rx').value.trim() || null,
+    pharmacy: document.getElementById('med-pharmacy').value.trim() || null,
+    start_date: document.getElementById('med-start').value || null,
+    end_date: document.getElementById('med-end').value || null,
+    refill_date: document.getElementById('med-refill').value || null,
+    status: document.getElementById('med-status').value,
+  };
+
+  let error;
+  if(currentMedId) {
+    const {error:e} = await sb.from('medications').update(payload).eq('id', currentMedId);
+    error = e;
+  } else {
+    const {error:e} = await sb.from('medications').insert(payload);
+    error = e;
+  }
+
+  if(error) { err.textContent = error.message; err.classList.add('show'); return; }
+  closeMedModal();
+  await loadMedications();
+}
+
+async function deleteMedication() {
+  if(!currentMedId) return;
+  if(!confirm('Delete this medication record? This cannot be undone.')) return;
+  await sb.from('medications').delete().eq('id', currentMedId);
+  closeMedModal();
+  await loadMedications();
+}
+ 
  // ===== FACILITY INFO =====
 const FACILITY_TYPE_LABELS = {rcfe:'RCFE — Residential Care Facility for the Elderly', cbrc:'CBRC — Community Board and Care', arf:'ARF — Adult Residential Facility'};
 
@@ -2918,6 +3064,70 @@ async function saveFacility() {
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeFacilityModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveFacility()">Save changes</button>
+    </div>
+  </div>
+</div>
+ <!-- MEDICATION MODAL -->
+<div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3 id="med-modal-title">Add medication</h3>
+      <button class="modal-close" onclick="closeMedModal()">×</button>
+    </div>
+    <div class="form-group">
+      <label>Medication name</label>
+      <input type="text" id="med-name" placeholder="e.g. Metoprolol"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Dosage</label>
+        <input type="text" id="med-dosage" placeholder="e.g. 25mg"/>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="med-status">
+          <option value="active">Active</option>
+          <option value="discontinued">Discontinued</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Directions</label>
+      <input type="text" id="med-directions" placeholder="e.g. Take 1 tablet by mouth twice daily"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Prescriber</label>
+        <input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel"/>
+      </div>
+      <div class="form-group">
+        <label>Rx number</label>
+        <input type="text" id="med-rx" placeholder="e.g. 1234567"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Pharmacy</label>
+      <input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy #1234"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Start date</label>
+        <input type="date" id="med-start"/>
+      </div>
+      <div class="form-group">
+        <label>End date</label>
+        <input type="date" id="med-end"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Refill due date</label>
+      <input type="date" id="med-refill"/>
+    </div>
+    <div class="error-msg" id="med-modal-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="med-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteMedication()">🗑 Delete</button>
+      <button class="btn btn-outline" onclick="closeMedModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMedication()">Save medication</button>
     </div>
   </div>
 </div>
