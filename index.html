@@ -1647,6 +1647,7 @@ function renderChecklist(filter) {
                 onchange="updateDueDate('${t.id}',this.value)"/>
               ${res?`<button onclick="toggleResource('${resId}')" style="background:var(--teal-light);border:1px solid var(--teal);border-radius:6px;cursor:pointer;font-size:11px;color:var(--teal);padding:2px 8px;font-weight:500" title="Where to get this">📍 Resources</button>`:''}
               <button onclick="addNote('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" title="Add note">💬</button>
+              <button onclick="deleteTask('${t.id}','${t.title.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" title="Delete task" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'">🗑</button>
             </div>
           </div>
         </div>
@@ -1681,6 +1682,15 @@ async function updateDueDate(id, date) {
   if(!task) return;
   task.due_date = date;
   await sb.from('compliance_tasks').update({due_date:date}).eq('id',id);
+  renderChecklist(activeFilter);
+  refreshDashboard();
+}
+
+async function deleteTask(id, title) {
+  if(!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+  await sb.from('compliance_tasks').delete().eq('id',id);
+  complianceTasks = complianceTasks.filter(t=>t.id!==id);
+  renderExpiryBanner();
   renderChecklist(activeFilter);
   refreshDashboard();
 }
@@ -2140,6 +2150,20 @@ function editCurrentResident() {
   openResidentModal(currentResidentId);
 }
 
+async function deleteResident(id, name) {
+  if(!confirm(`Delete resident "${name}"? This will permanently remove their record including LIC 601/602 and ISP status. This cannot be undone.`)) return;
+  await sb.from('residents').delete().eq('id',id);
+  residents = residents.filter(r=>r.id!==id);
+  renderResidents();
+}
+
+function deleteCurrentResident() {
+  if(!currentResidentId) return;
+  const r = residents.find(x=>x.id===currentResidentId);
+  closeResidentDetail();
+  deleteResident(currentResidentId, r?.name || 'this resident');
+}
+
 // ===== STAFF =====
 let staffList = [];
 let currentStaffId = null;
@@ -2348,6 +2372,7 @@ function renderStaff() {
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${s.id}')">Edit</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${s.id}','${s.name.replace(/'/g,"\\'")}')" title="Delete staff member">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -2386,7 +2411,15 @@ function openStaffModal(staffId) {
   document.getElementById('staff-training-hours').value = s?.initial_training_hours || '';
 
   document.getElementById('staff-modal-error').classList.remove('show');
+  document.getElementById('staff-delete-btn').style.display = currentStaffId ? 'inline-block' : 'none';
   document.getElementById('staff-modal').classList.add('open');
+}
+
+function deleteStaffFromModal() {
+  if(!currentStaffId) return;
+  const s = staffList.find(x=>x.id===currentStaffId);
+  closeStaffModal();
+  deleteStaff(currentStaffId, s?.name || 'this staff member');
 }
 
 function closeStaffModal() {
@@ -2442,6 +2475,14 @@ async function saveStaff() {
   closeStaffModal();
   renderStaff();
 }
+
+async function deleteStaff(id, name) {
+  if(!confirm(`Delete staff member "${name}"? This will permanently remove their record and certification history. This cannot be undone.`)) return;
+  await sb.from('staff').delete().eq('id',id);
+  staffList = staffList.filter(s=>s.id!==id);
+  renderStaff();
+}
+
 </script>
 
 <!-- ADD TASK MODAL -->
@@ -2581,6 +2622,7 @@ async function saveStaff() {
     </div>
     <div id="rd-body"></div>
     <div class="modal-footer">
+      <button class="btn btn-outline" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()">🗑 Delete</button>
       <button class="btn btn-outline" onclick="closeResidentDetail()">Close</button>
       <button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button>
     </div>
@@ -2706,6 +2748,7 @@ async function saveStaff() {
 
     <div class="error-msg" id="staff-modal-error"></div>
     <div class="modal-footer">
+      <button class="btn btn-outline" id="staff-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteStaffFromModal()">🗑 Delete</button>
       <button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveStaff()">Save staff member</button>
     </div>
