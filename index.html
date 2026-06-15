@@ -263,7 +263,8 @@
         <button onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👥 Staff</button>
         <button onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
         <button onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
-        <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+        <button onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility</button>
+       <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
           <a href="/training" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📚 Training center</a>
           <a href="/start" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏗 Open a facility</a>
           <a href="/legal" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 Legal & privacy</a>
@@ -734,6 +735,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Incidents
       </button>
+     <button class="nav-item" id="nav-facility" onclick="switchTab('facility')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Facility
+      </button>
     </div>
 
     <div class="main-content">
@@ -950,7 +955,42 @@
           <div>Falls, medication errors, behavioral incidents, and DSS-reportable events go here</div>
         </div>
       </div>
+<!-- FACILITY TAB -->
+      <div id="tab-facility" style="display:none">
+        <div class="page-header">
+          <h1>Facility information</h1>
+          <button class="btn btn-primary" style="font-size:13px" onclick="openFacilityModal()">Edit</button>
+        </div>
 
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Facility</div>
+            <div style="display:grid;gap:10px;font-size:13px">
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Name</div><div style="font-weight:500" id="fac-view-name">—</div></div>
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Type</div><div style="font-weight:500" id="fac-view-type">—</div></div>
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">License number</div><div style="font-weight:500" id="fac-view-license">—</div></div>
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Capacity</div><div style="font-weight:500" id="fac-view-capacity">—</div></div>
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Address</div><div style="font-weight:500" id="fac-view-address">—</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Administrator</div>
+            <div style="display:grid;gap:10px;font-size:13px">
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Name</div><div style="font-weight:500" id="fac-view-admin-name">—</div></div>
+              <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Certificate number</div><div style="font-weight:500" id="fac-view-admin-cert">—</div></div>
+              <div>
+                <div style="color:var(--text2);font-size:11px;margin-bottom:2px">Certificate expiry</div>
+                <div style="font-weight:500;display:flex;align-items:center;gap:8px" id="fac-view-admin-expiry-wrap">
+                  <span id="fac-view-admin-expiry">—</span>
+                  <span id="fac-view-admin-expiry-badge"></span>
+                </div>
+              </div>
+            </div>
+            <div id="fac-admin-resource" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+     
     </div>
   </div>
 </div>
@@ -986,7 +1026,7 @@ function switchTab(name) {
   document.getElementById('page-app').classList.add('active');
 
   // Hide all tabs
-  ['dashboard','checklist','staff','residents','incidents'].forEach(t => {
+ ['dashboard','checklist','staff','residents','incidents','facility'].forEach(t => {
     const tab = document.getElementById('tab-'+t);
     const nav = document.getElementById('nav-'+t);
     if(tab) tab.style.display = 'none';
@@ -1000,10 +1040,12 @@ function switchTab(name) {
   if(selectedNav) selectedNav.classList.add('active');
 
   // Load data
+// Load data
   if(name==='dashboard') refreshDashboard();
   if(name==='checklist'){ renderExpiryBanner(); renderChecklist(activeFilter); }
   if(name==='residents') loadResidents();
   if(name==='staff') loadStaff();
+  if(name==='facility') renderFacilityInfo();
 
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1075,6 +1117,10 @@ async function handleOnboard() {
   err.classList.remove('show');
   if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
   const facilityType = document.getElementById('ob-type').value;
+  const adminName = document.getElementById('ob-admin-name').value.trim();
+  const adminCert = document.getElementById('ob-cert').value.trim();
+  const adminCertExpiry = document.getElementById('ob-cert-expiry').value || null;
+
   const {data,error} = await sb.from('facilities').insert({
     user_id: currentUser.id,
     name,
@@ -1082,27 +1128,48 @@ async function handleOnboard() {
     license_number: document.getElementById('ob-license').value,
     capacity: parseInt(document.getElementById('ob-capacity').value)||null,
     address: document.getElementById('ob-address').value,
+    administrator_name: adminName || null,
+    administrator_cert_number: adminCert || null,
+    administrator_cert_expiry: adminCertExpiry,
   }).select().single();
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   currentFacility = data;
-  await seedComplianceTasks(data.id);
+  await seedComplianceTasks(data.id, adminCertExpiry);
   await loadApp();
 }
 
-async function seedComplianceTasks(facilityId) {
+async function seedComplianceTasks(facilityId, adminCertExpiry) {
   const facilityType = currentFacility ? currentFacility.facility_type : 'rcfe';
   const {data:items} = await sb.from('checklist_items').select('*').eq('facility_type', facilityType);
   if(!items) return;
   const highPriority = ['daily','on_hire','on_admission'];
-  const tasks = items.map(item => ({
-    facility_id: facilityId,
-    checklist_item_id: item.id,
-    title: item.title,
-    category: item.category,
-    completed: false,
-    priority: highPriority.includes(item.frequency) ? 'high' : 'medium',
-    due_date: getDefaultDueDate(item.frequency)
-  }));
+  const tasks = items.map(item => {
+    let dueDate = getDefaultDueDate(item.frequency);
+    let completed = false;
+    let completedAt = null;
+
+    // If the user already gave us their administrator cert expiry,
+    // use that as the due date for the cert renewal task instead of
+    // a generic "due now" / +2yr default.
+    if(item.title === 'RCFE Administrator Certificate Current' && adminCertExpiry) {
+      dueDate = adminCertExpiry;
+      // If they entered an expiry, the cert clearly already exists —
+      // mark this as complete so it doesn't show as a day-one action item.
+      completed = true;
+      completedAt = new Date().toISOString();
+    }
+
+    return {
+      facility_id: facilityId,
+      checklist_item_id: item.id,
+      title: item.title,
+      category: item.category,
+      completed,
+      completed_at: completedAt,
+      priority: highPriority.includes(item.frequency) ? 'high' : 'medium',
+      due_date: dueDate
+    };
+  });
   await sb.from('compliance_tasks').insert(tasks);
 }
 
@@ -2549,6 +2616,108 @@ async function deleteStaff(id, name) {
   renderStaff();
 }
 
+ // ===== FACILITY INFO =====
+const FACILITY_TYPE_LABELS = {rcfe:'RCFE — Residential Care Facility for the Elderly', cbrc:'CBRC — Community Board and Care', arf:'ARF — Adult Residential Facility'};
+
+function renderFacilityInfo() {
+  if(!currentFacility) return;
+  const f = currentFacility;
+  const today = new Date().toISOString().split('T')[0];
+  const in30 = new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+
+  document.getElementById('fac-view-name').textContent = f.name || '—';
+  document.getElementById('fac-view-type').textContent = FACILITY_TYPE_LABELS[f.facility_type] || f.facility_type || '—';
+  document.getElementById('fac-view-license').textContent = f.license_number || '—';
+  document.getElementById('fac-view-capacity').textContent = f.capacity || '—';
+  document.getElementById('fac-view-address').textContent = f.address || '—';
+  document.getElementById('fac-view-admin-name').textContent = f.administrator_name || '—';
+  document.getElementById('fac-view-admin-cert').textContent = f.administrator_cert_number || '—';
+
+  const expiry = f.administrator_cert_expiry;
+  const expiryEl = document.getElementById('fac-view-admin-expiry');
+  const badgeEl = document.getElementById('fac-view-admin-expiry-badge');
+  const resourceEl = document.getElementById('fac-admin-resource');
+
+  expiryEl.textContent = expiry ? new Date(expiry).toLocaleDateString() : '—';
+
+  if(!expiry) {
+    badgeEl.innerHTML = '';
+    resourceEl.innerHTML = '';
+  } else if(expiry < today) {
+    badgeEl.innerHTML = '<span class="badge badge-red">⚠ Expired</span>';
+    const res = getResourceByLabel('16hr Initial Training');
+    resourceEl.innerHTML = res ? buildResourcePanel(res, 'fac-admin-res-panel').replace('display:none','display:block') : '';
+  } else if(expiry <= in30) {
+    badgeEl.innerHTML = '<span class="badge badge-amber">Renew soon</span>';
+    const res = getResourceByLabel('16hr Initial Training');
+    resourceEl.innerHTML = res ? buildResourcePanel(res, 'fac-admin-res-panel').replace('display:none','display:block') : '';
+  } else {
+    badgeEl.innerHTML = '<span class="badge badge-green">✓ Current</span>';
+    resourceEl.innerHTML = '';
+  }
+}
+
+function openFacilityModal() {
+  const f = currentFacility || {};
+  document.getElementById('facm-name').value = f.name || '';
+  document.getElementById('facm-type').value = f.facility_type || 'rcfe';
+  document.getElementById('facm-license').value = f.license_number || '';
+  document.getElementById('facm-capacity').value = f.capacity || '';
+  document.getElementById('facm-address').value = f.address || '';
+  document.getElementById('facm-admin-name').value = f.administrator_name || '';
+  document.getElementById('facm-admin-cert').value = f.administrator_cert_number || '';
+  document.getElementById('facm-admin-expiry').value = f.administrator_cert_expiry || '';
+  document.getElementById('facility-modal-error').classList.remove('show');
+  document.getElementById('facility-modal').classList.add('open');
+}
+
+function closeFacilityModal() {
+  document.getElementById('facility-modal').classList.remove('open');
+}
+
+async function saveFacility() {
+  const name = document.getElementById('facm-name').value.trim();
+  const err = document.getElementById('facility-modal-error');
+  if(!name) { err.textContent='Facility name is required.'; err.classList.add('show'); return; }
+
+  const payload = {
+    name,
+    facility_type: document.getElementById('facm-type').value,
+    license_number: document.getElementById('facm-license').value.trim() || null,
+    capacity: parseInt(document.getElementById('facm-capacity').value) || null,
+    address: document.getElementById('facm-address').value.trim() || null,
+    administrator_name: document.getElementById('facm-admin-name').value.trim() || null,
+    administrator_cert_number: document.getElementById('facm-admin-cert').value.trim() || null,
+    administrator_cert_expiry: document.getElementById('facm-admin-expiry').value || null,
+  };
+
+  const {error} = await sb.from('facilities').update(payload).eq('id', currentFacility.id);
+  if(error) { err.textContent = error.message; err.classList.add('show'); return; }
+
+  currentFacility = {...currentFacility, ...payload};
+
+  // Keep the seeded "RCFE Administrator Certificate Current" task's due date
+  // in sync with whatever the user just entered.
+  const certTask = complianceTasks.find(t=>t.title==='RCFE Administrator Certificate Current');
+  if(certTask && payload.administrator_cert_expiry && certTask.due_date !== payload.administrator_cert_expiry) {
+    certTask.due_date = payload.administrator_cert_expiry;
+    await sb.from('compliance_tasks').update({due_date: payload.administrator_cert_expiry}).eq('id', certTask.id);
+  }
+
+  // Update sidebar/type label too
+  const typeLabels = {rcfe:'RCFE',cbrc:'CBRC',arf:'ARF',snf:'SNF'};
+  document.getElementById('sidebar-facility-name').textContent = currentFacility.name;
+  document.getElementById('sidebar-facility-type').textContent = typeLabels[currentFacility.facility_type]||'RCFE';
+  const menuFacility = document.getElementById('menu-facility-name');
+  if(menuFacility) menuFacility.textContent = currentFacility.name;
+
+  closeFacilityModal();
+  renderFacilityInfo();
+  renderExpiryBanner();
+  renderChecklist(activeFilter);
+  refreshDashboard();
+}
+
 </script>
 
 <!-- ADD TASK MODAL -->
@@ -2693,7 +2862,65 @@ async function deleteStaff(id, name) {
     </div>
   </div>
 </div>
+   <!-- FACILITY MODAL -->
+<div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3>Edit facility information</h3>
+      <button class="modal-close" onclick="closeFacilityModal()">×</button>
+    </div>
 
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Facility</div>
+    <div class="form-group">
+      <label>Facility name</label>
+      <input type="text" id="facm-name" placeholder="Sunrise Care Home"/>
+    </div>
+    <div class="form-group">
+      <label>Facility type</label>
+      <select id="facm-type">
+        <option value="rcfe">RCFE — Residential Care Facility for the Elderly</option>
+        <option value="cbrc">CBRC — Community Board and Care</option>
+        <option value="arf">ARF — Adult Residential Facility</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>License number</label>
+        <input type="text" id="facm-license" placeholder="197XXXXXX"/>
+      </div>
+      <div class="form-group">
+        <label>Capacity</label>
+        <input type="number" id="facm-capacity" placeholder="6"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Address</label>
+      <input type="text" id="facm-address" placeholder="1234 Main St, Fresno, CA 93701"/>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Administrator</div>
+    <div class="form-group">
+      <label>Administrator name</label>
+      <input type="text" id="facm-admin-name" placeholder="Jane Smith"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Certificate number</label>
+        <input type="text" id="facm-admin-cert" placeholder="RCFE-XXXXXX"/>
+      </div>
+      <div class="form-group">
+        <label>Certificate expiry</label>
+        <input type="date" id="facm-admin-expiry"/>
+      </div>
+    </div>
+
+    <div class="error-msg" id="facility-modal-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeFacilityModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFacility()">Save changes</button>
+    </div>
+  </div>
+</div>
 <!-- STAFF MODAL -->
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
