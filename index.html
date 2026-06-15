@@ -2156,7 +2156,7 @@ function renderResidents() {
       return '';
     };
 
-    const initials = r.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const initials = (r.full_name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const colors = ['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
     const color = colors[r.name.charCodeAt(0) % colors.length];
 
@@ -2662,7 +2662,7 @@ function renderMedications() {
 
   list.innerHTML = residents.map(r => {
     const meds = medicationsByResident[r.id] || [];
-    const initials = r.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const initials = (r.full_name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
 
     const medRows = meds.map(m => {
       const isDiscontinued = m.status === 'discontinued';
@@ -2684,7 +2684,7 @@ function renderMedications() {
 
     return `<div class="card" style="margin-bottom:14px">
       <div class="card-title">
-        <span>${r.name}${r.room?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room}</span>`:''}</span>
+        <span>${r.full_name}${r.room_number?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room_number}</span>`:''}</span>
         <button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${r.id}')">+ Add medication</button>
       </div>
       ${meds.length ? medRows : '<div class="empty" style="padding:20px 0">No medications on file</div>'}
