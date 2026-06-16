@@ -230,6 +230,15 @@
   .btn-google:hover{border-color:var(--teal);background:var(--gray-bg)}
   .auth-divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--text2);font-size:13px}
   .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border)}
+
+  /* NOTIFY + INCIDENT */
+  .notify-success{background:var(--green-light);color:var(--green);border-radius:var(--radius);padding:12px 16px;font-size:14px;font-weight:500;text-align:center;display:none}
+  .notify-success.show{display:block}
+  .incident-type-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .incident-type-fall{background:#FCEBEB;color:#A32D2D}
+  .incident-type-medication{background:#FAEEDA;color:#BA7517}
+  .incident-type-behavioral{background:#E1F5EE;color:#0F6E56}
+  .incident-type-other{background:#F1EFE8;color:#5F5E5A}
 </style>
 </head>
 <body style="visibility:hidden">
@@ -585,7 +594,7 @@
           <div style="font-size:12px;opacity:.6;margin-top:4px">Community Board & Care</div>
         </div>
       </div>
-      <button class="btn" style="margin-top:20px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="alert('We will notify you when administrator certification courses are available!')">Notify me when available</button>
+      <button class="btn" style="margin-top:20px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="openNotifyModal()">Notify me when available</button>
     </div>
 
     <!-- Comparison note -->
@@ -604,7 +613,7 @@
   </div>
 
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
-    © 2025 Title22 · RunP8 LLC · <a href="/legal" style="color:var(--teal)">Privacy</a> · <a href="/legal" style="color:var(--teal)">Terms</a> · <a href="/legal" style="color:var(--teal)">Disclaimer</a> · Built for RCFE & CBRC operators · title22.app
+    © 2026 Title22 · RunP8 LLC · <a href="/legal" style="color:var(--teal)">Privacy</a> · <a href="/legal" style="color:var(--teal)">Terms</a> · <a href="/legal" style="color:var(--teal)">Disclaimer</a> · Built for RCFE & CBRC operators · title22.app
   </div>
 </div>
 
@@ -736,14 +745,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Incidents
       </button>
-     <button class="nav-item" id="nav-facility" onclick="switchTab('facility')">
+      <button class="nav-item" id="nav-facility" onclick="switchTab('facility')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Facility
-     <button class="nav-item" id="nav-medications" onclick="switchTab('medications')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>
-  Medications
       </button>
-     </button>
+      <button class="nav-item" id="nav-medications" onclick="switchTab('medications')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>
+        Medications
+      </button>
     </div>
 
     <div class="main-content">
@@ -952,13 +961,15 @@
       <div id="tab-incidents" style="display:none">
         <div class="page-header">
           <h1>Incident reports</h1>
-          <button class="btn btn-primary" style="font-size:13px">+ Report incident</button>
+          <button class="btn btn-primary" style="font-size:13px" onclick="openIncidentModal()">+ Report incident</button>
         </div>
-        <div class="empty" style="margin-top:40px">
+        <div id="incidents-empty" class="empty" style="margin-top:40px">
           <div style="font-size:2rem;margin-bottom:12px">📋</div>
           <div style="font-weight:500;margin-bottom:6px">No incidents on record</div>
-          <div>Falls, medication errors, behavioral incidents, and DSS-reportable events go here</div>
+          <div style="margin-bottom:20px">Falls, medication errors, behavioral incidents, and DSS-reportable events go here</div>
+          <button class="btn btn-primary" onclick="openIncidentModal()">+ Report first incident</button>
         </div>
+        <div id="incidents-list"></div>
       </div>
 <!-- FACILITY TAB -->
       <div id="tab-facility" style="display:none">
@@ -978,18 +989,7 @@
               <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Address</div><div style="font-weight:500" id="fac-view-address">—</div></div>
             </div>
           </div>
-  <!-- MEDICATIONS TAB -->
-          <div id="tab-medications" style="display:none">
-            <div class="page-header">
-             <h1>Medications</h1>
-           </div>
-          <div id="medications-empty" class="empty" style="margin-top:40px">
-         <div style="font-size:2.5rem;margin-bottom:12px">💊</div>
-         <div style="font-weight:600;margin-bottom:6px">No residents to manage medications for</div>
-        <div>Add residents first, then prescribe medications here</div>
-       </div>
-       <div id="medications-list"></div>
-      </div>
+
           <div class="card">
             <div class="card-title">Administrator</div>
             <div style="display:grid;gap:10px;font-size:13px">
@@ -1007,7 +1007,20 @@
           </div>
         </div>
       </div>
-     
+
+      <!-- MEDICATIONS TAB -->
+      <div id="tab-medications" style="display:none">
+        <div class="page-header">
+          <h1>Medications</h1>
+        </div>
+        <div id="medications-empty" class="empty" style="margin-top:40px">
+          <div style="font-size:2.5rem;margin-bottom:12px">💊</div>
+          <div style="font-weight:600;margin-bottom:6px">No residents to manage medications for</div>
+          <div>Add residents first, then prescribe medications here</div>
+        </div>
+        <div id="medications-list"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1063,6 +1076,7 @@ function switchTab(name) {
   if(name==='checklist'){ renderExpiryBanner(); renderChecklist(activeFilter); }
   if(name==='residents') loadResidents();
   if(name==='staff') loadStaff();
+  if(name==='incidents') loadIncidents();
   if(name==='facility') renderFacilityInfo();
   if(name==='medications') loadMedications();
  
@@ -2156,7 +2170,7 @@ function renderResidents() {
       return '';
     };
 
-    const initials = (r.full_name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const initials = (r.name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const colors = ['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
     const color = colors[r.name.charCodeAt(0) % colors.length];
 
@@ -2662,7 +2676,7 @@ function renderMedications() {
 
   list.innerHTML = residents.map(r => {
     const meds = medicationsByResident[r.id] || [];
-    const initials = (r.full_name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const initials = (r.name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
 
     const medRows = meds.map(m => {
       const isDiscontinued = m.status === 'discontinued';
@@ -2684,7 +2698,7 @@ function renderMedications() {
 
     return `<div class="card" style="margin-bottom:14px">
       <div class="card-title">
-        <span>${r.full_name}${r.room_number?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room_number}</span>`:''}</span>
+        <span>${r.name}${r.room?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room}</span>`:''}</span>
         <button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${r.id}')">+ Add medication</button>
       </div>
       ${meds.length ? medRows : '<div class="empty" style="padding:20px 0">No medications on file</div>'}
@@ -2762,7 +2776,145 @@ async function deleteMedication() {
   await loadMedications();
 }
  
- // ===== FACILITY INFO =====
+ // ===== INCIDENTS =====
+let incidents = [];
+let currentIncidentId = null;
+
+async function loadIncidents() {
+  if(!currentFacility) return;
+  const {data} = await sb.from('incidents').select('*').eq('facility_id', currentFacility.id).order('incident_date', {ascending:false});
+  incidents = data || [];
+  renderIncidents();
+}
+
+function renderIncidents() {
+  const list = document.getElementById('incidents-list');
+  const empty = document.getElementById('incidents-empty');
+  if(!incidents.length) {
+    list.innerHTML = '';
+    if(empty) empty.style.display = 'block';
+    return;
+  }
+  if(empty) empty.style.display = 'none';
+
+  const typeColors = {fall:'fall', medication_error:'medication', behavioral:'behavioral'};
+  const typeLabels = {fall:'Fall', medication_error:'Medication error', behavioral:'Behavioral incident', elopement:'Elopement', injury:'Injury', death:'Death', other:'Other'};
+
+  list.innerHTML = incidents.map(inc => {
+    const typeClass = typeColors[inc.incident_type] || 'other';
+    const dssFlag = inc.dss_reportable ? '<span class="badge badge-red" style="margin-left:6px">DSS reportable</span>' : '';
+    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">${inc.resident_name || 'Unknown resident'}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="incident-type-badge incident-type-${typeClass}">${typeLabels[inc.incident_type] || inc.incident_type}</span>
+            ${dssFlag}
+            <span style="font-size:12px;color:var(--text2)">${new Date(inc.incident_date).toLocaleDateString()} ${inc.incident_time || ''}</span>
+          </div>
+        </div>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openIncidentModal('${inc.id}')">Edit</button>
+      </div>
+      ${inc.description ? `<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px">${inc.description}</div>` : ''}
+      ${inc.action_taken ? `<div style="font-size:12px;color:var(--text2);background:var(--gray-bg);border-radius:var(--radius);padding:8px 12px"><strong>Action taken:</strong> ${inc.action_taken}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openIncidentModal(incidentId) {
+  currentIncidentId = incidentId || null;
+  const inc = incidentId ? incidents.find(x=>x.id===incidentId) : null;
+  document.getElementById('inc-modal-title').textContent = inc ? 'Edit incident' : 'Report incident';
+  document.getElementById('inc-resident').value = inc?.resident_name || '';
+  document.getElementById('inc-type').value = inc?.incident_type || 'fall';
+  document.getElementById('inc-date').value = inc?.incident_date || new Date().toISOString().split('T')[0];
+  document.getElementById('inc-time').value = inc?.incident_time || '';
+  document.getElementById('inc-location').value = inc?.location || '';
+  document.getElementById('inc-description').value = inc?.description || '';
+  document.getElementById('inc-action').value = inc?.action_taken || '';
+  document.getElementById('inc-dss').value = inc?.dss_reportable ? 'yes' : 'no';
+  document.getElementById('inc-reported-by').value = inc?.reported_by || '';
+  document.getElementById('inc-modal-error').classList.remove('show');
+  document.getElementById('inc-delete-btn').style.display = currentIncidentId ? 'inline-block' : 'none';
+  document.getElementById('incident-modal').classList.add('open');
+}
+
+function closeIncidentModal() {
+  document.getElementById('incident-modal').classList.remove('open');
+}
+
+async function saveIncident() {
+  const residentName = document.getElementById('inc-resident').value.trim();
+  const err = document.getElementById('inc-modal-error');
+  if(!residentName) { err.textContent='Resident name is required.'; err.classList.add('show'); return; }
+
+  const payload = {
+    facility_id: currentFacility.id,
+    resident_name: residentName,
+    incident_type: document.getElementById('inc-type').value,
+    incident_date: document.getElementById('inc-date').value,
+    incident_time: document.getElementById('inc-time').value || null,
+    location: document.getElementById('inc-location').value.trim() || null,
+    description: document.getElementById('inc-description').value.trim() || null,
+    action_taken: document.getElementById('inc-action').value.trim() || null,
+    dss_reportable: document.getElementById('inc-dss').value === 'yes',
+    reported_by: document.getElementById('inc-reported-by').value.trim() || null,
+  };
+
+  let error;
+  if(currentIncidentId) {
+    const {error:e} = await sb.from('incidents').update(payload).eq('id', currentIncidentId);
+    error = e;
+    if(!e) { const idx = incidents.findIndex(i=>i.id===currentIncidentId); if(idx>-1) incidents[idx]={...incidents[idx],...payload}; }
+  } else {
+    const {data, error:e} = await sb.from('incidents').insert(payload).select().single();
+    error = e;
+    if(!e && data) incidents.unshift(data);
+  }
+
+  if(error) { err.textContent = error.message; err.classList.add('show'); return; }
+  closeIncidentModal();
+  renderIncidents();
+}
+
+async function deleteIncident() {
+  if(!currentIncidentId) return;
+  if(!confirm('Delete this incident report? This cannot be undone.')) return;
+  await sb.from('incidents').delete().eq('id', currentIncidentId);
+  incidents = incidents.filter(i=>i.id!==currentIncidentId);
+  closeIncidentModal();
+  renderIncidents();
+}
+
+// ===== NOTIFY ME =====
+function openNotifyModal() {
+  document.getElementById('notify-email').value = currentUser?.email || '';
+  document.getElementById('notify-success').classList.remove('show');
+  document.getElementById('notify-modal-error').classList.remove('show');
+  document.getElementById('notify-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('notify-email').focus(), 100);
+}
+
+function closeNotifyModal() {
+  document.getElementById('notify-modal').classList.remove('open');
+}
+
+async function saveNotifyEmail() {
+  const email = document.getElementById('notify-email').value.trim();
+  const err = document.getElementById('notify-modal-error');
+  if(!email || !email.includes('@')) { err.textContent='Please enter a valid email.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  await sb.from('certification_waitlist').insert({
+    email,
+    source: 'title22_pricing',
+    facility_id: currentFacility?.id || null,
+    created_at: new Date().toISOString()
+  });
+  document.getElementById('notify-success').classList.add('show');
+  setTimeout(()=>closeNotifyModal(), 2000);
+}
+
+// ===== FACILITY INFO =====
 const FACILITY_TYPE_LABELS = {rcfe:'RCFE — Residential Care Facility for the Elderly', cbrc:'CBRC — Community Board and Care', arf:'ARF — Adult Residential Facility'};
 
 function renderFacilityInfo() {
@@ -3253,6 +3405,93 @@ async function saveFacility() {
       <button class="btn btn-outline" id="staff-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteStaffFromModal()">🗑 Delete</button>
       <button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveStaff()">Save staff member</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- NOTIFY ME MODAL -->
+<div class="modal-overlay" id="notify-modal" onclick="if(event.target===this)closeNotifyModal()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h3>Notify me when available</h3>
+      <button class="modal-close" onclick="closeNotifyModal()">×</button>
+    </div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:20px">We'll let you know as soon as DSS-accredited administrator certification courses are available on Title22.</p>
+    <div class="form-group">
+      <label>Email address</label>
+      <input type="email" id="notify-email" placeholder="admin@yourfacility.com"/>
+    </div>
+    <div class="error-msg" id="notify-modal-error"></div>
+    <div class="notify-success" id="notify-success">✓ You're on the list! We'll notify you when courses launch.</div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeNotifyModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNotifyEmail()">Notify me</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCIDENT MODAL -->
+<div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="inc-modal-title">Report incident</h3>
+      <button class="modal-close" onclick="closeIncidentModal()">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Resident name</label>
+        <input type="text" id="inc-resident" placeholder="e.g. Betty Divers"/>
+      </div>
+      <div class="form-group">
+        <label>Incident type</label>
+        <select id="inc-type">
+          <option value="fall">Fall</option>
+          <option value="medication_error">Medication error</option>
+          <option value="behavioral">Behavioral incident</option>
+          <option value="elopement">Elopement</option>
+          <option value="injury">Injury</option>
+          <option value="death">Death</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>DSS reportable?</label>
+        <select id="inc-dss">
+          <option value="no">No</option>
+          <option value="yes">Yes — must report to DSS</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="inc-date"/>
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time" id="inc-time"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Location in facility</label>
+        <input type="text" id="inc-location" placeholder="e.g. Bedroom, Bathroom, Dining room"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Description of incident</label>
+        <textarea id="inc-description" rows="3" placeholder="Describe what happened, when, and any witnesses..."></textarea>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Action taken / follow-up</label>
+        <textarea id="inc-action" rows="2" placeholder="e.g. Resident assessed by nurse, physician notified, family contacted..."></textarea>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Reported by</label>
+        <input type="text" id="inc-reported-by" placeholder="e.g. Maria Lopez, Caregiver"/>
+      </div>
+    </div>
+    <div class="error-msg" id="inc-modal-error"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="inc-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteIncident()">🗑 Delete</button>
+      <button class="btn btn-outline" onclick="closeIncidentModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveIncident()">Save report</button>
     </div>
   </div>
 </div>
