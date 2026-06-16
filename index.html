@@ -1274,7 +1274,9 @@ async function loadApp() {
   document.getElementById('nav-app').style.display='flex';
   document.getElementById('nav-user-email').textContent = currentUser.email;
 
-  if(!currentFacility) {
+    if(!currentFacility) {
+    const {data:{session}} = await sb.auth.getSession();
+    if(session) await sb.auth.setSession(session);
     const {data} = await sb.from('facilities').select('*').eq('user_id',currentUser.id).limit(1).single();
     if(!data){showPage('onboard');return;}
     currentFacility = data;
