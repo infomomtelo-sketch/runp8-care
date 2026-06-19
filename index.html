@@ -1221,7 +1221,12 @@ function switchTab(name) {
   if(name==='medications') loadMedications();
   if(name==='mar'){ window.residents=residents; loadMAR(); }
   if(name==='team') loadTeam();
-  if(name==='ai') { if(!document.getElementById('ai-chat-messages').children.length) addAIMessage('Hi! Ask me anything about your facility — compliance status, staff certifications, MAR gaps, or DSS inspection readiness. All answers are based on your recorded data.','assistant'); }
+  if(name==='ai') {
+    const msgs = document.getElementById('ai-chat-messages');
+    if(msgs && !msgs.children.length) {
+      addAIMessage('Hi! Ask me anything about your facility — compliance status, staff certifications, MAR gaps, or DSS inspection readiness. All answers are based on your recorded data.','assistant');
+    }
+  }
  
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1447,6 +1452,7 @@ async function loadApp() {
   complianceTasks = tasks||[];
 
   showPage('app');
+  switchTab('dashboard');
   refreshDashboard();
 }
 
