@@ -619,29 +619,51 @@
 
 <!-- ===== LOGIN ===== -->
 <div id="page-login" class="page">
-  <div class="auth-wrap"><div class="auth-card">
-    <h2>Welcome back</h2>
-    <p>Log in to your Title22 account</p>
-    <div class="error-msg" id="login-error"></div>
-    <button class="btn-google" onclick="handleGoogleAuth('login-error')">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M1.64 10.9l3.018-2.338A5.4 5.4 0 009 14.4c1.47 0 2.79-.54 3.78-1.41l2.7 2.1C13.83 16.65 11.58 18 9 18c-3.87 0-7.14-2.55-8.36-6.1z"/><path fill="#FBBC05" d="M1.64 10.9C1.23 9.75 1 8.55 1 7.2c0-1.35.23-2.55.64-3.7L4.658 5.76A5.4 5.4 0 003.6 9c0 1.17.33 2.28.9 3.18L1.64 10.9z"/><path fill="#EA4335" d="M9 3.6c1.68 0 3.18.57 4.35 1.68l2.43-2.43C14.07.9 11.67 0 9 0 5.13 0 1.86 2.55.64 6.1l3.018 2.338C4.86 5.15 6.69 3.6 9 3.6z"/></svg>
-      Continue with Google
-    </button>
-    <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--text2);">No account? <a href="#" onclick="showPage('signup')" style="color:var(--teal);font-weight:600;">Start free trial</a></p>
-  </div></div>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Welcome back</h2>
+      <p>Log in to your Title22 account</p>
+      <div class="error-msg" id="login-error"></div>
+      <button class="btn-google" onclick="handleGoogleAuth('login-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+      <div class="auth-divider"><span>or</span></div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="login-email" placeholder="admin@yourfacility.com"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
+      <div class="auth-switch">Do not have an account? <a onclick="showPage('signup')">Start free trial</a></div>
+    </div>
+  </div>
+</div>
 
+<!-- ===== SIGNUP ===== -->
 <div id="page-signup" class="page">
-  <div class="auth-wrap"><div class="auth-card">
-    <h2>Start free trial</h2>
-    <p>14 days free · No credit card required</p>
-    <div class="error-msg" id="signup-error"></div>
-    <button class="btn-google" onclick="handleGoogleAuth('signup-error')">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M1.64 10.9l3.018-2.338A5.4 5.4 0 009 14.4c1.47 0 2.79-.54 3.78-1.41l2.7 2.1C13.83 16.65 11.58 18 9 18c-3.87 0-7.14-2.55-8.36-6.1z"/><path fill="#FBBC05" d="M1.64 10.9C1.23 9.75 1 8.55 1 7.2c0-1.35.23-2.55.64-3.7L4.658 5.76A5.4 5.4 0 003.6 9c0 1.17.33 2.28.9 3.18L1.64 10.9z"/><path fill="#EA4335" d="M9 3.6c1.68 0 3.18.57 4.35 1.68l2.43-2.43C14.07.9 11.67 0 9 0 5.13 0 1.86 2.55.64 6.1l3.018 2.338C4.86 5.15 6.69 3.6 9 3.6z"/></svg>
-      Sign up with Google
-    </button>
-    <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--text2);">Have an account? <a href="#" onclick="showPage('login')" style="color:var(--teal);font-weight:600;">Sign in</a></p>
-  </div></div>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2>Start your free trial</h2>
+      <p>14 days free · No credit card required</p>
+      <div class="error-msg" id="signup-error"></div>
+      <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+      <div class="auth-divider"><span>or</span></div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="signup-email" placeholder="admin@yourfacility.com"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Create a password"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
+      <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>
+    </div>
+  </div>
+</div>
 
+<!-- ===== ONBOARDING ===== -->
 <div id="page-onboard" class="page">
   <div class="onboard-wrap">
     <div class="onboard-card">
@@ -747,6 +769,12 @@
 
     <div class="main-content">
 
+      <!-- TRIAL BANNER -->
+      <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:500">🎉 You're on a free trial — <span id="trial-days-left">14</span> days remaining. Subscribe to keep your facility protected.</div>
+        <button onclick="openSettings()" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
+      </div>
+
       <!-- DASHBOARD TAB -->
       <div id="tab-dashboard">
         <div class="page-header">
@@ -805,6 +833,21 @@
         <div style="margin-top:20px" class="card">
           <div class="card-title">Compliance by category</div>
           <div id="category-breakdown"></div>
+        </div>
+
+        <div style="margin-top:20px" class="card">
+          <div class="card-title" style="margin-bottom:12px">Facility snapshot</div>
+          <div id="facility-snapshot"><div class="empty">Loading facility data…</div></div>
+        </div>
+
+        <div style="margin-top:20px" class="card">
+          <div class="card-title" style="margin-bottom:14px">Quick actions</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('residents');setTimeout(()=>openResidentModal(),200)">+ Add resident</button>
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('staff');setTimeout(()=>openStaffModal(),200)">+ Add staff member</button>
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('incidents');setTimeout(()=>openIncidentModal(),200)">+ Report incident</button>
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('checklist');setTimeout(()=>addCustomTask(),200)">+ Add checklist task</button>
+          </div>
         </div>
       </div>
 
@@ -1002,6 +1045,7 @@
       <div id="tab-medications" style="display:none">
         <div class="page-header">
           <h1>Medications</h1>
+          <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('residents')">Manage via Residents →</button>
         </div>
         <div id="medications-empty" class="empty" style="margin-top:40px">
           <div style="font-size:2.5rem;margin-bottom:12px">💊</div>
@@ -1135,6 +1179,11 @@
 
 <script>
 const SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
+// Stripe payment links — replace with your actual Stripe payment link URLs
+const STRIPE_STARTER    = 'https://buy.stripe.com/title22-starter';
+const STRIPE_PRO        = 'https://buy.stripe.com/title22-pro';
+const STRIPE_SPECIALIST = 'https://buy.stripe.com/title22-specialist';
+const STRIPE_AGENCY     = 'https://buy.stripe.com/title22-agency';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
 const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 
@@ -1205,12 +1254,7 @@ function switchTab(name) {
   if(name==='medications') loadMedications();
   if(name==='mar'){ window.residents=residents; loadMAR(); }
   if(name==='team') loadTeam();
-  if(name==='ai') {
-    const msgs = document.getElementById('ai-chat-messages');
-    if(msgs && !msgs.children.length) {
-      addAIMessage('Hi! Ask me anything about your facility — compliance status, staff certifications, MAR gaps, or DSS inspection readiness. All answers are based on your recorded data.','assistant');
-    }
-  }
+  if(name==='ai') { if(!document.getElementById('ai-chat-messages').children.length) addAIMessage('Hi! Ask me anything about your facility — compliance status, staff certifications, MAR gaps, or DSS inspection readiness. All answers are based on your recorded data.','assistant'); }
  
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1236,14 +1280,32 @@ async function handleSignup() {
   const err = document.getElementById('signup-error');
   err.classList.remove('show');
   if(!email||!pass){err.textContent='Please fill in all fields.';err.classList.add('show');return;}
+  if(pass.length < 6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  const btn = document.querySelector('#page-signup .btn-primary');
+  if(btn){btn.textContent='Creating account…';btn.disabled=true;}
   const {data,error} = await sb.auth.signUp({email,password:pass});
+  if(btn){btn.textContent='Create account';btn.disabled=false;}
   if(error){err.textContent=error.message;err.classList.add('show');return;}
+  if(!data.user){err.textContent='Account created — check your email to confirm, then log in.';err.classList.add('show');return;}
   currentUser = data.user;
+  await ensureProfile(currentUser);
   showPage('onboard');
 }
 
 async function handleLogin() {
-  await handleGoogleAuth("login-error");
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.classList.remove('show');
+  if(!email||!pass){err.textContent='Please fill in all fields.';err.classList.add('show');return;}
+  const btn = document.querySelector('#page-login .btn-primary');
+  if(btn){btn.textContent='Logging in…';btn.disabled=true;}
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  if(btn){btn.textContent='Log in';btn.disabled=false;}
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  currentUser = data.user;
+  await ensureProfile(currentUser);
+  await loadApp();
 }
 
 async function handleLogout() {
@@ -1397,13 +1459,17 @@ function getDefaultDueDate(freq) {
 async function loadApp() {
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
-  document.getElementById('nav-user-email').textContent = currentUser.email;
+  const navEmail = document.getElementById('nav-user-email');
+  if(navEmail) navEmail.textContent = currentUser.email;
 
-    if(!currentFacility) {
-    const {data:{session}} = await sb.auth.getSession();
-    if(session) await sb.auth.setSession(session);
-    const {data} = await sb.from('facilities').select('*').eq('user_id',currentUser.id).limit(1).single();
-    if(!data){showPage('onboard');return;}
+  if(!currentFacility) {
+    // .single() throws if 0 rows — use maybeSingle() to safely return null
+    const {data, error} = await sb.from('facilities').select('*').eq('user_id',currentUser.id).limit(1).maybeSingle();
+    if(!data){
+      // No facility yet — go to onboarding
+      showPage('onboard');
+      return;
+    }
     currentFacility = data;
   }
 
@@ -1414,11 +1480,11 @@ async function loadApp() {
   const avatarEl = document.getElementById('user-avatar');
   const menuEmail = document.getElementById('menu-user-email');
   const menuFacility = document.getElementById('menu-facility-name');
-  const navEmail = document.getElementById('nav-user-email');
+  const navEmailEl = document.getElementById('nav-user-email');
   if(avatarEl) avatarEl.textContent = initial;
   if(menuEmail) menuEmail.textContent = email;
   if(menuFacility) menuFacility.textContent = currentFacility.name;
-  if(navEmail) navEmail.textContent = email;
+  if(navEmailEl) navEmailEl.textContent = email;
   const typeLabels = {rcfe:'RCFE',cbrc:'CBRC',arf:'ARF',snf:'SNF'};
   document.getElementById('sidebar-facility-type').textContent = typeLabels[currentFacility.facility_type]||'RCFE';
 
@@ -1429,7 +1495,10 @@ async function loadApp() {
   complianceTasks = tasks||[];
 
   showPage('app');
-  switchTab('dashboard');
+  refreshDashboard();
+
+  // Pre-load residents, staff, incidents so dashboard snapshot is populated
+  await Promise.all([loadResidents(), loadStaff(), loadIncidents()]);
   refreshDashboard();
 }
 
@@ -1493,18 +1562,46 @@ function refreshDashboard() {
     const catTasks = complianceTasks.filter(t=>t.category===cat);
     const catDone = catTasks.filter(t=>t.completed).length;
     const pct = catTasks.length>0?Math.round((catDone/catTasks.length)*100):0;
-    const cl = pct===100?'':'pct<50?danger:warn';
+    const fillClass = pct<50?'danger':pct<80?'warn':'';
     return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
         <span>${CATEGORY_LABELS[cat]}</span>
         <span style="color:var(--text2)">${catDone}/${catTasks.length}</span>
       </div>
       <div class="progress-bar">
-        <div class="progress-fill ${pct<50?'danger':pct<80?'warn':''}" style="width:${pct}%"></div>
+        <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
       </div>
     </div>`;
   }).join('');
   document.getElementById('category-breakdown').innerHTML = catHtml;
+
+  // Facility snapshot (residents, staff, incidents)
+  const snapEl = document.getElementById('facility-snapshot');
+  if(snapEl) {
+    const resCount = (window.residents||[]).length;
+    const staffCount = (window.staffList||[]).length;
+    const incCount = (window.incidents||[]).length;
+    const dssCount = (window.incidents||[]).filter(i=>i.dss_reportable).length;
+    snapEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+        <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('residents')">
+          <div style="font-size:1.8rem;font-weight:700;color:var(--teal)">${resCount}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Residents</div>
+        </div>
+        <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('staff')">
+          <div style="font-size:1.8rem;font-weight:700;color:var(--teal)">${staffCount}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Staff</div>
+        </div>
+        <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('incidents')">
+          <div style="font-size:1.8rem;font-weight:700;color:${incCount>0?'var(--amber)':'var(--teal)'}">${incCount}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Incidents</div>
+        </div>
+        ${dssCount>0?`<div style="text-align:center;background:var(--red-light);border:1px solid #f5c0c0;border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('incidents')">
+          <div style="font-size:1.8rem;font-weight:700;color:var(--red)">${dssCount}</div>
+          <div style="font-size:12px;color:var(--red);margin-top:2px">DSS reportable</div>
+        </div>`:''}
+      </div>`;
+  }
 }
 
 function getDaysUntil(dateStr) {
@@ -2228,37 +2325,13 @@ async function saveNote() {
   document.body.style.visibility='visible';
 
   // Listen for auth state changes (catches Google OAuth redirect)
-  // ── STARTUP SESSION CHECK ──
-// Check for existing session on page load (handles returning users)
-(async () => {
-  document.body.style.visibility = 'hidden';
-  try {
-    let { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      // Try to refresh
-      const { data: refreshed } = await sb.auth.refreshSession();
-      session = refreshed?.session;
-    }
-    if (session?.user) {
-      currentUser = session.user;
-      await loadApp();
-      await checkInviteToken();
-    }
-  } catch(e) {
-    console.log('Session check error:', e.message);
-  }
-  document.body.style.visibility = 'visible';
-})();
-
-sb.auth.onAuthStateChange(async (event, session) => {
+  sb.auth.onAuthStateChange(async (event, session) => {
     if(event === 'SIGNED_IN' && session && !currentUser) {
       currentUser = session.user;
+      await ensureProfile(currentUser);
       await loadApp();
       await checkInviteToken();
       document.body.style.visibility='visible';
-    }
-    if(event === 'TOKEN_REFRESHED' && session) {
-      currentUser = session.user;
     }
     if(event === 'SIGNED_OUT') {
       currentUser = null;
@@ -2272,12 +2345,14 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
 // ===== RESIDENTS =====
 let residents = [];
+window.residents = residents;
 let currentResidentId = null;
 
 async function loadResidents() {
   if(!currentFacility) return;
   const {data} = await sb.from('residents').select('*').eq('facility_id', currentFacility.id).order('name');
   residents = data || [];
+  window.residents = residents;
   renderResidents();
 }
 
@@ -2486,6 +2561,7 @@ function deleteCurrentResident() {
 
 // ===== STAFF =====
 let staffList = [];
+window.staffList = staffList;
 let currentStaffId = null;
 
 const ROLE_LABELS = {
@@ -2503,6 +2579,7 @@ async function loadStaff() {
   if(!currentFacility) return;
   const {data} = await sb.from('staff').select('*').eq('facility_id', currentFacility.id).order('name');
   staffList = data || [];
+  window.staffList = staffList;
   renderStaff();
 }
 
@@ -2932,12 +3009,13 @@ async function deleteMedication() {
  
  // ===== INCIDENTS =====
 let incidents = [];
-let currentIncidentId = null;
+window.incidents = incidents;
 
 async function loadIncidents() {
   if(!currentFacility) return;
   const {data} = await sb.from('incidents').select('*').eq('facility_id', currentFacility.id).order('incident_date', {ascending:false});
   incidents = data || [];
+  window.incidents = incidents;
   renderIncidents();
 }
 
@@ -3173,16 +3251,24 @@ async function saveFacility() {
 
 // ── MAR MODULE ──
 async function loadMAR() {
+  // Ensure residents are loaded — MAR depends on them
+  const resList = window.residents || residents;
+  if(!resList.length && currentFacility) {
+    await loadResidents();
+  }
   const resFilter = document.getElementById('mar-resident-filter')?.value;
-  // Populate resident dropdown
+  // Populate resident filter dropdown
   const sel = document.getElementById('mar-resident-filter');
-  if(sel && residents.length && sel.options.length <= 1) {
-    residents.forEach(r => {
+  if(sel) {
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All Residents</option>';
+    (window.residents || residents).forEach(r => {
       const opt = document.createElement('option');
       opt.value = r.id;
       opt.textContent = r.name;
       sel.appendChild(opt);
     });
+    sel.value = current; // restore selection
   }
   let query = sb.from('mar_entries')
     .select('*, residents(name)')
@@ -3229,11 +3315,20 @@ async function loadMAR() {
 function showMAREntry() {
   const sel = document.getElementById('mar-res-select');
   sel.innerHTML = '<option value="">Select Resident</option>';
-  residents.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.id; opt.textContent = r.name; sel.appendChild(opt);
-  });
+  const resList = window.residents || residents;
+  if(!resList.length) {
+    sel.innerHTML = '<option value="" disabled>No residents — add residents first</option>';
+  } else {
+    resList.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id; opt.textContent = r.name; sel.appendChild(opt);
+    });
+  }
+  document.getElementById('mar-medication').value = '';
+  document.getElementById('mar-dosage').value = '';
+  document.getElementById('mar-notes').value = '';
   document.getElementById('mar-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('mar-status').value = 'given';
   document.getElementById('mar-modal').classList.add('open');
 }
 function closeMARModal(){ document.getElementById('mar-modal').classList.remove('open'); }
@@ -3385,12 +3480,33 @@ async function checkInviteToken(){
   window.history.replaceState({},document.title,window.location.pathname);
 }
 
-function openSettings(){
+async function openSettings(){
   const modal = document.getElementById('settings-modal');
   modal.style.display = 'flex';
   if(currentUser) {
     document.getElementById('settings-email').textContent = currentUser.email || '—';
-    document.getElementById('settings-plan').textContent = 'Trial — 14 days free';
+    // Calculate trial days remaining from profile
+    try {
+      const {data} = await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
+      if(data) {
+        const plan = data.plan || 'trial';
+        if(plan === 'trial') {
+          const created = new Date(data.created_at);
+          const daysUsed = Math.floor((Date.now() - created) / (1000*60*60*24));
+          const daysLeft = Math.max(0, 14 - daysUsed);
+          document.getElementById('settings-plan').textContent = daysLeft > 0
+            ? `Free trial · ${daysLeft} day${daysLeft!==1?'s':''} remaining`
+            : 'Trial expired — subscribe to continue';
+        } else {
+          const planLabel = {starter:'Starter ($49/mo)',pro:'Pro ($79/mo)',specialist:'Specialist ($149/mo)',agency:'Agency ($249/mo)'}[plan] || plan;
+          document.getElementById('settings-plan').textContent = planLabel;
+        }
+      } else {
+        document.getElementById('settings-plan').textContent = 'Free trial';
+      }
+    } catch(e) {
+      document.getElementById('settings-plan').textContent = 'Free trial';
+    }
   }
 }
 
@@ -3876,174 +3992,46 @@ function openSettings(){
 
 
 <!-- SETTINGS MODAL -->
-<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--bg2,#1a1a2e);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:16px;padding:28px;width:100%;max-width:400px;color:#fff;">
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.15);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div style="font-size:18px;font-weight:700;">Settings</div>
-      <button onclick="document.getElementById('settings-modal').style.display='none'" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;">×</button>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text)">Settings</div>
+      <button onclick="document.getElementById('settings-modal').style.display='none'" style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;line-height:1">×</button>
     </div>
-    <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:12px;">Account</div>
-    <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:13px;color:#888;margin-bottom:4px;">Email</div>
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-weight:600;margin-bottom:10px">Account</div>
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:3px">Email</div>
       <div style="font-size:14px;font-weight:600;" id="settings-email">—</div>
     </div>
-    <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:12px;">Subscription</div>
-    <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:13px;color:#888;margin-bottom:4px;">Current Plan</div>
-      <div style="font-size:14px;font-weight:600;" id="settings-plan">—</div>
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-weight:600;margin-bottom:10px">Subscription</div>
+    <div style="background:var(--teal-light);border:1px solid #b3e8d6;border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--teal);margin-bottom:3px">Current Plan</div>
+      <div style="font-size:14px;font-weight:600;color:var(--teal)" id="settings-plan">—</div>
     </div>
-    <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:12px;">Pricing</div>
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-weight:600;margin-bottom:10px">Upgrade</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
-      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
-        <div><div style="font-size:13px;font-weight:600;">Starter</div><div style="font-size:12px;color:#888;">1 facility</div></div>
-        <button onclick="window.open(STRIPE_STARTER,'_blank')" style="padding:6px 14px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">$49/mo</button>
+      <div style="background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:13px;font-weight:600;">Starter</div><div style="font-size:12px;color:var(--text2)">1 facility</div></div>
+        <button onclick="window.open(STRIPE_STARTER,'_blank')" class="btn btn-outline" style="font-size:12px;padding:5px 12px">$49/mo</button>
       </div>
-      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
-        <div><div style="font-size:13px;font-weight:600;">Pro</div><div style="font-size:12px;color:#888;">3 facilities</div></div>
-        <button onclick="window.open(STRIPE_PRO,'_blank')" style="padding:6px 14px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">$79/mo</button>
+      <div style="background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:13px;font-weight:600;color:var(--teal)">Pro ⭐</div><div style="font-size:12px;color:var(--teal)">3 facilities</div></div>
+        <button onclick="window.open(STRIPE_PRO,'_blank')" class="btn btn-primary" style="font-size:12px;padding:5px 12px">$79/mo</button>
       </div>
-      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
-        <div><div style="font-size:13px;font-weight:600;">Specialist</div><div style="font-size:12px;color:#888;">5 facilities</div></div>
-        <button onclick="window.open(STRIPE_SPECIALIST,'_blank')" style="padding:6px 14px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">$149/mo</button>
+      <div style="background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:13px;font-weight:600;">Specialist</div><div style="font-size:12px;color:var(--text2)">5 facilities</div></div>
+        <button onclick="window.open(STRIPE_SPECIALIST,'_blank')" class="btn btn-outline" style="font-size:12px;padding:5px 12px">$149/mo</button>
       </div>
-      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
-        <div><div style="font-size:13px;font-weight:600;">Agency</div><div style="font-size:12px;color:#888;">Unlimited</div></div>
-        <button onclick="window.open(STRIPE_AGENCY,'_blank')" style="padding:6px 14px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">$249/mo</button>
+      <div style="background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:13px;font-weight:600;">Agency</div><div style="font-size:12px;color:var(--text2)">Unlimited</div></div>
+        <button onclick="window.open(STRIPE_AGENCY,'_blank')" class="btn btn-outline" style="font-size:12px;padding:5px 12px">$249/mo</button>
       </div>
     </div>
-    <button onclick="signOut()" style="width:100%;padding:11px;background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2);border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;">Sign Out</button>
+    <button onclick="handleLogout()" style="width:100%;padding:11px;background:var(--red-light);color:var(--red);border:1px solid #f5c0c0;border-radius:var(--radius);font-size:13.5px;font-weight:600;cursor:pointer;">Sign Out</button>
   </div>
 </div>
 
 
-<!-- MAR-LEGACY-REMOVED -->
-  <div class="section-header">
-    <h2>Medication Administration Record</h2>
-    <button class="btn-primary" onclick="showMAREntry()">+ Log Medication</button>
-  </div>
-  <div style="font-size:12px;color:#888;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
-    ⚠️ MAR entries are records of what was logged in this system. Always verify administration in person. Missing entries require immediate follow-up.
-  </div>
-  <div id="mar-resident-select" style="margin-bottom:16px;">
-    <select id="mar-resident-filter" onchange="loadMAR()" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-      <option value="">All Residents</option>
-    </select>
-  </div>
-  <div id="mar-entries-list"></div>
-
-  <!-- MAR ENTRY MODAL -->
-  <div id="mar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
-    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;width:100%;max-width:400px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div style="font-size:17px;font-weight:700;">Log Medication</div>
-        <button onclick="closeMARModal()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;">×</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <select id="mar-res-select" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-          <option value="">Select Resident</option>
-        </select>
-        <input id="mar-medication" placeholder="Medication name" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-        <input id="mar-dosage" placeholder="Dosage (e.g. 10mg)" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-        <select id="mar-time-period" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-          <option value="morning">Morning (6AM-12PM)</option>
-          <option value="afternoon">Afternoon (12PM-6PM)</option>
-          <option value="evening">Evening (6PM-10PM)</option>
-          <option value="night">Night (10PM-6AM)</option>
-          <option value="prn">PRN (As needed)</option>
-        </select>
-        <select id="mar-status" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-          <option value="given">Given ✅</option>
-          <option value="refused">Refused by resident</option>
-          <option value="held">Held per physician order</option>
-          <option value="missed">Missed</option>
-        </select>
-        <textarea id="mar-notes" placeholder="Notes (optional)" rows="2" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;resize:none;"></textarea>
-        <input id="mar-date" type="date" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-      </div>
-      <button onclick="saveMAR()" style="width:100%;margin-top:16px;padding:12px;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">Save MAR Entry</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- TEAM-LEGACY-REMOVED -->
-  <div class="section-header">
-    <h2>Team Access</h2>
-    <button class="btn-primary" onclick="showInviteModal()">+ Invite Member</button>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;">
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;">
-      <div style="font-size:20px;margin-bottom:6px;">👑</div>
-      <div style="font-size:13px;font-weight:700;">Administrator</div>
-      <div style="font-size:12px;color:#888;margin-top:4px;">Full access, manages billing and team</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;">
-      <div style="font-size:20px;margin-bottom:6px;">👤</div>
-      <div style="font-size:13px;font-weight:700;">Supervisor</div>
-      <div style="font-size:12px;color:#888;margin-top:4px;">View and edit, no billing access</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;">
-      <div style="font-size:20px;margin-bottom:6px;">🏠</div>
-      <div style="font-size:13px;font-weight:700;">Caregiver</div>
-      <div style="font-size:12px;color:#888;margin-top:4px;">Log MAR, tasks, and incidents only</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;">
-      <div style="font-size:20px;margin-bottom:6px;">👁</div>
-      <div style="font-size:13px;font-weight:700;">Read Only</div>
-      <div style="font-size:12px;color:#888;margin-top:4px;">For DSS inspection or family view</div>
-    </div>
-  </div>
-  <div id="team-members-list"></div>
-  <div id="pending-invites-list"></div>
-
-  <!-- INVITE MODAL -->
-  <div id="invite-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);">
-    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;width:100%;max-width:380px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div style="font-size:17px;font-weight:700;">Invite Team Member</div>
-        <button onclick="closeInviteModal()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;">×</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <input id="invite-email" type="email" placeholder="Email address" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-        <select id="invite-role" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
-          <option value="caregiver">Caregiver</option>
-          <option value="supervisor">Supervisor</option>
-          <option value="readonly">Read Only</option>
-        </select>
-      </div>
-      <button onclick="sendInvite()" style="width:100%;margin-top:16px;padding:12px;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">Generate Invite Link</button>
-      <div id="invite-link-result" style="margin-top:14px;display:none;">
-        <div style="font-size:12px;color:#888;margin-bottom:6px;">Share this link with your team member:</div>
-        <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:10px;font-size:12px;color:#a5b4fc;word-break:break-all;" id="invite-link-text"></div>
-        <button onclick="copyInviteLink()" style="width:100%;margin-top:10px;padding:10px;background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Copy Link</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- AI-LEGACY-REMOVED -->
-  <div class="section-header">
-    <h2>AI Compliance Assistant</h2>
-    <span style="font-size:11px;background:rgba(99,102,241,0.15);color:#a5b4fc;padding:3px 10px;border-radius:99px;font-weight:600;">Specialist & Agency</span>
-  </div>
-  <div style="font-size:12px;color:#888;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
-    ⚠️ AI responses are based on data recorded in Title22 only. Always verify compliance in person. This is not legal advice.
-  </div>
-  <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;min-height:200px;"></div>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <button onclick="sendAIQuery(this)" style="padding:5px 12px;border-radius:99px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#888;font-size:12px;cursor:pointer;">What do I need to do today?</button>
-      <button onclick="sendAIQuery(this)" style="padding:5px 12px;border-radius:99px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#888;font-size:12px;cursor:pointer;">Am I ready for DSS inspection?</button>
-      <button onclick="sendAIQuery(this)" style="padding:5px 12px;border-radius:99px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#888;font-size:12px;cursor:pointer;">Who has expired certifications?</button>
-      <button onclick="sendAIQuery(this)" style="padding:5px 12px;border-radius:99px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#888;font-size:12px;cursor:pointer;">Simulate DSS inspection</button>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <textarea id="ai-query-input" placeholder="Ask anything about your facility..." rows="2" style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;resize:none;outline:none;"></textarea>
-      <button onclick="sendAIQuery()" style="width:44px;height:44px;border-radius:10px;background:#6366f1;border:none;color:#fff;font-size:18px;cursor:pointer;align-self:flex-end;">↑</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
