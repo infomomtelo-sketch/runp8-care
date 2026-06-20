@@ -222,10 +222,10 @@
         <div style="width:28px;height:28px;background:var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700" id="user-avatar">E</div>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <div id="user-menu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200">
+      <div id="user-menu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200">
         <div style="padding:8px 12px;border-bottom:1px solid var(--border);margin-bottom:6px">
           <div style="font-size:12px;font-weight:600;color:var(--text)" id="menu-user-email"></div>
-          <div style="font-size:11px;color:var(--text2)" id="menu-facility-name"></div>
+          <div id="facility-switcher" style="margin-top:6px"></div>
         </div>
         <button onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📊 Dashboard</button>
         <button onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✅ Compliance</button>
@@ -788,8 +788,10 @@ async function handleOnboard(){
   }).select().single();
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   currentFacility=data;
+  allFacilities.push(data);
   await seedComplianceTasks(data.id,adminCertExpiry);
-  await loadApp();
+  await initFacility();
+  switchTab('dashboard');
 }
 
 async function seedComplianceTasks(facilityId,adminCertExpiry){
@@ -820,16 +822,32 @@ function getDefaultDueDate(freq){
 }
 
 // ===== LOAD APP =====
+let allFacilities=[];
+
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
 
-  if(!currentFacility){
-    const{data}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).limit(1).maybeSingle();
-    if(!data){showPage('onboard');return;}
-    currentFacility=data;
+  // Load ALL facilities this user owns or is a member of
+  const{data:ownedFacilities}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).order('name');
+  const{data:memberFacilities}=await sb.from('facility_members').select('facility_id, facilities(*)').eq('user_id',currentUser.id);
+  const memberFacs=(memberFacilities||[]).map(m=>m.facilities).filter(Boolean);
+  // Merge and dedupe
+  const facilityMap={};
+  [...(ownedFacilities||[]),...memberFacs].forEach(f=>{if(f&&f.id)facilityMap[f.id]=f;});
+  allFacilities=Object.values(facilityMap);
+
+  if(!allFacilities.length){showPage('onboard');return;}
+
+  // Use currentFacility if already set (switching), otherwise use first
+  if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){
+    currentFacility=allFacilities[0];
   }
 
+  await initFacility();
+}
+
+async function initFacility(){
   document.getElementById('sidebar-facility-name').textContent=currentFacility.name;
   const typeLabels={rcfe:'RCFE',cbrc:'CBRC',arf:'ARF'};
   document.getElementById('sidebar-facility-type').textContent=typeLabels[currentFacility.facility_type]||'RCFE';
@@ -838,7 +856,9 @@ async function loadApp(){
   const initial=email.charAt(0).toUpperCase();
   document.getElementById('user-avatar').textContent=initial;
   document.getElementById('menu-user-email').textContent=email;
-  document.getElementById('menu-facility-name').textContent=currentFacility.name;
+
+  // Render facility switcher
+  renderFacilitySwitcher();
 
   // Load role
   try{
@@ -855,6 +875,13 @@ async function loadApp(){
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
   complianceTasks=tasks||[];
 
+  // Reset cached data
+  residents=[];window.residents=[];
+  staffList=[];window.staffList=[];
+  incidents=[];window.incidents=[];
+  marMedCache={};
+  dashBriefingLoaded=false;
+
   showPage('app');
 
   // Trial banner
@@ -864,10 +891,7 @@ async function loadApp(){
       const daysUsed=Math.floor((Date.now()-new Date(pd.created_at))/(1000*60*60*24));
       const daysLeft=Math.max(0,14-daysUsed);
       const banner=document.getElementById('trial-banner');
-      if(banner){
-        document.getElementById('trial-days-left').textContent=daysLeft;
-        banner.style.display='flex';
-      }
+      if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
     }
   }catch(e){}
 
@@ -875,6 +899,35 @@ async function loadApp(){
   await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
   refreshDashboard();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
+}
+
+function renderFacilitySwitcher(){
+  const el=document.getElementById('facility-switcher');if(!el)return;
+  if(allFacilities.length<=1){
+    // Single facility — just show name
+    el.innerHTML=`<div style="font-size:11px;color:var(--text2)">${currentFacility.name}</div>`;
+    return;
+  }
+  // Multiple facilities — show dropdown
+  el.innerHTML=`
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:4px;font-weight:600">Switch facility</div>
+    <select onchange="switchFacility(this.value)" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;background:var(--white);color:var(--text);cursor:pointer">
+      ${allFacilities.map(f=>`<option value="${f.id}" ${f.id===currentFacility.id?'selected':''}>${f.name}</option>`).join('')}
+    </select>
+    <button onclick="showPage('onboard');toggleUserMenu()" style="width:100%;margin-top:6px;padding:5px 8px;border:1.5px dashed var(--border);border-radius:var(--radius);font-size:11px;background:none;cursor:pointer;color:var(--teal);font-weight:500">+ Add new facility</button>
+  `;
+}
+
+async function switchFacility(facilityId){
+  if(facilityId===currentFacility?.id)return;
+  const fac=allFacilities.find(f=>f.id===facilityId);
+  if(!fac)return;
+  currentFacility=fac;
+  toggleUserMenu();
+  // Show loading state
+  document.getElementById('sidebar-facility-name').textContent='Loading...';
+  await initFacility();
+  switchTab('dashboard');
 }
 
 function applyRoleUI(){
@@ -1677,7 +1730,7 @@ async function saveIncident(){
   const payload={
     facility_id:currentFacility.id,
     resident_id:residentId,
-    reported_by:currentUser.id,
+    reported_by:currentUser?.id||null,
     incident_type:document.getElementById('inc-type').value,
     occurred_at:occurredAt,
     description:document.getElementById('inc-description').value.trim()||null,
@@ -1754,7 +1807,7 @@ async function saveFacility(){
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   currentFacility={...currentFacility,...payload};
   document.getElementById('sidebar-facility-name').textContent=currentFacility.name;
-  document.getElementById('menu-facility-name').textContent=currentFacility.name;
+  renderFacilitySwitcher();
   closeFacilityModal();renderFacilityInfo();
 }
 
