@@ -404,6 +404,7 @@
       <button class="nav-item" id="nav-mar" onclick="switchTab('mar')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>MAR</button>
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
       <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>AI</button>
+      <button class="nav-item" id="nav-billing" onclick="switchTab('billing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Billing</button>
     </div>
     <div class="main-content">
       <!-- FIX 3: removed duplicate display:none -->
@@ -571,6 +572,76 @@
         </div>
       </div>
 
+      <!-- BILLING TAB -->
+      <div id="tab-billing" style="display:none">
+        <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
+
+        <div id="billing-current-plan" class="card" style="margin-bottom:20px">
+          <div class="card-title">Current plan</div>
+          <div id="billing-plan-details"><div class="empty">Loading...</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Upgrade your plan</div>
+          <div style="display:grid;gap:12px">
+
+            <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div>
+                <div style="font-weight:700;font-size:15px">Starter</div>
+                <div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff, incidents, compliance dashboard</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+                <div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+                <button onclick="window.open(STRIPE_STARTER,'_blank')" class="btn btn-outline" style="font-size:13px">Subscribe</button>
+              </div>
+            </div>
+
+            <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
+              <div>
+                <div style="font-weight:700;font-size:15px;color:var(--teal)">Pro ⭐ <span style="font-size:11px;background:var(--teal);color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">Most popular</span></div>
+                <div style="font-size:13px;color:var(--teal)">Up to 3 facilities · Everything in Starter + training hours, multi-facility dashboard</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+                <div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400;color:var(--teal)">/mo</span></div>
+                <button onclick="window.open(STRIPE_PRO,'_blank')" class="btn btn-primary" style="font-size:13px">Subscribe</button>
+              </div>
+            </div>
+
+            <div style="border:1.5px solid #BA7517;border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div>
+                <div style="font-weight:700;font-size:15px;color:#BA7517">Specialist</div>
+                <div style="font-size:13px;color:var(--text2)">Up to 5 facilities · Everything in Pro + AI assistant, DSS Inspection Simulator</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+                <div style="font-size:1.4rem;font-weight:700">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+                <button onclick="window.open(STRIPE_SPECIALIST,'_blank')" class="btn btn-outline" style="font-size:13px;border-color:#BA7517;color:#BA7517">Subscribe</button>
+              </div>
+            </div>
+
+            <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div>
+                <div style="font-weight:700;font-size:15px">Agency</div>
+                <div style="font-size:13px;color:var(--text2)">Unlimited facilities · Everything in Specialist + white-label, dedicated support</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+                <div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div>
+                <button onclick="window.open(STRIPE_AGENCY,'_blank')" class="btn btn-outline" style="font-size:13px">Subscribe</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Need help?</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.8">
+            Questions about billing? Email <a href="mailto:support@title22.app" style="color:var(--teal)">support@title22.app</a><br>
+            To cancel, email us anytime — no questions asked.<br>
+            All plans include a 14-day free trial for new accounts.
+          </div>
+        </div>
+      </div>
+
       <!-- AI TAB -->
       <div id="tab-ai" style="display:none">
         <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-amber">Specialist &amp; Agency</span></div>
@@ -610,8 +681,28 @@ let currentFacility = null;
 let checklistItems = [];
 let complianceTasks = [];
 let activeFilter = 'all';
-// FIX 2: declare currentIncidentId at top level
 let currentIncidentId = null;
+
+// Role-based access
+// Roles: 'administrator' | 'supervisor' | 'caregiver' | 'readonly'
+let currentUserRole = 'administrator'; // default until loaded from facility_members
+
+const ROLE_ACCESS = {
+  administrator: { canEdit: true,  canDelete: true,  canBilling: true,  canTeam: true,  tabs: ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai','billing'] },
+  supervisor:    { canEdit: true,  canDelete: true,  canBilling: false, canTeam: false, tabs: ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','ai'] },
+  caregiver:     { canEdit: true,  canDelete: false, canBilling: false, canTeam: false, tabs: ['dashboard','mar','incidents'] },
+  readonly:      { canEdit: false, canDelete: false, canBilling: false, canTeam: false, tabs: ['dashboard','checklist','staff','residents','incidents','facility','medications','mar'] },
+};
+
+function getAccess() {
+  return ROLE_ACCESS[currentUserRole] || ROLE_ACCESS['readonly'];
+}
+
+function canEdit()   { return getAccess().canEdit; }
+function canDelete() { return getAccess().canDelete; }
+function canBilling(){ return getAccess().canBilling; }
+function canTeam()   { return getAccess().canTeam; }
+function allowedTabs(){ return getAccess().tabs; }
 
 const CATEGORY_LABELS = {
   administrator:'Administrator',staff:'Staff',residents:'Residents',
@@ -624,11 +715,12 @@ function showPage(name) {
 }
 
 function switchTab(name) {
+  if(!requireAccess(name)) return;
   const menu = document.getElementById('user-menu');
   if(menu) menu.style.display='none';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai'].forEach(t => {
+  ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai','billing'].forEach(t => {
     const tab = document.getElementById('tab-'+t);
     const nav = document.getElementById('nav-'+t);
     if(tab) tab.style.display = 'none';
@@ -647,6 +739,7 @@ function switchTab(name) {
   if(name==='medications') loadMedications();
   if(name==='mar'){ window.residents=residents; loadMAR(); }
   if(name==='team') loadTeam();
+  if(name==='billing') loadBilling();
   if(name==='ai') { if(!document.getElementById('ai-chat-messages').children.length) addAIMessage('Hi! Ask me anything about your facility — compliance status, staff certifications, MAR gaps, or DSS inspection readiness. All answers are based on your recorded data.','assistant'); }
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -852,6 +945,24 @@ async function loadApp() {
   const typeLabels = {rcfe:'RCFE',cbrc:'CBRC',arf:'ARF',snf:'SNF'};
   document.getElementById('sidebar-facility-type').textContent = typeLabels[currentFacility.facility_type]||'RCFE';
 
+  // Load user role from facility_members (owner of facility is always administrator)
+  try {
+    if(currentFacility.user_id === currentUser.id) {
+      currentUserRole = 'administrator';
+    } else {
+      const {data:memberRow} = await sb.from('facility_members')
+        .select('role')
+        .eq('facility_id', currentFacility.id)
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      currentUserRole = memberRow?.role || 'readonly';
+    }
+  } catch(e) {
+    console.log('Role load error:', e.message);
+    currentUserRole = 'readonly';
+  }
+  applyRoleUI();
+
   const {data:items} = await sb.from('checklist_items').select('*');
   checklistItems = items||[];
 
@@ -879,6 +990,44 @@ async function loadApp() {
   refreshDashboard();
   await Promise.all([loadResidents(), loadStaff(), loadIncidents()]);
   refreshDashboard();
+}
+
+function applyRoleUI() {
+  const access = getAccess();
+  const allowed = access.tabs;
+
+  // Show/hide sidebar nav items
+  const allTabs = ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai'];
+  allTabs.forEach(t => {
+    const nav = document.getElementById('nav-'+t);
+    if(nav) nav.style.display = allowed.includes(t) ? '' : 'none';
+  });
+
+  // Show/hide user menu items
+  const menuTeamBtn = document.getElementById('menu-team-btn');
+  if(menuTeamBtn) menuTeamBtn.style.display = canTeam() ? '' : 'none';
+
+  // Role badge in sidebar
+  const roleColors = {administrator:'var(--teal)',supervisor:'var(--amber)',caregiver:'var(--green)',readonly:'var(--gray)'};
+  const roleLabels = {administrator:'Administrator',supervisor:'Supervisor',caregiver:'Caregiver',readonly:'Read Only'};
+  let roleBadge = document.getElementById('sidebar-role-badge');
+  if(!roleBadge) {
+    roleBadge = document.createElement('div');
+    roleBadge.id = 'sidebar-role-badge';
+    roleBadge.style.cssText = 'font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;display:inline-block;margin-top:4px;color:#fff';
+    const facDiv = document.querySelector('.sidebar-facility');
+    if(facDiv) facDiv.appendChild(roleBadge);
+  }
+  roleBadge.textContent = roleLabels[currentUserRole]||currentUserRole;
+  roleBadge.style.background = roleColors[currentUserRole]||'var(--gray)';
+}
+
+function requireAccess(tab) {
+  if(!allowedTabs().includes(tab)) {
+    alert('You do not have permission to access this section.');
+    return false;
+  }
+  return true;
 }
 
 function refreshDashboard() {
@@ -1304,6 +1453,7 @@ function renderResidents() {
 }
 
 function openResidentModal(resId) {
+  if(!canEdit()){alert('You do not have permission to edit residents.');return;}
   currentResidentId=resId||null;
   const r=resId?residents.find(x=>x.id===resId):null;
   document.getElementById('res-modal-title').textContent=r?'Edit resident':'Add resident';
@@ -1436,7 +1586,7 @@ function renderStaff(){
     return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!=='yes'?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${initials}</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div><div style="font-size:12px;color:var(--text2)">${ROLE_LABELS[s.role]||s.role||'Staff'}</div></div>${statusBadge}</div>
       <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">${certHtml}</div>
-      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${s.id}')">Edit</button><button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${s.id}','${s.name.replace(/'/g,"\\'")}')" title="Delete">🗑</button></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${s.id}')">Edit</button>${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${s.id}','${s.name.replace(/'/g,"\\'")}')" title="Delete">🗑</button>`:''}</div>
     </div>`;
   }).join('');
 }
@@ -1454,6 +1604,7 @@ function selectRoleOption(value,label){document.getElementById('staff-role').val
 function selectCustomRole(text){const slug=text.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');document.getElementById('staff-role').value=slug||'other';document.getElementById('staff-role-search').value=text.trim();ROLE_LABELS[slug]=text.trim();document.getElementById('role-options-dropdown').classList.remove('open');}
 
 function openStaffModal(staffId){
+  if(!canEdit()){alert('You do not have permission to edit staff.');return;}
   currentStaffId=staffId||null;
   const s=staffId?staffList.find(x=>x.id===staffId):null;
   document.getElementById('staff-modal-title').textContent=s?'Edit staff member':'Add staff member';
@@ -1586,6 +1737,7 @@ function renderIncidents(){
   }).join('');
 }
 function openIncidentModal(incidentId){
+  if(!canEdit()){alert('You do not have permission to edit incidents.');return;}
   // FIX 2: currentIncidentId is now properly declared at top level
   currentIncidentId=incidentId||null;
   const inc=incidentId?incidents.find(x=>x.id===incidentId):null;
@@ -1647,6 +1799,7 @@ function renderFacilityInfo(){
   else{badgeEl.innerHTML='<span class="badge badge-green">✓ Current</span>';}
 }
 function openFacilityModal(){
+  if(currentUserRole !== 'administrator'){alert('Only the administrator can edit facility information.');return;}
   const f=currentFacility||{};
   document.getElementById('facm-name').value=f.name||'';
   document.getElementById('facm-type').value=f.facility_type||'rcfe';
@@ -1786,7 +1939,8 @@ async function loadTeam(){
   else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px;">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">${m.profiles?.email||'Unknown'}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize;">${m.role}</div></div><div style="display:flex;gap:8px;"><select onchange="updateMemberRole('${m.id}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${m.id}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light);">Remove</button></div></div>`).join('');}
   if(invitesList)invitesList.innerHTML=pendingInvites.length?'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:16px 0 10px;">Pending Invites</div>'+pendingInvites.map(inv=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">${inv.email}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize;">${inv.role} · Pending</div></div><div style="display:flex;gap:8px;"><button onclick="copyInviteLinkDirect('${inv.token}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;">Copy link</button><button onclick="cancelInvite('${inv.id}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light);">Cancel</button></div></div>`).join(''):'';
 }
-function showInviteModal(){document.getElementById('invite-modal').classList.add('open');}
+function showInviteModal(){
+  if(!canTeam()){alert('Only the Administrator can invite team members.');return;}document.getElementById('invite-modal').classList.add('open');}
 function closeInviteModal(){document.getElementById('invite-modal').classList.remove('open');document.getElementById('invite-link-result').style.display='none';}
 async function sendInvite(){
   const email=document.getElementById('invite-email').value.trim();
@@ -1818,6 +1972,7 @@ async function checkInviteToken(){
 
 // ===== SETTINGS =====
 async function openSettings(){
+  if(!canBilling()){alert('Billing and subscription management is only available to the Administrator.');return;}
   const modal=document.getElementById('settings-modal');
   modal.style.display='flex';
   if(currentUser){
@@ -1837,6 +1992,43 @@ async function openSettings(){
         }
       }else{document.getElementById('settings-plan').textContent='Free trial';}
     }catch(e){document.getElementById('settings-plan').textContent='Free trial';}
+  }
+}
+
+async function loadBilling() {
+  const el = document.getElementById('billing-plan-details');
+  if(!el) return;
+  try {
+    const {data} = await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
+    const plan = data?.plan || 'trial';
+    const planLabels = {trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
+    const planPrices = {trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
+    const planColors = {trial:'var(--amber)',starter:'var(--teal)',pro:'var(--teal)',specialist:'#BA7517',agency:'var(--text)'};
+
+    let trialHtml = '';
+    if(plan === 'trial') {
+      const created = new Date(data?.created_at || Date.now());
+      const daysUsed = Math.floor((Date.now() - created) / (1000*60*60*24));
+      const daysLeft = Math.max(0, 14 - daysUsed);
+      trialHtml = `<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">
+        ${daysLeft > 0
+          ? `⏳ <strong>${daysLeft} days remaining</strong> on your free trial. Subscribe below to keep your facility protected.`
+          : `⚠️ <strong>Your trial has expired.</strong> Subscribe now to restore access.`}
+      </div>`;
+    }
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">💳</div>
+        <div>
+          <div style="font-size:1.2rem;font-weight:700;color:${planColors[plan]||'var(--text)'}">${planLabels[plan]||plan}</div>
+          <div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div>
+        </div>
+        ${plan !== 'trial' ? `<span class="badge badge-green" style="margin-left:auto">✓ Active</span>` : `<span class="badge badge-amber" style="margin-left:auto">Trial</span>`}
+      </div>
+      ${trialHtml}`;
+  } catch(e) {
+    el.innerHTML = '<div class="empty">Unable to load billing info.</div>';
   }
 }
 
