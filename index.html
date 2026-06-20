@@ -1722,7 +1722,7 @@ async function saveFacility(){
 }
 
 // ===== MAR =====
-// DB table: mar_records
+// DB table: mar_entries
 // columns: id, medication_id(uuid), resident_id(uuid), facility_id(uuid), staff_id(uuid),
 //          administered_at(timestamptz), scheduled_time(text), status(text), notes(text), created_at
 async function loadMAR(){
@@ -1743,7 +1743,7 @@ async function loadMAR(){
   }
 
   const resFilter=document.getElementById('mar-resident-filter')?.value;
-  let query=sb.from('mar_records')
+  let query=sb.from('mar_entries')
     .select('*, residents(name, full_name), medications(medication_name, dosage)')
     .eq('facility_id',currentFacility.id)
     .order('administered_at',{ascending:false})
@@ -1829,7 +1829,7 @@ async function saveMAR(){
   const medId=document.getElementById('mar-med-select').value;
   if(!resId||!medId){alert('Please select a resident and medication.');return;}
   const scheduledTime=document.getElementById('mar-scheduled-time').value;
-  const{error}=await sb.from('mar_records').insert({
+  const{error}=await sb.from('mar_entries').insert({
     facility_id:currentFacility.id,
     resident_id:resId,
     medication_id:medId,
@@ -1852,7 +1852,7 @@ async function buildFacilityContext(){
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at,description').eq('facility_id',currentFacility.id).limit(10),
-      sb.from('mar_records').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
+      sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
     ]);
     const today=new Date().toISOString().split('T')[0];
     return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
