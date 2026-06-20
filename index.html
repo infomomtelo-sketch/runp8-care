@@ -174,16 +174,18 @@
   }
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
-  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .modal{background:var(--white);border-radius:var(--radius-lg);width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;max-height:90vh}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
   .modal-header h3{font-size:1rem;font-weight:700}
   .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:0 4px}
   .modal-close:hover{color:var(--text)}
+  .modal-body{padding:1.25rem 1.5rem;overflow-y:auto;flex:1}
   .modal .form-group{margin-bottom:16px}
   .modal .form-group label{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
   .modal .form-group input,.modal .form-group select,.modal .form-group textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:inherit}
   .modal .form-group input:focus,.modal .form-group select:focus,.modal .form-group textarea:focus{border-color:var(--teal)}
-  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .modal-footer{display:flex;gap:10px;justify-content:flex-end;padding:1rem 1.5rem;border-top:1px solid var(--border);background:var(--white);flex-shrink:0;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+  @media(max-width:768px){.modal{max-height:85vh;border-radius:var(--radius-lg) var(--radius-lg) 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%}.modal-overlay{align-items:flex-end;padding:0}}
   .searchable-select{position:relative}
   .searchable-select input{width:100%}
   .searchable-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--teal);border-radius:var(--radius);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.12)}
@@ -244,6 +246,10 @@
         <button onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
         <button onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility</button>
         <button onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
+        <button onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 MAR</button>
+        <button id="menu-team-btn" onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👤 Team</button>
+        <button onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:600" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🤖 AI Assistant</button>
+        <button onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💳 Billing</button>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
           <a href="/training" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📚 Training center</a>
           <a href="/start" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏗 Open a facility</a>
@@ -261,7 +267,7 @@
 <div id="page-landing" class="page active">
   <div class="hero" style="padding-bottom:0">
     <div class="hero-badge">Built for <span class="tip" data-tip="Residential Care Facility for the Elderly — licensed by California DSS to provide 24-hour care for seniors">RCFE</span> &amp; <span class="tip" data-tip="Community Board and Care — licensed facilities providing care for adults with developmental disabilities or mental health needs">CBRC</span> · California <span class="tip" data-tip="Title 22 is the California Code of Regulations that governs all licensed care facilities — it defines every requirement operators must meet">Title 22</span> · Fresno, CA</div>
-    <h1>Run a facility <span>DSS is proud to inspect</span></h1>
+    <h1>Run a facility <span style="display:block;color:var(--teal)">DSS is proud to inspect</span></h1>
     <p>Genuine compliance every day — not just inspection day. Title22 keeps your staff certified, your resident records current, and your medications documented so when <span class="tip" data-tip="Department of Social Services — the California state agency that licenses and inspects RCFE and CBRC facilities through unannounced visits">DSS</span> arrives, the work speaks for itself.</p>
     <div class="hero-actions">
       <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Start 14-day free trial</button>
@@ -2112,8 +2118,8 @@ async function loadBilling() {
     <div class="form-group"><label>ISP on file?</label><select id="res-isp"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
     <div class="form-group"><label>ISP last reviewed</label><input type="date" id="res-isp-date"/></div>
   </div>
-  <div class="error-msg" id="res-modal-error"></div>
-  <div class="modal-footer"><button class="btn btn-outline" onclick="closeResidentModal()">Cancel</button><button class="btn btn-primary" onclick="saveResident()">Save resident</button></div></div>
+  <div class="error-msg" id="res-modal-error"></div></div></div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeResidentModal()">Cancel</button><button class="btn btn-primary" onclick="saveResident()">Save resident</button></div>
 </div>
 
 <div class="modal-overlay" id="resident-detail-modal" onclick="if(event.target===this)closeResidentDetail()">
@@ -2132,7 +2138,7 @@ async function loadBilling() {
   <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Administrator</div>
   <div class="form-group"><label>Administrator name</label><input type="text" id="facm-admin-name" placeholder="Jane Smith"/></div>
   <div class="form-row"><div class="form-group"><label>Certificate number</label><input type="text" id="facm-admin-cert" placeholder="RCFE-XXXXXX"/></div><div class="form-group"><label>Certificate expiry</label><input type="date" id="facm-admin-expiry"/></div></div>
-  <div class="error-msg" id="facility-modal-error"></div>
+  <div class="error-msg" id="facility-modal-error"></div></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeFacilityModal()">Cancel</button><button class="btn btn-primary" onclick="saveFacility()">Save changes</button></div></div>
 </div>
 
@@ -2145,14 +2151,14 @@ async function loadBilling() {
   <div class="form-group"><label>Pharmacy</label><input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy"/></div>
   <div class="form-row"><div class="form-group"><label>Start date</label><input type="date" id="med-start"/></div><div class="form-group"><label>End date</label><input type="date" id="med-end"/></div></div>
   <div class="form-group"><label>Refill due date</label><input type="date" id="med-refill"/></div>
-  <div class="error-msg" id="med-modal-error"></div>
+  <div class="error-msg" id="med-modal-error"></div></div>
   <div class="modal-footer"><button class="btn btn-outline" id="med-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteMedication()">🗑 Delete</button><button class="btn btn-outline" onclick="closeMedModal()">Cancel</button><button class="btn btn-primary" onclick="saveMedication()">Save medication</button></div></div>
 </div>
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="modal-close" onclick="closeStaffModal()">×</button></div>
-    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
+    <div class="modal-body"><div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
       <div class="form-group searchable-select"><label>Role</label><input type="text" id="staff-role-search" placeholder="Search or type a role..." oninput="filterRoleOptions(this.value)" onfocus="filterRoleOptions(this.value)" autocomplete="off"/><input type="hidden" id="staff-role" value="caregiver"/><div class="searchable-dropdown" id="role-options-dropdown"></div></div>
@@ -2176,7 +2182,7 @@ async function loadBilling() {
       <div class="form-group"><label>16hr initial training</label><select id="staff-training"><option value="no">No — incomplete</option><option value="yes">Yes — completed</option></select></div>
       <div class="form-group"><label>Training hours logged</label><input type="number" id="staff-training-hours" placeholder="0" step="0.5"/></div>
     </div>
-    <div class="error-msg" id="staff-modal-error"></div>
+    <div class="error-msg" id="staff-modal-error"></div></div>
     <div class="modal-footer"><button class="btn btn-outline" id="staff-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteStaffFromModal()">🗑 Delete</button><button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button><button class="btn btn-primary" onclick="saveStaff()">Save staff member</button></div>
   </div>
 </div>
@@ -2184,7 +2190,7 @@ async function loadBilling() {
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
   <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="modal-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Resident name</label><input type="text" id="inc-resident" placeholder="e.g. Betty Divers"/></div>
       <div class="form-group"><label>Incident type</label><select id="inc-type"><option value="fall">Fall</option><option value="medication_error">Medication error</option><option value="behavioral">Behavioral incident</option><option value="elopement">Elopement</option><option value="injury">Injury</option><option value="death">Death</option><option value="other">Other</option></select></div>
       <div class="form-group"><label>DSS reportable?</label><select id="inc-dss"><option value="no">No</option><option value="yes">Yes — must report to DSS</option></select></div>
@@ -2195,7 +2201,7 @@ async function loadBilling() {
       <div class="form-group" style="grid-column:1/-1"><label>Action taken / follow-up</label><textarea id="inc-action" rows="2" placeholder="e.g. Resident assessed, physician notified..."></textarea></div>
       <div class="form-group" style="grid-column:1/-1"><label>Reported by</label><input type="text" id="inc-reported-by" placeholder="e.g. Maria Lopez, Caregiver"/></div>
     </div>
-    <div class="error-msg" id="inc-modal-error"></div>
+    <div class="error-msg" id="inc-modal-error"></div></div></div>
     <div class="modal-footer"><button class="btn btn-outline" id="inc-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteIncident()">🗑 Delete</button><button class="btn btn-outline" onclick="closeIncidentModal()">Cancel</button><button class="btn btn-primary" onclick="saveIncident()">Save report</button></div>
   </div>
 </div>
