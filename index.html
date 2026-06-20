@@ -2089,12 +2089,13 @@ async function loadBilling() {
 
 <!-- MODALS -->
 <div class="modal-overlay" id="add-task-modal" onclick="if(event.target===this)closeModal()">
-  <div class="modal"><div class="modal-header"><h3>Add compliance task</h3><button class="modal-close" onclick="closeModal()">×</button></div>
-  <div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or type a custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown"></div></div>
+  <div class="modal" style="display:flex;flex-direction:column;max-height:85vh"><div class="modal-header"><h3>Add compliance task</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+  <div class="modal-body"><div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or type a custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown"></div></div>
   <div class="form-group"><label>Category</label><select id="modal-task-cat"><option value="administrator">Administrator</option><option value="staff">Staff</option><option value="residents">Residents</option><option value="medication">Medications</option><option value="facility" selected>Facility</option></select></div>
   <div class="form-group"><label>Due date</label><input type="date" id="modal-task-due"/></div>
   <div class="form-group"><label>Notes (optional)</label><textarea id="modal-task-notes" rows="2" placeholder="Any additional context..."></textarea></div>
-  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCustomTask()">Add task</button></div></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCustomTask()">Add task</button></div>
 </div>
 
 <div class="modal-overlay" id="note-modal" onclick="if(event.target===this)closeNoteModal()">
@@ -2104,8 +2105,8 @@ async function loadBilling() {
 </div>
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><button class="modal-close" onclick="closeResidentModal()">×</button></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  <div class="modal" style="max-width:500px;display:flex;flex-direction:column;max-height:85vh"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div class="modal-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
     <div class="form-group"><label>Room / bed</label><input type="text" id="res-room" placeholder="e.g. Room 1"/></div>
@@ -2129,8 +2130,8 @@ async function loadBilling() {
 </div>
 
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
-  <div class="modal" style="max-width:520px"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
-  <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Facility</div>
+  <div class="modal" style="max-width:520px;display:flex;flex-direction:column;max-height:85vh"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
+  <div class="modal-body"><div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Facility</div>
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
   <div class="form-group"><label>Facility type</label><select id="facm-type"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license" placeholder="197XXXXXX"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity" placeholder="6"/></div></div>
@@ -2143,8 +2144,8 @@ async function loadBilling() {
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><button class="modal-close" onclick="closeMedModal()">×</button></div>
-  <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
+  <div class="modal" style="max-width:500px;display:flex;flex-direction:column;max-height:85vh"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal-body"><div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. Take 1 tablet by mouth twice daily"/></div>
   <div class="form-row"><div class="form-group"><label>Prescriber</label><input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel"/></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
@@ -2156,7 +2157,7 @@ async function loadBilling() {
 </div>
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
-  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-width:560px;display:flex;flex-direction:column;max-height:85vh">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div class="modal-body"><div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2188,7 +2189,7 @@ async function loadBilling() {
 </div>
 
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-width:520px;display:flex;flex-direction:column;max-height:85vh">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
     <div class="modal-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Resident name</label><input type="text" id="inc-resident" placeholder="e.g. Betty Divers"/></div>
