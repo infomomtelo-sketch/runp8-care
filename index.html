@@ -2188,22 +2188,20 @@ async function loadBilling(){
 
 // ===== INIT =====
 (async()=>{
+  // Show landing instantly — don't wait for auth
+  document.getElementById('nav-public').style.display='flex';
+  document.getElementById('nav-app').style.display='none';
+  showPage('landing');
+  document.body.style.visibility='visible';
+
   try{
     const{data:{session}}=await sb.auth.getSession();
     if(session){
       currentUser=session.user;
-      try{await loadApp();}catch(e){console.error('loadApp error:',e);document.getElementById('nav-public').style.display='flex';document.getElementById('nav-app').style.display='none';showPage('landing');}
-    }else{
-      document.getElementById('nav-public').style.display='flex';
-      document.getElementById('nav-app').style.display='none';
-      showPage('landing');
+      try{await loadApp();}catch(e){console.error('loadApp error:',e);showPage('landing');}
     }
   }catch(e){
     console.error('Init error:',e);
-    document.getElementById('nav-public').style.display='flex';
-    showPage('landing');
-  }finally{
-    document.body.style.visibility='visible';
   }
 
   sb.auth.onAuthStateChange(async(event,session)=>{
@@ -2212,7 +2210,6 @@ async function loadBilling(){
       await ensureProfile(currentUser);
       try{await loadApp();}catch(e){console.error('loadApp on signin:',e);}
       await checkInviteToken();
-      document.body.style.visibility='visible';
     }
     if(event==='SIGNED_OUT'){
       currentUser=null;currentFacility=null;
