@@ -887,10 +887,11 @@ async function initFacility(){
 
   // Trial banner
   try{
-   const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').maybeSingle();
+    const{data:pd}=await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
+    const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').maybeSingle();
     const activePlan=sd?.plan||pd?.plan||'trial';
     if(!activePlan||activePlan==='trial'){
-      const daysUsed=Math.floor((Date.now()-new Date(pd.created_at))/(1000*60*60*24));
+      const daysUsed=Math.floor((Date.now()-new Date(pd?.created_at||Date.now()))/(1000*60*60*24));
       const daysLeft=Math.max(0,14-daysUsed);
       const banner=document.getElementById('trial-banner');
       if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
