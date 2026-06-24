@@ -316,16 +316,26 @@
 <div id="page-reset" class="page">
   <div class="auth-wrap">
     <div class="auth-card">
-      <h2>Reset your password</h2>
-      <p>Enter your sign-in email and we'll send a reset link.</p>
-      <div class="error-msg" id="reset-error"></div>
-      <div class="form-group"><label>Email address</label><input type="email" id="reset-email" placeholder="admin@yourfacility.com"/></div>
-      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handlePasswordReset()">Send reset link</button>
-      <div class="auth-switch" style="margin-top:16px"><a onclick="showPage('login')">← Back to login</a></div>
+      <!-- State 1: Request reset -->
+      <div id="reset-request">
+        <h2>Reset your password</h2>
+        <p>Enter your sign-in email and we'll send a reset link.</p>
+        <div class="error-msg" id="reset-error"></div>
+        <div class="form-group"><label>Email address</label><input type="email" id="reset-email" placeholder="admin@yourfacility.com"/></div>
+        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handlePasswordReset()">Send reset link</button>
+        <div class="auth-switch" style="margin-top:16px"><a onclick="showPage('login')">← Back to login</a></div>
+      </div>
+      <!-- State 2: Set new password (shown after clicking email link) -->
+      <div id="reset-newpass" style="display:none">
+        <h2>Set new password</h2>
+        <p>Choose a new password for your account.</p>
+        <div class="error-msg" id="reset-newpass-error"></div>
+        <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" placeholder="At least 6 characters"/></div>
+        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
+      </div>
     </div>
   </div>
 </div>
-
 <!-- ONBOARDING -->
 <div id="page-onboard" class="page">
   <div class="onboard-wrap">
@@ -2210,6 +2220,7 @@ async function loadBilling(){
 // ===== INIT =====
 
  async function handlePasswordReset(){
+ async function handlePasswordReset(){
   const email=document.getElementById('reset-email').value.trim();
   const err=document.getElementById('reset-error');
   err.classList.remove('show');
@@ -2221,31 +2232,28 @@ async function loadBilling(){
   err.style.background='var(--green-light)';err.style.color='var(--green)';
   err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
 }
-(async()=>{
-  // Show landing instantly — don't wait for auth
-  document.getElementById('nav-public').style.display='flex';
-  document.getElementById('nav-app').style.display='none';
-  showPage('landing');
-  document.body.style.visibility='visible';
 
-  try{
-    const{data:{session}}=await sb.auth.getSession();
-    if(session){
-      currentUser=session.user;
-      try{await loadApp();}catch(e){console.error('loadApp error:',e);showPage('landing');}
+async function handleSetNewPassword(){
+  const pass=document.getElementById('reset-newpass-input').value;
+  const err=document.getElementById('reset-newpass-error');
+  err.classList.remove('show');
+  if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  const{error}=await sb.auth.updateUser({password:pass});
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  err.style.background='var(--green-light)';err.style.color='var(--green)';
+  err.textContent='✓ Password updated! Logging you in...';err.classList.add('show');
+  setTimeout(()=>loadApp(),1500);
+}
+sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      // User clicked the reset link — show the new password form
+      document.body.style.visibility='visible';
+      showPage('reset');
+      document.getElementById('reset-request').style.display='none';
+      document.getElementById('reset-newpass').style.display='block';
+      return;
     }
-  }catch(e){
-    console.error('Init error:',e);
-  }
-
-  sb.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_IN'&&session&&!currentUser){
-      currentUser=session.user;
-      await ensureProfile(currentUser);
-      try{await loadApp();}catch(e){console.error('loadApp on signin:',e);}
-      await checkInviteToken();
-    }
-    if(event==='SIGNED_OUT'){
       currentUser=null;currentFacility=null;
       document.getElementById('nav-app').style.display='none';
       document.getElementById('nav-public').style.display='flex';
