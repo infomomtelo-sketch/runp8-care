@@ -887,8 +887,9 @@ async function initFacility(){
 
   // Trial banner
   try{
-    const{data:pd}=await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
-    if(pd&&(!pd.plan||pd.plan==='trial')){
+   const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').maybeSingle();
+    const activePlan=sd?.plan||pd?.plan||'trial';
+    if(!activePlan||activePlan==='trial'){
       const daysUsed=Math.floor((Date.now()-new Date(pd.created_at))/(1000*60*60*24));
       const daysLeft=Math.max(0,14-daysUsed);
       const banner=document.getElementById('trial-banner');
@@ -2172,20 +2173,25 @@ async function checkInviteToken(){
 async function loadBilling(){
   const el=document.getElementById('billing-plan-details');if(!el)return;
   try{
-    const{data}=await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
-    const plan=data?.plan||'trial';
+    const[profRes,subRes]=await Promise.all([
+      sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle(),
+      sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').maybeSingle()
+    ]);
+    // subscriptions table wins if active row exists
+    const plan=subRes.data?.plan||profRes.data?.plan||'trial';
     const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
     const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
     let trialHtml='';
     if(plan==='trial'){
-      const daysUsed=Math.floor((Date.now()-new Date(data?.created_at||Date.now()))/(1000*60*60*24));
+      const created=profRes.data?.created_at||new Date().toISOString();
+      const daysUsed=Math.floor((Date.now()-new Date(created))/(1000*60*60*24));
       const daysLeft=Math.max(0,14-daysUsed);
       trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`⏳ <strong>${daysLeft} days remaining</strong> on your trial.`:'⚠️ <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
     }
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">💳</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
 }
-
+ 
 // ===== INIT =====
 (async()=>{
   // Show landing instantly — don't wait for auth
