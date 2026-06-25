@@ -891,9 +891,9 @@ async function loadApp(){
     currentFacility=allFacilities[0];
   }
 
-  await initFacility();
+await initFacility();
+await checkInviteToken();
 }
-
 async function initFacility(){
   document.getElementById('sidebar-facility-name').textContent=currentFacility.name;
   const typeLabels={rcfe:'RCFE',cbrc:'CBRC',arf:'ARF'};
@@ -2274,8 +2274,8 @@ async function handleSetNewPassword(){
   if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
   const{error}=await sb.auth.updateUser({password:pass});
   if(error){err.textContent=error.message;err.classList.add('show');return;}
-  err.style.background='var(--green-light)';err.style.color='var(--green)';
-  err.textContent='✓ Password updated! Logging you in...';err.classList.add('show');
+  err.style.background='var(--green-light)';err.style.color='var(--green)';err.style.border='1px solid #b7d68e';
+  err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
   setTimeout(()=>loadApp(),1500);
 }
 sb.auth.onAuthStateChange(async(event,session)=>{
@@ -2286,11 +2286,10 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('reset-newpass').style.display='block';
     return;
   }
-  if(event==='SIGNED_IN'&&session&&!currentUser){
-    currentUser=null;currentFacility=null;
-    document.getElementById('nav-app').style.display='none';
-    document.getElementById('nav-public').style.display='flex';
-    showPage('landing');
+if(event==='SIGNED_IN'&&session&&!currentUser){
+    currentUser=session.user;
+    await ensureProfile(currentUser);
+    await loadApp();
   }
 });
 
