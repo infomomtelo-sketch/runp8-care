@@ -711,6 +711,7 @@ const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'
 function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
+  document.body.style.visibility='visible';
 }
 
 function switchTab(name){
@@ -2278,20 +2279,37 @@ async function handleSetNewPassword(){
   setTimeout(()=>loadApp(),1500);
 }
 sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='PASSWORD_RECOVERY'){
-      // User clicked the reset link — show the new password form
-      document.body.style.visibility='visible';
-      showPage('reset');
-      document.getElementById('reset-request').style.display='none';
-      document.getElementById('reset-newpass').style.display='block';
-      return;
-    }
-    if(event==='SIGNED_IN'&&session&&!currentUser){
-      currentUser=null;currentFacility=null;
-      document.getElementById('nav-app').style.display='none';
+  if(event==='PASSWORD_RECOVERY'){
+    document.body.style.visibility='visible';
+    showPage('reset');
+    document.getElementById('reset-request').style.display='none';
+    document.getElementById('reset-newpass').style.display='block';
+    return;
+  }
+  if(event==='SIGNED_IN'&&session&&!currentUser){
+    currentUser=null;currentFacility=null;
+    document.getElementById('nav-app').style.display='none';
+    document.getElementById('nav-public').style.display='flex';
+    showPage('landing');
+  }
+});
+
+// Startup: check existing session and show correct page
+(async()=>{
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session&&session.user){
+      currentUser=session.user;
+      await ensureProfile(currentUser);
+      await loadApp();
+    }else{
       document.getElementById('nav-public').style.display='flex';
-      showPage('landing');}
-  });
+      showPage('landing');
+    }
+  }catch(e){
+    document.getElementById('nav-public').style.display='flex';
+    showPage('landing');
+  }
 })();
 </script>
 
