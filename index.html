@@ -620,16 +620,28 @@
       <!-- BILLING -->
       <div id="tab-billing" style="display:none">
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
+        <!-- Trial expired overlay -->
+        <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:24px">🔒</div>
+          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
+        </div>
         <div id="billing-current-plan" class="card" style="margin-bottom:20px">
           <div class="card-title">Current plan</div>
           <div id="billing-plan-details"><div class="empty">Loading...</div></div>
+          <!-- Stripe customer portal -->
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+            <button onclick="window.open('https://billing.stripe.com/p/login/test_00000000','_blank')" class="btn btn-outline" style="font-size:13px;display:flex;align-items:center;gap:8px">
+              💳 Manage subscription &amp; invoices
+            </button>
+            <div style="font-size:11px;color:var(--text2);margin-top:6px">Update payment method, download invoices, or cancel your plan</div>
+          </div>
         </div>
         <div class="card" style="margin-bottom:20px">
           <div class="card-title">Upgrade your plan</div>
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff, incidents</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button function openStripe(url){   const link=new URL(url);   if(currentUser?.id)link.searchParams.set('client_reference_id',currentUser.id);   openStripe(link.toString(),'_blank'); } class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER,'_blank')" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
               <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Pro ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
@@ -659,6 +671,15 @@ const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
 const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
+
+function openStripe(url){
+  try{
+    const link=new URL(url);
+    if(currentUser?.id)link.searchParams.set('client_reference_id',currentUser.id);
+    if(currentUser?.email)link.searchParams.set('prefilled_email',currentUser.email);
+    window.open(link.toString(),'_blank');
+  }catch(e){window.open(url,'_blank');}
+}
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}
@@ -919,6 +940,17 @@ async function initFacility(){
       const daysLeft=Math.max(0,14-daysUsed);
       const banner=document.getElementById('trial-banner');
       if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
+      // Lock expired trial users — show only billing tab
+      if(daysLeft<=0){
+        ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai'].forEach(t=>{
+          const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
+        });
+        // Show expired overlay on main content
+        const expiredBanner=document.getElementById('trial-expired-banner');
+        if(expiredBanner)expiredBanner.style.display='flex';
+        switchTab('billing');
+        return;
+      }
     }
   }catch(e){}
 
@@ -1150,7 +1182,7 @@ function printChecklist(){
       rows+=`<tr style="border-bottom:1px solid #eee"><td style="padding:8px;font-size:13px">${t.completed?'☑':'☐'}</td><td style="padding:8px;font-size:13px">${t.title}</td><td style="padding:8px;font-size:12px;color:#666">${item.regulation_reference||''}</td><td style="padding:8px;font-size:12px;color:${isOverdue?'red':'#666'}">${t.due_date||'—'}</td></tr>`;
     });
   });
-  const win=openStripe('','_blank');
+  const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><title>Title22 Compliance Report</title><style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse}</style></head><body><h1>Title22 Compliance Report</h1><h2>${facilityName} · ${today} · ${score}% (${done}/${total})</h2><table>${rows}</table></body></html>`);
   win.document.close();win.print();
 }
@@ -1764,7 +1796,9 @@ async function saveIncident(){
     injury:document.getElementById('inc-injury').value==='yes',
     injury_description:document.getElementById('inc-injury-desc').value.trim()||null,
     physician_notified:document.getElementById('inc-physician').value==='yes',
+    physician_notified_at:(()=>{const v=document.getElementById('inc-physician').value==='yes'&&document.getElementById('inc-physician-time')?.value;if(!v)return null;const d=document.getElementById('inc-date').value||new Date().toISOString().split('T')[0];return new Date(d+'T'+v+':00').toISOString();})(),
     family_notified:document.getElementById('inc-family').value==='yes',
+    family_notified_at:(()=>{const v=document.getElementById('inc-family').value==='yes'&&document.getElementById('inc-family-time')?.value;if(!v)return null;const d=document.getElementById('inc-date').value||new Date().toISOString().split('T')[0];return new Date(d+'T'+v+':00').toISOString();})(),
     dss_reportable:document.getElementById('inc-dss').value==='yes',
     corrective_action:document.getElementById('inc-corrective').value.trim()||null,
     status:'open',
