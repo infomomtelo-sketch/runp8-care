@@ -267,6 +267,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2
       </button>
       <div class="auth-divider"><span>or</span></div>
       <form onsubmit="return false;">
+        <input type="hidden" autocomplete="username" style="display:none"/>
         <div class="form-group"><label>Email address</label><input type="email" id="login-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
         <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••"/></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
@@ -887,7 +888,7 @@ async function handleGoogleAuth(errId){
 
 async function ensureProfile(user){
   try{
-    const{data}=await sb.from('profiles').select('id').eq('id',user.id).single();
+    const{data}=await sb.from('profiles').select('id').eq('id',user.id).maybeSingle();
     if(!data)await sb.from('profiles').insert({id:user.id,plan:'trial',created_at:new Date().toISOString()});
   }catch(e){console.log('Profile check:',e.message);}
 }
@@ -1072,7 +1073,6 @@ async function initFacility(){
       const banner=document.getElementById('trial-banner');
       if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
       if(daysLeft<=0){
-        // Expired — lock all except billing
         ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai'].forEach(t=>{const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';});
         const billingNav=document.getElementById('nav-billing');if(billingNav)billingNav.style.display='flex';
         const expBanner=document.getElementById('trial-expired-banner');if(expBanner)expBanner.style.display='flex';
@@ -1095,12 +1095,10 @@ function applyRoleUI(){
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=(allowed.includes(t)||t==='billing')?'':'none';
   });
-  // User menu items
   const menuNav=document.getElementById('user-menu-nav-items');
   if(menuNav){
     menuNav.innerHTML=access.menuItems.map(item=>`<button onclick="switchTab('${item.tab}');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:${item.tab==='ai'?'var(--teal)':'var(--text)'}${item.tab==='ai'?';font-weight:600':''}" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">${item.icon} ${item.label}</button>`).join('');
   }
-  // Hide edit/add buttons for readonly
   if(!access.canEdit){
     ['btn-add-staff','btn-add-resident','btn-add-incident','btn-add-task','btn-edit-facility'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   }
@@ -1110,7 +1108,6 @@ function applyRoleUI(){
 function renderDashboardQuickActions(){
   const el=document.getElementById('dashboard-quick-actions');if(!el)return;
   const actions=[];
-  // MAR always available
   actions.push(`<button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('mar');setTimeout(()=>showMAREntry(),200)">+ Log medication</button>`);
   actions.push(`<button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('incidents');setTimeout(()=>openIncidentModal(),200)">+ Report incident</button>`);
   if(canEdit()){
@@ -1349,7 +1346,6 @@ function viewResident(id){
   const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
   const badge=(l,v)=>v==='yes'?`<span class="badge badge-green">${l} ✓</span>`:`<span class="badge badge-red">${l} ✗</span>`;
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${r.room||r.room_number}</div></div>`:''}${r.admission_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>`:''}</div>${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${r.diagnosis}</div></div>`:''}${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${r.allergies}</div></div>`:''}<div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div></div>`;
-  // Show/hide edit & delete based on role
   const editBtn=document.getElementById('rd-edit-btn');const delBtn=document.getElementById('rd-delete-btn');
   if(editBtn)editBtn.style.display=canEdit()?'':'none';if(delBtn)delBtn.style.display=canDelete()?'':'none';
   document.getElementById('resident-detail-modal').classList.add('open');
@@ -1530,21 +1526,60 @@ async function buildFacilityContext(){
     return JSON.stringify({today:new Date().toISOString().split('T')[0],facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
   }catch(e){return'Error loading facility data: '+e.message;}
 }
+
+// ===== FIX 1: loadDashboardAIBriefing — use sb.auth.getSession() instead of supabase.auth.session() =====
 async function loadDashboardAIBriefing(force){
-  if(dashBriefingLoaded&&!force)return;const el=document.getElementById('dash-ai-briefing');if(!el)return;
+  if(dashBriefingLoaded&&!force)return;
+  const el=document.getElementById('dash-ai-briefing');if(!el)return;
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
-    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${supabase.auth.session()?.access_token||''}`},body:JSON.stringify({system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]})});
+    const{data:{session:_bs}}=await sb.auth.getSession();
+    const _bt=_bs?.access_token||'';
+    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${_bt}`},body:JSON.stringify({system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]})});
     const data=await res.json();const reply=data.content?.[0]?.text||'Unable to load briefing.';
     el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
     dashBriefingLoaded=true;
   }catch(e){el.innerHTML='<div style="font-size:13px;color:var(--text2)">AI briefing unavailable. Check your AI Worker deployment.</div>';}
 }
+
 const INCIDENT_DSS_TIPS={fall:'Falls require: (1) resident assessment immediately, (2) physician notification within 24hrs if injury, (3) family notification within 24hrs, (4) DSS report within 24hrs if hospitalization occurs.',medication_error:'Medication errors require: (1) physician notification immediately, (2) family notification, (3) DSS report within 7 days if serious harm.',behavioral:'Behavioral incidents: document trigger, duration, interventions, and outcome. Update ISP if recurring.',elopement:'Elopement is immediately DSS reportable. Notify law enforcement, family, and DSS within 24hrs.',injury:'Injuries require physician notification. DSS report required if hospitalization occurs.',death:'Death requires DSS notification within 1 hour. Notify physician, family, coroner, and DSS immediately.',other:'Document thoroughly. Consult Title 22 §87211 to determine if DSS notification is required.'};
 const INCIDENT_DSS_REPORTABLE={fall:false,medication_error:false,behavioral:false,elopement:true,injury:false,death:true,other:false};
 function onIncidentTypeChange(type){const tip=document.getElementById('inc-ai-tip');const tipText=document.getElementById('inc-ai-tip-text');const dssSelect=document.getElementById('inc-dss');if(!tip||!tipText)return;if(INCIDENT_DSS_TIPS[type]){tipText.textContent=INCIDENT_DSS_TIPS[type];tip.style.display='block';}else{tip.style.display='none';}if(dssSelect&&INCIDENT_DSS_REPORTABLE[type]!==undefined){dssSelect.value=INCIDENT_DSS_REPORTABLE[type]?'yes':'no';}}
-async function sendAIQuery(btn){const input=document.getElementById('ai-query-input');const query=btn?btn.textContent.trim():input?.value?.trim();if(!query)return;if(input)input.value='';addAIMessage(query,'user');aiMessages.push({role:'user',content:query});const thinking=addAIMessage('Checking your facility data...','assistant');const facilityContext=await buildFacilityContext();try{const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json','Authorization': `Bearer ${(await supabase.auth.getSession())?.data?.session?.access_token || ''}`,body:JSON.stringify({system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific.\n\nFACILITY DATA:\n${facilityContext}`,messages:aiMessages.slice(-10)})});const data=await res.json();const reply=data.content?.[0]?.text||'Unable to get a response.';thinking.textContent='';thinking.innerHTML=reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');aiMessages.push({role:'assistant',content:reply});if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);}catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}}
+
+// ===== FIX 2: sendAIQuery — close headers object before body =====
+async function sendAIQuery(btn){
+  const input=document.getElementById('ai-query-input');
+  const query=btn?btn.textContent.trim():input?.value?.trim();
+  if(!query)return;
+  if(input)input.value='';
+  addAIMessage(query,'user');
+  aiMessages.push({role:'user',content:query});
+  const thinking=addAIMessage('Checking your facility data...','assistant');
+  const facilityContext=await buildFacilityContext();
+  try{
+    const{data:{session:_as}}=await sb.auth.getSession();
+    const _at=_as?.access_token||'';
+    const res=await fetch(AI_WORKER,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${_at}`
+      },
+      body:JSON.stringify({
+        system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific.\n\nFACILITY DATA:\n${facilityContext}`,
+        messages:aiMessages.slice(-10)
+      })
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Unable to get a response.';
+    thinking.textContent='';
+    thinking.innerHTML=reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    aiMessages.push({role:'assistant',content:reply});
+    if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
+  }catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}
+}
+
 function addAIMessage(text,role){const msgs=document.getElementById('ai-chat-messages');if(!msgs)return null;const el=document.createElement('div');el.style.cssText=role==='user'?'background:var(--teal-light);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--teal);align-self:flex-end;max-width:88%;margin-left:auto':'background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--text);line-height:1.7;max-width:95%';el.textContent=text;msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el;}
 
 // ===== TEAM =====
