@@ -45,20 +45,6 @@
   .feature-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:22px}
   .feature-card h3{font-size:1rem;font-weight:600;margin-bottom:8px}
   .feature-card p{font-size:14px;color:var(--text2);line-height:1.6}
-  .pricing{padding:60px 2rem;max-width:900px;margin:0 auto;text-align:center}
-  .pricing h2{font-size:1.8rem;font-weight:700;margin-bottom:8px}
-  .pricing-sub{color:var(--text2);margin-bottom:40px}
-  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
-  .plan{border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;text-align:left}
-  .plan.featured{border-color:var(--teal);position:relative}
-  .plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;font-size:12px;font-weight:500;padding:3px 14px;border-radius:20px;white-space:nowrap}
-  .plan-name{font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-  .plan-price{font-size:2rem;font-weight:700;margin-bottom:4px}
-  .plan-price span{font-size:14px;font-weight:400;color:var(--text2)}
-  .plan-desc{font-size:13px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
-  .plan ul{list-style:none;margin-bottom:24px}
-  .plan ul li{font-size:14px;padding:5px 0;display:flex;gap:8px;align-items:flex-start}
-  .plan ul li::before{content:"✓";color:var(--teal);font-weight:600;flex-shrink:0}
   .auth-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--gray-bg)}
   .auth-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:420px}
   .auth-card h2{font-size:1.4rem;font-weight:700;margin-bottom:6px}
@@ -316,11 +302,6 @@
     </div>
   </div>
 </div>
- <form onsubmit="return false;">
-  <div class="form-group"><label>Email address</label><input type="email" id="login-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
-  <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••"/></div>
-  <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
-</form>
 
 <!-- PASSWORD RESET -->
 <div id="page-reset" class="page">
@@ -332,7 +313,21 @@
         <p>Enter your sign-in email and we'll send a reset link.</p>
         <div class="error-msg" id="reset-error"></div>
         <div class="form-group"><label>Email address</label><input type="email" id="reset-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
-        <button class="btn btn-primary" sty 
+        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handlePasswordReset()">Send reset link</button>
+        <div class="auth-switch" style="margin-top:16px"><a onclick="showPage('login')">← Back to login</a></div>
+      </div>
+      <!-- State 2: Set new password (after email link) -->
+      <div id="reset-newpass" style="display:none">
+        <h2>Set new password</h2>
+        <p>Enter your new password below.</p>
+        <div class="error-msg" id="reset-newpass-error"></div>
+        <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/></div>
+        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ONBOARDING -->
 <div id="page-onboard" class="page">
   <div class="onboard-wrap">
@@ -537,14 +532,12 @@
             <div class="modal-header"><h3>Log Medication</h3><button class="modal-close" onclick="closeMARModal()">×</button></div>
             <div class="form-group"><label>Resident</label><select id="mar-res-select" onchange="onMARResidentChange(this.value)"><option value="">Select Resident</option></select></div>
             <div class="form-group"><label>Medication</label><select id="mar-med-select" onchange="onMARMedChange(this.value)"><option value="">Select medication</option></select></div>
-            <!-- Auto-filled from DB — read only, never AI-generated -->
             <div id="mar-med-info" style="display:none;background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px">
               <div style="font-weight:600;color:var(--teal);margin-bottom:4px" id="mar-med-info-name"></div>
               <div style="color:var(--text2)" id="mar-med-info-dosage"></div>
               <div style="color:var(--text2);margin-top:2px" id="mar-med-info-directions"></div>
               <div style="color:var(--text2);margin-top:2px;font-size:11px" id="mar-med-info-prescriber"></div>
             </div>
-            <!-- AI compliance tip — documentation only, never clinical -->
             <div id="mar-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
               <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ AI COMPLIANCE TIP</div>
               <div id="mar-ai-tip-text"></div>
@@ -617,7 +610,6 @@
       <!-- BILLING -->
       <div id="tab-billing" style="display:none">
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
-        <!-- Trial expired overlay -->
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px">🔒</div>
           <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
@@ -625,9 +617,8 @@
         <div id="billing-current-plan" class="card" style="margin-bottom:20px">
           <div class="card-title">Current plan</div>
           <div id="billing-plan-details"><div class="empty">Loading...</div></div>
-          <!-- Stripe customer portal -->
           <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-            <button onclick="window.open('https://billing.stripe.com/p/login/test_00000000','_blank')" class="btn btn-outline" style="font-size:13px;display:flex;align-items:center;gap:8px">
+            <button onclick="window.open('https://billing.stripe.com/p/login/3cItZgbeq6p03ft1Fkg3600','_blank')" class="btn btn-outline" style="font-size:13px;display:flex;align-items:center;gap:8px">
               💳 Manage subscription &amp; invoices
             </button>
             <div style="font-size:11px;color:var(--text2);margin-top:6px">Update payment method, download invoices, or cancel your plan</div>
@@ -638,19 +629,19 @@
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff, incidents</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER,'_blank')" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
               <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Pro ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO,'_blank')" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid #BA7517;border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px;color:#BA7517">Specialist</div><div style="font-size:13px;color:var(--text2)">Up to 5 facilities + AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_SPECIALIST,'_blank')" class="btn btn-outline" style="font-size:13px;border-color:#BA7517;color:#BA7517">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_SPECIALIST)" class="btn btn-outline" style="font-size:13px;border-color:#BA7517;color:#BA7517">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_AGENCY,'_blank')" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_AGENCY)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
           </div>
         </div>
@@ -709,7 +700,7 @@ function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   document.body.style.visibility='visible';
-} 
+}
 
 function switchTab(name){
   if(!allowedTabs().includes(name)){alert('You do not have permission to access this section.');return;}
@@ -813,6 +804,29 @@ async function handleLogout(){
   showPage('landing');
 }
 
+async function handlePasswordReset(){
+  const email=document.getElementById('reset-email').value.trim();
+  const err=document.getElementById('reset-error');
+  err.classList.remove('show');
+  if(!email){err.textContent='Please enter your email.';err.classList.add('show');return;}
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://title22.app'});
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  err.style.background='var(--green-light)';err.style.color='var(--green)';
+  err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
+}
+
+async function handleSetNewPassword(){
+  const pass=document.getElementById('reset-newpass-input').value;
+  const err=document.getElementById('reset-newpass-error');
+  err.classList.remove('show');
+  if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  const{error}=await sb.auth.updateUser({password:pass});
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  err.style.background='var(--green-light)';err.style.color='var(--green)';err.style.border='1px solid #b7d68e';
+  err.textContent='✓ Password updated! Redirecting…';err.classList.add('show');
+  setTimeout(()=>loadApp(),1500);
+}
+
 // ===== ONBOARD =====
 async function handleOnboard(){
   const name=document.getElementById('ob-name').value.trim();
@@ -871,40 +885,27 @@ let allFacilities=[];
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
-
-  // Load ALL facilities this user owns or is a member of
   const{data:ownedFacilities}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).order('name');
   const{data:memberFacilities}=await sb.from('facility_members').select('facility_id, facilities(*)').eq('user_id',currentUser.id);
   const memberFacs=(memberFacilities||[]).map(m=>m.facilities).filter(Boolean);
-  // Merge and dedupe
   const facilityMap={};
   [...(ownedFacilities||[]),...memberFacs].forEach(f=>{if(f&&f.id)facilityMap[f.id]=f;});
   allFacilities=Object.values(facilityMap);
-
   if(!allFacilities.length){showPage('onboard');return;}
-
-  // Use currentFacility if already set (switching), otherwise use first
-  if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){
-    currentFacility=allFacilities[0];
-  }
-
-await initFacility();
-await checkInviteToken();
+  if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
+  await initFacility();
+  await checkInviteToken();
 }
+
 async function initFacility(){
   document.getElementById('sidebar-facility-name').textContent=currentFacility.name;
   const typeLabels={rcfe:'RCFE',cbrc:'CBRC',arf:'ARF'};
   document.getElementById('sidebar-facility-type').textContent=typeLabels[currentFacility.facility_type]||'RCFE';
-
   const email=currentUser.email||'';
   const initial=email.charAt(0).toUpperCase();
   document.getElementById('user-avatar').textContent=initial;
   document.getElementById('menu-user-email').textContent=email;
-
-  // Render facility switcher
   renderFacilitySwitcher();
-
-  // Load role
   try{
     if(currentFacility.user_id===currentUser.id){currentUserRole='administrator';}
     else{
@@ -913,22 +914,16 @@ async function initFacility(){
     }
   }catch(e){currentUserRole='readonly';}
   applyRoleUI();
-
   const{data:items}=await sb.from('checklist_items').select('*');
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
   complianceTasks=tasks||[];
-
-  // Reset cached data
   residents=[];window.residents=[];
   staffList=[];window.staffList=[];
   incidents=[];window.incidents=[];
   marMedCache={};
   dashBriefingLoaded=false;
-
   showPage('app');
-
-  // Trial banner
   try{
     const{data:pd}=await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
     const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').maybeSingle();
@@ -938,12 +933,10 @@ async function initFacility(){
       const daysLeft=Math.max(0,14-daysUsed);
       const banner=document.getElementById('trial-banner');
       if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
-      // Lock expired trial users — show only billing tab
       if(daysLeft<=0){
         ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai'].forEach(t=>{
           const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
         });
-        // Show expired overlay on main content
         const expiredBanner=document.getElementById('trial-expired-banner');
         if(expiredBanner)expiredBanner.style.display='flex';
         switchTab('billing');
@@ -951,7 +944,6 @@ async function initFacility(){
       }
     }
   }catch(e){}
-
   refreshDashboard();
   await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
   refreshDashboard();
@@ -961,11 +953,9 @@ async function initFacility(){
 function renderFacilitySwitcher(){
   const el=document.getElementById('facility-switcher');if(!el)return;
   if(allFacilities.length<=1){
-    // Single facility — just show name
     el.innerHTML=`<div style="font-size:11px;color:var(--text2)">${currentFacility.name}</div>`;
     return;
   }
-  // Multiple facilities — show dropdown
   el.innerHTML=`
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:4px;font-weight:600">Switch facility</div>
     <select onchange="switchFacility(this.value)" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;background:var(--white);color:var(--text);cursor:pointer">
@@ -981,7 +971,6 @@ async function switchFacility(facilityId){
   if(!fac)return;
   currentFacility=fac;
   toggleUserMenu();
-  // Show loading state
   document.getElementById('sidebar-facility-name').textContent='Loading...';
   await initFacility();
   switchTab('dashboard');
@@ -1004,7 +993,6 @@ function refreshDashboard(){
   const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length;
   const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length;
   const score=total>0?Math.round((done/total)*100):0;
-
   document.getElementById('dash-score').textContent=score+'%';
   document.getElementById('dash-score-sub').textContent=`${done} of ${total} requirements complete`;
   const arc=2*Math.PI*34;
@@ -1016,18 +1004,15 @@ function refreshDashboard(){
   document.getElementById('prog-overdue').style.width=total>0?Math.round((overdue/total)*100)+'%':'0%';
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
-
   const urgent=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).slice(0,5);
   document.getElementById('alert-count').textContent=urgent.length;
   document.getElementById('alert-list').innerHTML=urgent.length===0
     ?'<div class="empty">No urgent alerts</div>'
     :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${t.title}</strong><span>Overdue since ${t.due_date}</span></div></div>`).join('');
-
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
     :todayTasks.map(t=>`<div class="task-item"><div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)"></div><div class="task-text ${t.completed?'done':''}">${t.title}</div></div>`).join('');
-
   const cats=['administrator','staff','residents','medication','facility'];
   document.getElementById('category-breakdown').innerHTML=cats.map(cat=>{
     const ct=complianceTasks.filter(t=>t.category===cat);
@@ -1035,7 +1020,6 @@ function refreshDashboard(){
     const pct=ct.length>0?Math.round((cd/ct.length)*100):0;
     return`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${CATEGORY_LABELS[cat]}</span><span style="color:var(--text2)">${cd}/${ct.length}</span></div><div class="progress-bar"><div class="progress-fill ${pct<50?'danger':pct<80?'warn':''}" style="width:${pct}%"></div></div></div>`;
   }).join('');
-
   const snap=document.getElementById('facility-snapshot');
   if(snap){
     const rc=(window.residents||[]).length;
@@ -1091,7 +1075,6 @@ function renderChecklist(filter){
   if(pt)pt.textContent=pct+'%';
   const od=document.getElementById('cl-overdue');const pn=document.getElementById('cl-pending');const dn=document.getElementById('cl-done');
   if(od)od.textContent=overdueCount;if(pn)pn.textContent=pendingCount;if(dn)dn.textContent=done;
-
   const body=document.getElementById('checklist-body');
   body.innerHTML=cats.map(cat=>{
     let tasks=complianceTasks.filter(t=>t.category===cat);
@@ -1185,7 +1168,6 @@ function printChecklist(){
   win.document.close();win.print();
 }
 
-// add task modal
 let selectedChecklistItemId=null;
 function addCustomTask(){
   const def=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
@@ -1315,8 +1297,7 @@ async function saveResident(){
   if(!name){err.textContent='Name is required.';err.classList.add('show');return;}
   const payload={
     facility_id:currentFacility.id,
-    name,                                          // residents.name column
-    full_name:name,                                // residents.full_name column (same)
+    name,full_name:name,
     preferred_name:document.getElementById('res-preferred').value.trim()||null,
     room:document.getElementById('res-room').value.trim()||null,
     room_number:document.getElementById('res-room').value.trim()||null,
@@ -1376,12 +1357,6 @@ async function deleteCurrentResident(){
 }
 
 // ===== STAFF =====
-// DB columns: id, facility_id, full_name, role, hire_date, livescan_cleared(bool),
-// livescan_date, tb_test_date, tb_test_expiry, tb_test_due, first_aid_cert_date,
-// first_aid_cert_expiry, cpr_cert_date, cpr_cert_expiry, initial_training_hours,
-// initial_training_complete(bool), initial_training_completed(bool), annual_training_hours,
-// mandated_reporter_completed(bool), mandated_reporter_date, food_handler_cert_expiry,
-// status, active(bool), phone, name
 let staffList=[];
 window.staffList=staffList;
 let currentStaffId=null;
@@ -1425,8 +1400,6 @@ function renderStaff(){
   const empty=document.getElementById('staff-empty');
   const summary=document.getElementById('staff-summary');
   const banner=document.getElementById('staff-expiry-banner');
-
-  // Expiry banner
   if(banner){
     let allExpired=[],allSoon=[];
     staffList.filter(s=>s.active===true).forEach(s=>{
@@ -1443,7 +1416,6 @@ function renderStaff(){
       banner.innerHTML=html;
     }
   }
-
   const active=staffList.filter(s=>s.active===true);
   if(!staffList.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
@@ -1453,11 +1425,9 @@ function renderStaff(){
   document.getElementById('staff-certs-ok').textContent=certsOk;
   document.getElementById('staff-certs-soon').textContent=certsSoon;
   document.getElementById('staff-certs-expired').textContent=certsExpired;
-
   const today=new Date().toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
   const colors=['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
-
   grid.innerHTML=staffList.map(s=>{
     const nameField=s.full_name||s.name||'Unknown';
     const st=staffCertStatus(s);
@@ -1468,7 +1438,6 @@ function renderStaff(){
     else if(st.expired.length)statusBadge=`<span class="badge badge-red">${st.expired.length} expired</span>`;
     else if(st.soon.length||st.missingDocs.length)statusBadge='<span class="badge badge-amber">Action needed</span>';
     else statusBadge='<span class="badge badge-green">✓ Compliant</span>';
-
     const tbDue=s.tb_test_due||s.tb_test_expiry;
     const certRows=[
       {label:'TB Test',date:tbDue,done:!!s.tb_test_date},
@@ -1487,7 +1456,6 @@ function renderStaff(){
       else{icon='✓';col='var(--green)';text='Valid to '+c.date;}
       return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${c.label}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
     }).join('');
-
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initials}</div>
@@ -1526,7 +1494,6 @@ function openStaffModal(staffId){
   document.getElementById('staff-role-search').value=ROLE_LABELS[roleVal]||roleVal;
   document.getElementById('staff-hire-date').value=s?.hire_date||'';
   document.getElementById('staff-phone').value=s?.phone||'';
-  // active is boolean in DB
   document.getElementById('staff-active').value=s===null?'true':(s.active===true?'true':'false');
   document.getElementById('staff-tb-date').value=s?.tb_test_date||'';
   document.getElementById('staff-tb-due').value=s?.tb_test_due||s?.tb_test_expiry||'';
@@ -1557,9 +1524,7 @@ async function saveStaff(){
   const mandatedDone=document.getElementById('staff-mandated').value==='true';
   const trainingDone=document.getElementById('staff-training').value==='true';
   const payload={
-    facility_id:currentFacility.id,
-    full_name:nameVal,
-    name:nameVal,
+    facility_id:currentFacility.id,full_name:nameVal,name:nameVal,
     role:document.getElementById('staff-role').value,
     hire_date:document.getElementById('staff-hire-date').value||null,
     phone:document.getElementById('staff-phone').value.trim()||null,
@@ -1600,8 +1565,6 @@ async function deleteStaff(id,name){
 }
 
 // ===== MEDICATIONS =====
-// DB: id, resident_id, facility_id, medication_name, dosage, directions, prescriber,
-//     rx_number, pharmacy, start_date, end_date, refill_date, schedule(jsonb), status
 let medicationsByResident={};
 async function loadMedications(){
   if(!currentFacility)return;
@@ -1682,10 +1645,6 @@ async function deleteMedication(){
 }
 
 // ===== INCIDENTS =====
-// DB columns: id, facility_id, resident_id(uuid), reported_by(uuid), incident_type,
-//   occurred_at(timestamptz), description, injury(bool), injury_description,
-//   physician_notified(bool), physician_notified_at, family_notified(bool), family_notified_at,
-//   dss_reportable(bool), dss_reported(bool), dss_reported_at, corrective_action, status, created_at
 let incidents=[];
 window.incidents=incidents;
 let currentIncidentResidentId=null;
@@ -1710,7 +1669,7 @@ function renderIncidents(){
     const resName=inc.residents?.name||inc.residents?.full_name||'Unknown resident';
     const typeClass=typeColors[inc.incident_type]||'other';
     const occurredDate=inc.occurred_at?new Date(inc.occurred_at).toLocaleDateString():'Unknown date';
-    const occurredTime=inc.occurred_at?new Date(inc.occurred_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';
+    const occurredTime=inc.occurred_at?new Date(inc.occurred_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:12px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
         <div>
@@ -1733,22 +1692,16 @@ function openIncidentModal(incidentId){
   if(!canEdit()){alert('You do not have permission to edit incidents.');return;}
   currentIncidentId=incidentId||null;
   const inc=incidentId?incidents.find(x=>x.id===incidentId):null;
-
   document.getElementById('inc-modal-title').textContent=inc?'Edit incident':'Report incident';
-
-  // Populate resident dropdown
   const resSel=document.getElementById('inc-resident-select');
   resSel.innerHTML='<option value="">Select resident...</option>';
   residents.forEach(r=>{
     const opt=document.createElement('option');
-    opt.value=r.id;
-    opt.textContent=r.name||r.full_name||'Unknown';
+    opt.value=r.id;opt.textContent=r.name||r.full_name||'Unknown';
     resSel.appendChild(opt);
   });
   resSel.value=inc?.resident_id||'';
-
   document.getElementById('inc-type').value=inc?.incident_type||'fall';
-  // Parse occurred_at into date + time inputs
   if(inc?.occurred_at){
     const dt=new Date(inc.occurred_at);
     document.getElementById('inc-date').value=dt.toISOString().split('T')[0];
@@ -1767,11 +1720,9 @@ function openIncidentModal(incidentId){
   document.getElementById('inc-corrective').value=inc?.corrective_action||'';
   document.getElementById('inc-modal-error').classList.remove('show');
   document.getElementById('inc-delete-btn').style.display=currentIncidentId?'inline-block':'none';
-  // Reset conditional fields
   document.getElementById('inc-injury-group').style.display=inc?.injury?'block':'none';
   document.getElementById('inc-physician-time-group').style.display=inc?.physician_notified?'block':'none';
   document.getElementById('inc-family-time-group').style.display=inc?.family_notified?'block':'none';
-  // Trigger AI tip for current type
   onIncidentTypeChange(inc?.incident_type||'fall');
   document.getElementById('incident-modal').classList.add('open');
 }
@@ -1785,11 +1736,8 @@ async function saveIncident(){
   const timeVal=document.getElementById('inc-time').value||'00:00';
   const occurredAt=dateVal?new Date(dateVal+'T'+timeVal+':00').toISOString():new Date().toISOString();
   const payload={
-    facility_id:currentFacility.id,
-    resident_id:residentId,
-    reported_by:currentUser?.id||null,
-    incident_type:document.getElementById('inc-type').value,
-    occurred_at:occurredAt,
+    facility_id:currentFacility.id,resident_id:residentId,reported_by:currentUser?.id||null,
+    incident_type:document.getElementById('inc-type').value,occurred_at:occurredAt,
     description:document.getElementById('inc-description').value.trim()||null,
     injury:document.getElementById('inc-injury').value==='yes',
     injury_description:document.getElementById('inc-injury-desc').value.trim()||null,
@@ -1871,10 +1819,7 @@ async function saveFacility(){
 }
 
 // ===== MAR =====
-// DB table: mar_entries
-// columns: id, medication_id(uuid), resident_id(uuid), facility_id(uuid), staff_id(uuid),
-//          administered_at(timestamptz), scheduled_time(text), status(text), notes(text), created_at
-let marMedCache={}; // cache meds per resident to avoid re-fetching
+let marMedCache={};
 
 async function loadMAR(){
   if(!currentFacility)return;
@@ -1884,15 +1829,12 @@ async function loadMAR(){
     resSel.innerHTML='<option value="">All Residents</option>';
     (window.residents||residents).forEach(r=>{
       const opt=document.createElement('option');
-      opt.value=r.id;
-      opt.textContent=r.name||r.full_name||'Unknown';
+      opt.value=r.id;opt.textContent=r.name||r.full_name||'Unknown';
       resSel.appendChild(opt);
     });
     resSel.value=curVal;
   }
-  // AI briefing for MAR tab
   loadMARBriefing();
-
   const resFilter=document.getElementById('mar-resident-filter')?.value;
   let query=sb.from('mar_entries')
     .select('*, residents(name, full_name), medications(medication_name, dosage, directions)')
@@ -1900,14 +1842,11 @@ async function loadMAR(){
     .order('administered_at',{ascending:false})
     .limit(100);
   if(resFilter)query=query.eq('resident_id',resFilter);
-
   const{data,error}=await query;
   if(error){document.getElementById('mar-entries-list').innerHTML=`<div class="empty">Error loading MAR: ${error.message}</div>`;return;}
-
   const entries=data||[];
   const list=document.getElementById('mar-entries-list');if(!list)return;
   if(!entries.length){list.innerHTML='<div class="empty" style="margin-top:24px">No MAR entries yet. Tap + Log Medication to begin.</div>';return;}
-
   const grouped={};
   entries.forEach(e=>{
     const date=e.administered_at?new Date(e.administered_at).toISOString().split('T')[0]:'Unknown';
@@ -1968,8 +1907,7 @@ function showMAREntry(){
   resSel.innerHTML='<option value="">Select Resident</option>';
   resList.forEach(r=>{
     const opt=document.createElement('option');
-    opt.value=r.id;
-    opt.textContent=r.name||r.full_name||'Unknown';
+    opt.value=r.id;opt.textContent=r.name||r.full_name||'Unknown';
     resSel.appendChild(opt);
   });
   document.getElementById('mar-med-select').innerHTML='<option value="">Select medication (choose resident first)</option>';
@@ -1987,24 +1925,17 @@ async function onMARResidentChange(resId){
   document.getElementById('mar-ai-tip').style.display='none';
   medSel.innerHTML='<option value="">Select medication</option>';
   if(!resId)return;
-  // Use cache if available
   if(!marMedCache[resId]){
     const{data}=await sb.from('medications').select('id,medication_name,dosage,directions,prescriber,rx_number').eq('resident_id',resId).eq('status','active');
     marMedCache[resId]=data||[];
   }
   const meds=marMedCache[resId];
-  if(!meds.length){
-    medSel.innerHTML='<option value="">No active medications on file</option>';
-    return;
-  }
+  if(!meds.length){medSel.innerHTML='<option value="">No active medications on file</option>';return;}
   meds.forEach(m=>{
     const opt=document.createElement('option');
-    opt.value=m.id;
-    opt.textContent=m.medication_name+(m.dosage?' — '+m.dosage:'');
-    opt.dataset.dosage=m.dosage||'';
-    opt.dataset.directions=m.directions||'';
-    opt.dataset.prescriber=m.prescriber||'';
-    opt.dataset.rx=m.rx_number||'';
+    opt.value=m.id;opt.textContent=m.medication_name+(m.dosage?' — '+m.dosage:'');
+    opt.dataset.dosage=m.dosage||'';opt.dataset.directions=m.directions||'';
+    opt.dataset.prescriber=m.prescriber||'';opt.dataset.rx=m.rx_number||'';
     opt.dataset.name=m.medication_name||'';
     medSel.appendChild(opt);
   });
@@ -2016,17 +1947,12 @@ function onMARMedChange(medId){
   const info=document.getElementById('mar-med-info');
   const tip=document.getElementById('mar-ai-tip');
   if(!medId||!sel.dataset.name){info.style.display='none';tip.style.display='none';return;}
-  // Show auto-filled info from DB — NEVER AI-generated
   document.getElementById('mar-med-info-name').textContent=sel.dataset.name+(sel.dataset.dosage?' · '+sel.dataset.dosage:'');
   document.getElementById('mar-med-info-dosage').textContent=sel.dataset.directions||'';
   document.getElementById('mar-med-info-prescriber').textContent=sel.dataset.prescriber?'Prescriber: Dr. '+sel.dataset.prescriber+(sel.dataset.rx?' · Rx# '+sel.dataset.rx:''):'';
   info.style.display='block';
-  // AI compliance tip — documentation only
   const tipText=getMARComplianceTip(sel.dataset.name,document.getElementById('mar-scheduled-time').value);
-  if(tipText){
-    document.getElementById('mar-ai-tip-text').textContent=tipText;
-    tip.style.display='block';
-  }
+  if(tipText){document.getElementById('mar-ai-tip-text').textContent=tipText;tip.style.display='block';}
 }
 
 function getMARComplianceTip(medName,scheduledTime){
@@ -2042,15 +1968,10 @@ function getMARComplianceTip(medName,scheduledTime){
 
 function onMARStatusChange(status){
   const prnGroup=document.getElementById('mar-prn-reason-group');
-  if(status==='refused'){
-    document.getElementById('mar-notes').placeholder='Document reason for refusal — required per Title 22';
-  }else if(status==='held'){
-    document.getElementById('mar-notes').placeholder='Document physician order or reason held';
-  }else if(status==='missed'){
-    document.getElementById('mar-notes').placeholder='Document reason missed and any notifications made';
-  }else{
-    document.getElementById('mar-notes').placeholder='Optional notes';
-  }
+  if(status==='refused'){document.getElementById('mar-notes').placeholder='Document reason for refusal — required per Title 22';}
+  else if(status==='held'){document.getElementById('mar-notes').placeholder='Document physician order or reason held';}
+  else if(status==='missed'){document.getElementById('mar-notes').placeholder='Document reason missed and any notifications made';}
+  else{document.getElementById('mar-notes').placeholder='Optional notes';}
   if(prnGroup)prnGroup.style.display=document.getElementById('mar-scheduled-time')?.value==='PRN'&&status==='given'?'block':'none';
 }
 
@@ -2062,24 +1983,17 @@ async function saveMAR(){
   if(!resId||!medId){alert('Please select a resident and medication.');return;}
   const status=document.getElementById('mar-status').value;
   const scheduledTime=document.getElementById('mar-scheduled-time').value;
-  // Require notes for non-given statuses
   const notes=document.getElementById('mar-notes').value.trim();
   if((status==='refused'||status==='missed')&&!notes){
     alert('Please document the reason in the notes field — required for '+status+' medications.');
     return;
   }
   const{error}=await sb.from('mar_entries').insert({
-    facility_id:currentFacility.id,
-    resident_id:resId,
-    medication_id:medId,
-    staff_id:currentUser.id,
-    administered_at:new Date().toISOString(),
-    scheduled_time:scheduledTime,
-    status,
-    notes:notes||null,
+    facility_id:currentFacility.id,resident_id:resId,medication_id:medId,
+    staff_id:currentUser.id,administered_at:new Date().toISOString(),
+    scheduled_time:scheduledTime,status,notes:notes||null,
   });
   if(error){alert('Error: '+error.message);return;}
-  // Clear med cache for this resident so next open refreshes
   const resSel=document.getElementById('mar-res-select');
   if(resSel?.value)delete marMedCache[resSel.value];
   closeMARModal();loadMAR();
@@ -2109,9 +2023,6 @@ async function loadDashboardAIBriefing(force){
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
-    const now=new Date();
-    const hour=now.getHours();
-    const greeting=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
@@ -2125,7 +2036,6 @@ async function loadDashboardAIBriefing(force){
   }
 }
 
-// Incident type → DSS guidance (instant, no API call needed)
 const INCIDENT_DSS_TIPS={
   fall:'Falls require: (1) resident assessment immediately, (2) physician notification within 24hrs if injury, (3) family notification within 24hrs, (4) DSS report within 24hrs if hospitalization occurs. Document exact time and circumstances.',
   medication_error:'Medication errors require: (1) physician notification immediately, (2) family notification, (3) DSS report within 7 days if serious harm. Document what was given, correct medication, and steps taken.',
@@ -2135,26 +2045,16 @@ const INCIDENT_DSS_TIPS={
   death:'Death of a resident requires DSS notification within 1 hour. Do not disturb the scene. Notify physician, family, coroner, and DSS immediately.',
   other:'Document the incident thoroughly. Consult Title 22 §87211 to determine if DSS notification is required for this incident type.',
 };
-
-const INCIDENT_DSS_REPORTABLE={
-  fall:false,medication_error:false,behavioral:false,elopement:true,injury:false,death:true,other:false
-};
+const INCIDENT_DSS_REPORTABLE={fall:false,medication_error:false,behavioral:false,elopement:true,injury:false,death:true,other:false};
 
 function onIncidentTypeChange(type){
   const tip=document.getElementById('inc-ai-tip');
   const tipText=document.getElementById('inc-ai-tip-text');
   const dssSelect=document.getElementById('inc-dss');
   if(!tip||!tipText)return;
-  if(INCIDENT_DSS_TIPS[type]){
-    tipText.textContent=INCIDENT_DSS_TIPS[type];
-    tip.style.display='block';
-  }else{
-    tip.style.display='none';
-  }
-  // Auto-suggest DSS reportable
-  if(dssSelect&&INCIDENT_DSS_REPORTABLE[type]!==undefined){
-    dssSelect.value=INCIDENT_DSS_REPORTABLE[type]?'yes':'no';
-  }
+  if(INCIDENT_DSS_TIPS[type]){tipText.textContent=INCIDENT_DSS_TIPS[type];tip.style.display='block';}
+  else{tip.style.display='none';}
+  if(dssSelect&&INCIDENT_DSS_REPORTABLE[type]!==undefined){dssSelect.value=INCIDENT_DSS_REPORTABLE[type]?'yes':'no';}
 }
 
 async function sendAIQuery(btn){
@@ -2234,7 +2134,6 @@ async function loadBilling(){
       sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle(),
       sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').maybeSingle()
     ]);
-    // subscriptions table wins if active row exists
     const plan=subRes.data?.plan||profRes.data?.plan||'trial';
     const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
     const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
@@ -2248,33 +2147,8 @@ async function loadBilling(){
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">💳</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
 }
- 
-// ===== INIT =====
 
- async function handlePasswordReset(){
-  const email=document.getElementById('reset-email').value.trim();
-  const err=document.getElementById('reset-error');
-  err.classList.remove('show');
-  if(!email){err.textContent='Please enter your email.';err.classList.add('show');return;}
-  const{error}=await sb.auth.resetPasswordForEmail(email,{
-    redirectTo:'https://title22.app'
-  });
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
-  err.style.background='var(--green-light)';err.style.color='var(--green)';
-  err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
-}
-
-async function handleSetNewPassword(){
-  const pass=document.getElementById('reset-newpass-input').value;
-  const err=document.getElementById('reset-newpass-error');
-  err.classList.remove('show');
-  if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
-  const{error}=await sb.auth.updateUser({password:pass});
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
-  err.style.background='var(--green-light)';err.style.color='var(--green)';err.style.border='1px solid #b7d68e';
-  err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
-  setTimeout(()=>loadApp(),1500);
-}
+// ===== AUTH STATE =====
 sb.auth.onAuthStateChange(async(event,session)=>{
   if(event==='PASSWORD_RECOVERY'){
     document.body.style.visibility='visible';
@@ -2283,14 +2157,13 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('reset-newpass').style.display='block';
     return;
   }
-if(event==='SIGNED_IN'&&session&&!currentUser){
+  if(event==='SIGNED_IN'&&session&&!currentUser){
     currentUser=session.user;
     await ensureProfile(currentUser);
     await loadApp();
   }
 });
 
-// Startup: check existing session and show correct page
 (async()=>{
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -2421,11 +2294,9 @@ if(event==='SIGNED_IN'&&session&&!currentUser){
   </div>
 </div>
 
-<!-- INCIDENT MODAL — aligned to DB schema -->
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
   <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
-    <!-- AI DSS guidance chip — updates when incident type changes -->
     <div id="inc-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
       <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ AI — DSS REQUIREMENTS</div>
       <div id="inc-ai-tip-text"></div>
@@ -2445,9 +2316,9 @@ if(event==='SIGNED_IN'&&session&&!currentUser){
       <div class="form-group"><label>Injury occurred?</label><select id="inc-injury" onchange="document.getElementById('inc-injury-group').style.display=this.value==='yes'?'block':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
       <div class="form-group" id="inc-injury-group" style="display:none"><label>Injury description <span style="color:var(--red)">*</span></label><input type="text" id="inc-injury-desc" placeholder="Describe the injury"/></div>
       <div class="form-group"><label>Physician notified?</label><select id="inc-physician" onchange="document.getElementById('inc-physician-time-group').style.display=this.value==='yes'?'block':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
-      <div class="form-group" id="inc-physician-time-group" style="display:none"><label>Physician notified at</label><input type="time" id="inc-physician-time" placeholder="Time notified"/></div>
+      <div class="form-group" id="inc-physician-time-group" style="display:none"><label>Physician notified at</label><input type="time" id="inc-physician-time"/></div>
       <div class="form-group"><label>Family notified?</label><select id="inc-family" onchange="document.getElementById('inc-family-time-group').style.display=this.value==='yes'?'block':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
-      <div class="form-group" id="inc-family-time-group" style="display:none"><label>Family notified at</label><input type="time" id="inc-family-time" placeholder="Time notified"/></div>
+      <div class="form-group" id="inc-family-time-group" style="display:none"><label>Family notified at</label><input type="time" id="inc-family-time"/></div>
       <div class="form-group" style="grid-column:1/-1"><label>Corrective action taken</label><textarea id="inc-corrective" rows="2" placeholder="e.g. Resident assessed, physician notified, fall mat placed..."></textarea></div>
     </div>
     <div class="error-msg" id="inc-modal-error"></div>
