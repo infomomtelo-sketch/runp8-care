@@ -2132,7 +2132,7 @@ async function loadBilling(){
   try{
     const[profRes,subRes]=await Promise.all([
       sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle(),
-      sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').maybeSingle()
+      sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').gt('plan_expires_at',new Date().toISOString()).maybeSingle()
     ]);
     const plan=subRes.data?.plan||profRes.data?.plan||'trial';
     const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
