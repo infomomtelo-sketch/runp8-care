@@ -757,11 +757,12 @@ async function handleGoogleAuth(errId){
 
 async function ensureProfile(user){
   try{
-    const{data}=await sb.from('profiles').select('id').eq('id',user.id).single();
-    if(!data)await sb.from('profiles').insert({id:user.id,plan:'trial',created_at:new Date().toISOString()});
+    const{data}=await sb.from('profiles').select('id,plan').eq('id',user.id).maybeSingle();
+    if(!data){
+      await sb.from('profiles').insert({id:user.id,plan:'trial',created_at:new Date().toISOString()});
+    }
   }catch(e){console.log('Profile check:',e.message);}
 }
-
 async function handleSignup(){
   const email=document.getElementById('signup-email').value.trim();
   const pass=document.getElementById('signup-password').value;
