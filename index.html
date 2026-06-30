@@ -2166,6 +2166,9 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 });
 
 (async()=>{
+  const forceVisible=setTimeout(()=>{
+    document.body.style.visibility='visible';
+  },4000);
   try{
     const{data:{session}}=await sb.auth.getSession();
     if(session&&session.user){
@@ -2179,6 +2182,9 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }catch(e){
     document.getElementById('nav-public').style.display='flex';
     showPage('landing');
+  }finally{
+    clearTimeout(forceVisible);
+    document.body.style.visibility='visible';
   }
 })();
 </script>
