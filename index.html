@@ -2129,6 +2129,7 @@ async function checkInviteToken(){
 
 // ===== BILLING =====
 async function loadBilling(){
+
   const el=document.getElementById('billing-plan-details');if(!el)return;
   try{
     const[profRes,subRes]=await Promise.all([
