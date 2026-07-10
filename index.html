@@ -1448,7 +1448,7 @@ function staffCertStatus(s){
   if(tbDue)checks.push({label:'TB Test',date:tbDue});
   if(s.cpr_cert_expiry)checks.push({label:'CPR',date:s.cpr_cert_expiry});
   if(s.first_aid_cert_expiry)checks.push({label:'First Aid',date:s.first_aid_cert_expiry});
-  if(s.food_handler_cert_expiry)checks.push({label:'Food Handler',date:s.food_handler_cert_expiry});
+  
   const expired=checks.filter(c=>c.date<today);
   const soon=checks.filter(c=>c.date>=today&&c.date<=in30);
   const missingDocs=[];
@@ -1568,7 +1568,7 @@ function openStaffModal(staffId){
   document.getElementById('staff-livescan-date').value=s?.livescan_date||'';
   document.getElementById('staff-mandated').value=s?.mandated_reporter_completed===true?'true':'false';
   document.getElementById('staff-mandated-date').value=s?.mandated_reporter_date||'';
-  document.getElementById('staff-foodhandler-expiry').value=s?.food_handler_cert_expiry||'';
+  
   document.getElementById('staff-training').value=(s?.initial_training_complete===true||s?.initial_training_completed===true)?'true':'false';
   document.getElementById('staff-training-hours').value=s?.initial_training_hours||'';
   document.getElementById('staff-modal-error').classList.remove('show');
@@ -1603,7 +1603,7 @@ async function saveStaff(){
     livescan_date:document.getElementById('staff-livescan-date').value||null,
     mandated_reporter_completed:mandatedDone,
     mandated_reporter_date:document.getElementById('staff-mandated-date').value||null,
-    food_handler_cert_expiry:document.getElementById('staff-foodhandler-expiry').value||null,
+    
     initial_training_complete:trainingDone,
     initial_training_completed:trainingDone,
     initial_training_hours:parseInt(document.getElementById('staff-training-hours').value)||0,
@@ -2548,7 +2548,7 @@ sb.auth.onAuthStateChange(async(event,session)=>{
       <div class="form-group"><label>LiveScan date</label><input type="date" id="staff-livescan-date"/></div>
       <div class="form-group"><label>Mandated Reporter training</label><select id="staff-mandated"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
       <div class="form-group"><label>Completed on</label><input type="date" id="staff-mandated-date"/></div>
-      <div class="form-group"><label>Food Handler card expires</label><input type="date" id="staff-foodhandler-expiry"/></div>
+      
       <div class="form-group"><label>16hr initial training</label><select id="staff-training"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
       <div class="form-group"><label>Training hours logged</label><input type="number" id="staff-training-hours" placeholder="0" step="0.5"/></div>
     </div>
