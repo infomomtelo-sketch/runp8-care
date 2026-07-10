@@ -825,7 +825,12 @@ async function handleSetNewPassword(){
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   err.style.background='var(--green-light)';err.style.color='var(--green)';err.style.border='1px solid #b7d68e';
   err.textContent='✓ Password updated! Redirecting…';err.classList.add('show');
-  setTimeout(()=>loadApp(),1500);
+  setTimeout(async()=>{
+    history.replaceState(null,'',window.location.pathname);
+    const{data:{session}}=await sb.auth.getSession();
+    if(session&&session.user){currentUser=session.user;await ensureProfile(currentUser);await loadApp();}
+    else{showPage('login');}
+  },1500);
 }
 
 // ===== ONBOARD =====
@@ -2159,7 +2164,7 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('reset-newpass').style.display='block';
     return;
   }
-  if(event==='SIGNED_IN'&&session&&!currentUser){
+  if(event==='SIGNED_IN'&&session&&!currentUser&&!window.location.hash.includes('type=recovery')){
     currentUser=session.user;
     await ensureProfile(currentUser);
     await loadApp();
@@ -2167,6 +2172,12 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 });
 
 (async()=>{
+  // Password reset link clicked — back off entirely and let onAuthStateChange
+  // (PASSWORD_RECOVERY) own the page. Prevents auto-login race.
+  if(window.location.hash.includes('type=recovery')){
+    setTimeout(()=>{document.body.style.visibility='visible';},2500);
+    return;
+  }
   const forceVisible=setTimeout(()=>{
     document.body.style.visibility='visible';
   },4000);
