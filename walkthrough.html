@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Demo Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --pine:#1d5c4d; --pine-deep:#12433a; --mint:#e7f2ee; --paper:#fbfaf7;
+  --ink:#22302c; --ink2:#5c6b66; --line:#e3e0d8; --amber:#b0791f; --amber-bg:#faf3e3;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Public Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.65;font-size:16px}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px 80px}
+
+header{background:var(--pine-deep);color:#fff;padding:56px 0 48px;margin-bottom:48px}
+header .wrap{padding-bottom:0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9fc9bc;margin-bottom:14px}
+h1{font-family:'Fraunces',serif;font-size:clamp(30px,5.5vw,44px);font-weight:700;line-height:1.12;letter-spacing:-.01em}
+header p{margin-top:16px;color:#cfe3db;max-width:52ch;font-size:15px}
+
+.prep{background:var(--mint);border:1px solid #cfe3db;border-radius:12px;padding:22px 24px;margin-bottom:44px}
+.prep h2{font-family:'Fraunces',serif;font-size:19px;color:var(--pine-deep);margin-bottom:10px}
+.prep ul{list-style:none}
+.prep li{padding:5px 0 5px 24px;position:relative;font-size:14.5px}
+.prep li::before{content:"—";position:absolute;left:2px;color:var(--pine)}
+
+.step{border-top:1px solid var(--line);padding:34px 0 30px}
+.step-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.num{font-family:var(--mono);font-size:13px;color:var(--pine);background:var(--mint);border-radius:6px;padding:3px 9px;white-space:nowrap}
+.step h2{font-family:'Fraunces',serif;font-size:23px;font-weight:600;color:var(--pine-deep)}
+.time{font-family:var(--mono);font-size:11.5px;color:var(--ink2);margin-left:auto;white-space:nowrap}
+
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0 14px}
+.chip{font-family:var(--mono);font-size:12.5px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 10px;color:var(--ink)}
+.path .sep{color:var(--ink2);font-size:12px}
+
+.say{background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:15px}
+.say .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:5px}
+.say em{font-style:italic}
+
+.why{font-size:14px;color:var(--ink2);margin-top:10px}
+.why strong{color:var(--ink)}
+
+.do{font-size:15px;margin:8px 0}
+.do b{color:var(--pine-deep)}
+
+.close{background:var(--pine-deep);color:#fff;border-radius:14px;padding:28px 30px;margin-top:48px}
+.close h2{font-family:'Fraunces',serif;font-size:22px;margin-bottom:12px}
+.close p{color:#cfe3db;font-size:15px;margin-bottom:10px}
+.qa{border-top:1px solid var(--line);padding:34px 0 0;margin-top:10px}
+.qa h2{font-family:'Fraunces',serif;font-size:23px;color:var(--pine-deep);margin-bottom:16px}
+.qa dt{font-weight:600;margin-top:16px;font-size:15px}
+.qa dd{margin-left:0;font-size:14.5px;color:var(--ink2);margin-top:3px}
+
+@media print{
+  header{background:#fff;color:var(--ink);padding:20px 0}
+  header p,.close p{color:var(--ink2)} .close{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .step{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Title22 · Demo walkthrough · ~15 minutes</div>
+    <h1>From binders to one screen: presenting Title22</h1>
+    <p>A step-by-step script for walking anyone — a fellow administrator, a licensee, an investor — through the whole app. Each step tells you where to click, what to say, and why it matters.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="prep">
+  <h2>Before you demo — 10 minutes of prep</h2>
+  <ul>
+    <li>Use a demo account with data already in it: 2–3 residents, 2 staff members with cert dates, a few medications, one incident, some checklist items done, a Daily Log entry or two, a couple of trainings. An empty app demos badly.</li>
+    <li>Set one staff certification to expire within 30 days — the warning it triggers is a demo moment.</li>
+    <li>Open title22.app in a clean browser tab, already signed in. Never make an audience watch you log in.</li>
+    <li>Charge the phone/laptop. Have cell data as backup if the venue Wi-Fi is bad.</li>
+  </ul>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">01</span><h2>Open with the problem, not the app</h2><span class="time">1 min</span></div>
+  <div class="say"><span class="tag">Say</span>"How do you get ready for a DSS inspection today? For most facilities it's three-ring binders, sticky notes, and hoping nothing expired. Title22 puts your whole facility — staff, residents, medications, incidents, daily charting — on one screen, and it tells you what's out of compliance before the analyst finds it."</div>
+  <p class="why"><strong>Why this order:</strong> administrators buy relief from inspection anxiety, not software. Name the fear first; the app is the answer.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">02</span><h2>Dashboard &amp; the AI daily briefing</h2><span class="time">2 min</span></div>
+  <div class="path"><span class="chip">Sign in</span><span class="sep">→</span><span class="chip">Dashboard</span></div>
+  <p class="do"><b>Do:</b> Let the AI briefing load on screen. Point at it. Then point at the stat cards.</p>
+  <div class="say"><span class="tag">Say</span>"Every morning this briefing reads your actual facility data — overdue tasks, expiring certifications, recent incidents — and tells you what needs attention today. You didn't ask it anything. It's already working."</div>
+  <p class="why"><strong>Why it lands:</strong> this is the "wow" in the first 60 seconds. AI that reads <em>their</em> data beats AI that chats.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">03</span><h2>Residents</h2><span class="time">1 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">🏠 Residents</span></div>
+  <p class="do"><b>Do:</b> Open one resident. Show the profile fields.</p>
+  <div class="say"><span class="tag">Say</span>"Every resident's record in one place — admission info, physician, emergency contacts. Everything else in the app connects back to a resident."</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">04</span><h2>Staff &amp; certifications</h2><span class="time">2 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">👥 Staff</span></div>
+  <p class="do"><b>Do:</b> Open the staff member whose cert expires soon. Show the expiration warning.</p>
+  <div class="say"><span class="tag">Say</span>"First aid, LiveScan, mandated reporter — with expiration dates. When something's 30 days out, the app flags it. This is the exact question an analyst asks: 'show me current certifications for everyone on shift.' Now the answer is one tap."</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">05</span><h2>Training tracker</h2><span class="time">1 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">🎓 Training</span></div>
+  <p class="do"><b>Do:</b> Show the annual-hours progress bars, then log a training live — it takes 15 seconds.</p>
+  <div class="say"><span class="tag">Say</span>"Every direct-care staff member needs 20 hours of in-service training a year. These bars show exactly where each person stands — green means done, red means get them scheduled. And logging a training takes seconds."</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">06</span><h2>Medications &amp; the MAR</h2><span class="time">2 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">💊 Medications</span><span class="sep">then</span><span class="chip">📋 MAR</span></div>
+  <p class="do"><b>Do:</b> Show a resident's medication list, then mark one dose given on the MAR.</p>
+  <div class="say"><span class="tag">Say</span>"Medication records are the single most scrutinized document in an inspection. The MAR here auto-fills from the medication list, so staff document each dose in two taps. And one deliberate design choice: the AI never suggests or comments on dosages — that stays between the physician and the pharmacy. It only helps with documentation compliance."</div>
+  <p class="why"><strong>Why say the AI limit out loud:</strong> it turns a safety constraint into a trust point. Administrators are rightly wary of AI touching clinical decisions.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">07</span><h2>Daily Log — the everyday workhorse</h2><span class="time">2 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">📝 Daily Log</span></div>
+  <p class="do"><b>Do:</b> Add one entry live. Pick a resident, choose "Food intake," save it. Then switch the type dropdown to show narrative, vitals, bowel, hygiene.</p>
+  <div class="say"><span class="tag">Say</span>"This is the day-to-day charting: shift narratives, vitals, food intake, bowel movements, hygiene. The form changes based on what you're recording, so a caregiver can chart in under 30 seconds from a phone. Every entry is timestamped — this is your evidence trail."</div>
+  <p class="why"><strong>Why demo this live:</strong> speed of entry is the selling point. Charting friction is why paper logs go incomplete.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">08</span><h2>Incidents with built-in DSS guidance</h2><span class="time">2 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">🚨 Incidents</span><span class="sep">→</span><span class="chip">+ Report incident</span></div>
+  <p class="do"><b>Do:</b> Open the incident form. Select "Fall" as the type, and point at the guidance tip that appears.</p>
+  <div class="say"><span class="tag">Say</span>"Watch — when I choose the incident type, the app tells me the notification requirements: physician within 24 hours, family, whether DSS reporting is required. It even pre-sets the DSS-reportable field for things like elopement or death. Nobody has to memorize §87211 at 2 a.m."</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">09</span><h2>Compliance checklist</h2><span class="time">1 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">✅ Compliance</span></div>
+  <p class="do"><b>Do:</b> Check one item off. Show the categories.</p>
+  <div class="say"><span class="tag">Say</span>"This is your standing inspection-readiness list, organized the way DSS actually reviews a facility. Work it down and you walk into an inspection already knowing the answer."</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">10</span><h2>Ask the AI: "Am I ready for DSS?"</h2><span class="time">2 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">AI Assistant</span></div>
+  <p class="do"><b>Do:</b> Tap the "Am I ready for DSS?" suggestion. Let the answer generate on screen.</p>
+  <div class="say"><span class="tag">Say</span>"This is the question every administrator asks themselves. The AI reads your real records — certifications, incidents, checklist, MAR — and answers based on your data, not generic advice. It's like having a consultant who already read your files."</div>
+  <p class="why"><strong>Why this is the closer:</strong> it ties every module you just showed into one answer. End the tour here — it's the peak.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="num">11</span><h2>Team roles &amp; pricing — mention, don't dwell</h2><span class="time">1 min</span></div>
+  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">Team</span><span class="sep">/</span><span class="chip">Billing</span></div>
+  <div class="say"><span class="tag">Say</span>"You can invite your whole team — caregivers see only what they need for charting, supervisors see more, and you control it all. There's a free trial, plans scale with your facility, and you can manage or cancel billing yourself anytime — no phone calls."</div>
+</div>
+
+<div class="close">
+  <h2>The one-sentence close</h2>
+  <p>"Everything an analyst will ask you for — staffing, training, medications, incidents, daily care — documented as you go, in one place, with an AI that tells you what's missing. That's Title22."</p>
+  <p>Then stop talking and hand them the phone. Letting them tap around sells better than any script.</p>
+</div>
+
+<div class="qa">
+  <h2>Questions you'll get — and answers</h2>
+  <dl>
+    <dt>"Where is our data stored? Is it secure?"</dt>
+    <dd>In a dedicated cloud database with row-level security — each facility's data is isolated, and access requires an authenticated login. Role permissions control what each staff member can see.</dd>
+    <dt>"Can my caregivers mess something up?"</dt>
+    <dd>Caregivers get a limited view: dashboard, MAR, incidents, and Daily Log. They can't delete records or touch billing, staff files, or facility settings.</dd>
+    <dt>"Does the AI make care decisions?"</dt>
+    <dd>No — by design. It never comments on dosages or clinical choices. It only reads your documentation and flags compliance gaps.</dd>
+    <dt>"What does it cost?"</dt>
+    <dd>There's a free trial to start, and monthly plans after that. Show them the Billing tab rather than reciting numbers — prices are current there.</dd>
+    <dt>"What if I stop paying — do I lose my records?"</dt>
+    <dd>Your data stays in your account. You can come back, and exports can be arranged. (Honest answer today; a self-serve export button is on the roadmap.)</dd>
+  </dl>
+</div>
+
+</div>
+</body>
+</html>
