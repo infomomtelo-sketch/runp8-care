@@ -218,6 +218,8 @@
         <button onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👥 Staff</button>
         <button onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
         <button onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
+        <button onclick="switchTab('daily');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📝 Daily Log</button>
+        <button onclick="switchTab('training');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🎓 Training</button>
         <button onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility</button>
         <button onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
         <button onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 MAR</button>
@@ -490,6 +492,59 @@
         <div id="incidents-list"></div>
       </div>
 
+      <!-- DAILY LOG -->
+      <div id="tab-daily" style="display:none">
+        <div class="page-header"><h1>Daily log</h1></div>
+        <div class="card">
+          <div class="card-title">New entry</div>
+          <div class="form-group"><label>Resident</label><select id="dl-resident"><option value="">Select resident...</option></select></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group"><label>Date</label><input type="date" id="dl-date" onchange="refreshDailyList()"/></div>
+            <div class="form-group"><label>Type</label><select id="dl-type" onchange="onDailyTypeChange()">
+              <option value="narrative">📝 Narrative</option>
+              <option value="vitals">❤️ Vitals</option>
+              <option value="food">🍽️ Food intake</option>
+              <option value="bowel">🚽 Bowel movement</option>
+              <option value="hygiene">🧼 Hygiene</option>
+            </select></div>
+          </div>
+          <div id="dl-fields"></div>
+          <div class="error-msg" id="dl-error"></div>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="saveDailyLog()">Save entry</button>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Entries for selected date</div>
+          <div id="daily-empty" class="empty" style="display:none;padding:24px"><div style="font-size:1.6rem;margin-bottom:8px">📝</div><div>No entries for this date yet</div></div>
+          <div id="daily-list"></div>
+        </div>
+      </div>
+
+      <!-- TRAINING -->
+      <div id="tab-training" style="display:none">
+        <div class="page-header"><h1>Staff training</h1></div>
+        <div class="card">
+          <div class="card-title">Log training</div>
+          <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
+          <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group"><label>Hours</label><input type="number" id="tr-hours" step="0.5" min="0" placeholder="1.0"/></div>
+            <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
+          </div>
+          <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
+          <div class="error-msg" id="tr-error"></div>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="saveTraining()">Save training</button>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Annual hours (20 hr in-service requirement)</div>
+          <div id="training-summary" style="display:grid;gap:8px;font-size:13px"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Training history</div>
+          <div id="training-empty" class="empty" style="display:none;padding:24px"><div style="font-size:1.6rem;margin-bottom:8px">🎓</div><div>No trainings logged yet</div></div>
+          <div id="training-list"></div>
+        </div>
+      </div>
+
       <!-- FACILITY -->
       <div id="tab-facility" style="display:none">
         <div class="page-header"><h1>Facility information</h1><button class="btn btn-primary" style="font-size:13px" onclick="openFacilityModal()">Edit</button></div>
@@ -682,10 +737,10 @@ let currentIncidentId = null;
 let currentUserRole = 'administrator';
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai','billing'] },
-  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','facility','medications','mar','ai'] },
-  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents'] },
-  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','mar'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'] },
+  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai'] },
+  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily'] },
+  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar'] },
 };
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
 function canEdit(){ return getAccess().canEdit; }
@@ -708,7 +763,7 @@ function switchTab(name){
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai','billing'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -723,6 +778,8 @@ function switchTab(name){
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
   if(name==='incidents')loadIncidents();
+  if(name==='daily')loadDailyLogs();
+  if(name==='training')loadTrainings();
   if(name==='facility')renderFacilityInfo();
   if(name==='medications')loadMedications();
   if(name==='mar')loadMAR();
@@ -984,7 +1041,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai','billing'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
   });
@@ -2029,12 +2086,14 @@ async function loadDashboardAIBriefing(force){
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
-    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    const{data:{session}}=await sb.auth.getSession();
+    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
       system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
-    const reply=data.content?.[0]?.text||'Unable to load briefing.';
+    const bErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
+    const reply=data.content?.[0]?.text||(bErr?'⚠️ '+bErr:'Unable to load briefing. (HTTP '+res.status+')');
     el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
     dashBriefingLoaded=true;
   }catch(e){
@@ -2073,9 +2132,11 @@ async function sendAIQuery(btn){
   const thinking=addAIMessage('Checking your facility data...','assistant');
   const facilityContext=await buildFacilityContext();
   try{
-    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,messages:aiMessages.slice(-10)})});
+    const{data:{session}}=await sb.auth.getSession();
+    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,messages:aiMessages.slice(-10)})});
     const data=await res.json();
-    const reply=data.content?.[0]?.text||'Unable to get a response.';
+    const workerErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
+    const reply=data.content?.[0]?.text||(workerErr?'⚠️ '+workerErr:'Unable to get a response. (HTTP '+res.status+')');
     thinking.textContent='';thinking.innerHTML=reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
@@ -2153,6 +2214,193 @@ async function loadBilling(){
     }
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">💳</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
+}
+
+// ===== DAILY LOG =====
+let dailyLogs=[];let dailyResidents=[];
+const DL_LABELS={narrative:'📝 Narrative',vitals:'❤️ Vitals',food:'🍽️ Food',bowel:'🚽 Bowel',hygiene:'🧼 Hygiene'};
+
+async function loadDailyLogs(){
+  if(!currentFacility)return;
+  const dEl=document.getElementById('dl-date');
+  if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
+  const{data:res}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');
+  dailyResidents=res||[];
+  const sel=document.getElementById('dl-resident');
+  if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select resident...</option>'+dailyResidents.map(r=>`<option value="${r.id}">${(r.name||r.full_name||'Resident')}</option>`).join('');if(cur)sel.value=cur;}
+  onDailyTypeChange();
+  await refreshDailyList();
+}
+
+function onDailyTypeChange(){
+  const t=document.getElementById('dl-type')?.value||'narrative';
+  const f=document.getElementById('dl-fields');if(!f)return;
+  if(t==='narrative'){
+    f.innerHTML='<div class="form-group"><label>Narrative note</label><textarea id="dlf-note" rows="4" placeholder="Shift notes, observations, behavior, mood, visitors..." style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:vertical;font-family:inherit"></textarea></div>';
+  }else if(t==='vitals'){
+    f.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="form-group"><label>Blood pressure</label><input type="text" id="dlf-bp" placeholder="120/80"/></div>'
+      +'<div class="form-group"><label>Pulse (bpm)</label><input type="number" id="dlf-pulse" placeholder="72"/></div>'
+      +'<div class="form-group"><label>Temp (°F)</label><input type="number" step="0.1" id="dlf-temp" placeholder="98.6"/></div>'
+      +'<div class="form-group"><label>Weight (lbs)</label><input type="number" step="0.1" id="dlf-weight" placeholder="150"/></div></div>'
+      +'<div class="form-group"><label>Note (optional)</label><input type="text" id="dlf-note"/></div>';
+  }else if(t==='food'){
+    f.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="form-group"><label>Meal</label><select id="dlf-meal"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>'
+      +'<div class="form-group"><label>Intake</label><select id="dlf-intake"><option>All (100%)</option><option>Most (75%)</option><option>Half (50%)</option><option>Little (25%)</option><option>Refused</option></select></div></div>'
+      +'<div class="form-group"><label>Note (optional)</label><input type="text" id="dlf-note" placeholder="Appetite, assistance needed..."/></div>';
+  }else if(t==='bowel'){
+    f.innerHTML='<div class="form-group"><label>Result</label><select id="dlf-result"><option>Normal</option><option>Loose</option><option>Hard</option><option>None today</option></select></div>'
+      +'<div class="form-group"><label>Note (optional)</label><input type="text" id="dlf-note"/></div>';
+  }else if(t==='hygiene'){
+    f.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="form-group"><label>Activity</label><select id="dlf-activity"><option>Shower</option><option>Bath</option><option>Bed bath</option><option>Grooming</option><option>Oral care</option><option>Nail care</option></select></div>'
+      +'<div class="form-group"><label>Status</label><select id="dlf-status"><option>Completed</option><option>Assisted</option><option>Refused</option></select></div></div>'
+      +'<div class="form-group"><label>Note (optional)</label><input type="text" id="dlf-note"/></div>';
+  }
+}
+
+async function saveDailyLog(){
+  const err=document.getElementById('dl-error');err.classList.remove('show');
+  if(!canEdit()){err.textContent='You do not have permission to add entries.';err.classList.add('show');return;}
+  const residentId=document.getElementById('dl-resident').value;
+  if(!residentId){err.textContent='Please select a resident.';err.classList.add('show');return;}
+  const t=document.getElementById('dl-type').value;
+  const note=document.getElementById('dlf-note')?.value?.trim()||null;
+  const dataObj={};
+  if(t==='narrative'&&!note){err.textContent='Please write a note.';err.classList.add('show');return;}
+  if(t==='vitals'){dataObj.bp=document.getElementById('dlf-bp').value.trim()||null;dataObj.pulse=document.getElementById('dlf-pulse').value||null;dataObj.temp=document.getElementById('dlf-temp').value||null;dataObj.weight=document.getElementById('dlf-weight').value||null;
+    if(!dataObj.bp&&!dataObj.pulse&&!dataObj.temp&&!dataObj.weight){err.textContent='Enter at least one vital.';err.classList.add('show');return;}}
+  if(t==='food'){dataObj.meal=document.getElementById('dlf-meal').value;dataObj.intake=document.getElementById('dlf-intake').value;}
+  if(t==='bowel'){dataObj.result=document.getElementById('dlf-result').value;}
+  if(t==='hygiene'){dataObj.activity=document.getElementById('dlf-activity').value;dataObj.status=document.getElementById('dlf-status').value;}
+  const{error}=await sb.from('daily_logs').insert({
+    facility_id:currentFacility.id,resident_id:residentId,
+    log_date:document.getElementById('dl-date').value||new Date().toISOString().slice(0,10),
+    entry_type:t,note,data:dataObj,created_by:currentUser?.id||null
+  });
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  if(document.getElementById('dlf-note'))document.getElementById('dlf-note').value='';
+  onDailyTypeChange();
+  await refreshDailyList();
+}
+
+async function refreshDailyList(){
+  if(!currentFacility)return;
+  const date=document.getElementById('dl-date')?.value||new Date().toISOString().slice(0,10);
+  const{data}=await sb.from('daily_logs').select('*, residents(name, full_name)').eq('facility_id',currentFacility.id).eq('log_date',date).order('created_at',{ascending:false});
+  dailyLogs=data||[];renderDailyLogs();
+}
+
+function dlSummary(e){
+  const d=e.data||{};
+  if(e.entry_type==='vitals'){const p=[];if(d.bp)p.push('BP '+d.bp);if(d.pulse)p.push('Pulse '+d.pulse);if(d.temp)p.push('Temp '+d.temp+'°F');if(d.weight)p.push(d.weight+' lbs');return p.join(' · ');}
+  if(e.entry_type==='food')return (d.meal||'')+' — '+(d.intake||'');
+  if(e.entry_type==='bowel')return d.result||'';
+  if(e.entry_type==='hygiene')return (d.activity||'')+' — '+(d.status||'');
+  return '';
+}
+
+function renderDailyLogs(){
+  const list=document.getElementById('daily-list');
+  const empty=document.getElementById('daily-empty');
+  if(!list)return;
+  if(!dailyLogs.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=dailyLogs.map(e=>{
+    const resName=e.residents?.name||e.residents?.full_name||'Resident';
+    const time=e.created_at?new Date(e.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+    const sum=dlSummary(e);
+    const noteHtml=e.note?`<div style="font-size:13px;color:var(--text);margin-top:4px;white-space:pre-wrap">${e.note.replace(/</g,'&lt;')}</div>`:'';
+    const del=canDelete()?`<button onclick="deleteDailyLog('${e.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">Delete</button>`:'';
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-weight:600;font-size:13px">${DL_LABELS[e.entry_type]||e.entry_type} · ${resName}</div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--text2)">${time}</span>${del}</div>
+      </div>
+      ${sum?`<div style="font-size:13px;color:var(--text2);margin-top:2px">${sum}</div>`:''}
+      ${noteHtml}
+    </div>`;
+  }).join('');
+}
+
+async function deleteDailyLog(id){
+  if(!confirm('Delete this entry?'))return;
+  await sb.from('daily_logs').delete().eq('id',id);
+  await refreshDailyList();
+}
+
+// ===== TRAINING =====
+let trainings=[];let trainingStaff=[];
+
+async function loadTrainings(){
+  if(!currentFacility)return;
+  const dEl=document.getElementById('tr-date');
+  if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
+  const{data:st}=await sb.from('staff').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');
+  trainingStaff=st||[];
+  const sel=document.getElementById('tr-staff');
+  if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select staff...</option>'+trainingStaff.map(s=>`<option value="${s.id}">${(s.name||s.full_name||'Staff')}</option>`).join('');if(cur)sel.value=cur;}
+  const{data}=await sb.from('staff_trainings').select('*, staff(name, full_name)').eq('facility_id',currentFacility.id).order('training_date',{ascending:false}).limit(300);
+  trainings=data||[];renderTrainings();
+}
+
+async function saveTraining(){
+  const err=document.getElementById('tr-error');err.classList.remove('show');
+  if(!canEdit()){err.textContent='You do not have permission to log training.';err.classList.add('show');return;}
+  const staffId=document.getElementById('tr-staff').value;
+  const topic=document.getElementById('tr-topic').value.trim();
+  const hours=parseFloat(document.getElementById('tr-hours').value);
+  if(!staffId){err.textContent='Please select a staff member.';err.classList.add('show');return;}
+  if(!topic){err.textContent='Please enter a topic.';err.classList.add('show');return;}
+  if(!hours||hours<=0){err.textContent='Please enter hours.';err.classList.add('show');return;}
+  const{error}=await sb.from('staff_trainings').insert({
+    facility_id:currentFacility.id,staff_id:staffId,topic,hours,
+    training_date:document.getElementById('tr-date').value||new Date().toISOString().slice(0,10),
+    notes:document.getElementById('tr-notes').value.trim()||null
+  });
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  document.getElementById('tr-topic').value='';document.getElementById('tr-hours').value='';document.getElementById('tr-notes').value='';
+  await loadTrainings();
+}
+
+function renderTrainings(){
+  const summary=document.getElementById('training-summary');
+  const list=document.getElementById('training-list');
+  const empty=document.getElementById('training-empty');
+  if(!list)return;
+  const year=new Date().getFullYear();
+  if(summary){
+    if(!trainingStaff.length){summary.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';}
+    else{
+      summary.innerHTML=trainingStaff.map(s=>{
+        const ytd=trainings.filter(t=>t.staff_id===s.id&&new Date(t.training_date).getFullYear()===year).reduce((a,t)=>a+(parseFloat(t.hours)||0),0);
+        const pct=Math.min(100,Math.round(ytd/20*100));
+        const color=ytd>=20?'var(--green)':(ytd>=10?'var(--amber)':'var(--red)');
+        return `<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:500">${s.name||s.full_name}</span><span style="color:${color};font-weight:600">${ytd} / 20 hrs</span></div>
+        <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div></div>`;
+      }).join('');
+    }
+  }
+  if(!trainings.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=trainings.map(t=>{
+    const sName=t.staff?.name||t.staff?.full_name||'Staff';
+    const del=canDelete()?`<button onclick="deleteTraining('${t.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">Delete</button>`:'';
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-weight:600;font-size:13px">${t.topic.replace(/</g,'&lt;')}</div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--text2)">${t.hours} hr</span>${del}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${sName} · ${new Date(t.training_date+'T00:00:00').toLocaleDateString()}${t.notes?' · '+t.notes.replace(/</g,'&lt;'):''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteTraining(id){
+  if(!confirm('Delete this training record?'))return;
+  await sb.from('staff_trainings').delete().eq('id',id);
+  await loadTrainings();
 }
 
 // ===== AUTH STATE =====
