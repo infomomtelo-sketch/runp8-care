@@ -729,6 +729,13 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}
 });
 
+// Capture referral code from URL, once per session (covers both email/password
+// and Google OAuth signup paths, since sessionStorage survives the OAuth redirect)
+(function () {
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  if (ref) sessionStorage.setItem('title22_ref', ref);
+})();
+
 let currentUser = null;
 let currentFacility = null;
 let checklistItems = [];
@@ -817,7 +824,8 @@ async function ensureProfile(user){
   try{
     const{data}=await sb.from('profiles').select('id,plan').eq('id',user.id).maybeSingle();
     if(!data){
-      await sb.from('profiles').insert({id:user.id,plan:'trial',created_at:new Date().toISOString()});
+      const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
+      await sb.from('profiles').insert({id:user.id,plan:'trial',created_at:new Date().toISOString(),referred_by:referredBy});
     }
   }catch(e){console.log('Profile check:',e.message);}
 }
@@ -830,7 +838,8 @@ async function handleSignup(){
   if(pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
   const btn=document.querySelector('#page-signup .btn-primary');
   if(btn){btn.textContent='Creating account…';btn.disabled=true;}
-  const{data,error}=await sb.auth.signUp({email,password:pass});
+  const referredBy=sessionStorage.getItem('title22_ref')||null;
+  const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{referred_by:referredBy}}});
   if(btn){btn.textContent='Create account';btn.disabled=false;}
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   if(!data.user){err.textContent='Check your email to confirm your account, then log in.';err.classList.add('show');return;}
