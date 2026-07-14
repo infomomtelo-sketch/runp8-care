@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Title22 — Title 22 RCFE Compliance</title>
 <meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.5"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -2416,6 +2416,7 @@ async function deleteTraining(id){
 // ===== AUTH STATE =====
 sb.auth.onAuthStateChange(async(event,session)=>{
   if(event==='PASSWORD_RECOVERY'){
+    if(window.__recoveryFallback){clearTimeout(window.__recoveryFallback);window.__recoveryFallback=null;}
     document.body.style.visibility='visible';
     showPage('reset');
     document.getElementById('reset-request').style.display='none';
@@ -2429,11 +2430,43 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }
 });
 
+function showResetLinkProblem(){
+  history.replaceState(null,'',window.location.pathname);
+  showPage('reset');
+  document.getElementById('reset-request').style.display='block';
+  document.getElementById('reset-newpass').style.display='none';
+  const err=document.getElementById('reset-error');
+  err.textContent='That reset link expired or was already used. Enter your email and we\'ll send a fresh one.';
+  err.classList.add('show');
+}
+
 (async()=>{
-  // Password reset link clicked — back off entirely and let onAuthStateChange
+  // Auth redirect came back with an error (expired/consumed recovery link,
+  // often pre-clicked by email security scanners). Show a way forward.
+  const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
+  if(hashParams.get('error')||hashParams.get('error_code')){
+    showResetLinkProblem();
+    return;
+  }
+  // Password reset link clicked — back off and let onAuthStateChange
   // (PASSWORD_RECOVERY) own the page. Prevents auto-login race.
+  // Fallback: if the event never fires, don't leave the user on a dead page.
   if(window.location.hash.includes('type=recovery')){
-    setTimeout(()=>{document.body.style.visibility='visible';},2500);
+    window.__recoveryFallback=setTimeout(async()=>{
+      window.__recoveryFallback=null;
+      try{
+        const{data:{session}}=await sb.auth.getSession();
+        if(session&&session.user){
+          // Recovery session exists but the event was missed — let them set the password.
+          document.body.style.visibility='visible';
+          showPage('reset');
+          document.getElementById('reset-request').style.display='none';
+          document.getElementById('reset-newpass').style.display='block';
+        }else{
+          showResetLinkProblem();
+        }
+      }catch(e){showResetLinkProblem();}
+    },3000);
     return;
   }
   const forceVisible=setTimeout(()=>{
