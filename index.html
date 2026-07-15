@@ -956,6 +956,12 @@ function getDefaultDueDate(freq){
 // ===== LOAD APP =====
 let allFacilities=[];
 
+function trialAnchorMs(profileCreatedAt){
+  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser.id&&f.created_at);
+  if(owned.length)return Math.min(...owned.map(f=>new Date(f.created_at).getTime()));
+  return new Date(profileCreatedAt||Date.now()).getTime();
+}
+
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
@@ -1003,7 +1009,7 @@ async function initFacility(){
     const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').maybeSingle();
     const activePlan=sd?.plan||pd?.plan||'trial';
     if(!activePlan||activePlan==='trial'){
-      const daysUsed=Math.floor((Date.now()-new Date(pd?.created_at||Date.now()))/(1000*60*60*24));
+      const daysUsed=Math.floor((Date.now()-trialAnchorMs(pd?.created_at))/(1000*60*60*24));
       const daysLeft=Math.max(0,14-daysUsed);
       const banner=document.getElementById('trial-banner');
       if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
@@ -2218,8 +2224,7 @@ async function loadBilling(){
     const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
     let trialHtml='';
     if(plan==='trial'){
-      const created=profRes.data?.created_at||new Date().toISOString();
-      const daysUsed=Math.floor((Date.now()-new Date(created))/(1000*60*60*24));
+      const daysUsed=Math.floor((Date.now()-trialAnchorMs(profRes.data?.created_at))/(1000*60*60*24));
       const daysLeft=Math.max(0,14-daysUsed);
       trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`⏳ <strong>${daysLeft} days remaining</strong> on your trial.`:'⚠️ <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
     }
