@@ -823,10 +823,18 @@ async function handleGoogleAuth(errId){
 
 async function ensureProfile(user){
   try{
-    const{data}=await sb.from('profiles').select('id,plan').eq('id',user.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('id,plan,created_at').eq('id',user.id).maybeSingle();
     if(!data){
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
-      await sb.from('profiles').insert({id:user.id,plan:'trial',created_at:new Date().toISOString(),referred_by:referredBy});
+      const{error}=await sb.from('profiles').upsert({id:user.id,plan:'trial',created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      if(error)console.error('Trial activation failed:',error.message);
+    }else if(!data.plan||!data.created_at){
+      // Row exists (e.g. created by a DB trigger) but the trial never activated on it.
+      const patch={};
+      if(!data.plan)patch.plan='trial';
+      if(!data.created_at)patch.created_at=new Date().toISOString();
+      const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
+      if(error)console.error('Trial activation failed:',error.message);
     }
   }catch(e){console.log('Profile check:',e.message);}
 }
@@ -957,9 +965,15 @@ function getDefaultDueDate(freq){
 let allFacilities=[];
 
 function trialAnchorMs(profileCreatedAt){
-  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser.id&&f.created_at);
-  if(owned.length)return Math.min(...owned.map(f=>new Date(f.created_at).getTime()));
-  return new Date(profileCreatedAt||Date.now()).getTime();
+  // Anchor the trial to the oldest owned facility; facilities with a missing or
+  // unparseable created_at must not poison the result (NaN would break daysLeft).
+  const ownedTimes=(allFacilities||[])
+    .filter(f=>f&&f.user_id===currentUser?.id&&f.created_at)
+    .map(f=>new Date(f.created_at).getTime())
+    .filter(Number.isFinite);
+  if(ownedTimes.length)return Math.min(...ownedTimes);
+  const profMs=profileCreatedAt?new Date(profileCreatedAt).getTime():NaN;
+  return Number.isFinite(profMs)?profMs:Date.now();
 }
 
 async function loadApp(){
@@ -1006,7 +1020,7 @@ async function initFacility(){
   showPage('app');
   try{
     const{data:pd}=await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
-    const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').maybeSingle();
+    const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').order('plan_expires_at',{ascending:false}).limit(1).maybeSingle();
     const activePlan=sd?.plan||pd?.plan||'trial';
     if(!activePlan||activePlan==='trial'){
       const daysUsed=Math.floor((Date.now()-trialAnchorMs(pd?.created_at))/(1000*60*60*24));
@@ -2217,7 +2231,10 @@ async function loadBilling(){
   try{
     const[profRes,subRes]=await Promise.all([
       sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle(),
-      sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').gt('plan_expires_at',new Date().toISOString()).maybeSingle()
+      // status='active' is the source of truth. Do NOT filter on plan_expires_at:
+      // ongoing subscriptions have it NULL (NULL > now() is never true) or a stale
+      // past value, and the filter dropped those rows, showing paid users as trial.
+      sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').order('plan_expires_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const plan=subRes.data?.plan||profRes.data?.plan||'trial';
     const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
