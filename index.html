@@ -228,7 +228,7 @@
         <button onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:600" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✨ AI Assistant</button>
         <button onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💳 Billing</button>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
-          <button onclick="showPage('onboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'">🏥 Add new facility</button>
+          <button onclick="addFacilityGuard();toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'">🏥 Add new facility</button>
           <button onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--red)" onmouseover="this.style.background='var(--red-light)'" onmouseout="this.style.background='none'">🚪 Log out</button>
         </div>
       </div>
@@ -671,6 +671,10 @@
           <div style="font-size:24px">🔒</div>
           <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
         </div>
+        <div id="tier-upsell-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:24px">⭐</div>
+          <div style="flex:1"><div style="font-weight:700;color:var(--teal);font-size:15px">Upgrade required</div><div id="tier-upsell-msg" style="font-size:13px;color:var(--teal);margin-top:4px"></div></div>
+        </div>
         <div id="billing-current-plan" class="card" style="margin-bottom:20px">
           <div class="card-title">Current plan</div>
           <div id="billing-plan-details"><div class="empty">Loading...</div></div>
@@ -679,6 +683,7 @@
               💳 Manage subscription &amp; invoices
             </button>
             <div style="font-size:11px;color:var(--text2);margin-top:6px">Update payment method, download invoices, or cancel your plan</div>
+            <button onclick="refreshAccess(true)" class="btn btn-outline" style="font-size:13px;margin-top:12px;display:flex;align-items:center;gap:8px">↻ I've paid — refresh my access</button>
           </div>
         </div>
         <div class="card" style="margin-bottom:20px">
@@ -730,6 +735,12 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}
 });
 
+// Re-check entitlement when the user returns to the tab (e.g. after completing a
+// Stripe checkout in another tab), so access unlocks without a manual reload.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&currentUser){refreshAccess();}
+});
+
 // Capture referral code from URL, once per session (covers both email/password
 // and Google OAuth signup paths, since sessionStorage survives the OAuth redirect)
 (function () {
@@ -755,7 +766,10 @@ function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly
 function canEdit(){ return getAccess().canEdit; }
 function canDelete(){ return getAccess().canDelete; }
 function canTeam(){ return getAccess().canTeam; }
-function allowedTabs(){ return getAccess().tabs; }
+function allowedTabs(){
+  if(!t22Entitled) return ['billing']; // entitlement gate (fail closed): unpaid/expired => billing only
+  return getAccess().tabs;
+}
 
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
 
@@ -767,6 +781,7 @@ function showPage(name){
 }
 
 function switchTab(name){
+  if(name==='ai'&&t22Entitled&&!t22Limits.ai){showTierUpsell('ai');return;}
   if(!allowedTabs().includes(name)){alert('You do not have permission to access this section.');return;}
   const menu=document.getElementById('user-menu');
   if(menu)menu.style.display='none';
@@ -823,16 +838,19 @@ async function handleGoogleAuth(errId){
 
 async function ensureProfile(user){
   try{
-    const{data}=await sb.from('profiles').select('id,plan,created_at').eq('id',user.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('id,plan,created_at,title22_plan,title22_trial_ends_at').eq('id',user.id).maybeSingle();
     if(!data){
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
-      const{error}=await sb.from('profiles').upsert({id:user.id,plan:'trial',created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      const trialEnds=new Date(Date.now()+14*86400000).toISOString();
+      const{error}=await sb.from('profiles').upsert({id:user.id,plan:'trial',title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       if(error)console.error('Trial activation failed:',error.message);
-    }else if(!data.plan||!data.created_at){
-      // Row exists (e.g. created by a DB trigger) but the trial never activated on it.
+    }else if(!data.plan||!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
+      // Row exists (e.g. created by a DB trigger) but title22 entitlement never stamped.
       const patch={};
       if(!data.plan)patch.plan='trial';
       if(!data.created_at)patch.created_at=new Date().toISOString();
+      if(!data.title22_plan)patch.title22_plan='trial';
+      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+14*86400000).toISOString();
       const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
       if(error)console.error('Trial activation failed:',error.message);
     }
@@ -915,6 +933,8 @@ async function handleOnboard(){
   const err=document.getElementById('ob-error');
   err.classList.remove('show');
   if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
+  const ownedCount=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
+  if(ownedCount>=t22Limits.facilities){err.textContent=`Your ${T22_LABEL[t22Plan]||t22Plan} plan allows ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;err.classList.add('show');return;}
   const adminCertExpiry=document.getElementById('ob-cert-expiry').value||null;
   const{data,error}=await sb.from('facilities').insert({
     user_id:currentUser.id,name,
@@ -964,16 +984,39 @@ function getDefaultDueDate(freq){
 // ===== LOAD APP =====
 let allFacilities=[];
 
-function trialAnchorMs(profileCreatedAt){
-  // Anchor the trial to the oldest owned facility; facilities with a missing or
-  // unparseable created_at must not poison the result (NaN would break daysLeft).
-  const ownedTimes=(allFacilities||[])
-    .filter(f=>f&&f.user_id===currentUser?.id&&f.created_at)
-    .map(f=>new Date(f.created_at).getTime())
-    .filter(Number.isFinite);
-  if(ownedTimes.length)return Math.min(...ownedTimes);
-  const profMs=profileCreatedAt?new Date(profileCreatedAt).getTime():NaN;
-  return Number.isFinite(profMs)?profMs:Date.now();
+// ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
+const T22_PAID=['starter','pro','specialist','agency'];
+const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
+// Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
+const TIER_LIMITS={
+  trial:      {facilities:5,        ai:true},
+  starter:    {facilities:1,        ai:false},
+  pro:        {facilities:3,        ai:false},
+  specialist: {facilities:5,        ai:true},
+  agency:     {facilities:Infinity, ai:true}
+};
+let t22Entitled=false;                    // fail closed: locked until verified this session
+let t22Plan='trial';
+let t22Limits={facilities:0,ai:false};    // fail closed
+let t22TrialDaysLeft=0;
+
+async function resolveEntitlement(){
+  // Single source of truth for access. Fail CLOSED: any read error or missing
+  // row => NOT entitled. Never falls through to full access on failure.
+  try{
+    const{data,error}=await sb.from('profiles')
+      .select('title22_plan,title22_trial_ends_at,title22_subscription_id')
+      .eq('id',currentUser.id).maybeSingle();
+    if(error||!data)return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
+    const plan=data.title22_plan||'trial';
+    if(T22_PAID.includes(plan))return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
+    if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
+    const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
+    return{plan:'trial',entitled:Date.now()<ends,daysLeft,trialExpired:Date.now()>=ends,ok:true};
+  }catch(e){
+    return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
+  }
 }
 
 async function loadApp(){
@@ -1007,7 +1050,13 @@ async function initFacility(){
       currentUserRole=m?.role||'readonly';
     }
   }catch(e){currentUserRole='readonly';}
+  {
+    const ent=await resolveEntitlement();
+    t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+    t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
+  }
   applyRoleUI();
+  applyTierUI();
   const{data:items}=await sb.from('checklist_items').select('*');
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
@@ -1018,26 +1067,18 @@ async function initFacility(){
   marMedCache={};
   dashBriefingLoaded=false;
   showPage('app');
-  try{
-    const{data:pd}=await sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle();
-    const{data:sd}=await sb.from('subscriptions').select('plan,status').eq('user_id',currentUser.id).eq('status','active').order('plan_expires_at',{ascending:false}).limit(1).maybeSingle();
-    const activePlan=sd?.plan||pd?.plan||'trial';
-    if(!activePlan||activePlan==='trial'){
-      const daysUsed=Math.floor((Date.now()-trialAnchorMs(pd?.created_at))/(1000*60*60*24));
-      const daysLeft=Math.max(0,14-daysUsed);
-      const banner=document.getElementById('trial-banner');
-      if(banner){document.getElementById('trial-days-left').textContent=daysLeft;banner.style.display='flex';}
-      if(daysLeft<=0){
-        ['dashboard','checklist','staff','residents','incidents','facility','medications','mar','team','ai'].forEach(t=>{
-          const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
-        });
-        const expiredBanner=document.getElementById('trial-expired-banner');
-        if(expiredBanner)expiredBanner.style.display='flex';
-        switchTab('billing');
-        return;
-      }
-    }
-  }catch(e){}
+  if(!t22Entitled){
+    // Locked (unpaid / expired trial / unverifiable). applyRoleUI() already hid
+    // every tab except billing via allowedTabs(); just surface the banner.
+    const expiredBanner=document.getElementById('trial-expired-banner');
+    if(expiredBanner)expiredBanner.style.display='flex';
+    switchTab('billing');
+    return;
+  }
+  if(t22Plan==='trial'){
+    const banner=document.getElementById('trial-banner');
+    if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
+  }
   refreshDashboard();
   await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
   refreshDashboard();
@@ -1055,7 +1096,7 @@ function renderFacilitySwitcher(){
     <select onchange="switchFacility(this.value)" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;background:var(--white);color:var(--text);cursor:pointer">
       ${allFacilities.map(f=>`<option value="${f.id}" ${f.id===currentFacility.id?'selected':''}>${f.name}</option>`).join('')}
     </select>
-    <button onclick="showPage('onboard');toggleUserMenu()" style="width:100%;margin-top:6px;padding:5px 8px;border:1.5px dashed var(--border);border-radius:var(--radius);font-size:11px;background:none;cursor:pointer;color:var(--teal);font-weight:500">+ Add new facility</button>
+    <button onclick="addFacilityGuard();toggleUserMenu()" style="width:100%;margin-top:6px;padding:5px 8px;border:1.5px dashed var(--border);border-radius:var(--radius);font-size:11px;background:none;cursor:pointer;color:var(--teal);font-weight:500">+ Add new facility</button>
   `;
 }
 
@@ -1076,6 +1117,51 @@ function applyRoleUI(){
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
   });
+}
+
+// Dim the AI nav when the current tier doesn't include it (kept visible for upsell).
+function applyTierUI(){
+  const navAi=document.getElementById('nav-ai');
+  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Specialist & Agency feature';}
+}
+
+// Show an upgrade prompt for a tier-locked feature and route to billing.
+function showTierUpsell(feature){
+  const msg=feature==='ai'
+    ?'The AI Compliance Assistant is available on Specialist and Agency plans. Upgrade to unlock it.'
+    :`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
+  const banner=document.getElementById('tier-upsell-banner');
+  const m=document.getElementById('tier-upsell-msg');
+  if(m)m.textContent=msg;
+  if(banner)banner.style.display='flex';
+  switchTab('billing');
+}
+
+// Guard the "Add new facility" action against the tier's facility cap.
+function addFacilityGuard(){
+  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
+  if(owned>=t22Limits.facilities){showTierUpsell('facilities');return;}
+  showPage('onboard');
+}
+
+// Re-check entitlement after returning from Stripe checkout. Upgrade-only: it
+// unlocks or raises tier but never locks mid-session (a real cancel/expiry is
+// caught on the next full load), so a transient read can't yank a working user.
+async function refreshAccess(manual){
+  const was=t22Entitled;
+  const ent=await resolveEntitlement();
+  if(!ent.entitled){
+    if(manual)alert("We haven't detected your payment yet — it can take a few seconds. Please wait a moment and try again.");
+    return;
+  }
+  t22Entitled=true;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+  t22Limits=TIER_LIMITS[ent.plan]||{facilities:1,ai:false};
+  applyRoleUI();applyTierUI();
+  const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
+  const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
+  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);refreshDashboard();}
+  const bt=document.getElementById('tab-billing');
+  if(bt&&bt.style.display!=='none')loadBilling();
 }
 
 // ===== DASHBOARD =====
@@ -2229,20 +2315,13 @@ async function loadBilling(){
 
   const el=document.getElementById('billing-plan-details');if(!el)return;
   try{
-    const[profRes,subRes]=await Promise.all([
-      sb.from('profiles').select('plan,created_at').eq('id',currentUser.id).maybeSingle(),
-      // status='active' is the source of truth. Do NOT filter on plan_expires_at:
-      // ongoing subscriptions have it NULL (NULL > now() is never true) or a stale
-      // past value, and the filter dropped those rows, showing paid users as trial.
-      sb.from('subscriptions').select('plan,status,plan_expires_at').eq('user_id',currentUser.id).eq('status','active').order('plan_expires_at',{ascending:false}).limit(1).maybeSingle()
-    ]);
-    const plan=subRes.data?.plan||profRes.data?.plan||'trial';
+    const ent=await resolveEntitlement();
+    const plan=ent.plan;
     const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
     const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
     let trialHtml='';
     if(plan==='trial'){
-      const daysUsed=Math.floor((Date.now()-trialAnchorMs(profRes.data?.created_at))/(1000*60*60*24));
-      const daysLeft=Math.max(0,14-daysUsed);
+      const daysLeft=ent.daysLeft;
       trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`⏳ <strong>${daysLeft} days remaining</strong> on your trial.`:'⚠️ <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
     }
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">💳</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
