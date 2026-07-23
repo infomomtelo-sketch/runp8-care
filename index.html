@@ -263,14 +263,15 @@
     </div>
   </div>
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
-    © 2026 Title22 · RunP8 LLC · Built for RCFE &amp; CBRC operators · title22.app<br/>
-    <a href="/privacy.html" style="color:var(--teal);text-decoration:none">Privacy Policy</a> · <a href="/terms.html" style="color:var(--teal);text-decoration:none">Terms of Service</a>
+    © Title22 · California RCFE compliance software<br/>
+    <a href="https://title-22.com" style="color:var(--teal);text-decoration:none">title-22.com</a> · <a href="/privacy.html" style="color:var(--teal);text-decoration:none">Privacy Policy</a> · <a href="/terms.html" style="color:var(--teal);text-decoration:none">Terms of Service</a>
   </div>
 </div>
 
 <!-- LOGIN -->
 <div id="page-login" class="page">
-  <div class="auth-wrap">
+  <div class="auth-wrap" style="flex-direction:column;gap:14px">
+    <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
       <h2>Welcome back</h2>
       <p>Log in to your Title22 account</p>
@@ -290,7 +291,8 @@
 
 <!-- SIGNUP -->
 <div id="page-signup" class="page">
-  <div class="auth-wrap">
+  <div class="auth-wrap" style="flex-direction:column;gap:14px">
+    <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
       <h2>Start your free trial</h2>
       <p>14 days free · No credit card required</p>
@@ -647,7 +649,7 @@
 
       <!-- AI -->
       <div id="tab-ai" style="display:none">
-        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-amber">Specialist &amp; Agency</span></div>
+        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-amber">Multi-Facility &amp; Agency</span></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ Responses are based on data recorded in Title22 only.</div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
@@ -694,11 +696,11 @@
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Pro ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid #BA7517;border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px;color:#BA7517">Specialist</div><div style="font-size:13px;color:var(--text2)">Up to 5 facilities + AI assistant</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:#BA7517">Multi-Facility</div><div style="font-size:13px;color:var(--text2)">Up to 5 facilities + AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_SPECIALIST)" class="btn btn-outline" style="font-size:13px;border-color:#BA7517;color:#BA7517">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -741,11 +743,20 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&currentUser){refreshAccess();}
 });
 
-// Capture referral code from URL, once per session (covers both email/password
-// and Google OAuth signup paths, since sessionStorage survives the OAuth redirect)
+// Capture referral code and marketing-funnel params from the URL, once per
+// session (covers both email/password and Google OAuth signup paths, since
+// sessionStorage survives the OAuth redirect). Marketing CTAs land here as
+// https://title22.app/?plan=<tier>&utm_source=<source>&utm_campaign=<campaign>
 (function () {
-  const ref = new URLSearchParams(window.location.search).get('ref');
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
   if (ref) sessionStorage.setItem('title22_ref', ref);
+  const plan = (params.get('plan')||'').toLowerCase();
+  if (['starter','pro','specialist','agency'].includes(plan)) sessionStorage.setItem('title22_signup_plan', plan);
+  const src = params.get('utm_source');
+  if (src) sessionStorage.setItem('title22_utm_source', src.slice(0,100));
+  const camp = params.get('utm_campaign');
+  if (camp) sessionStorage.setItem('title22_utm_campaign', camp.slice(0,100));
 })();
 
 let currentUser = null;
@@ -772,6 +783,11 @@ function allowedTabs(){
 }
 
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
+
+// HTML-escape user-entered text before interpolating into innerHTML templates.
+// For text embedded in inline onclick handlers, JS-escape quotes first, then
+// esc() the result: esc(x.replace(/'/g,"\\'")).
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 // ===== NAVIGATION =====
 function showPage(name){
@@ -837,17 +853,23 @@ async function handleGoogleAuth(errId){
 }
 
 async function ensureProfile(user){
+  // Title22 only touches title22_* entitlement columns on profiles. The shared
+  // columns (plan, stripe_subscription_id, plan_expires_at, trial_ends_at,
+  // access_granted) belong to other apps on this Supabase project — never
+  // read or write them here.
+  let isNewProfile=false;
   try{
-    const{data}=await sb.from('profiles').select('id,plan,created_at,title22_plan,title22_trial_ends_at').eq('id',user.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('id,created_at,title22_plan,title22_trial_ends_at').eq('id',user.id).maybeSingle();
     if(!data){
+      isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+14*86400000).toISOString();
-      const{error}=await sb.from('profiles').upsert({id:user.id,plan:'trial',title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      const{error}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       if(error)console.error('Trial activation failed:',error.message);
-    }else if(!data.plan||!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
+    }else if(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
       // Row exists (e.g. created by a DB trigger) but title22 entitlement never stamped.
+      isNewProfile=!data.title22_plan;
       const patch={};
-      if(!data.plan)patch.plan='trial';
       if(!data.created_at)patch.created_at=new Date().toISOString();
       if(!data.title22_plan)patch.title22_plan='trial';
       if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+14*86400000).toISOString();
@@ -855,6 +877,26 @@ async function ensureProfile(user){
       if(error)console.error('Trial activation failed:',error.message);
     }
   }catch(e){console.log('Profile check:',e.message);}
+  if(isNewProfile)await stampSignupAttribution(user);
+}
+
+// Stamp marketing attribution (title22_signup_plan / _utm_source / _utm_campaign)
+// on first signup. Separate best-effort update: if the columns don't exist yet
+// the error is logged and signup proceeds — attribution must never block trial
+// activation.
+async function stampSignupAttribution(user){
+  try{
+    const patch={};
+    const plan=sessionStorage.getItem('title22_signup_plan');
+    const src=sessionStorage.getItem('title22_utm_source');
+    const camp=sessionStorage.getItem('title22_utm_campaign');
+    if(plan)patch.title22_signup_plan=plan;
+    if(src)patch.title22_utm_source=src;
+    if(camp)patch.title22_utm_campaign=camp;
+    if(!Object.keys(patch).length)return;
+    const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
+    if(error)console.log('Attribution stamp skipped:',error.message);
+  }catch(e){console.log('Attribution stamp skipped:',e.message);}
 }
 async function handleSignup(){
   const email=document.getElementById('signup-email').value.trim();
@@ -907,7 +949,7 @@ async function handlePasswordReset(){
   const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://title22.app'});
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   err.style.background='var(--green-light)';err.style.color='var(--green)';
-  err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
+  err.textContent='✓ Reset link sent! Check your email — and open the link in this browser, on this device.';err.classList.add('show');
 }
 
 async function handleSetNewPassword(){
@@ -986,7 +1028,9 @@ let allFacilities=[];
 
 // ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
 const T22_PAID=['starter','pro','specialist','agency'];
-const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
+// Display labels only — the underlying plan keys and Stripe price IDs are
+// unchanged (renaming Stripe products would orphan live subscriptions).
+const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Facility',specialist:'Multi-Facility',agency:'Agency'};
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:5,        ai:true},
@@ -1005,11 +1049,19 @@ async function resolveEntitlement(){
   // row => NOT entitled. Never falls through to full access on failure.
   try{
     const{data,error}=await sb.from('profiles')
-      .select('title22_plan,title22_trial_ends_at,title22_subscription_id')
+      .select('title22_plan,title22_trial_ends_at,title22_subscription_id,title22_plan_expires_at')
       .eq('id',currentUser.id).maybeSingle();
     if(error||!data)return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
     const plan=data.title22_plan||'trial';
-    if(T22_PAID.includes(plan))return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    if(T22_PAID.includes(plan)){
+      // Paid plans expire too: a cancelled sub keeps access until the period
+      // end stamped in title22_plan_expires_at. Past that date => locked.
+      // No expiry stamped (active recurring sub) => entitled.
+      const paidEnds=data.title22_plan_expires_at?new Date(data.title22_plan_expires_at).getTime():null;
+      if(paidEnds!==null&&(!Number.isFinite(paidEnds)||Date.now()>=paidEnds))
+        return{plan,entitled:false,daysLeft:0,trialExpired:false,ok:true};
+      return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    }
     const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
     if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
     const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
@@ -1088,13 +1140,13 @@ async function initFacility(){
 function renderFacilitySwitcher(){
   const el=document.getElementById('facility-switcher');if(!el)return;
   if(allFacilities.length<=1){
-    el.innerHTML=`<div style="font-size:11px;color:var(--text2)">${currentFacility.name}</div>`;
+    el.innerHTML=`<div style="font-size:11px;color:var(--text2)">${esc(currentFacility.name)}</div>`;
     return;
   }
   el.innerHTML=`
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:4px;font-weight:600">Switch facility</div>
     <select onchange="switchFacility(this.value)" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;background:var(--white);color:var(--text);cursor:pointer">
-      ${allFacilities.map(f=>`<option value="${f.id}" ${f.id===currentFacility.id?'selected':''}>${f.name}</option>`).join('')}
+      ${allFacilities.map(f=>`<option value="${esc(f.id)}" ${f.id===currentFacility.id?'selected':''}>${esc(f.name)}</option>`).join('')}
     </select>
     <button onclick="addFacilityGuard();toggleUserMenu()" style="width:100%;margin-top:6px;padding:5px 8px;border:1.5px dashed var(--border);border-radius:var(--radius);font-size:11px;background:none;cursor:pointer;color:var(--teal);font-weight:500">+ Add new facility</button>
   `;
@@ -1122,13 +1174,13 @@ function applyRoleUI(){
 // Dim the AI nav when the current tier doesn't include it (kept visible for upsell).
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
-  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Specialist & Agency feature';}
+  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Multi-Facility & Agency feature';}
 }
 
 // Show an upgrade prompt for a tier-locked feature and route to billing.
 function showTierUpsell(feature){
   const msg=feature==='ai'
-    ?'The AI Compliance Assistant is available on Specialist and Agency plans. Upgrade to unlock it.'
+    ?'The AI Compliance Assistant is available on Multi-Facility and Agency plans. Upgrade to unlock it.'
     :`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
   const banner=document.getElementById('tier-upsell-banner');
   const m=document.getElementById('tier-upsell-msg');
@@ -1188,11 +1240,11 @@ function refreshDashboard(){
   document.getElementById('alert-count').textContent=urgent.length;
   document.getElementById('alert-list').innerHTML=urgent.length===0
     ?'<div class="empty">No urgent alerts</div>'
-    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${t.title}</strong><span>Overdue since ${t.due_date}</span></div></div>`).join('');
+    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`).join('');
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
-    :todayTasks.map(t=>`<div class="task-item"><div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)"></div><div class="task-text ${t.completed?'done':''}">${t.title}</div></div>`).join('');
+    :todayTasks.map(t=>`<div class="task-item"><div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${esc(t.id)}',this)"></div><div class="task-text ${t.completed?'done':''}">${esc(t.title)}</div></div>`).join('');
   const cats=['administrator','staff','residents','medication','facility'];
   document.getElementById('category-breakdown').innerHTML=cats.map(cat=>{
     const ct=complianceTasks.filter(t=>t.category===cat);
@@ -1232,9 +1284,9 @@ function renderExpiryBanner(){
     return;
   }
   let html='';
-  if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${t.title}</span><span style="color:var(--text2);margin-left:6px">Since ${t.due_date}</span></div>`).join('')}</div></div>`;
-  if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${t.title}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
-  if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${t.title}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
+  if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   banner.innerHTML=html;
 }
 
@@ -1275,13 +1327,13 @@ function renderChecklist(filter){
       return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden${isOverdue?';border-left:3px solid var(--red)':''}">
         <div class="checklist-row" style="border:none;margin:0;border-radius:0;${t.completed?'opacity:.6':''}">
           <div class="check-toggle ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)">${t.completed?'✓':''}</div>
-          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${t.title}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${item.regulation_reference}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${item.frequency}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${t.notes}</span>`:''}</div></div>
+          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${esc(t.title)}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${esc(item.regulation_reference)}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${esc(item.frequency)}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${esc(t.notes)}</span>`:''}</div></div>
           <div class="checklist-meta" style="flex-direction:column;align-items:flex-end;gap:6px">
             ${statusBadge}
             <div style="display:flex;gap:6px;align-items:center">
               <input type="date" value="${t.due_date||''}" style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text2);outline:none" onchange="updateDueDate('${t.id}',this.value)"/>
               <button onclick="addNote('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" title="Add note">💬</button>
-              <button onclick="deleteTask('${t.id}','${t.title.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'">🗑</button>
+              <button onclick="deleteTask('${esc(t.id)}','${esc(t.title.replace(/'/g,"\\'"))}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'">🗑</button>
             </div>
           </div>
         </div>
@@ -1340,11 +1392,11 @@ function printChecklist(){
     tasks.forEach(t=>{
       const item=checklistItems.find(i=>i.id===t.checklist_item_id)||{};
       const isOverdue=!t.completed&&t.due_date&&t.due_date<todayStr;
-      rows+=`<tr style="border-bottom:1px solid #eee"><td style="padding:8px;font-size:13px">${t.completed?'☑':'☐'}</td><td style="padding:8px;font-size:13px">${t.title}</td><td style="padding:8px;font-size:12px;color:#666">${item.regulation_reference||''}</td><td style="padding:8px;font-size:12px;color:${isOverdue?'red':'#666'}">${t.due_date||'—'}</td></tr>`;
+      rows+=`<tr style="border-bottom:1px solid #eee"><td style="padding:8px;font-size:13px">${t.completed?'☑':'☐'}</td><td style="padding:8px;font-size:13px">${esc(t.title)}</td><td style="padding:8px;font-size:12px;color:#666">${esc(item.regulation_reference||'')}</td><td style="padding:8px;font-size:12px;color:${isOverdue?'red':'#666'}">${esc(t.due_date||'—')}</td></tr>`;
     });
   });
   const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Title22 Compliance Report</title><style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse}</style></head><body><h1>Title22 Compliance Report</h1><h2>${facilityName} · ${today} · ${score}% (${done}/${total})</h2><table>${rows}</table></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><title>Title22 Compliance Report</title><style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse}</style></head><body><h1>Title22 Compliance Report</h1><h2>${esc(facilityName)} · ${today} · ${score}% (${done}/${total})</h2><table>${rows}</table></body></html>`);
   win.document.close();win.print();
 }
 
@@ -1438,13 +1490,13 @@ function renderResidents(){
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
-    return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${r.id}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
+    return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${esc(r.id)}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${initials}</div>
-        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${nameField}</div><div style="font-size:12px;color:var(--text2)">${r.preferred_name?'"'+r.preferred_name+'" ':''} ${r.room||r.room_number?'· '+(r.room||r.room_number):''}</div></div>
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${r.preferred_name?'"'+esc(r.preferred_name)+'" ':''} ${r.room||r.room_number?'· '+esc(r.room||r.room_number):''}</div></div>
         ${age?`<div style="font-size:11px;color:var(--text2);text-align:right"><div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs</div></div>`:''}
       </div>
-      ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${r.diagnosis}</div>`:''}
+      ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${esc(r.diagnosis)}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',r.lic601)}${docBadge('LIC 602',r.lic602)}${r.isp==='yes'?'<span class="badge badge-green">ISP ✓</span>':'<span class="badge badge-red">ISP ✗</span>'}</div>
       ${r.admission_date?`<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()}</div>`:''}
     </div>`;
@@ -1515,12 +1567,12 @@ function viewResident(id){
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
       ${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}
-      ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${r.room||r.room_number}</div></div>`:''}
+      ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${esc(r.room||r.room_number)}</div></div>`:''}
       ${r.admission_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>`:''}
       ${r.isp_review_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>`:''}
     </div>
-    ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${r.diagnosis}</div></div>`:''}
-    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${r.allergies}</div></div>`:''}
+    ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
+    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
     <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
@@ -1591,8 +1643,8 @@ function renderStaff(){
       banner.innerHTML=staffList.length?`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem;display:flex;align-items:center;gap:12px"><span>✅</span><div style="font-weight:600;color:var(--green)">All staff certifications are current</div></div>`:'';
     }else{
       let html='';
-      if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px">🚨 ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600">⚠ ${c.staff} — ${c.label} (${c.date})</div>`).join('')}</div></div>`;
-      if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px">⏰ ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600">📋 ${c.staff} — ${c.label} (${c.date})</div>`).join('')}</div></div>`;
+      if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px">🚨 ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600">⚠ ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
+      if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px">⏰ ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600">📋 ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
       banner.innerHTML=html;
     }
   }
@@ -1631,21 +1683,21 @@ function renderStaff(){
       let icon,col,text;
       if(c.noDate){icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';}
       else if(!c.date){icon='—';col='var(--text2)';text='Not set';}
-      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+c.date;}
-      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+c.date;}
-      else{icon='✓';col='var(--green)';text='Valid to '+c.date;}
-      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${c.label}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
+      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+esc(c.date);}
+      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+esc(c.date);}
+      else{icon='✓';col='var(--green)';text='Valid to '+esc(c.date);}
+      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
     }).join('');
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initials}</div>
-        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${nameField}</div><div style="font-size:12px;color:var(--text2)">${ROLE_LABELS[s.role]||s.role||'Staff'}</div></div>
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${esc(initials)}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${esc(ROLE_LABELS[s.role]||s.role||'Staff')}</div></div>
         ${statusBadge}
       </div>
       <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">${certHtml}</div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${s.id}')">Edit</button>
-        ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${s.id}','${nameField.replace(/'/g,"\\'")}')">🗑</button>`:''}
+        <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${esc(s.id)}')">Edit</button>
+        ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${esc(s.id)}','${esc(nameField.replace(/'/g,"\\'"))}')">🗑</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1766,14 +1818,14 @@ function renderMedications(){
       const isDisc=m.status==='discontinued';
       const refillSoon=m.refill_date&&getDaysUntil(m.refill_date)!==null&&getDaysUntil(m.refill_date)<=7&&!isDisc;
       return`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)${isDisc?';opacity:.5':''}">
-        <div style="flex:1"><div style="font-size:14px;font-weight:600">${m.medication_name}${isDisc?' <span class="badge badge-gray">D/C</span>':''}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${[m.dosage,m.directions].filter(Boolean).join(' — ')}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:4px">${m.prescriber?'Dr. '+m.prescriber:''}${m.rx_number?' · Rx#'+m.rx_number:''}</div>
-        ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px">⏰ Refill due ${m.refill_date}</div>`:''}</div>
-        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openMedModal('${r.id}','${m.id}')">Edit</button>
+        <div style="flex:1"><div style="font-size:14px;font-weight:600">${esc(m.medication_name)}${isDisc?' <span class="badge badge-gray">D/C</span>':''}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc([m.dosage,m.directions].filter(Boolean).join(' — '))}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">${m.prescriber?'Dr. '+esc(m.prescriber):''}${m.rx_number?' · Rx#'+esc(m.rx_number):''}</div>
+        ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px">⏰ Refill due ${esc(m.refill_date)}</div>`:''}</div>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openMedModal('${esc(r.id)}','${esc(m.id)}')">Edit</button>
       </div>`;
     }).join('');
-    return`<div class="card" style="margin-bottom:14px"><div class="card-title"><span>${nameField}${r.room||r.room_number?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room||r.room_number}</span>`:''}</span><button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${r.id}')">+ Add</button></div>${meds.length?medRows:'<div class="empty" style="padding:20px 0">No medications on file</div>'}</div>`;
+    return`<div class="card" style="margin-bottom:14px"><div class="card-title"><span>${esc(nameField)}${r.room||r.room_number?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${esc(r.room||r.room_number)}</span>`:''}</span><button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${esc(r.id)}')">+ Add</button></div>${meds.length?medRows:'<div class="empty" style="padding:20px 0">No medications on file</div>'}</div>`;
   }).join('');
 }
 let currentMedResidentId=null,currentMedId=null;
@@ -1853,17 +1905,17 @@ function renderIncidents(){
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:12px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
         <div>
-          <div style="font-weight:600;font-size:15px;margin-bottom:4px">${resName}</div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">${esc(resName)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <span class="incident-type-badge incident-type-${typeClass}">${typeLabels[inc.incident_type]||inc.incident_type}</span>
+            <span class="incident-type-badge incident-type-${typeClass}">${esc(typeLabels[inc.incident_type]||inc.incident_type)}</span>
             ${inc.dss_reportable?'<span class="badge badge-red">DSS reportable</span>':''}
             <span style="font-size:12px;color:var(--text2)">${occurredDate} ${occurredTime}</span>
           </div>
         </div>
-        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openIncidentModal('${inc.id}')">Edit</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openIncidentModal('${esc(inc.id)}')">Edit</button>
       </div>
-      ${inc.description?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px">${inc.description}</div>`:''}
-      ${inc.corrective_action?`<div style="font-size:12px;color:var(--text2);background:var(--gray-bg);border-radius:var(--radius);padding:8px 12px"><strong>Corrective action:</strong> ${inc.corrective_action}</div>`:''}
+      ${inc.description?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px">${esc(inc.description)}</div>`:''}
+      ${inc.corrective_action?`<div style="font-size:12px;color:var(--text2);background:var(--gray-bg);border-radius:var(--radius);padding:8px 12px"><strong>Corrective action:</strong> ${esc(inc.corrective_action)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2045,9 +2097,9 @@ async function loadMAR(){
         const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'⚠ Refused':e.status==='held'?'⏸ Held':'✗ Missed';
         return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
           <div>
-            <div style="font-size:14px;font-weight:600">${resName}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">${medName}${dosage?' · '+dosage:''} · ${e.scheduled_time||time}</div>
-            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">💬 ${e.notes}</div>`:''}
+            <div style="font-size:14px;font-weight:600">${esc(resName)}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(medName)}${dosage?' · '+esc(dosage):''} · ${esc(e.scheduled_time||time)}</div>
+            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">💬 ${esc(e.notes)}</div>`:''}
           </div>
           <div style="text-align:right">
             <div style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</div>
@@ -2069,7 +2121,7 @@ async function loadMARBriefing(){
   const missedCount=(todayEntries||[]).filter(e=>e.status==='missed').length;
   const notLoggedYet=resList.filter(r=>!givenResIds.has(r.id));
   let tips=[];
-  if(notLoggedYet.length)tips.push(`📋 ${notLoggedYet.map(r=>r.name||r.full_name).join(', ')} — no medications logged today yet`);
+  if(notLoggedYet.length)tips.push(`📋 ${esc(notLoggedYet.map(r=>r.name||r.full_name).join(', '))} — no medications logged today yet`);
   if(refusedCount)tips.push(`⚠️ ${refusedCount} refusal${refusedCount>1?'s':''} logged today — document reason per Title 22 §87465`);
   if(missedCount)tips.push(`🚨 ${missedCount} missed dose${missedCount>1?'s':''} today — physician notification may be required`);
   if(!tips.length){el.style.display='none';return;}
@@ -2211,7 +2263,7 @@ async function loadDashboardAIBriefing(force){
     const data=await res.json();
     const bErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
     const reply=data.content?.[0]?.text||(bErr?'⚠️ '+bErr:'Unable to load briefing. (HTTP '+res.status+')');
-    el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
     dashBriefingLoaded=true;
   }catch(e){
     el.innerHTML='<div style="font-size:13px;color:var(--text2)">AI briefing unavailable. Check your AI Worker deployment.</div>';
@@ -2254,7 +2306,7 @@ async function sendAIQuery(btn){
     const data=await res.json();
     const workerErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
     const reply=data.content?.[0]?.text||(workerErr?'⚠️ '+workerErr:'Unable to get a response. (HTTP '+res.status+')');
-    thinking.textContent='';thinking.innerHTML=reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
   }catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}
@@ -2277,8 +2329,8 @@ async function loadTeam(){
   if(!membersList)return;
   const teamMembers=members||[];const pendingInvites=invites||[];
   if(!teamMembers.length){membersList.innerHTML='<div class="empty">No team members yet.</div>';}
-  else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${m.profiles?.email||'Unknown'}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${m.role}</div></div><div style="display:flex;gap:8px"><select onchange="updateMemberRole('${m.id}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${m.id}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Remove</button></div></div>`).join('');}
-  if(invitesList)invitesList.innerHTML=pendingInvites.length?'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:16px 0 10px">Pending Invites</div>'+pendingInvites.map(inv=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${inv.email}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${inv.role} · Pending</div></div><div style="display:flex;gap:8px"><button onclick="navigator.clipboard.writeText(window.location.origin+'?invite='+encodeURIComponent('${inv.token}')).then(()=>alert('Copied!'))" class="btn btn-outline" style="font-size:12px;padding:4px 8px">Copy link</button><button onclick="cancelInvite('${inv.id}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Cancel</button></div></div>`).join(''):'';
+  else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(m.profiles?.email||'Unknown')}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${esc(m.role)}</div></div><div style="display:flex;gap:8px"><select onchange="updateMemberRole('${esc(m.id)}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${esc(m.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Remove</button></div></div>`).join('');}
+  if(invitesList)invitesList.innerHTML=pendingInvites.length?'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:16px 0 10px">Pending Invites</div>'+pendingInvites.map(inv=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(inv.email)}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${esc(inv.role)} · Pending</div></div><div style="display:flex;gap:8px"><button onclick="navigator.clipboard.writeText('https://title22.app/?invite='+encodeURIComponent('${esc(inv.token)}')).then(()=>alert('Copied!'))" class="btn btn-outline" style="font-size:12px;padding:4px 8px">Copy link</button><button onclick="cancelInvite('${esc(inv.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Cancel</button></div></div>`).join(''):'';
 }
 function showInviteModal(){if(!canTeam()){alert('Only the Administrator can invite team members.');return;}document.getElementById('invite-modal').classList.add('open');}
 function closeInviteModal(){document.getElementById('invite-modal').classList.remove('open');document.getElementById('invite-link-result').style.display='none';}
@@ -2289,7 +2341,7 @@ async function sendInvite(){
   const token=crypto.randomUUID();
   const{error}=await sb.from('facility_invites').insert({facility_id:currentFacility.id,email,role,token,status:'pending',created_by:currentUser.id});
   if(error){alert('Error: '+error.message);return;}
-  const link=window.location.origin+'?invite='+token;
+  const link='https://title22.app/?invite='+token;
   document.getElementById('invite-link-text').textContent=link;
   document.getElementById('invite-link-result').style.display='block';
   loadTeam();
@@ -2317,7 +2369,7 @@ async function loadBilling(){
   try{
     const ent=await resolveEntitlement();
     const plan=ent.plan;
-    const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
+    const planLabels=T22_LABEL;
     const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
     let trialHtml='';
     if(plan==='trial'){
@@ -2532,14 +2584,22 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }
 });
 
-function showResetLinkProblem(){
+function showResetLinkProblem(message){
   history.replaceState(null,'',window.location.pathname);
+  document.body.style.visibility='visible';
   showPage('reset');
   document.getElementById('reset-request').style.display='block';
   document.getElementById('reset-newpass').style.display='none';
   const err=document.getElementById('reset-error');
-  err.textContent='That reset link expired or was already used. Enter your email and we\'ll send a fresh one.';
+  err.textContent=message||'That reset link expired or was already used. Enter your email and we\'ll send a fresh one.';
   err.classList.add('show');
+}
+
+function showSetNewPassword(){
+  document.body.style.visibility='visible';
+  showPage('reset');
+  document.getElementById('reset-request').style.display='none';
+  document.getElementById('reset-newpass').style.display='block';
 }
 
 (async()=>{
@@ -2548,6 +2608,43 @@ function showResetLinkProblem(){
   const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
   if(hashParams.get('error')||hashParams.get('error_code')){
     showResetLinkProblem();
+    return;
+  }
+  const qs=new URLSearchParams(window.location.search);
+  // Token-hash recovery link (?token_hash=...&type=recovery). Unlike PKCE
+  // ?code= links this verifies server-side with no dependency on this
+  // browser's localStorage, so it works from email-app webviews and any
+  // device. Requires the Supabase recovery email template to link
+  // {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=recovery.
+  if(qs.get('token_hash')&&qs.get('type')==='recovery'){
+    try{
+      const{data,error}=await sb.auth.verifyOtp({type:'recovery',token_hash:qs.get('token_hash')});
+      history.replaceState(null,'',window.location.pathname);
+      if(error||!data?.session){showResetLinkProblem(error?.message?'Could not verify this reset link: '+error.message+' Request a fresh one below.':undefined);return;}
+      showSetNewPassword();
+    }catch(e){showResetLinkProblem();}
+    return;
+  }
+  // PKCE recovery link (?code=...). supabase-js exchanges the code
+  // automatically on init, and success is routed by onAuthStateChange
+  // (PASSWORD_RECOVERY / SIGNED_IN). But the exchange needs the code_verifier
+  // stored by the browser that requested the reset — from a different browser
+  // (e.g. the Gmail app's in-app webview) it fails silently. Detect that and
+  // say so instead of leaving a dead page.
+  if(qs.get('code')){
+    window.__recoveryFallback=setTimeout(async()=>{
+      window.__recoveryFallback=null;
+      try{
+        const{data:{session}}=await sb.auth.getSession();
+        if(session&&session.user){
+          if(!currentUser){currentUser=session.user;await ensureProfile(currentUser);await loadApp();}
+          document.body.style.visibility='visible';
+        }else{
+          showResetLinkProblem('This link couldn\'t be opened here. Password reset links only work in the browser where you requested them — open the link in that browser, or enter your email below for a fresh link.');
+        }
+      }catch(e){showResetLinkProblem();}
+    },2500);
+    setTimeout(()=>{document.body.style.visibility='visible';},2600);
     return;
   }
   // Password reset link clicked — back off and let onAuthStateChange
@@ -2582,7 +2679,8 @@ function showResetLinkProblem(){
       await loadApp();
     }else{
       document.getElementById('nav-public').style.display='flex';
-      showPage('landing');
+      // A marketing CTA arrived with ?plan= — take them straight to signup.
+      showPage(sessionStorage.getItem('title22_signup_plan')?'signup':'landing');
     }
   }catch(e){
     document.getElementById('nav-public').style.display='flex';
