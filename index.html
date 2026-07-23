@@ -379,11 +379,16 @@
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
       <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>AI</button>
       <button class="nav-item" id="nav-billing" onclick="switchTab('billing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Billing</button>
+      <button class="nav-item" id="nav-audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
     </div>
     <div class="main-content">
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500">🎉 You're on a free trial — <span id="trial-days-left">14</span> days remaining.</div>
         <button onclick="switchTab('billing')" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
+      </div>
+      <div id="demo-banner" style="display:none;background:linear-gradient(90deg,#BA7517,#d99a3d);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:500">🧪 You're exploring the Title22 sandbox — read-only sample data.</div>
+        <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start free trial →</button>
       </div>
 
       <!-- DASHBOARD -->
@@ -405,6 +410,7 @@
         </div>
         <div style="margin-top:20px" class="card"><div class="card-title">Compliance by category</div><div id="category-breakdown"></div></div>
         <div style="margin-top:20px" class="card"><div class="card-title">Facility snapshot</div><div id="facility-snapshot"><div class="empty">Loading...</div></div></div>
+        <div style="margin-top:20px" class="card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
         <div style="margin-top:20px" class="card" id="dash-ai-briefing-card">
           <div class="card-title">
             <span>✨ AI Daily Briefing</span>
@@ -421,6 +427,7 @@
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('staff');setTimeout(()=>openStaffModal(),200)">+ Add staff member</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('incidents');setTimeout(()=>openIncidentModal(),200)">+ Report incident</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('checklist');setTimeout(()=>addCustomTask(),200)">+ Add checklist task</button>
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="exportDSSAudit()">📄 DSS Audit Export (90 days)</button>
           </div>
         </div>
       </div>
@@ -566,6 +573,11 @@
             <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Certificate expiry</div><div style="font-weight:500;display:flex;align-items:center;gap:8px"><span id="fac-view-admin-expiry">—</span><span id="fac-view-admin-expiry-badge"></span></div></div>
           </div></div>
         </div>
+        <div class="card" style="margin-top:20px" id="demo-data-card">
+          <div class="card-title">Demo data</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
+          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" onclick="seedDemoData()">🧪 Load demo data</button>
+        </div>
       </div>
 
       <!-- MEDICATIONS -->
@@ -601,7 +613,7 @@
               <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ AI COMPLIANCE TIP</div>
               <div id="mar-ai-tip-text"></div>
             </div>
-            <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time">
+            <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time" onchange="onMARStatusChange(document.getElementById('mar-status').value)">
               <option value="6:00 AM">6:00 AM</option><option value="8:00 AM">8:00 AM</option>
               <option value="10:00 AM">10:00 AM</option><option value="12:00 PM">12:00 PM</option>
               <option value="2:00 PM">2:00 PM</option><option value="4:00 PM">4:00 PM</option>
@@ -663,6 +675,15 @@
             <textarea id="ai-query-input" placeholder="Ask anything about your facility..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
             <button class="btn btn-primary" style="align-self:flex-end;padding:9px 16px;" onclick="sendAIQuery()">↑ Ask</button>
           </div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div id="tab-audit" style="display:none">
+        <div class="page-header"><h1>Audit log</h1><span class="badge badge-teal">Administrator only</span></div>
+        <div style="font-size:13px;color:var(--text2);background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px">🛡 Immutable record of every change to residents, medications, MAR entries, staff, and incidents. Entries are written by the database and cannot be edited or deleted.</div>
+        <div class="card">
+          <div id="audit-log-list"><div class="empty">Loading...</div></div>
         </div>
       </div>
 
@@ -761,6 +782,7 @@ document.addEventListener('visibilitychange',()=>{
 
 let currentUser = null;
 let currentFacility = null;
+let demoMode = false;   // read-only sandbox (?demo=1): anon reads, RLS blocks all writes
 let checklistItems = [];
 let complianceTasks = [];
 let activeFilter = 'all';
@@ -768,7 +790,7 @@ let currentIncidentId = null;
 let currentUserRole = 'administrator';
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'] },
   supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai'] },
   caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar'] },
@@ -803,7 +825,7 @@ function switchTab(name){
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -813,7 +835,7 @@ function switchTab(name){
   const selNav=document.getElementById('nav-'+name);
   if(sel)sel.style.display='block';
   if(selNav)selNav.classList.add('active');
-  if(name==='dashboard'){refreshDashboard();setTimeout(()=>loadDashboardAIBriefing(false),500);}
+  if(name==='dashboard'){refreshDashboard();loadDashboardMARStats();setTimeout(()=>loadDashboardAIBriefing(false),500);}
   if(name==='checklist'){renderExpiryBanner();renderChecklist(activeFilter);}
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
@@ -825,6 +847,7 @@ function switchTab(name){
   if(name==='mar')loadMAR();
   if(name==='team')loadTeam();
   if(name==='billing')loadBilling();
+  if(name==='audit')loadAuditLog();
   if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi! Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -934,6 +957,7 @@ async function handleLogin(){
 }
 
 async function handleLogout(){
+  if(demoMode){window.location.href='https://title22.app/';return;}
   await sb.auth.signOut();
   currentUser=null;currentFacility=null;
   document.getElementById('nav-app').style.display='none';
@@ -1026,6 +1050,35 @@ function getDefaultDueDate(freq){
 // ===== LOAD APP =====
 let allFacilities=[];
 
+// Read-only sandbox for the marketing "Try the sandbox" CTA. No auth: reads
+// ride on the anon-role RLS policies scoped to is_demo facilities
+// (migrations/2026-07-23_title22_demo_tenant.sql); writes are blocked by RLS
+// and by the readonly role in the UI.
+async function enterDemoMode(){
+  demoMode=true;
+  try{
+    const{data,error}=await sb.from('facilities').select('*').eq('is_demo',true).limit(1);
+    const fac=data&&data[0];
+    if(error||!fac){
+      demoMode=false;
+      document.body.style.visibility='visible';
+      alert('The demo sandbox isn\'t available right now — start a free trial instead.');
+      showPage('landing');
+      return;
+    }
+    currentUser={id:null,email:'demo@title22.app'};
+    allFacilities=[fac];currentFacility=fac;
+    document.getElementById('nav-public').style.display='none';
+    document.getElementById('nav-app').style.display='flex';
+    await initFacility();
+  }catch(e){
+    demoMode=false;
+    showPage('landing');
+  }finally{
+    document.body.style.visibility='visible';
+  }
+}
+
 // ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
 const T22_PAID=['starter','pro','specialist','agency'];
 // Display labels only — the underlying plan keys and Stripe price IDs are
@@ -1096,14 +1149,17 @@ async function initFacility(){
   document.getElementById('menu-user-email').textContent=email;
   renderFacilitySwitcher();
   try{
-    if(currentFacility.user_id===currentUser.id){currentUserRole='administrator';}
+    if(demoMode){currentUserRole='readonly';}
+    else if(currentFacility.user_id===currentUser.id){currentUserRole='administrator';}
     else{
       const{data:m}=await sb.from('facility_members').select('role').eq('facility_id',currentFacility.id).eq('user_id',currentUser.id).maybeSingle();
       currentUserRole=m?.role||'readonly';
     }
   }catch(e){currentUserRole='readonly';}
   {
-    const ent=await resolveEntitlement();
+    // Sandbox is entitled by construction: role is readonly and anon RLS
+    // blocks writes, so this grants view access only.
+    const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
     t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
     t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
   }
@@ -1127,13 +1183,16 @@ async function initFacility(){
     switchTab('billing');
     return;
   }
-  if(t22Plan==='trial'){
+  if(demoMode){
+    const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
+  }else if(t22Plan==='trial'){
     const banner=document.getElementById('trial-banner');
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
   }
   refreshDashboard();
   await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
   refreshDashboard();
+  loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
 }
 
@@ -1165,7 +1224,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
   });
@@ -1200,6 +1259,7 @@ function addFacilityGuard(){
 // unlocks or raises tier but never locks mid-session (a real cancel/expiry is
 // caught on the next full load), so a transient read can't yank a working user.
 async function refreshAccess(manual){
+  if(demoMode)return;
   const was=t22Entitled;
   const ent=await resolveEntitlement();
   if(!ent.entitled){
@@ -1263,6 +1323,84 @@ function refreshDashboard(){
       <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('incidents')"><div style="font-size:1.8rem;font-weight:700;color:${ic>0?'var(--amber)':'var(--teal)'}">${ic}</div><div style="font-size:12px;color:var(--text2)">Incidents</div></div>
     </div>`;
   }
+}
+
+// Today's MAR coverage tiles on the dashboard. "Completion" approximates
+// coverage: residents with at least one 'given' entry today out of residents
+// with active medications (there is no per-dose schedule table to compare
+// against).
+async function loadDashboardMARStats(){
+  const el=document.getElementById('dash-mar-stats');if(!el||!currentFacility)return;
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const[entriesRes,medsRes]=await Promise.all([
+      sb.from('mar_entries').select('resident_id,status').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lte('administered_at',today+'T23:59:59'),
+      sb.from('medications').select('resident_id').eq('facility_id',currentFacility.id).eq('status','active'),
+    ]);
+    const entries=entriesRes.data||[];
+    const medResidents=new Set((medsRes.data||[]).map(m=>m.resident_id));
+    if(!medResidents.size){el.innerHTML='<div class="empty" style="padding:16px">No active medications on file</div>';return;}
+    const loggedResidents=new Set(entries.filter(e=>e.status==='given').map(e=>e.resident_id));
+    const covered=[...medResidents].filter(id=>loggedResidents.has(id)).length;
+    const pct=Math.round(covered/medResidents.size*100);
+    const missed=entries.filter(e=>e.status==='missed').length;
+    const refused=entries.filter(e=>e.status==='refused').length;
+    const tile=(val,label,color)=>`<div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('mar')"><div style="font-size:1.8rem;font-weight:700;color:${color}">${val}</div><div style="font-size:12px;color:var(--text2)">${label}</div></div>`;
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+      ${tile(pct+'%','Residents logged today ('+covered+'/'+medResidents.size+')',pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)')}
+      ${tile(missed,'Missed doses today',missed?'var(--red)':'var(--green)')}
+      ${tile(refused,'Refusals today',refused?'var(--amber)':'var(--green)')}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="empty">Unable to load MAR stats.</div>';}
+}
+
+// ===== DSS AUDIT MODE =====
+// One-click 90-day inspection packet: facility + administrator details,
+// resident roster with required-document status (LIC 602A et al.), staff
+// certifications, centrally-stored medication record (LIC 622: the full MAR
+// for the period), and incident reports. Opens the browser print dialog —
+// save as PDF from there.
+async function exportDSSAudit(){
+  if(!['administrator','supervisor'].includes(currentUserRole)){alert('Only administrators and supervisors can run the DSS export.');return;}
+  if(!currentFacility)return;
+  const since=new Date(Date.now()-90*86400000);
+  const sinceISO=since.toISOString();
+  const[resR,stR,marR,incR]=await Promise.all([
+    sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'),
+    sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name'),
+    sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'),
+    sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
+  ]);
+  const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[];
+  const f=currentFacility;
+  const yn=v=>v==='yes'?'✓ On file':'✗ MISSING';
+  const d=v=>v?new Date(v).toLocaleDateString():'—';
+  const th='padding:6px 8px;border:1px solid #ccc;background:#f0f0f0;font-size:11px;text-align:left';
+  const td='padding:5px 8px;border:1px solid #ddd;font-size:11px';
+  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
+  const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${d(s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${d(s.cpr_cert_expiry)}</td><td style="${td}">${d(s.first_aid_cert_expiry)}</td><td style="${td}">${s.livescan_cleared?'✓':'✗'}</td><td style="${td}">${s.mandated_reporter_completed?'✓':'✗'}</td><td style="${td}">${(s.initial_training_complete||s.initial_training_completed)?'✓':'✗'}</td></tr>`).join('');
+  const statusLabels={given:'Given',refused:'Refused',held:'Held',missed:'MISSED'};
+  const marRows=marD.map(e=>`<tr><td style="${td}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}">${esc(e.scheduled_time||'')}</td><td style="${td};${e.status!=='given'?'color:#A32D2D;font-weight:700':''}">${statusLabels[e.status]||esc(e.status)}</td><td style="${td}">${esc(e.notes||'')}</td></tr>`).join('');
+  const incRows=incD.map(i=>`<tr><td style="${td}">${i.occurred_at?new Date(i.occurred_at).toLocaleString():''}</td><td style="${td}">${esc(i.residents?.name||i.residents?.full_name||'')}</td><td style="${td}">${esc(i.incident_type||'')}</td><td style="${td}">${i.injury?'Yes':'No'}</td><td style="${td}">${i.dss_reportable?'YES':'No'}</td><td style="${td}">${esc(i.description||'')}</td><td style="${td}">${esc(i.corrective_action||'')}</td></tr>`).join('');
+  const sec=(title,sub)=>`<h2 style="font-size:15px;margin:24px 0 2px">${title}</h2><div style="font-size:11px;color:#666;margin-bottom:8px">${sub}</div>`;
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>DSS Audit Packet — ${esc(f.name)}</title>
+  <style>body{font-family:Arial,sans-serif;padding:24px;color:#1a1a18}table{width:100%;border-collapse:collapse;margin-bottom:8px}h1{font-size:20px;margin-bottom:4px}@media print{h2{page-break-after:avoid}}</style></head><body>
+  <h1>DSS Audit Packet — 90-Day Records</h1>
+  <div style="font-size:12px;color:#444;margin-bottom:16px">Generated ${new Date().toLocaleString()} · Period ${since.toLocaleDateString()} — ${new Date().toLocaleDateString()} · California Title 22, Div. 6, Ch. 8</div>
+  <table><tr><th style="${th}">Facility</th><th style="${th}">Type</th><th style="${th}">License #</th><th style="${th}">Capacity</th><th style="${th}">Administrator</th><th style="${th}">Admin cert # / expiry</th></tr>
+  <tr><td style="${td}">${esc(f.name||'')}</td><td style="${td}">${esc((f.facility_type||'').toUpperCase())}</td><td style="${td}">${esc(f.license_number||'—')}</td><td style="${td}">${esc(f.capacity||'—')}</td><td style="${td}">${esc(f.administrator_name||'—')}</td><td style="${td}">${esc(f.administrator_cert_number||'—')} / ${d(f.administrator_cert_expiry)}</td></tr></table>
+  ${sec('1. Resident roster & required documents','Maps to LIC 602A (Physician’s Report) and resident record requirements — §87506')}
+  <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>
+  ${sec('2. Staff certifications','Personnel record requirements — §87411, §87412')}
+  <table><tr><th style="${th}">Staff</th><th style="${th}">Role</th><th style="${th}">Hired</th><th style="${th}">TB due</th><th style="${th}">CPR exp</th><th style="${th}">First Aid exp</th><th style="${th}">LiveScan</th><th style="${th}">Mand. Rep.</th><th style="${th}">Initial training</th></tr>${stRows||`<tr><td style="${td}" colspan="9">No active staff on file</td></tr>`}</table>
+  ${sec('3. Medication administration record — 90 days','Centrally stored medication record (LIC 622) — §87465')}
+  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Medication</th><th style="${th}">Scheduled</th><th style="${th}">Status</th><th style="${th}">Notes</th></tr>${marRows||`<tr><td style="${td}" colspan="6">No MAR entries in period</td></tr>`}</table>
+  ${sec('4. Incident reports — 90 days','Reporting requirements — §87211')}
+  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Type</th><th style="${th}">Injury</th><th style="${th}">DSS reportable</th><th style="${th}">Description</th><th style="${th}">Corrective action</th></tr>${incRows||`<tr><td style="${td}" colspan="7">No incidents in period</td></tr>`}</table>
+  <div style="font-size:10px;color:#888;margin-top:20px">Generated by Title22 (title22.app). Records reflect data entered in the system; verify against source documents.</div>
+  </body></html>`);
+  win.document.close();win.print();
 }
 
 // ===== CHECKLIST =====
@@ -2050,6 +2188,88 @@ async function saveFacility(){
   closeFacilityModal();renderFacilityInfo();
 }
 
+// ===== DEMO DATA SEEDING =====
+const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
+async function seedDemoData(){
+  if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
+  if(owned>=t22Limits.facilities){showTierUpsell('facilities');return;}
+  if(!confirm('This creates a separate sample facility ("Sunrise Demo Home") with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
+  const btn=document.getElementById('seed-demo-btn');
+  if(btn){btn.disabled=true;btn.textContent='Loading demo data…';}
+  try{
+    const{data:fac,error:fe}=await sb.from('facilities').insert({
+      user_id:currentUser.id,name:'Sunrise Demo Home (Sample)',facility_type:'rcfe',
+      license_number:'197000000',capacity:10,address:'123 Sample Lane, Fresno, CA 93701',
+      administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
+    }).select().single();
+    if(fe)throw fe;
+    const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
+    const{data:resD,error:re}=await sb.from('residents').insert([
+      R('Betty Alvarez','Room 1','1938-04-12',dISO(-400),'Dementia, Hypertension','Penicillin','yes','yes','yes'),
+      R('Harold Chen','Room 2','1941-09-03',dISO(-350),'Type 2 Diabetes','None known','yes','yes','yes'),
+      R('Dorothy Nguyen','Room 3','1935-01-27',dISO(-200),'CHF, Arthritis','Sulfa drugs','yes','no','yes'),
+      R('Frank Okafor','Room 4','1943-06-18',dISO(-150),'Parkinson\'s disease',null,'yes','yes','no'),
+      R('Marie Dubois','Room 5','1939-11-30',dISO(-120),'Hypothyroidism, Anxiety','Latex','yes','yes','yes'),
+      R('George Petrov','Room 6','1937-02-14',dISO(-90),'COPD','Aspirin','no','yes','yes'),
+      R('Lucille Ramos','Room 7','1944-08-22',dISO(-60),'Osteoporosis',null,'yes','yes','yes'),
+      R('Walter Kim','Room 8','1940-05-09',dISO(-30),'Atrial fibrillation','None known','yes','yes','yes'),
+    ]).select();
+    if(re)throw re;
+    const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
+    const{error:se}=await sb.from('staff').insert([
+      S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),
+      S('James Carter','lead_caregiver',dISO(-500),dISO(120),dISO(20),dISO(90)),
+      S('Priya Patel','med_tech',dISO(-400),dISO(90),dISO(150),dISO(150)),
+      S('Daniel Reyes','caregiver',dISO(-250),dISO(-10),dISO(180),dISO(180)),
+      S('Sofia Ivanova','night_caregiver',dISO(-100),dISO(200),dISO(220),dISO(220)),
+    ]);
+    if(se)throw se;
+    const M=(resIdx,med,dose,dir,doc)=>({facility_id:fac.id,resident_id:resD[resIdx].id,medication_name:med,dosage:dose,directions:dir,prescriber:doc,rx_number:String(1000000+Math.floor(Math.random()*899999)),pharmacy:'CVS Pharmacy',start_date:dISO(-100),refill_date:dISO(12),status:'active'});
+    const{data:medD,error:me}=await sb.from('medications').insert([
+      M(0,'Donepezil','10mg','1 tablet by mouth at bedtime','Patel'),
+      M(0,'Lisinopril','20mg','1 tablet by mouth daily','Patel'),
+      M(1,'Metformin','500mg','1 tablet by mouth twice daily','Warren'),
+      M(2,'Furosemide','40mg','1 tablet by mouth every morning','Warren'),
+      M(3,'Carbidopa-Levodopa','25-100mg','1 tablet by mouth three times daily','Singh'),
+      M(4,'Levothyroxine','75mcg','1 tablet by mouth every morning','Patel'),
+      M(5,'Tiotropium inhaler','18mcg','Inhale contents of 1 capsule daily','Warren'),
+      M(6,'Alendronate','70mg','1 tablet by mouth weekly','Singh'),
+      M(7,'Apixaban','5mg','1 tablet by mouth twice daily','Warren'),
+      M(1,'Acetaminophen','500mg','1-2 tablets by mouth as needed for pain','Warren'),
+    ]).select();
+    if(me)throw me;
+    const marRows=[];
+    for(let day=30;day>=1;day--){
+      medD.forEach((m,i)=>{
+        if(m.medication_name==='Acetaminophen')return; // PRN, logged separately below
+        // one refusal and one missed dose sprinkled in for realistic gap flags
+        let status='given';
+        if(day===6&&i===0)status='refused';
+        if(day===3&&i===4)status='missed';
+        const at=new Date(Date.now()-day*86400000);at.setHours(8,0,0,0);
+        marRows.push({facility_id:fac.id,resident_id:m.resident_id,medication_id:m.id,staff_id:currentUser.id,administered_at:at.toISOString(),scheduled_time:'8:00 AM',status,notes:status==='refused'?'Resident declined; will re-offer with breakfast. Administrator notified.':status==='missed'?'Dose found unadministered at shift change; physician notified.':null});
+      });
+    }
+    const prnAt=new Date(Date.now()-9*86400000);prnAt.setHours(14,30,0,0);
+    marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:currentUser.id,administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
+    const{error:mre}=await sb.from('mar_entries').insert(marRows);
+    if(mre)throw mre;
+    const inc=(resIdx,type,daysAgo,desc,action,dss)=>({facility_id:fac.id,resident_id:resD[resIdx].id,reported_by:currentUser.id,incident_type:type,occurred_at:new Date(Date.now()-daysAgo*86400000).toISOString(),description:desc,injury:false,physician_notified:true,family_notified:true,dss_reportable:dss,corrective_action:action,status:'open'});
+    await sb.from('incidents').insert([
+      inc(2,'fall',12,'Resident found seated on floor next to bed at 06:40. No injury on assessment.','Fall mat placed; PT evaluation requested; night checks increased.',false),
+      inc(5,'behavioral',20,'Resident became agitated during evening activity, raised voice at peer.','Redirected to quiet area; trigger noted; ISP update scheduled.',false),
+    ]);
+    await seedComplianceTasks(fac.id,dISO(300));
+    allFacilities.push(fac);
+    currentFacility=fac;
+    await initFacility();
+    switchTab('dashboard');
+    alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
+  }catch(e){alert('Demo data failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='🧪 Load demo data';}}
+}
+
 // ===== MAR =====
 let marMedCache={};
 
@@ -2146,6 +2366,7 @@ function showMAREntry(){
   document.getElementById('mar-med-info').style.display='none';
   document.getElementById('mar-ai-tip').style.display='none';
   document.getElementById('mar-prn-reason-group').style.display='none';
+  const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
   document.getElementById('mar-notes').value='';
   document.getElementById('mar-status').value='given';
   document.getElementById('mar-modal').classList.add('open');
@@ -2215,10 +2436,15 @@ async function saveMAR(){
   if(!resId||!medId){alert('Please select a resident and medication.');return;}
   const status=document.getElementById('mar-status').value;
   const scheduledTime=document.getElementById('mar-scheduled-time').value;
-  const notes=document.getElementById('mar-notes').value.trim();
+  let notes=document.getElementById('mar-notes').value.trim();
   if((status==='refused'||status==='missed')&&!notes){
     alert('Please document the reason in the notes field — required for '+status+' medications.');
     return;
+  }
+  const prnReason=document.getElementById('mar-prn-reason')?.value?.trim()||'';
+  if(scheduledTime==='PRN'&&status==='given'){
+    if(!prnReason){alert('Please document the reason this PRN medication was given — required per Title 22.');return;}
+    notes='PRN reason: '+prnReason+(notes?' — '+notes:'');
   }
   const{error}=await sb.from('mar_entries').insert({
     facility_id:currentFacility.id,resident_id:resId,medication_id:medId,
@@ -2252,6 +2478,7 @@ async function buildFacilityContext(){
 async function loadDashboardAIBriefing(force){
   if(dashBriefingLoaded&&!force)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
+  if(demoMode){el.innerHTML='<div style="font-size:13px;color:var(--text2)">✨ The AI Daily Briefing runs on live accounts — start a free trial to see yours.</div>';dashBriefingLoaded=true;return;}
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
@@ -2292,6 +2519,7 @@ function onIncidentTypeChange(type){
 }
 
 async function sendAIQuery(btn){
+  if(demoMode){addAIMessage('The AI Compliance Assistant is available on live accounts — start a free trial to ask questions about your own facility.','assistant');return;}
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
   if(!query)return;
@@ -2360,6 +2588,29 @@ async function checkInviteToken(){
   await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
   await sb.from('facility_invites').update({status:'accepted',accepted_at:new Date().toISOString()}).eq('id',invite.id);
   window.history.replaceState({},document.title,window.location.pathname);
+}
+
+// ===== AUDIT LOG =====
+async function loadAuditLog(){
+  const el=document.getElementById('audit-log-list');if(!el||!currentFacility)return;
+  const{data,error}=await sb.from('audit_log').select('id,table_name,row_id,action,actor,record,created_at').eq('facility_id',currentFacility.id).order('created_at',{ascending:false}).limit(200);
+  if(error){
+    el.innerHTML=`<div class="empty">Audit log unavailable (${esc(error.message)}).<br/>Run migrations/2026-07-23_title22_audit_log.sql in the Supabase SQL editor to enable it.</div>`;
+    return;
+  }
+  if(!data||!data.length){el.innerHTML='<div class="empty">No audit entries yet. Changes to residents, medications, MAR, staff, and incidents will appear here.</div>';return;}
+  const tableLabels={residents:'Resident',medications:'Medication',mar_entries:'MAR entry',staff:'Staff',incidents:'Incident'};
+  const actionBadge={INSERT:'<span class="badge badge-green">Created</span>',UPDATE:'<span class="badge badge-amber">Updated</span>',DELETE:'<span class="badge badge-red">Deleted</span>'};
+  const summarize=r=>{
+    const rec=r.record||{};
+    return rec.name||rec.full_name||rec.medication_name||rec.incident_type||(rec.status?'status: '+rec.status:'')||'';
+  };
+  el.innerHTML=data.map(r=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+    <div style="flex-shrink:0;width:150px;color:var(--text2);font-size:12px">${new Date(r.created_at).toLocaleString()}</div>
+    <div style="flex-shrink:0">${actionBadge[r.action]||esc(r.action)}</div>
+    <div style="flex:1;min-width:0"><strong>${esc(tableLabels[r.table_name]||r.table_name)}</strong>${summarize(r)?' · '+esc(summarize(r)):''}</div>
+    <div style="flex-shrink:0;color:var(--text2);font-size:11px" title="${esc(r.actor||'')}">${r.actor?'by '+esc(String(r.actor).slice(0,8))+'…':''}</div>
+  </div>`).join('');
 }
 
 // ===== BILLING =====
@@ -2666,6 +2917,11 @@ function showSetNewPassword(){
         }
       }catch(e){showResetLinkProblem();}
     },3000);
+    return;
+  }
+  // Marketing sandbox: /?demo=1 loads the read-only demo facility, no auth.
+  if(qs.get('demo')){
+    await enterDemoMode();
     return;
   }
   const forceVisible=setTimeout(()=>{
