@@ -1,0 +1,11 @@
+# title22.app — product app. The marketing/SEO surface is https://title-22.com.
+# The app is a single-URL SPA; all app screens are client-side state behind
+# auth, so there are no crawlable app routes to disallow individually.
+User-agent: *
+Allow: /$
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /legal.html
+Disallow: /
+
+Sitemap: https://title-22.com/sitemap.xml
