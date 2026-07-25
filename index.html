@@ -263,14 +263,15 @@
     </div>
   </div>
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
-    © 2026 Title22 · RunP8 LLC · Built for RCFE &amp; CBRC operators · title22.app<br/>
-    <a href="/privacy.html" style="color:var(--teal);text-decoration:none">Privacy Policy</a> · <a href="/terms.html" style="color:var(--teal);text-decoration:none">Terms of Service</a>
+    © Title22 · California RCFE compliance software<br/>
+    <a href="https://title-22.com" style="color:var(--teal);text-decoration:none">title-22.com</a> · <a href="/privacy.html" style="color:var(--teal);text-decoration:none">Privacy Policy</a> · <a href="/terms.html" style="color:var(--teal);text-decoration:none">Terms of Service</a>
   </div>
 </div>
 
 <!-- LOGIN -->
 <div id="page-login" class="page">
-  <div class="auth-wrap">
+  <div class="auth-wrap" style="flex-direction:column;gap:14px">
+    <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
       <h2>Welcome back</h2>
       <p>Log in to your Title22 account</p>
@@ -290,7 +291,8 @@
 
 <!-- SIGNUP -->
 <div id="page-signup" class="page">
-  <div class="auth-wrap">
+  <div class="auth-wrap" style="flex-direction:column;gap:14px">
+    <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
       <h2>Start your free trial</h2>
       <p>14 days free · No credit card required</p>
@@ -377,11 +379,16 @@
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
       <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>AI</button>
       <button class="nav-item" id="nav-billing" onclick="switchTab('billing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Billing</button>
+      <button class="nav-item" id="nav-audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
     </div>
     <div class="main-content">
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500">🎉 You're on a free trial — <span id="trial-days-left">14</span> days remaining.</div>
         <button onclick="switchTab('billing')" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
+      </div>
+      <div id="demo-banner" style="display:none;background:linear-gradient(90deg,#BA7517,#d99a3d);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:500">🧪 You're exploring the Title22 sandbox — read-only sample data.</div>
+        <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start free trial →</button>
       </div>
 
       <!-- DASHBOARD -->
@@ -403,6 +410,7 @@
         </div>
         <div style="margin-top:20px" class="card"><div class="card-title">Compliance by category</div><div id="category-breakdown"></div></div>
         <div style="margin-top:20px" class="card"><div class="card-title">Facility snapshot</div><div id="facility-snapshot"><div class="empty">Loading...</div></div></div>
+        <div style="margin-top:20px" class="card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
         <div style="margin-top:20px" class="card" id="dash-ai-briefing-card">
           <div class="card-title">
             <span>✨ AI Daily Briefing</span>
@@ -419,6 +427,7 @@
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('staff');setTimeout(()=>openStaffModal(),200)">+ Add staff member</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('incidents');setTimeout(()=>openIncidentModal(),200)">+ Report incident</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('checklist');setTimeout(()=>addCustomTask(),200)">+ Add checklist task</button>
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="exportDSSAudit()">📄 DSS Audit Export (90 days)</button>
           </div>
         </div>
       </div>
@@ -564,6 +573,11 @@
             <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Certificate expiry</div><div style="font-weight:500;display:flex;align-items:center;gap:8px"><span id="fac-view-admin-expiry">—</span><span id="fac-view-admin-expiry-badge"></span></div></div>
           </div></div>
         </div>
+        <div class="card" style="margin-top:20px" id="demo-data-card">
+          <div class="card-title">Demo data</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
+          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" onclick="seedDemoData()">🧪 Load demo data</button>
+        </div>
       </div>
 
       <!-- MEDICATIONS -->
@@ -599,7 +613,7 @@
               <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ AI COMPLIANCE TIP</div>
               <div id="mar-ai-tip-text"></div>
             </div>
-            <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time">
+            <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time" onchange="onMARStatusChange(document.getElementById('mar-status').value)">
               <option value="6:00 AM">6:00 AM</option><option value="8:00 AM">8:00 AM</option>
               <option value="10:00 AM">10:00 AM</option><option value="12:00 PM">12:00 PM</option>
               <option value="2:00 PM">2:00 PM</option><option value="4:00 PM">4:00 PM</option>
@@ -647,7 +661,7 @@
 
       <!-- AI -->
       <div id="tab-ai" style="display:none">
-        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-amber">Specialist &amp; Agency</span></div>
+        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-amber">Multi-Facility &amp; Agency</span></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ Responses are based on data recorded in Title22 only.</div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
@@ -661,6 +675,15 @@
             <textarea id="ai-query-input" placeholder="Ask anything about your facility..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
             <button class="btn btn-primary" style="align-self:flex-end;padding:9px 16px;" onclick="sendAIQuery()">↑ Ask</button>
           </div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div id="tab-audit" style="display:none">
+        <div class="page-header"><h1>Audit log</h1><span class="badge badge-teal">Administrator only</span></div>
+        <div style="font-size:13px;color:var(--text2);background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px">🛡 Immutable record of every change to residents, medications, MAR entries, staff, and incidents. Entries are written by the database and cannot be edited or deleted.</div>
+        <div class="card">
+          <div id="audit-log-list"><div class="empty">Loading...</div></div>
         </div>
       </div>
 
@@ -694,11 +717,11 @@
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Pro ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid #BA7517;border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px;color:#BA7517">Specialist</div><div style="font-size:13px;color:var(--text2)">Up to 5 facilities + AI assistant</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:#BA7517">Multi-Facility</div><div style="font-size:13px;color:var(--text2)">Up to 5 facilities + AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_SPECIALIST)" class="btn btn-outline" style="font-size:13px;border-color:#BA7517;color:#BA7517">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -741,15 +764,25 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&currentUser){refreshAccess();}
 });
 
-// Capture referral code from URL, once per session (covers both email/password
-// and Google OAuth signup paths, since sessionStorage survives the OAuth redirect)
+// Capture referral code and marketing-funnel params from the URL, once per
+// session (covers both email/password and Google OAuth signup paths, since
+// sessionStorage survives the OAuth redirect). Marketing CTAs land here as
+// https://title22.app/?plan=<tier>&utm_source=<source>&utm_campaign=<campaign>
 (function () {
-  const ref = new URLSearchParams(window.location.search).get('ref');
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
   if (ref) sessionStorage.setItem('title22_ref', ref);
+  const plan = (params.get('plan')||'').toLowerCase();
+  if (['starter','pro','specialist','agency'].includes(plan)) sessionStorage.setItem('title22_signup_plan', plan);
+  const src = params.get('utm_source');
+  if (src) sessionStorage.setItem('title22_utm_source', src.slice(0,100));
+  const camp = params.get('utm_campaign');
+  if (camp) sessionStorage.setItem('title22_utm_campaign', camp.slice(0,100));
 })();
 
 let currentUser = null;
 let currentFacility = null;
+let demoMode = false;   // read-only sandbox (?demo=1): anon reads, RLS blocks all writes
 let checklistItems = [];
 let complianceTasks = [];
 let activeFilter = 'all';
@@ -757,7 +790,7 @@ let currentIncidentId = null;
 let currentUserRole = 'administrator';
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'] },
   supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai'] },
   caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar'] },
@@ -773,6 +806,11 @@ function allowedTabs(){
 
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
 
+// HTML-escape user-entered text before interpolating into innerHTML templates.
+// For text embedded in inline onclick handlers, JS-escape quotes first, then
+// esc() the result: esc(x.replace(/'/g,"\\'")).
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
 // ===== NAVIGATION =====
 function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -787,7 +825,7 @@ function switchTab(name){
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -797,7 +835,7 @@ function switchTab(name){
   const selNav=document.getElementById('nav-'+name);
   if(sel)sel.style.display='block';
   if(selNav)selNav.classList.add('active');
-  if(name==='dashboard'){refreshDashboard();setTimeout(()=>loadDashboardAIBriefing(false),500);}
+  if(name==='dashboard'){refreshDashboard();loadDashboardMARStats();setTimeout(()=>loadDashboardAIBriefing(false),500);}
   if(name==='checklist'){renderExpiryBanner();renderChecklist(activeFilter);}
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
@@ -809,6 +847,7 @@ function switchTab(name){
   if(name==='mar')loadMAR();
   if(name==='team')loadTeam();
   if(name==='billing')loadBilling();
+  if(name==='audit')loadAuditLog();
   if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi! Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -837,17 +876,23 @@ async function handleGoogleAuth(errId){
 }
 
 async function ensureProfile(user){
+  // Title22 only touches title22_* entitlement columns on profiles. The shared
+  // columns (plan, stripe_subscription_id, plan_expires_at, trial_ends_at,
+  // access_granted) belong to other apps on this Supabase project — never
+  // read or write them here.
+  let isNewProfile=false;
   try{
-    const{data}=await sb.from('profiles').select('id,plan,created_at,title22_plan,title22_trial_ends_at').eq('id',user.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('id,created_at,title22_plan,title22_trial_ends_at').eq('id',user.id).maybeSingle();
     if(!data){
+      isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+14*86400000).toISOString();
-      const{error}=await sb.from('profiles').upsert({id:user.id,plan:'trial',title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      const{error}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       if(error)console.error('Trial activation failed:',error.message);
-    }else if(!data.plan||!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
+    }else if(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
       // Row exists (e.g. created by a DB trigger) but title22 entitlement never stamped.
+      isNewProfile=!data.title22_plan;
       const patch={};
-      if(!data.plan)patch.plan='trial';
       if(!data.created_at)patch.created_at=new Date().toISOString();
       if(!data.title22_plan)patch.title22_plan='trial';
       if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+14*86400000).toISOString();
@@ -855,6 +900,26 @@ async function ensureProfile(user){
       if(error)console.error('Trial activation failed:',error.message);
     }
   }catch(e){console.log('Profile check:',e.message);}
+  if(isNewProfile)await stampSignupAttribution(user);
+}
+
+// Stamp marketing attribution (title22_signup_plan / _utm_source / _utm_campaign)
+// on first signup. Separate best-effort update: if the columns don't exist yet
+// the error is logged and signup proceeds — attribution must never block trial
+// activation.
+async function stampSignupAttribution(user){
+  try{
+    const patch={};
+    const plan=sessionStorage.getItem('title22_signup_plan');
+    const src=sessionStorage.getItem('title22_utm_source');
+    const camp=sessionStorage.getItem('title22_utm_campaign');
+    if(plan)patch.title22_signup_plan=plan;
+    if(src)patch.title22_utm_source=src;
+    if(camp)patch.title22_utm_campaign=camp;
+    if(!Object.keys(patch).length)return;
+    const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
+    if(error)console.log('Attribution stamp skipped:',error.message);
+  }catch(e){console.log('Attribution stamp skipped:',e.message);}
 }
 async function handleSignup(){
   const email=document.getElementById('signup-email').value.trim();
@@ -892,6 +957,7 @@ async function handleLogin(){
 }
 
 async function handleLogout(){
+  if(demoMode){window.location.href='https://title22.app/';return;}
   await sb.auth.signOut();
   currentUser=null;currentFacility=null;
   document.getElementById('nav-app').style.display='none';
@@ -907,7 +973,7 @@ async function handlePasswordReset(){
   const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://title22.app'});
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   err.style.background='var(--green-light)';err.style.color='var(--green)';
-  err.textContent='✓ Reset link sent! Check your email.';err.classList.add('show');
+  err.textContent='✓ Reset link sent! Check your email — and open the link in this browser, on this device.';err.classList.add('show');
 }
 
 async function handleSetNewPassword(){
@@ -984,9 +1050,40 @@ function getDefaultDueDate(freq){
 // ===== LOAD APP =====
 let allFacilities=[];
 
+// Read-only sandbox for the marketing "Try the sandbox" CTA. No auth: reads
+// ride on the anon-role RLS policies scoped to is_demo facilities
+// (migrations/2026-07-23_title22_demo_tenant.sql); writes are blocked by RLS
+// and by the readonly role in the UI.
+async function enterDemoMode(){
+  demoMode=true;
+  try{
+    const{data,error}=await sb.from('facilities').select('*').eq('is_demo',true).limit(1);
+    const fac=data&&data[0];
+    if(error||!fac){
+      demoMode=false;
+      document.body.style.visibility='visible';
+      alert('The demo sandbox isn\'t available right now — start a free trial instead.');
+      showPage('landing');
+      return;
+    }
+    currentUser={id:null,email:'demo@title22.app'};
+    allFacilities=[fac];currentFacility=fac;
+    document.getElementById('nav-public').style.display='none';
+    document.getElementById('nav-app').style.display='flex';
+    await initFacility();
+  }catch(e){
+    demoMode=false;
+    showPage('landing');
+  }finally{
+    document.body.style.visibility='visible';
+  }
+}
+
 // ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
 const T22_PAID=['starter','pro','specialist','agency'];
-const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
+// Display labels only — the underlying plan keys and Stripe price IDs are
+// unchanged (renaming Stripe products would orphan live subscriptions).
+const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Facility',specialist:'Multi-Facility',agency:'Agency'};
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:5,        ai:true},
@@ -1005,11 +1102,19 @@ async function resolveEntitlement(){
   // row => NOT entitled. Never falls through to full access on failure.
   try{
     const{data,error}=await sb.from('profiles')
-      .select('title22_plan,title22_trial_ends_at,title22_subscription_id')
+      .select('title22_plan,title22_trial_ends_at,title22_subscription_id,title22_plan_expires_at')
       .eq('id',currentUser.id).maybeSingle();
     if(error||!data)return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
     const plan=data.title22_plan||'trial';
-    if(T22_PAID.includes(plan))return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    if(T22_PAID.includes(plan)){
+      // Paid plans expire too: a cancelled sub keeps access until the period
+      // end stamped in title22_plan_expires_at. Past that date => locked.
+      // No expiry stamped (active recurring sub) => entitled.
+      const paidEnds=data.title22_plan_expires_at?new Date(data.title22_plan_expires_at).getTime():null;
+      if(paidEnds!==null&&(!Number.isFinite(paidEnds)||Date.now()>=paidEnds))
+        return{plan,entitled:false,daysLeft:0,trialExpired:false,ok:true};
+      return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    }
     const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
     if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
     const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
@@ -1044,14 +1149,17 @@ async function initFacility(){
   document.getElementById('menu-user-email').textContent=email;
   renderFacilitySwitcher();
   try{
-    if(currentFacility.user_id===currentUser.id){currentUserRole='administrator';}
+    if(demoMode){currentUserRole='readonly';}
+    else if(currentFacility.user_id===currentUser.id){currentUserRole='administrator';}
     else{
       const{data:m}=await sb.from('facility_members').select('role').eq('facility_id',currentFacility.id).eq('user_id',currentUser.id).maybeSingle();
       currentUserRole=m?.role||'readonly';
     }
   }catch(e){currentUserRole='readonly';}
   {
-    const ent=await resolveEntitlement();
+    // Sandbox is entitled by construction: role is readonly and anon RLS
+    // blocks writes, so this grants view access only.
+    const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
     t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
     t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
   }
@@ -1075,26 +1183,29 @@ async function initFacility(){
     switchTab('billing');
     return;
   }
-  if(t22Plan==='trial'){
+  if(demoMode){
+    const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
+  }else if(t22Plan==='trial'){
     const banner=document.getElementById('trial-banner');
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
   }
   refreshDashboard();
   await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
   refreshDashboard();
+  loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
 }
 
 function renderFacilitySwitcher(){
   const el=document.getElementById('facility-switcher');if(!el)return;
   if(allFacilities.length<=1){
-    el.innerHTML=`<div style="font-size:11px;color:var(--text2)">${currentFacility.name}</div>`;
+    el.innerHTML=`<div style="font-size:11px;color:var(--text2)">${esc(currentFacility.name)}</div>`;
     return;
   }
   el.innerHTML=`
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:4px;font-weight:600">Switch facility</div>
     <select onchange="switchFacility(this.value)" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;background:var(--white);color:var(--text);cursor:pointer">
-      ${allFacilities.map(f=>`<option value="${f.id}" ${f.id===currentFacility.id?'selected':''}>${f.name}</option>`).join('')}
+      ${allFacilities.map(f=>`<option value="${esc(f.id)}" ${f.id===currentFacility.id?'selected':''}>${esc(f.name)}</option>`).join('')}
     </select>
     <button onclick="addFacilityGuard();toggleUserMenu()" style="width:100%;margin-top:6px;padding:5px 8px;border:1.5px dashed var(--border);border-radius:var(--radius);font-size:11px;background:none;cursor:pointer;color:var(--teal);font-weight:500">+ Add new facility</button>
   `;
@@ -1113,7 +1224,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
   });
@@ -1122,13 +1233,13 @@ function applyRoleUI(){
 // Dim the AI nav when the current tier doesn't include it (kept visible for upsell).
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
-  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Specialist & Agency feature';}
+  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Multi-Facility & Agency feature';}
 }
 
 // Show an upgrade prompt for a tier-locked feature and route to billing.
 function showTierUpsell(feature){
   const msg=feature==='ai'
-    ?'The AI Compliance Assistant is available on Specialist and Agency plans. Upgrade to unlock it.'
+    ?'The AI Compliance Assistant is available on Multi-Facility and Agency plans. Upgrade to unlock it.'
     :`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
   const banner=document.getElementById('tier-upsell-banner');
   const m=document.getElementById('tier-upsell-msg');
@@ -1148,6 +1259,7 @@ function addFacilityGuard(){
 // unlocks or raises tier but never locks mid-session (a real cancel/expiry is
 // caught on the next full load), so a transient read can't yank a working user.
 async function refreshAccess(manual){
+  if(demoMode)return;
   const was=t22Entitled;
   const ent=await resolveEntitlement();
   if(!ent.entitled){
@@ -1188,11 +1300,11 @@ function refreshDashboard(){
   document.getElementById('alert-count').textContent=urgent.length;
   document.getElementById('alert-list').innerHTML=urgent.length===0
     ?'<div class="empty">No urgent alerts</div>'
-    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${t.title}</strong><span>Overdue since ${t.due_date}</span></div></div>`).join('');
+    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`).join('');
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
-    :todayTasks.map(t=>`<div class="task-item"><div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)"></div><div class="task-text ${t.completed?'done':''}">${t.title}</div></div>`).join('');
+    :todayTasks.map(t=>`<div class="task-item"><div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${esc(t.id)}',this)"></div><div class="task-text ${t.completed?'done':''}">${esc(t.title)}</div></div>`).join('');
   const cats=['administrator','staff','residents','medication','facility'];
   document.getElementById('category-breakdown').innerHTML=cats.map(cat=>{
     const ct=complianceTasks.filter(t=>t.category===cat);
@@ -1211,6 +1323,84 @@ function refreshDashboard(){
       <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('incidents')"><div style="font-size:1.8rem;font-weight:700;color:${ic>0?'var(--amber)':'var(--teal)'}">${ic}</div><div style="font-size:12px;color:var(--text2)">Incidents</div></div>
     </div>`;
   }
+}
+
+// Today's MAR coverage tiles on the dashboard. "Completion" approximates
+// coverage: residents with at least one 'given' entry today out of residents
+// with active medications (there is no per-dose schedule table to compare
+// against).
+async function loadDashboardMARStats(){
+  const el=document.getElementById('dash-mar-stats');if(!el||!currentFacility)return;
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const[entriesRes,medsRes]=await Promise.all([
+      sb.from('mar_entries').select('resident_id,status').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lte('administered_at',today+'T23:59:59'),
+      sb.from('medications').select('resident_id').eq('facility_id',currentFacility.id).eq('status','active'),
+    ]);
+    const entries=entriesRes.data||[];
+    const medResidents=new Set((medsRes.data||[]).map(m=>m.resident_id));
+    if(!medResidents.size){el.innerHTML='<div class="empty" style="padding:16px">No active medications on file</div>';return;}
+    const loggedResidents=new Set(entries.filter(e=>e.status==='given').map(e=>e.resident_id));
+    const covered=[...medResidents].filter(id=>loggedResidents.has(id)).length;
+    const pct=Math.round(covered/medResidents.size*100);
+    const missed=entries.filter(e=>e.status==='missed').length;
+    const refused=entries.filter(e=>e.status==='refused').length;
+    const tile=(val,label,color)=>`<div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('mar')"><div style="font-size:1.8rem;font-weight:700;color:${color}">${val}</div><div style="font-size:12px;color:var(--text2)">${label}</div></div>`;
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+      ${tile(pct+'%','Residents logged today ('+covered+'/'+medResidents.size+')',pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)')}
+      ${tile(missed,'Missed doses today',missed?'var(--red)':'var(--green)')}
+      ${tile(refused,'Refusals today',refused?'var(--amber)':'var(--green)')}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="empty">Unable to load MAR stats.</div>';}
+}
+
+// ===== DSS AUDIT MODE =====
+// One-click 90-day inspection packet: facility + administrator details,
+// resident roster with required-document status (LIC 602A et al.), staff
+// certifications, centrally-stored medication record (LIC 622: the full MAR
+// for the period), and incident reports. Opens the browser print dialog —
+// save as PDF from there.
+async function exportDSSAudit(){
+  if(!['administrator','supervisor'].includes(currentUserRole)){alert('Only administrators and supervisors can run the DSS export.');return;}
+  if(!currentFacility)return;
+  const since=new Date(Date.now()-90*86400000);
+  const sinceISO=since.toISOString();
+  const[resR,stR,marR,incR]=await Promise.all([
+    sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'),
+    sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name'),
+    sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'),
+    sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
+  ]);
+  const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[];
+  const f=currentFacility;
+  const yn=v=>v==='yes'?'✓ On file':'✗ MISSING';
+  const d=v=>v?new Date(v).toLocaleDateString():'—';
+  const th='padding:6px 8px;border:1px solid #ccc;background:#f0f0f0;font-size:11px;text-align:left';
+  const td='padding:5px 8px;border:1px solid #ddd;font-size:11px';
+  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
+  const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${d(s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${d(s.cpr_cert_expiry)}</td><td style="${td}">${d(s.first_aid_cert_expiry)}</td><td style="${td}">${s.livescan_cleared?'✓':'✗'}</td><td style="${td}">${s.mandated_reporter_completed?'✓':'✗'}</td><td style="${td}">${(s.initial_training_complete||s.initial_training_completed)?'✓':'✗'}</td></tr>`).join('');
+  const statusLabels={given:'Given',refused:'Refused',held:'Held',missed:'MISSED'};
+  const marRows=marD.map(e=>`<tr><td style="${td}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}">${esc(e.scheduled_time||'')}</td><td style="${td};${e.status!=='given'?'color:#A32D2D;font-weight:700':''}">${statusLabels[e.status]||esc(e.status)}</td><td style="${td}">${esc(e.notes||'')}</td></tr>`).join('');
+  const incRows=incD.map(i=>`<tr><td style="${td}">${i.occurred_at?new Date(i.occurred_at).toLocaleString():''}</td><td style="${td}">${esc(i.residents?.name||i.residents?.full_name||'')}</td><td style="${td}">${esc(i.incident_type||'')}</td><td style="${td}">${i.injury?'Yes':'No'}</td><td style="${td}">${i.dss_reportable?'YES':'No'}</td><td style="${td}">${esc(i.description||'')}</td><td style="${td}">${esc(i.corrective_action||'')}</td></tr>`).join('');
+  const sec=(title,sub)=>`<h2 style="font-size:15px;margin:24px 0 2px">${title}</h2><div style="font-size:11px;color:#666;margin-bottom:8px">${sub}</div>`;
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>DSS Audit Packet — ${esc(f.name)}</title>
+  <style>body{font-family:Arial,sans-serif;padding:24px;color:#1a1a18}table{width:100%;border-collapse:collapse;margin-bottom:8px}h1{font-size:20px;margin-bottom:4px}@media print{h2{page-break-after:avoid}}</style></head><body>
+  <h1>DSS Audit Packet — 90-Day Records</h1>
+  <div style="font-size:12px;color:#444;margin-bottom:16px">Generated ${new Date().toLocaleString()} · Period ${since.toLocaleDateString()} — ${new Date().toLocaleDateString()} · California Title 22, Div. 6, Ch. 8</div>
+  <table><tr><th style="${th}">Facility</th><th style="${th}">Type</th><th style="${th}">License #</th><th style="${th}">Capacity</th><th style="${th}">Administrator</th><th style="${th}">Admin cert # / expiry</th></tr>
+  <tr><td style="${td}">${esc(f.name||'')}</td><td style="${td}">${esc((f.facility_type||'').toUpperCase())}</td><td style="${td}">${esc(f.license_number||'—')}</td><td style="${td}">${esc(f.capacity||'—')}</td><td style="${td}">${esc(f.administrator_name||'—')}</td><td style="${td}">${esc(f.administrator_cert_number||'—')} / ${d(f.administrator_cert_expiry)}</td></tr></table>
+  ${sec('1. Resident roster & required documents','Maps to LIC 602A (Physician’s Report) and resident record requirements — §87506')}
+  <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>
+  ${sec('2. Staff certifications','Personnel record requirements — §87411, §87412')}
+  <table><tr><th style="${th}">Staff</th><th style="${th}">Role</th><th style="${th}">Hired</th><th style="${th}">TB due</th><th style="${th}">CPR exp</th><th style="${th}">First Aid exp</th><th style="${th}">LiveScan</th><th style="${th}">Mand. Rep.</th><th style="${th}">Initial training</th></tr>${stRows||`<tr><td style="${td}" colspan="9">No active staff on file</td></tr>`}</table>
+  ${sec('3. Medication administration record — 90 days','Centrally stored medication record (LIC 622) — §87465')}
+  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Medication</th><th style="${th}">Scheduled</th><th style="${th}">Status</th><th style="${th}">Notes</th></tr>${marRows||`<tr><td style="${td}" colspan="6">No MAR entries in period</td></tr>`}</table>
+  ${sec('4. Incident reports — 90 days','Reporting requirements — §87211')}
+  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Type</th><th style="${th}">Injury</th><th style="${th}">DSS reportable</th><th style="${th}">Description</th><th style="${th}">Corrective action</th></tr>${incRows||`<tr><td style="${td}" colspan="7">No incidents in period</td></tr>`}</table>
+  <div style="font-size:10px;color:#888;margin-top:20px">Generated by Title22 (title22.app). Records reflect data entered in the system; verify against source documents.</div>
+  </body></html>`);
+  win.document.close();win.print();
 }
 
 // ===== CHECKLIST =====
@@ -1232,9 +1422,9 @@ function renderExpiryBanner(){
     return;
   }
   let html='';
-  if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${t.title}</span><span style="color:var(--text2);margin-left:6px">Since ${t.due_date}</span></div>`).join('')}</div></div>`;
-  if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${t.title}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
-  if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${t.title}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
+  if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   banner.innerHTML=html;
 }
 
@@ -1275,13 +1465,13 @@ function renderChecklist(filter){
       return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden${isOverdue?';border-left:3px solid var(--red)':''}">
         <div class="checklist-row" style="border:none;margin:0;border-radius:0;${t.completed?'opacity:.6':''}">
           <div class="check-toggle ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)">${t.completed?'✓':''}</div>
-          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${t.title}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${item.regulation_reference}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${item.frequency}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${t.notes}</span>`:''}</div></div>
+          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${esc(t.title)}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${esc(item.regulation_reference)}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${esc(item.frequency)}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${esc(t.notes)}</span>`:''}</div></div>
           <div class="checklist-meta" style="flex-direction:column;align-items:flex-end;gap:6px">
             ${statusBadge}
             <div style="display:flex;gap:6px;align-items:center">
               <input type="date" value="${t.due_date||''}" style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text2);outline:none" onchange="updateDueDate('${t.id}',this.value)"/>
               <button onclick="addNote('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" title="Add note">💬</button>
-              <button onclick="deleteTask('${t.id}','${t.title.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'">🗑</button>
+              <button onclick="deleteTask('${esc(t.id)}','${esc(t.title.replace(/'/g,"\\'"))}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'">🗑</button>
             </div>
           </div>
         </div>
@@ -1340,11 +1530,11 @@ function printChecklist(){
     tasks.forEach(t=>{
       const item=checklistItems.find(i=>i.id===t.checklist_item_id)||{};
       const isOverdue=!t.completed&&t.due_date&&t.due_date<todayStr;
-      rows+=`<tr style="border-bottom:1px solid #eee"><td style="padding:8px;font-size:13px">${t.completed?'☑':'☐'}</td><td style="padding:8px;font-size:13px">${t.title}</td><td style="padding:8px;font-size:12px;color:#666">${item.regulation_reference||''}</td><td style="padding:8px;font-size:12px;color:${isOverdue?'red':'#666'}">${t.due_date||'—'}</td></tr>`;
+      rows+=`<tr style="border-bottom:1px solid #eee"><td style="padding:8px;font-size:13px">${t.completed?'☑':'☐'}</td><td style="padding:8px;font-size:13px">${esc(t.title)}</td><td style="padding:8px;font-size:12px;color:#666">${esc(item.regulation_reference||'')}</td><td style="padding:8px;font-size:12px;color:${isOverdue?'red':'#666'}">${esc(t.due_date||'—')}</td></tr>`;
     });
   });
   const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Title22 Compliance Report</title><style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse}</style></head><body><h1>Title22 Compliance Report</h1><h2>${facilityName} · ${today} · ${score}% (${done}/${total})</h2><table>${rows}</table></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><title>Title22 Compliance Report</title><style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse}</style></head><body><h1>Title22 Compliance Report</h1><h2>${esc(facilityName)} · ${today} · ${score}% (${done}/${total})</h2><table>${rows}</table></body></html>`);
   win.document.close();win.print();
 }
 
@@ -1438,13 +1628,13 @@ function renderResidents(){
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
-    return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${r.id}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
+    return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${esc(r.id)}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${initials}</div>
-        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${nameField}</div><div style="font-size:12px;color:var(--text2)">${r.preferred_name?'"'+r.preferred_name+'" ':''} ${r.room||r.room_number?'· '+(r.room||r.room_number):''}</div></div>
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${r.preferred_name?'"'+esc(r.preferred_name)+'" ':''} ${r.room||r.room_number?'· '+esc(r.room||r.room_number):''}</div></div>
         ${age?`<div style="font-size:11px;color:var(--text2);text-align:right"><div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs</div></div>`:''}
       </div>
-      ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${r.diagnosis}</div>`:''}
+      ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${esc(r.diagnosis)}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',r.lic601)}${docBadge('LIC 602',r.lic602)}${r.isp==='yes'?'<span class="badge badge-green">ISP ✓</span>':'<span class="badge badge-red">ISP ✗</span>'}</div>
       ${r.admission_date?`<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()}</div>`:''}
     </div>`;
@@ -1515,12 +1705,12 @@ function viewResident(id){
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
       ${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}
-      ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${r.room||r.room_number}</div></div>`:''}
+      ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${esc(r.room||r.room_number)}</div></div>`:''}
       ${r.admission_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>`:''}
       ${r.isp_review_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>`:''}
     </div>
-    ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${r.diagnosis}</div></div>`:''}
-    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${r.allergies}</div></div>`:''}
+    ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
+    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
     <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
@@ -1591,8 +1781,8 @@ function renderStaff(){
       banner.innerHTML=staffList.length?`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem;display:flex;align-items:center;gap:12px"><span>✅</span><div style="font-weight:600;color:var(--green)">All staff certifications are current</div></div>`:'';
     }else{
       let html='';
-      if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px">🚨 ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600">⚠ ${c.staff} — ${c.label} (${c.date})</div>`).join('')}</div></div>`;
-      if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px">⏰ ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600">📋 ${c.staff} — ${c.label} (${c.date})</div>`).join('')}</div></div>`;
+      if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px">🚨 ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600">⚠ ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
+      if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px">⏰ ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600">📋 ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
       banner.innerHTML=html;
     }
   }
@@ -1631,21 +1821,21 @@ function renderStaff(){
       let icon,col,text;
       if(c.noDate){icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';}
       else if(!c.date){icon='—';col='var(--text2)';text='Not set';}
-      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+c.date;}
-      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+c.date;}
-      else{icon='✓';col='var(--green)';text='Valid to '+c.date;}
-      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${c.label}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
+      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+esc(c.date);}
+      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+esc(c.date);}
+      else{icon='✓';col='var(--green)';text='Valid to '+esc(c.date);}
+      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
     }).join('');
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${initials}</div>
-        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${nameField}</div><div style="font-size:12px;color:var(--text2)">${ROLE_LABELS[s.role]||s.role||'Staff'}</div></div>
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${esc(initials)}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${esc(ROLE_LABELS[s.role]||s.role||'Staff')}</div></div>
         ${statusBadge}
       </div>
       <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">${certHtml}</div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${s.id}')">Edit</button>
-        ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${s.id}','${nameField.replace(/'/g,"\\'")}')">🗑</button>`:''}
+        <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${esc(s.id)}')">Edit</button>
+        ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${esc(s.id)}','${esc(nameField.replace(/'/g,"\\'"))}')">🗑</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1766,14 +1956,14 @@ function renderMedications(){
       const isDisc=m.status==='discontinued';
       const refillSoon=m.refill_date&&getDaysUntil(m.refill_date)!==null&&getDaysUntil(m.refill_date)<=7&&!isDisc;
       return`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)${isDisc?';opacity:.5':''}">
-        <div style="flex:1"><div style="font-size:14px;font-weight:600">${m.medication_name}${isDisc?' <span class="badge badge-gray">D/C</span>':''}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${[m.dosage,m.directions].filter(Boolean).join(' — ')}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:4px">${m.prescriber?'Dr. '+m.prescriber:''}${m.rx_number?' · Rx#'+m.rx_number:''}</div>
-        ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px">⏰ Refill due ${m.refill_date}</div>`:''}</div>
-        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openMedModal('${r.id}','${m.id}')">Edit</button>
+        <div style="flex:1"><div style="font-size:14px;font-weight:600">${esc(m.medication_name)}${isDisc?' <span class="badge badge-gray">D/C</span>':''}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc([m.dosage,m.directions].filter(Boolean).join(' — '))}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">${m.prescriber?'Dr. '+esc(m.prescriber):''}${m.rx_number?' · Rx#'+esc(m.rx_number):''}</div>
+        ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px">⏰ Refill due ${esc(m.refill_date)}</div>`:''}</div>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openMedModal('${esc(r.id)}','${esc(m.id)}')">Edit</button>
       </div>`;
     }).join('');
-    return`<div class="card" style="margin-bottom:14px"><div class="card-title"><span>${nameField}${r.room||r.room_number?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${r.room||r.room_number}</span>`:''}</span><button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${r.id}')">+ Add</button></div>${meds.length?medRows:'<div class="empty" style="padding:20px 0">No medications on file</div>'}</div>`;
+    return`<div class="card" style="margin-bottom:14px"><div class="card-title"><span>${esc(nameField)}${r.room||r.room_number?` <span style="color:var(--text2);font-weight:400;font-size:12px">· ${esc(r.room||r.room_number)}</span>`:''}</span><button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="openMedModal('${esc(r.id)}')">+ Add</button></div>${meds.length?medRows:'<div class="empty" style="padding:20px 0">No medications on file</div>'}</div>`;
   }).join('');
 }
 let currentMedResidentId=null,currentMedId=null;
@@ -1853,17 +2043,17 @@ function renderIncidents(){
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:12px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
         <div>
-          <div style="font-weight:600;font-size:15px;margin-bottom:4px">${resName}</div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">${esc(resName)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <span class="incident-type-badge incident-type-${typeClass}">${typeLabels[inc.incident_type]||inc.incident_type}</span>
+            <span class="incident-type-badge incident-type-${typeClass}">${esc(typeLabels[inc.incident_type]||inc.incident_type)}</span>
             ${inc.dss_reportable?'<span class="badge badge-red">DSS reportable</span>':''}
             <span style="font-size:12px;color:var(--text2)">${occurredDate} ${occurredTime}</span>
           </div>
         </div>
-        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openIncidentModal('${inc.id}')">Edit</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openIncidentModal('${esc(inc.id)}')">Edit</button>
       </div>
-      ${inc.description?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px">${inc.description}</div>`:''}
-      ${inc.corrective_action?`<div style="font-size:12px;color:var(--text2);background:var(--gray-bg);border-radius:var(--radius);padding:8px 12px"><strong>Corrective action:</strong> ${inc.corrective_action}</div>`:''}
+      ${inc.description?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px">${esc(inc.description)}</div>`:''}
+      ${inc.corrective_action?`<div style="font-size:12px;color:var(--text2);background:var(--gray-bg);border-radius:var(--radius);padding:8px 12px"><strong>Corrective action:</strong> ${esc(inc.corrective_action)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -1998,6 +2188,88 @@ async function saveFacility(){
   closeFacilityModal();renderFacilityInfo();
 }
 
+// ===== DEMO DATA SEEDING =====
+const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
+async function seedDemoData(){
+  if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
+  if(owned>=t22Limits.facilities){showTierUpsell('facilities');return;}
+  if(!confirm('This creates a separate sample facility ("Sunrise Demo Home") with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
+  const btn=document.getElementById('seed-demo-btn');
+  if(btn){btn.disabled=true;btn.textContent='Loading demo data…';}
+  try{
+    const{data:fac,error:fe}=await sb.from('facilities').insert({
+      user_id:currentUser.id,name:'Sunrise Demo Home (Sample)',facility_type:'rcfe',
+      license_number:'197000000',capacity:10,address:'123 Sample Lane, Fresno, CA 93701',
+      administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
+    }).select().single();
+    if(fe)throw fe;
+    const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
+    const{data:resD,error:re}=await sb.from('residents').insert([
+      R('Betty Alvarez','Room 1','1938-04-12',dISO(-400),'Dementia, Hypertension','Penicillin','yes','yes','yes'),
+      R('Harold Chen','Room 2','1941-09-03',dISO(-350),'Type 2 Diabetes','None known','yes','yes','yes'),
+      R('Dorothy Nguyen','Room 3','1935-01-27',dISO(-200),'CHF, Arthritis','Sulfa drugs','yes','no','yes'),
+      R('Frank Okafor','Room 4','1943-06-18',dISO(-150),'Parkinson\'s disease',null,'yes','yes','no'),
+      R('Marie Dubois','Room 5','1939-11-30',dISO(-120),'Hypothyroidism, Anxiety','Latex','yes','yes','yes'),
+      R('George Petrov','Room 6','1937-02-14',dISO(-90),'COPD','Aspirin','no','yes','yes'),
+      R('Lucille Ramos','Room 7','1944-08-22',dISO(-60),'Osteoporosis',null,'yes','yes','yes'),
+      R('Walter Kim','Room 8','1940-05-09',dISO(-30),'Atrial fibrillation','None known','yes','yes','yes'),
+    ]).select();
+    if(re)throw re;
+    const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
+    const{error:se}=await sb.from('staff').insert([
+      S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),
+      S('James Carter','lead_caregiver',dISO(-500),dISO(120),dISO(20),dISO(90)),
+      S('Priya Patel','med_tech',dISO(-400),dISO(90),dISO(150),dISO(150)),
+      S('Daniel Reyes','caregiver',dISO(-250),dISO(-10),dISO(180),dISO(180)),
+      S('Sofia Ivanova','night_caregiver',dISO(-100),dISO(200),dISO(220),dISO(220)),
+    ]);
+    if(se)throw se;
+    const M=(resIdx,med,dose,dir,doc)=>({facility_id:fac.id,resident_id:resD[resIdx].id,medication_name:med,dosage:dose,directions:dir,prescriber:doc,rx_number:String(1000000+Math.floor(Math.random()*899999)),pharmacy:'CVS Pharmacy',start_date:dISO(-100),refill_date:dISO(12),status:'active'});
+    const{data:medD,error:me}=await sb.from('medications').insert([
+      M(0,'Donepezil','10mg','1 tablet by mouth at bedtime','Patel'),
+      M(0,'Lisinopril','20mg','1 tablet by mouth daily','Patel'),
+      M(1,'Metformin','500mg','1 tablet by mouth twice daily','Warren'),
+      M(2,'Furosemide','40mg','1 tablet by mouth every morning','Warren'),
+      M(3,'Carbidopa-Levodopa','25-100mg','1 tablet by mouth three times daily','Singh'),
+      M(4,'Levothyroxine','75mcg','1 tablet by mouth every morning','Patel'),
+      M(5,'Tiotropium inhaler','18mcg','Inhale contents of 1 capsule daily','Warren'),
+      M(6,'Alendronate','70mg','1 tablet by mouth weekly','Singh'),
+      M(7,'Apixaban','5mg','1 tablet by mouth twice daily','Warren'),
+      M(1,'Acetaminophen','500mg','1-2 tablets by mouth as needed for pain','Warren'),
+    ]).select();
+    if(me)throw me;
+    const marRows=[];
+    for(let day=30;day>=1;day--){
+      medD.forEach((m,i)=>{
+        if(m.medication_name==='Acetaminophen')return; // PRN, logged separately below
+        // one refusal and one missed dose sprinkled in for realistic gap flags
+        let status='given';
+        if(day===6&&i===0)status='refused';
+        if(day===3&&i===4)status='missed';
+        const at=new Date(Date.now()-day*86400000);at.setHours(8,0,0,0);
+        marRows.push({facility_id:fac.id,resident_id:m.resident_id,medication_id:m.id,staff_id:currentUser.id,administered_at:at.toISOString(),scheduled_time:'8:00 AM',status,notes:status==='refused'?'Resident declined; will re-offer with breakfast. Administrator notified.':status==='missed'?'Dose found unadministered at shift change; physician notified.':null});
+      });
+    }
+    const prnAt=new Date(Date.now()-9*86400000);prnAt.setHours(14,30,0,0);
+    marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:currentUser.id,administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
+    const{error:mre}=await sb.from('mar_entries').insert(marRows);
+    if(mre)throw mre;
+    const inc=(resIdx,type,daysAgo,desc,action,dss)=>({facility_id:fac.id,resident_id:resD[resIdx].id,reported_by:currentUser.id,incident_type:type,occurred_at:new Date(Date.now()-daysAgo*86400000).toISOString(),description:desc,injury:false,physician_notified:true,family_notified:true,dss_reportable:dss,corrective_action:action,status:'open'});
+    await sb.from('incidents').insert([
+      inc(2,'fall',12,'Resident found seated on floor next to bed at 06:40. No injury on assessment.','Fall mat placed; PT evaluation requested; night checks increased.',false),
+      inc(5,'behavioral',20,'Resident became agitated during evening activity, raised voice at peer.','Redirected to quiet area; trigger noted; ISP update scheduled.',false),
+    ]);
+    await seedComplianceTasks(fac.id,dISO(300));
+    allFacilities.push(fac);
+    currentFacility=fac;
+    await initFacility();
+    switchTab('dashboard');
+    alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
+  }catch(e){alert('Demo data failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='🧪 Load demo data';}}
+}
+
 // ===== MAR =====
 let marMedCache={};
 
@@ -2045,9 +2317,9 @@ async function loadMAR(){
         const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'⚠ Refused':e.status==='held'?'⏸ Held':'✗ Missed';
         return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
           <div>
-            <div style="font-size:14px;font-weight:600">${resName}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">${medName}${dosage?' · '+dosage:''} · ${e.scheduled_time||time}</div>
-            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">💬 ${e.notes}</div>`:''}
+            <div style="font-size:14px;font-weight:600">${esc(resName)}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(medName)}${dosage?' · '+esc(dosage):''} · ${esc(e.scheduled_time||time)}</div>
+            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">💬 ${esc(e.notes)}</div>`:''}
           </div>
           <div style="text-align:right">
             <div style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</div>
@@ -2069,7 +2341,7 @@ async function loadMARBriefing(){
   const missedCount=(todayEntries||[]).filter(e=>e.status==='missed').length;
   const notLoggedYet=resList.filter(r=>!givenResIds.has(r.id));
   let tips=[];
-  if(notLoggedYet.length)tips.push(`📋 ${notLoggedYet.map(r=>r.name||r.full_name).join(', ')} — no medications logged today yet`);
+  if(notLoggedYet.length)tips.push(`📋 ${esc(notLoggedYet.map(r=>r.name||r.full_name).join(', '))} — no medications logged today yet`);
   if(refusedCount)tips.push(`⚠️ ${refusedCount} refusal${refusedCount>1?'s':''} logged today — document reason per Title 22 §87465`);
   if(missedCount)tips.push(`🚨 ${missedCount} missed dose${missedCount>1?'s':''} today — physician notification may be required`);
   if(!tips.length){el.style.display='none';return;}
@@ -2094,6 +2366,7 @@ function showMAREntry(){
   document.getElementById('mar-med-info').style.display='none';
   document.getElementById('mar-ai-tip').style.display='none';
   document.getElementById('mar-prn-reason-group').style.display='none';
+  const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
   document.getElementById('mar-notes').value='';
   document.getElementById('mar-status').value='given';
   document.getElementById('mar-modal').classList.add('open');
@@ -2163,10 +2436,15 @@ async function saveMAR(){
   if(!resId||!medId){alert('Please select a resident and medication.');return;}
   const status=document.getElementById('mar-status').value;
   const scheduledTime=document.getElementById('mar-scheduled-time').value;
-  const notes=document.getElementById('mar-notes').value.trim();
+  let notes=document.getElementById('mar-notes').value.trim();
   if((status==='refused'||status==='missed')&&!notes){
     alert('Please document the reason in the notes field — required for '+status+' medications.');
     return;
+  }
+  const prnReason=document.getElementById('mar-prn-reason')?.value?.trim()||'';
+  if(scheduledTime==='PRN'&&status==='given'){
+    if(!prnReason){alert('Please document the reason this PRN medication was given — required per Title 22.');return;}
+    notes='PRN reason: '+prnReason+(notes?' — '+notes:'');
   }
   const{error}=await sb.from('mar_entries').insert({
     facility_id:currentFacility.id,resident_id:resId,medication_id:medId,
@@ -2200,6 +2478,7 @@ async function buildFacilityContext(){
 async function loadDashboardAIBriefing(force){
   if(dashBriefingLoaded&&!force)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
+  if(demoMode){el.innerHTML='<div style="font-size:13px;color:var(--text2)">✨ The AI Daily Briefing runs on live accounts — start a free trial to see yours.</div>';dashBriefingLoaded=true;return;}
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
@@ -2211,7 +2490,7 @@ async function loadDashboardAIBriefing(force){
     const data=await res.json();
     const bErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
     const reply=data.content?.[0]?.text||(bErr?'⚠️ '+bErr:'Unable to load briefing. (HTTP '+res.status+')');
-    el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
     dashBriefingLoaded=true;
   }catch(e){
     el.innerHTML='<div style="font-size:13px;color:var(--text2)">AI briefing unavailable. Check your AI Worker deployment.</div>';
@@ -2240,6 +2519,7 @@ function onIncidentTypeChange(type){
 }
 
 async function sendAIQuery(btn){
+  if(demoMode){addAIMessage('The AI Compliance Assistant is available on live accounts — start a free trial to ask questions about your own facility.','assistant');return;}
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
   if(!query)return;
@@ -2254,7 +2534,7 @@ async function sendAIQuery(btn){
     const data=await res.json();
     const workerErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
     const reply=data.content?.[0]?.text||(workerErr?'⚠️ '+workerErr:'Unable to get a response. (HTTP '+res.status+')');
-    thinking.textContent='';thinking.innerHTML=reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
   }catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}
@@ -2277,8 +2557,8 @@ async function loadTeam(){
   if(!membersList)return;
   const teamMembers=members||[];const pendingInvites=invites||[];
   if(!teamMembers.length){membersList.innerHTML='<div class="empty">No team members yet.</div>';}
-  else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${m.profiles?.email||'Unknown'}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${m.role}</div></div><div style="display:flex;gap:8px"><select onchange="updateMemberRole('${m.id}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${m.id}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Remove</button></div></div>`).join('');}
-  if(invitesList)invitesList.innerHTML=pendingInvites.length?'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:16px 0 10px">Pending Invites</div>'+pendingInvites.map(inv=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${inv.email}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${inv.role} · Pending</div></div><div style="display:flex;gap:8px"><button onclick="navigator.clipboard.writeText(window.location.origin+'?invite='+encodeURIComponent('${inv.token}')).then(()=>alert('Copied!'))" class="btn btn-outline" style="font-size:12px;padding:4px 8px">Copy link</button><button onclick="cancelInvite('${inv.id}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Cancel</button></div></div>`).join(''):'';
+  else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(m.profiles?.email||'Unknown')}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${esc(m.role)}</div></div><div style="display:flex;gap:8px"><select onchange="updateMemberRole('${esc(m.id)}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${esc(m.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Remove</button></div></div>`).join('');}
+  if(invitesList)invitesList.innerHTML=pendingInvites.length?'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:16px 0 10px">Pending Invites</div>'+pendingInvites.map(inv=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(inv.email)}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${esc(inv.role)} · Pending</div></div><div style="display:flex;gap:8px"><button onclick="navigator.clipboard.writeText('https://title22.app/?invite='+encodeURIComponent('${esc(inv.token)}')).then(()=>alert('Copied!'))" class="btn btn-outline" style="font-size:12px;padding:4px 8px">Copy link</button><button onclick="cancelInvite('${esc(inv.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Cancel</button></div></div>`).join(''):'';
 }
 function showInviteModal(){if(!canTeam()){alert('Only the Administrator can invite team members.');return;}document.getElementById('invite-modal').classList.add('open');}
 function closeInviteModal(){document.getElementById('invite-modal').classList.remove('open');document.getElementById('invite-link-result').style.display='none';}
@@ -2289,7 +2569,7 @@ async function sendInvite(){
   const token=crypto.randomUUID();
   const{error}=await sb.from('facility_invites').insert({facility_id:currentFacility.id,email,role,token,status:'pending',created_by:currentUser.id});
   if(error){alert('Error: '+error.message);return;}
-  const link=window.location.origin+'?invite='+token;
+  const link='https://title22.app/?invite='+token;
   document.getElementById('invite-link-text').textContent=link;
   document.getElementById('invite-link-result').style.display='block';
   loadTeam();
@@ -2310,6 +2590,29 @@ async function checkInviteToken(){
   window.history.replaceState({},document.title,window.location.pathname);
 }
 
+// ===== AUDIT LOG =====
+async function loadAuditLog(){
+  const el=document.getElementById('audit-log-list');if(!el||!currentFacility)return;
+  const{data,error}=await sb.from('audit_log').select('id,table_name,row_id,action,actor,record,created_at').eq('facility_id',currentFacility.id).order('created_at',{ascending:false}).limit(200);
+  if(error){
+    el.innerHTML=`<div class="empty">Audit log unavailable (${esc(error.message)}).<br/>Run migrations/2026-07-23_title22_audit_log.sql in the Supabase SQL editor to enable it.</div>`;
+    return;
+  }
+  if(!data||!data.length){el.innerHTML='<div class="empty">No audit entries yet. Changes to residents, medications, MAR, staff, and incidents will appear here.</div>';return;}
+  const tableLabels={residents:'Resident',medications:'Medication',mar_entries:'MAR entry',staff:'Staff',incidents:'Incident'};
+  const actionBadge={INSERT:'<span class="badge badge-green">Created</span>',UPDATE:'<span class="badge badge-amber">Updated</span>',DELETE:'<span class="badge badge-red">Deleted</span>'};
+  const summarize=r=>{
+    const rec=r.record||{};
+    return rec.name||rec.full_name||rec.medication_name||rec.incident_type||(rec.status?'status: '+rec.status:'')||'';
+  };
+  el.innerHTML=data.map(r=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+    <div style="flex-shrink:0;width:150px;color:var(--text2);font-size:12px">${new Date(r.created_at).toLocaleString()}</div>
+    <div style="flex-shrink:0">${actionBadge[r.action]||esc(r.action)}</div>
+    <div style="flex:1;min-width:0"><strong>${esc(tableLabels[r.table_name]||r.table_name)}</strong>${summarize(r)?' · '+esc(summarize(r)):''}</div>
+    <div style="flex-shrink:0;color:var(--text2);font-size:11px" title="${esc(r.actor||'')}">${r.actor?'by '+esc(String(r.actor).slice(0,8))+'…':''}</div>
+  </div>`).join('');
+}
+
 // ===== BILLING =====
 async function loadBilling(){
 
@@ -2317,7 +2620,7 @@ async function loadBilling(){
   try{
     const ent=await resolveEntitlement();
     const plan=ent.plan;
-    const planLabels={trial:'Free Trial',starter:'Starter',pro:'Pro',specialist:'Specialist',agency:'Agency'};
+    const planLabels=T22_LABEL;
     const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
     let trialHtml='';
     if(plan==='trial'){
@@ -2532,14 +2835,22 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }
 });
 
-function showResetLinkProblem(){
+function showResetLinkProblem(message){
   history.replaceState(null,'',window.location.pathname);
+  document.body.style.visibility='visible';
   showPage('reset');
   document.getElementById('reset-request').style.display='block';
   document.getElementById('reset-newpass').style.display='none';
   const err=document.getElementById('reset-error');
-  err.textContent='That reset link expired or was already used. Enter your email and we\'ll send a fresh one.';
+  err.textContent=message||'That reset link expired or was already used. Enter your email and we\'ll send a fresh one.';
   err.classList.add('show');
+}
+
+function showSetNewPassword(){
+  document.body.style.visibility='visible';
+  showPage('reset');
+  document.getElementById('reset-request').style.display='none';
+  document.getElementById('reset-newpass').style.display='block';
 }
 
 (async()=>{
@@ -2548,6 +2859,43 @@ function showResetLinkProblem(){
   const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
   if(hashParams.get('error')||hashParams.get('error_code')){
     showResetLinkProblem();
+    return;
+  }
+  const qs=new URLSearchParams(window.location.search);
+  // Token-hash recovery link (?token_hash=...&type=recovery). Unlike PKCE
+  // ?code= links this verifies server-side with no dependency on this
+  // browser's localStorage, so it works from email-app webviews and any
+  // device. Requires the Supabase recovery email template to link
+  // {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=recovery.
+  if(qs.get('token_hash')&&qs.get('type')==='recovery'){
+    try{
+      const{data,error}=await sb.auth.verifyOtp({type:'recovery',token_hash:qs.get('token_hash')});
+      history.replaceState(null,'',window.location.pathname);
+      if(error||!data?.session){showResetLinkProblem(error?.message?'Could not verify this reset link: '+error.message+' Request a fresh one below.':undefined);return;}
+      showSetNewPassword();
+    }catch(e){showResetLinkProblem();}
+    return;
+  }
+  // PKCE recovery link (?code=...). supabase-js exchanges the code
+  // automatically on init, and success is routed by onAuthStateChange
+  // (PASSWORD_RECOVERY / SIGNED_IN). But the exchange needs the code_verifier
+  // stored by the browser that requested the reset — from a different browser
+  // (e.g. the Gmail app's in-app webview) it fails silently. Detect that and
+  // say so instead of leaving a dead page.
+  if(qs.get('code')){
+    window.__recoveryFallback=setTimeout(async()=>{
+      window.__recoveryFallback=null;
+      try{
+        const{data:{session}}=await sb.auth.getSession();
+        if(session&&session.user){
+          if(!currentUser){currentUser=session.user;await ensureProfile(currentUser);await loadApp();}
+          document.body.style.visibility='visible';
+        }else{
+          showResetLinkProblem('This link couldn\'t be opened here. Password reset links only work in the browser where you requested them — open the link in that browser, or enter your email below for a fresh link.');
+        }
+      }catch(e){showResetLinkProblem();}
+    },2500);
+    setTimeout(()=>{document.body.style.visibility='visible';},2600);
     return;
   }
   // Password reset link clicked — back off and let onAuthStateChange
@@ -2571,6 +2919,11 @@ function showResetLinkProblem(){
     },3000);
     return;
   }
+  // Marketing sandbox: /?demo=1 loads the read-only demo facility, no auth.
+  if(qs.get('demo')){
+    await enterDemoMode();
+    return;
+  }
   const forceVisible=setTimeout(()=>{
     document.body.style.visibility='visible';
   },4000);
@@ -2582,7 +2935,8 @@ function showResetLinkProblem(){
       await loadApp();
     }else{
       document.getElementById('nav-public').style.display='flex';
-      showPage('landing');
+      // A marketing CTA arrived with ?plan= — take them straight to signup.
+      showPage(sessionStorage.getItem('title22_signup_plan')?'signup':'landing');
     }
   }catch(e){
     document.getElementById('nav-public').style.display='flex';
