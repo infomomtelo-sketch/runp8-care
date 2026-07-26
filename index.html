@@ -1106,7 +1106,9 @@ async function resolveEntitlement(){
       .eq('id',currentUser.id).maybeSingle();
     if(error||!data)return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
     const plan=data.title22_plan||'trial';
-    if(T22_PAID.includes(plan)){
+// edu = permanent teaching tier: always entitled, never expires
+if(plan==='edu') return {plan:'edu',entitled:true,daysLeft:null,trialExpired:false,ok:true};
+if(T22_PAID.includes(plan)){
       // Paid plans expire too: a cancelled sub keeps access until the period
       // end stamped in title22_plan_expires_at. Past that date => locked.
       // No expiry stamped (active recurring sub) => entitled.
