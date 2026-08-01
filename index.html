@@ -379,6 +379,7 @@
       <button class="nav-item" id="nav-residents" onclick="switchTab('residents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Residents</button>
       <button class="nav-item" id="nav-incidents" onclick="switchTab('incidents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Incidents</button>
       <button class="nav-item" id="nav-facility" onclick="switchTab('facility')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Facility</button>
+      <button class="nav-item" id="nav-documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Documents</button>
       <button class="nav-item" id="nav-medications" onclick="switchTab('medications')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>Medications</button>
       <button class="nav-item" id="nav-mar" onclick="switchTab('mar')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>MAR</button>
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
@@ -517,6 +518,24 @@
         <div id="incidents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px">📋</div><div style="font-weight:500;margin-bottom:6px">No incidents on record</div><div style="margin-bottom:20px">Falls, medication errors, behavioral incidents go here</div><button class="btn btn-primary" onclick="openIncidentModal()">+ Report first incident</button></div>
         <div id="incidents-list"></div>
       </div>
+
+      <!-- DOCUMENTS -->
+      <div id="tab-documents" style="display:none">
+        <div class="page-header"><h1>Documents</h1></div>
+        <div id="doc-upload-row" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:16px;display:none">
+          <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload a document</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602">LIC 602</option><option value="lic602a">LIC 602A</option><option value="physician_report">Physician report</option><option value="cert">Certificate</option><option value="isp">ISP</option><option value="other" selected>Other</option></select>
+            <select id="doc-resident" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
+            <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
+            <span id="doc-upload-status" style="font-size:12px;color:var(--text2)"></span>
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-top:8px">Stored privately. Only your facility can view these.</div>
+        </div>
+        <div id="documents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px">📄</div><div style="font-weight:500;margin-bottom:6px">No documents yet</div><div>Upload LIC forms, physician reports, certificates, and other records here.</div></div>
+        <div id="documents-list"></div>
+      </div>
+
 
       <!-- DAILY LOG -->
       <div id="tab-daily" style="display:none">
@@ -805,10 +824,10 @@ let currentIncidentId = null;
 let currentUserRole = 'administrator';
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'] },
-  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai'] },
-  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily'] },
-  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
+  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
+  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
+  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
 };
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
 function canEdit(){ return getAccess().canEdit; }
@@ -840,7 +859,7 @@ function switchTab(name){
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -855,6 +874,7 @@ function switchTab(name){
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
   if(name==='incidents')loadIncidents();
+  if(name==='documents')loadDocuments();
   if(name==='daily')loadDailyLogs();
   if(name==='training')loadTrainings();
   if(name==='facility')renderFacilityInfo();
@@ -1242,7 +1262,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
   });
@@ -2655,6 +2675,81 @@ function addAIMessage(text,role){
   const el=document.createElement('div');
   el.style.cssText=role==='user'?'background:var(--teal-light);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--teal);align-self:flex-end;max-width:88%;margin-left:auto':'background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--text);line-height:1.7;max-width:95%';
   el.textContent=text;msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el;
+}
+
+// ===== DOCUMENTS =====
+const DOC_TYPE_LABELS={lic601:'LIC 601',lic602:'LIC 602',lic602a:'LIC 602A',physician_report:'Physician report',cert:'Certificate',isp:'ISP',other:'Other'};
+let facilityDocs=[];
+async function loadDocuments(){
+  if(!currentFacility)return;
+  const up=document.getElementById('doc-upload-row'); if(up)up.style.display=canEdit()?'':'none';
+  const resSel=document.getElementById('doc-resident');
+  if(resSel){
+    let rs=(window.residents&&window.residents.length)?window.residents:null;
+    if(!rs){const{data}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');rs=data||[];}
+    resSel.innerHTML='<option value="">Not linked to a resident</option>'+rs.map(r=>`<option value="${esc(r.id)}">${esc(r.name||r.full_name||'Resident')}</option>`).join('');
+  }
+  const{data,error}=await sb.from('documents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  facilityDocs=error?[]:(data||[]);
+  renderDocuments();
+}
+function renderDocuments(){
+  const list=document.getElementById('documents-list');const empty=document.getElementById('documents-empty');
+  if(!list)return;
+  if(!facilityDocs.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
+  if(empty)empty.style.display='none';
+  const del=canDelete();
+  list.innerHTML=facilityDocs.map(d=>{
+    const res=d.residents?(d.residents.name||d.residents.full_name||''):'';
+    const when=d.uploaded_at?new Date(d.uploaded_at).toLocaleDateString():'';
+    const size=d.size_bytes?(d.size_bytes>1048576?(d.size_bytes/1048576).toFixed(1)+' MB':Math.max(1,Math.round(d.size_bytes/1024))+' KB'):'';
+    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:22px">📄</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;word-break:break-word">${esc(d.title||d.file_name||'Document')}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(DOC_TYPE_LABELS[d.doc_type]||d.doc_type||'Document')}${res?' \u00b7 '+esc(res):''}${when?' \u00b7 '+when:''}${size?' \u00b7 '+size:''}</div>
+      </div>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="openDoc('${esc(d.storage_path)}')">View / Print</button>
+      ${del?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteDoc('${esc(d.id)}','${esc(d.storage_path)}')">Delete</button>`:''}
+    </div>`;
+  }).join('');
+}
+async function handleDocUpload(inp){
+  if(!canEdit()){alert('You do not have permission to upload documents.');return;}
+  const file=inp.files&&inp.files[0]; if(!file)return;
+  const status=document.getElementById('doc-upload-status');
+  const docType=(document.getElementById('doc-type')||{}).value||'other';
+  const residentId=(document.getElementById('doc-resident')||{}).value||null;
+  const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+  const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+  const path=currentFacility.id+'/'+id+'.'+ext;
+  if(status)status.textContent='Uploading\u2026';
+  try{
+    const{error:upErr}=await sb.storage.from('facility-documents').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+    if(upErr)throw upErr;
+    const{error:insErr}=await sb.from('documents').insert({facility_id:currentFacility.id,resident_id:residentId,doc_type:docType,title:file.name,file_name:file.name,storage_path:path,mime_type:file.type||null,size_bytes:file.size,uploaded_by:currentUser.id});
+    if(insErr)throw insErr;
+    if(status)status.textContent='';
+    inp.value='';
+    await loadDocuments();
+  }catch(e){ if(status)status.textContent='Upload failed: '+((e&&e.message)||e); }
+}
+async function openDoc(path){
+  try{
+    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,120);
+    if(error||!data||!data.signedUrl)throw error||new Error('no url');
+    window.open(data.signedUrl,'_blank');
+  }catch(e){ alert('Could not open this document.'); }
+}
+async function deleteDoc(id,path){
+  if(!canDelete()){alert('You do not have permission to delete documents.');return;}
+  if(!confirm('Delete this document? This cannot be undone.'))return;
+  try{
+    const{error}=await sb.from('documents').delete().eq('id',id);
+    if(error)throw error;
+    await sb.storage.from('facility-documents').remove([path]);
+    await loadDocuments();
+  }catch(e){ alert('Delete failed.'); }
 }
 
 // ===== TEAM =====
