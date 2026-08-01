@@ -2481,7 +2481,7 @@ async function buildFacilityContext(){
 async function loadDashboardAIBriefing(force){
   if(dashBriefingLoaded&&!force)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
-  if(demoMode){el.innerHTML='<div style="font-size:13px;color:var(--text2)">✨ The AI Daily Briefing runs on live accounts — start a free trial to see yours.</div>';dashBriefingLoaded=true;return;}
+  if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
@@ -2521,13 +2521,88 @@ function onIncidentTypeChange(type){
   if(dssSelect&&INCIDENT_DSS_REPORTABLE[type]!==undefined){dssSelect.value=INCIDENT_DSS_REPORTABLE[type]?'yes':'no';}
 }
 
+// ===== DEMO COMPLIANCE ANALYZER (client-side; demo sandbox only, no worker call) =====
+// Runs a real, deterministic compliance read on the demo facility's actual data
+// (same source buildFacilityContext uses) so the sandbox shows the flagship
+// "gaps found" moment without an authenticated/metered AI call.
+async function demoFindings(){
+  let ctx; try{ ctx=JSON.parse(await buildFacilityContext()); }catch(e){ ctx={}; }
+  const today=ctx.today||new Date().toISOString().split('T')[0];
+  const t0=new Date(today);
+  const past=d=>d?new Date(d)<t0:false;
+  const soon=(d,n)=>d?(new Date(d)>=t0&&new Date(d)<=new Date(t0.getTime()+n*864e5)):false;
+  const nm=o=>o.full_name||o.name||'Unnamed';
+  const residents=ctx.residents||[];
+  const staff=(ctx.staff||[]).filter(s=>s.active!==false);
+  const tasks=ctx.compliance_tasks||[];
+  const mar=ctx.recent_mar||[];
+  const doneT=tasks.filter(t=>t.completed).length, totalT=tasks.length;
+  const score=totalT>0?Math.round(doneT/totalT*100):null;
+  const overdue=tasks.filter(t=>!t.completed&&t.due_date&&past(t.due_date));
+  const certIssues=[];
+  staff.forEach(s=>{ const w=nm(s);
+    if(past(s.cpr_cert_expiry))certIssues.push(w+' — CPR expired '+s.cpr_cert_expiry);
+    else if(soon(s.cpr_cert_expiry,30))certIssues.push(w+' — CPR expires '+s.cpr_cert_expiry);
+    if(past(s.first_aid_cert_expiry))certIssues.push(w+' — First Aid expired '+s.first_aid_cert_expiry);
+    if(past(s.tb_test_expiry)||past(s.tb_test_due))certIssues.push(w+' — TB test overdue');
+    if(s.livescan_cleared===false)certIssues.push(w+' — LiveScan/background not cleared');
+    if(s.mandated_reporter_completed===false)certIssues.push(w+' — Mandated Reporter training incomplete');
+  });
+  const docGaps=[];
+  residents.forEach(r=>{ const w=nm(r);
+    if(!r.lic601)docGaps.push(w+' — missing LIC 601 (admission agreement)');
+    if(!r.lic602)docGaps.push(w+" — missing LIC 602 (physician's report)");
+    if(!r.isp)docGaps.push(w+' — no ISP on file');
+    else if(past(r.isp_review_date))docGaps.push(w+' — ISP review overdue ('+r.isp_review_date+')');
+  });
+  const marGaps=mar.filter(m=>m.status&&!/given|administered|complete/i.test(m.status)).length;
+  return {score,doneT,totalT,overdue,certIssues,docGaps,marGaps,residents,staff,facility:ctx.facility};
+}
+function _bul(a,ok){return a.length?a.map(x=>'• '+x).join('<br>'):('✅ '+ok);}
+async function demoComplianceAnswer(query){
+  const f=await demoFindings(); const q=(query||'').toLowerCase(); let body;
+  const tag='<br><br><em style="color:var(--text2)">You\'re in the demo sandbox — this is a live analysis of the sample facility. Start a free trial to run it on your own data.</em>';
+  if(q.includes('simulate')){
+    body='<strong>Simulated DSS walkthrough</strong><br><br>'+
+      '📋 <strong>Staff files:</strong> '+(f.certIssues.length?f.certIssues.length+' issue(s) — '+f.certIssues[0]:'clear')+'<br>'+
+      '📁 <strong>Resident records:</strong> '+(f.docGaps.length?f.docGaps.length+' gap(s) — '+f.docGaps[0]:'clear')+'<br>'+
+      '💊 <strong>MAR:</strong> '+(f.marGaps?f.marGaps+' gap(s) in recent entries':'no recent gaps')+'<br>'+
+      '🗂 <strong>Overdue tasks:</strong> '+(f.overdue.length||'none')+'<br>'+
+      '📊 <strong>Overall readiness:</strong> '+(f.score!=null?f.score+'%':'—');
+  }else if(q.includes('ready')||q.includes('dss')){
+    const gaps=[...f.overdue.map(t=>t.title||'Compliance task overdue'),...f.certIssues,...f.docGaps]; const n=gaps.length;
+    body='<strong>Inspection readiness: '+(f.score!=null?f.score+'%':'—')+'</strong> ('+f.doneT+'/'+f.totalT+' requirements complete)<br><br>'+
+      (n?'🚨 <strong>'+n+' item'+(n>1?'s':'')+' an analyst would flag:</strong><br>'+gaps.slice(0,8).map(x=>'• '+x).join('<br>'):'✅ No open compliance gaps in the sample data.');
+  }else if(q.includes('cert')||q.includes('expired')){
+    body='<strong>Staff certification status</strong><br><br>'+_bul(f.certIssues,'All staff certifications current — CPR, First Aid, TB, LiveScan, Mandated Reporter.');
+  }else if(q.includes('today')||q.includes('need to do')){
+    const todo=[...f.overdue.map(t=>(t.title||'Overdue task')+(t.due_date?' (overdue since '+t.due_date+')':'')),...f.certIssues.slice(0,3),...f.docGaps.slice(0,3)];
+    body="<strong>Today's priorities</strong><br><br>"+_bul(todo,"Nothing urgent — you're inspection-ready today.");
+  }else{
+    const n=f.overdue.length+f.certIssues.length+f.docGaps.length;
+    body='<strong>'+(f.facility||'Facility')+' — compliance snapshot</strong><br><br>Readiness '+(f.score!=null?f.score+'%':'—')+' · '+f.residents.length+' residents · '+f.staff.length+' staff<br>'+
+      (n?'⚠️ '+n+' open item(s) across tasks, staff certs, and resident records.':'✅ No open compliance gaps in the sample data.');
+  }
+  return body+tag;
+}
+async function demoBriefingHTML(){
+  const f=await demoFindings(); const items=[];
+  if(f.score!=null)items.push((f.score>=90?'✅':f.score>=70?'⚠️':'🚨')+' Inspection readiness: <strong>'+f.score+'%</strong> ('+f.doneT+'/'+f.totalT+' complete)');
+  if(f.overdue.length)items.push('🚨 '+f.overdue.length+' overdue compliance task'+(f.overdue.length>1?'s':''));
+  if(f.certIssues.length)items.push('⚠️ '+f.certIssues.length+' staff certification issue'+(f.certIssues.length>1?'s':'')+' — e.g. '+f.certIssues[0]);
+  if(f.docGaps.length)items.push('⚠️ '+f.docGaps.length+' resident document gap'+(f.docGaps.length>1?'s':'')+' — e.g. '+f.docGaps[0]);
+  if(f.marGaps)items.push('⚠️ '+f.marGaps+' MAR gap'+(f.marGaps>1?'s':'')+' in recent entries');
+  if(!items.length)items.push('✅ No urgent compliance issues in the sample data.');
+  return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>';
+}
+
 async function sendAIQuery(btn){
-  if(demoMode){addAIMessage('The AI Compliance Assistant is available on live accounts — start a free trial to ask questions about your own facility.','assistant');return;}
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
   if(!query)return;
   if(input)input.value='';
   addAIMessage(query,'user');
+  if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
   aiMessages.push({role:'user',content:query});
   const thinking=addAIMessage('Checking your facility data...','assistant');
   const facilityContext=await buildFacilityContext();
