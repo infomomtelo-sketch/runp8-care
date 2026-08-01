@@ -2699,6 +2699,7 @@ function renderDocuments(){
   if(!facilityDocs.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
   if(empty)empty.style.display='none';
   const del=canDelete();
+  const canFaxTier=['pro','specialist','agency'].includes(t22Plan); // Fax = paid Facility+ add-on (coming soon)
   list.innerHTML=facilityDocs.map(d=>{
     const res=d.residents?(d.residents.name||d.residents.full_name||''):'';
     const when=d.uploaded_at?new Date(d.uploaded_at).toLocaleDateString():'';
@@ -2710,6 +2711,7 @@ function renderDocuments(){
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(DOC_TYPE_LABELS[d.doc_type]||d.doc_type||'Document')}${res?' \u00b7 '+esc(res):''}${when?' \u00b7 '+when:''}${size?' \u00b7 '+size:''}</div>
       </div>
       <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="openDoc('${esc(d.storage_path)}')">View / Print</button>
+      ${canFaxTier?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`:''}
       ${del?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteDoc('${esc(d.id)}','${esc(d.storage_path)}')">Delete</button>`:''}
     </div>`;
   }).join('');
@@ -2750,6 +2752,13 @@ async function deleteDoc(id,path){
     await sb.storage.from('facility-documents').remove([path]);
     await loadDocuments();
   }catch(e){ alert('Delete failed.'); }
+}
+function requestFax(){
+  // Fax is not wired to a provider yet. Honest "coming soon" that captures interest
+  // via a prefilled email — no per-page cost incurred, no capability implied.
+  if(confirm('📠 Faxing documents to pharmacies, physicians, or DSS is coming soon.\n\nWant us to let you know when it is ready? Tap OK to send a quick note.')){
+    window.location.href='mailto:hello@title-22.com?subject='+encodeURIComponent('Fax feature interest — Title22')+'&body='+encodeURIComponent('Hi — I would use a fax feature in Title22. Please let me know when it is available.');
+  }
 }
 
 // ===== TEAM =====
