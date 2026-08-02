@@ -3,14 +3,45 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Title22 — Title 22 RCFE Compliance</title>
+<title>Title22 — RCFE Compliance App</title>
 <meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<link rel="canonical" href="https://title22.app/"/>
+<meta name="robots" content="noindex,follow"/>
+<meta property="og:site_name" content="Title22"/>
+<meta property="og:title" content="Title22 — RCFE Compliance App"/>
+<meta property="og:description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<meta property="og:url" content="https://title22.app/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
+<meta property="og:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Title22 — RCFE Compliance App"/>
+<meta name="twitter:description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities."/>
+<meta name="twitter:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
+<meta name="twitter:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png"/>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link rel="manifest" href="/manifest.webmanifest"/>
 <meta name="theme-color" content="#0F6E56"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.5"></script>
+<!-- Supabase JS v2.110.5, self-hosted. Vendored from the npm tarball
+     (sha512 verified against the registry) instead of a third-party CDN, so a
+     jsdelivr compromise or outage cannot execute arbitrary code in the app. -->
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<script>
+  if (typeof window.supabase === 'undefined') {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML =
+        '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
+        'max-width:34rem;margin:15vh auto;padding:0 1.5rem;line-height:1.6;color:#1a1a18">' +
+        '<h1 style="color:#0F6E56;font-size:1.5rem;margin-bottom:.75rem">Title22 could not start</h1>' +
+        '<p>A required file failed to load. Refresh the page, and if it keeps happening ' +
+        'email <a style="color:#0F6E56" href="mailto:hello@title-22.com">hello@title-22.com</a>.</p>' +
+        '<p style="margin-top:1rem"><a style="color:#0F6E56" href="https://title-22.com">' +
+        '&larr; Back to title-22.com</a></p></div>';
+    });
+  }
+</script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -206,7 +237,7 @@
   </div>
   <div class="nav-actions" id="nav-public" style="display:none">
     <button class="btn btn-outline" onclick="showPage('login')">Log in</button>
-    <button class="btn btn-primary" onclick="showPage('signup')">Start free trial</button>
+    <button class="btn btn-primary" onclick="showPage('signup')">Start 14-day free trial</button>
   </div>
   <div class="nav-actions" id="nav-app" style="display:none">
     <div style="position:relative">
@@ -288,7 +319,7 @@
         <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••"/></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
       </form>
-      <div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Start free trial</a></div>
+      <div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Start 14-day free trial</a></div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="showPage('reset')">Forgot your password?</a></div>
     </div>
   </div>
@@ -395,7 +426,7 @@
       </div>
       <div id="demo-banner" style="display:none;background:linear-gradient(90deg,#BA7517,#d99a3d);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500">🧪 You're exploring the Title22 sandbox — read-only sample data.</div>
-        <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start free trial →</button>
+        <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 14-day free trial →</button>
       </div>
 
       <!-- DASHBOARD -->
