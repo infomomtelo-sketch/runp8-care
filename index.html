@@ -726,7 +726,7 @@
 
       <!-- AI -->
       <div id="tab-ai" style="display:none">
-        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-amber">Multi-Facility &amp; Agency</span></div>
+        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-teal">Included in your plan</span></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ Responses are based on data recorded in Title22 only.</div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
@@ -778,19 +778,15 @@
           <div class="card-title">Upgrade your plan</div>
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff, incidents</div></div>
+              <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff · AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 3 facilities</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
             </div>
-            <div style="border:1.5px solid #BA7517;border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px;color:#BA7517">Multi-Facility</div><div style="font-size:13px;color:var(--text2)">Up to 5 facilities + AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$149<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_SPECIALIST)" class="btn btn-outline" style="font-size:13px;border-color:#BA7517;color:#BA7517">Subscribe</button></div>
-            </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities</div></div>
+              <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_AGENCY)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
           </div>
@@ -999,7 +995,18 @@ async function handleSignup(){
   const referredBy=sessionStorage.getItem('title22_ref')||null;
   const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{referred_by:referredBy}}});
   if(btn){btn.textContent='Create account';btn.disabled=false;}
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  if(error){
+    const m=(error.message||'').toLowerCase();
+    if(m.includes('already registered')||m.includes('already exists')||m.includes('already been registered')){
+      err.textContent='You already have an account with this email. Please sign in.';err.classList.add('show');
+      setTimeout(function(){showPage('login');},1800);return;
+    }
+    err.textContent=error.message;err.classList.add('show');return;
+  }
+  if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){
+    err.textContent='You already have an account with this email. Please sign in.';err.classList.add('show');
+    setTimeout(function(){showPage('login');},1800);return;
+  }
   if(!data.user){err.textContent='Check your email to confirm your account, then log in.';err.classList.add('show');return;}
   currentUser=data.user;
   await ensureProfile(currentUser);
@@ -1016,7 +1023,15 @@ async function handleLogin(){
   if(btn){btn.textContent='Logging in…';btn.disabled=true;}
   const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
   if(btn){btn.textContent='Log in';btn.disabled=false;}
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  if(error){
+    const m=(error.message||'').toLowerCase();
+    if(m.includes('invalid login')||m.includes('invalid credentials')){
+      err.textContent='That email or password did not match an account. Check them, or sign up if you are new.';
+    } else if(m.includes('confirm')){
+      err.textContent='Please confirm your email first — check your inbox for the confirmation link.';
+    } else { err.textContent=error.message; }
+    err.classList.add('show');return;
+  }
   currentUser=data.user;
   await ensureProfile(currentUser);
   await loadApp();
@@ -1154,8 +1169,8 @@ const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Facility',specialist:
 const TIER_LIMITS={
   trial:      {facilities:5,        ai:true},
   edu:        {facilities:1,        ai:true},
-  starter:    {facilities:1,        ai:false},
-  pro:        {facilities:3,        ai:false},
+  starter:    {facilities:1,        ai:true},
+  pro:        {facilities:5,        ai:true},
   specialist: {facilities:5,        ai:true},
   agency:     {facilities:Infinity, ai:true}
 };
