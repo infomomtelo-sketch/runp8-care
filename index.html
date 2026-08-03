@@ -774,6 +774,19 @@
           <button class="btn btn-primary" style="margin-top:14px" onclick="createTrainerCode()">Create code</button>
           <div id="partner-create-result" style="display:none;margin-top:14px;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div>
         </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Grant a classroom account</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">For the trainer's own account, not their students. They sign up for a normal free account first (at title22.app), then click "Load sample facility" on their own dashboard to seed a demo class. This just removes their trial clock — no expiry, ever.</div>
+          <div id="classroom-error" class="empty" style="display:none;color:var(--red)"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;max-width:560px">
+            <div style="flex:1;min-width:220px"><label style="font-size:12px;color:var(--text2)">Trainer's email (the one they signed up with)</label>
+              <input id="classroom-email" type="email" placeholder="jane@example.com" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
+            <button class="btn btn-primary" onclick="grantClassroomAccount()">Grant classroom access</button>
+          </div>
+          <div id="classroom-result" style="display:none;margin-top:14px;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div>
+        </div>
+
         <div class="card">
           <div class="card-title">Signups by trainer</div>
           <div id="partner-list"><div class="empty">Loading...</div></div>
@@ -3063,6 +3076,26 @@ function copyPartnerMessage(btn){
   }else{
     box.select();document.execCommand('copy');done();
   }
+}
+
+async function grantClassroomAccount(){
+  const errEl=document.getElementById('classroom-error');
+  const resultEl=document.getElementById('classroom-result');
+  errEl.style.display='none';resultEl.style.display='none';
+  const email=document.getElementById('classroom-email').value.trim();
+  if(!email){errEl.textContent='Enter the trainer\'s email.';errEl.style.display='block';return;}
+  const{data,error}=await sb.rpc('title22_grant_classroom_account',{p_email:email});
+  if(error){errEl.textContent=error.message;errEl.style.display='block';return;}
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row||!row.found){
+    resultEl.style.background='var(--amber-light)';
+    resultEl.innerHTML=`No account found for <strong>${esc(email)}</strong> yet. They need to sign up at <a href="https://title22.app" target="_blank" style="color:var(--teal)">title22.app</a> first — then run this again.`;
+  }else{
+    resultEl.style.background='var(--teal-light)';
+    resultEl.innerHTML=`Done — <strong>${esc(email)}</strong> now has a classroom account that never expires. If you haven't already, let them know to click "Load sample facility" on their own dashboard to seed a demo class.`;
+  }
+  resultEl.style.display='block';
+  document.getElementById('classroom-email').value='';
 }
 
 // ===== BILLING =====
