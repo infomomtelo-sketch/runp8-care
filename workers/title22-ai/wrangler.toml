@@ -1,0 +1,13 @@
+name = "title22-ai"
+main = "index.js"
+compatibility_date = "2026-08-03"
+
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY    — Supabase service_role key (bypasses RLS; used
+#                              server-side only to verify the caller's JWT
+#                              and read title22_* profile columns)
+#   ANTHROPIC_API_KEY       — Anthropic API key for the Messages API call
+#
+# Public route (configured in the Cloudflare dashboard, not here):
+#   https://title22-ai.infomomtelo.workers.dev/api/chat
