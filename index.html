@@ -2543,19 +2543,79 @@ async function saveMAR(){
 
 // ===== AI =====
 let aiMessages=[];
+
+// Tools the AI assistant can invoke to take an action in the app, instead of
+// only answering in text (e.g. "take me to the medications page", "print
+// Teresa's LIC 602"). Anthropic tool-use schema, forwarded through the
+// title22-ai Worker to Claude as-is. If the deployed Worker doesn't yet pass
+// `tools` through, this is a harmless no-op — the AI just answers in text
+// like before.
+const AI_TOOLS=[
+  {
+    name:'navigate_to_tab',
+    description:'Switch the app to a specific tab/page for the user. Use when the user asks to go to, open, take them to, pull up, or show a specific section of the app.',
+    input_schema:{type:'object',properties:{
+      tab:{type:'string',enum:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents','partners'],description:'The tab to switch to.'}
+    },required:['tab']}
+  },
+  {
+    name:'open_document',
+    description:'Open/print a specific already-uploaded document for a specific resident, e.g. "print the LIC 602 for Teresa" or "pull up Frank\'s physician report". Only works for documents already uploaded in the Documents tab — if none is on file, say so instead of calling this.',
+    input_schema:{type:'object',properties:{
+      resident_name:{type:'string',description:'The resident\'s name as mentioned by the user. First name alone is fine.'},
+      doc_type:{type:'string',enum:['lic601','lic602','lic602a','physician_report','cert','isp','other'],description:'The type of document requested.'}
+    },required:['resident_name','doc_type']}
+  }
+];
+
+// Executes a tool call the AI decided to make and returns a short confirmation
+// string to show in the chat. Never throws — always resolves to user-facing text.
+async function runAITool(name,input){
+  try{
+    if(name==='navigate_to_tab'){
+      const tab=String(input?.tab||'').trim();
+      if(!tab)return 'No tab specified.';
+      switchTab(tab);
+      return `Opened ${tab}.`;
+    }
+    if(name==='open_document'){
+      const rawName=String(input?.resident_name||'').trim();
+      const docType=String(input?.doc_type||'').trim();
+      if(!rawName||!docType)return 'Missing resident name or document type.';
+      const safeName=rawName.replace(/[,()%]/g,'').trim();
+      if(!safeName)return `No resident matching "${esc(rawName)}" found.`;
+      const{data:residents}=await sb.from('residents').select('id,name,full_name')
+        .eq('facility_id',currentFacility.id)
+        .or(`name.ilike.%${safeName}%,full_name.ilike.%${safeName}%`);
+      if(!residents||!residents.length)return `No resident matching "${esc(rawName)}" found.`;
+      const ids=residents.map(r=>r.id);
+      const label=residents[0].name||residents[0].full_name||rawName;
+      const{data:docs}=await sb.from('documents').select('storage_path,doc_type,resident_id')
+        .in('resident_id',ids).eq('doc_type',docType)
+        .order('uploaded_at',{ascending:false}).limit(1);
+      if(!docs||!docs.length)return `No ${DOC_TYPE_LABELS[docType]||docType} on file for ${esc(label)}.`;
+      switchTab('documents');
+      await openDoc(docs[0].storage_path);
+      return `Opened ${DOC_TYPE_LABELS[docType]||docType} for ${esc(label)}.`;
+    }
+    return 'Unknown action requested.';
+  }catch(e){return 'Could not complete that action: '+esc(e.message||String(e));}
+}
 let dashBriefingLoaded=false;
 
 async function buildFacilityContext(){
   try{
-    const[resData,staffData,tasksData,incData,marData]=await Promise.all([
+    const[resData,staffData,tasksData,incData,marData,docData]=await Promise.all([
       sb.from('residents').select('name,full_name,dob,admission_date,isp_review_date,lic601,lic602,isp,status').eq('facility_id',currentFacility.id),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at,description').eq('facility_id',currentFacility.id).limit(10),
       sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
+      sb.from('documents').select('doc_type,title,residents(name,full_name)').eq('facility_id',currentFacility.id).limit(100),
     ]);
     const today=new Date().toISOString().split('T')[0];
-    return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
+    const documents=(docData.data||[]).map(d=>({doc_type:d.doc_type,title:d.title,resident:d.residents?(d.residents.name||d.residents.full_name):null}));
+    return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[],documents_on_file:documents},null,2);
   }catch(e){return'Error loading facility data: '+e.message;}
 }
 
@@ -2706,12 +2766,30 @@ async function sendAIQuery(btn){
   const facilityContext=await buildFacilityContext();
   try{
     const{data:{session}}=await sb.auth.getSession();
-    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,messages:aiMessages.slice(-10)})});
+    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+      system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..." You can also take actions using the provided tools — e.g. navigating to a tab, or opening/printing an already-uploaded document for a resident — when the user asks you to. Only call open_document if documents_on_file shows a matching entry; otherwise tell the user it's not on file.\n\nFACILITY DATA:\n${facilityContext}`,
+      messages:aiMessages.slice(-10),
+      tools:AI_TOOLS
+    })});
     const data=await res.json();
     const workerErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
-    const reply=data.content?.[0]?.text||(workerErr?'⚠️ '+workerErr:'Unable to get a response. (HTTP '+res.status+')');
-    thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-    aiMessages.push({role:'assistant',content:reply});
+    const blocks=Array.isArray(data.content)?data.content:null;
+    if(!blocks){
+      thinking.textContent='';thinking.innerHTML=workerErr?'⚠️ '+esc(workerErr):'Unable to get a response. (HTTP '+res.status+')';
+      return;
+    }
+    const textBlock=blocks.find(b=>b.type==='text'&&b.text);
+    const toolBlocks=blocks.filter(b=>b.type==='tool_use');
+    if(textBlock){
+      thinking.textContent='';thinking.innerHTML=esc(textBlock.text).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    }else{
+      thinking.remove();
+    }
+    aiMessages.push({role:'assistant',content:data.content});
+    for(const t of toolBlocks){
+      const resultText=await runAITool(t.name,t.input);
+      addAIMessage(resultText,'assistant');
+    }
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
   }catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}
 }
