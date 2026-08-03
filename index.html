@@ -417,6 +417,7 @@
       <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>AI</button>
       <button class="nav-item" id="nav-billing" onclick="switchTab('billing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Billing</button>
       <button class="nav-item" id="nav-audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
+      <button class="nav-item" id="nav-partners" onclick="switchTab('partners')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-1a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Partners</button>
       <button class="nav-item" id="nav-walkthrough" onclick="window.open('https://title-22.com/walkthrough/','_blank')" title="Watch the guided walkthrough"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Walkthrough</button>
     </div>
     <div class="main-content">
@@ -752,6 +753,33 @@
         </div>
       </div>
 
+      <!-- PARTNERS (trainer codes) — visible only to title22_is_partner_admin -->
+      <div id="tab-partners" style="display:none">
+        <div class="page-header"><h1>Trainer partners</h1><span class="badge badge-teal">Owner only</span></div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Create a trainer code</div>
+          <div id="partner-create-error" class="empty" style="display:none;color:var(--red)"></div>
+          <div style="display:grid;gap:10px;grid-template-columns:1fr 1fr;max-width:560px">
+            <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2)">Code (used as ?ref=code — letters, numbers, hyphens)</label>
+              <input id="partner-code" type="text" placeholder="jsmith" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
+            <div><label style="font-size:12px;color:var(--text2)">Trainer name</label>
+              <input id="partner-name" type="text" placeholder="Jane Smith" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
+            <div><label style="font-size:12px;color:var(--text2)">Email (optional)</label>
+              <input id="partner-email" type="email" placeholder="jane@example.com" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
+            <div><label style="font-size:12px;color:var(--text2)">Commission rate %</label>
+              <input id="partner-commission" type="number" value="20" min="0" max="100" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
+            <div><label style="font-size:12px;color:var(--text2)">Trial days for their graduates</label>
+              <input id="partner-trial-days" type="number" value="90" min="1" max="365" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="createTrainerCode()">Create code</button>
+          <div id="partner-create-result" style="display:none;margin-top:14px;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Signups by trainer</div>
+          <div id="partner-list"><div class="empty">Loading...</div></div>
+        </div>
+      </div>
+
       <!-- BILLING -->
       <div id="tab-billing" style="display:none">
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
@@ -829,10 +857,21 @@ document.addEventListener('visibilitychange',()=>{
 // session (covers both email/password and Google OAuth signup paths, since
 // sessionStorage survives the OAuth redirect). Marketing CTAs land here as
 // https://title22.app/?plan=<tier>&utm_source=<source>&utm_campaign=<campaign>
-(function () {
+(async function () {
   const params = new URLSearchParams(window.location.search);
   const ref = params.get('ref');
-  if (ref) sessionStorage.setItem('title22_ref', ref);
+  if (ref) {
+    sessionStorage.setItem('title22_ref', ref);
+    // Validate against real trainer codes so referred signups get the
+    // trainer's trial length (e.g. 90 days) instead of the default 14.
+    // Falls back to the default silently if the code doesn't exist, the
+    // RPC isn't deployed yet, or the network call fails.
+    try {
+      const { data } = await sb.rpc('title22_check_trainer_code', { p_code: ref });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row && row.trial_days) sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
+    } catch (e) { /* default trial length applies */ }
+  }
   const plan = (params.get('plan')||'').toLowerCase();
   if (['starter','pro','specialist','agency'].includes(plan)) sessionStorage.setItem('title22_signup_plan', plan);
   const src = params.get('utm_source');
@@ -849,6 +888,7 @@ let complianceTasks = [];
 let activeFilter = 'all';
 let currentIncidentId = null;
 let currentUserRole = 'administrator';
+let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
 
 const ROLE_ACCESS = {
   administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
@@ -881,12 +921,16 @@ function showPage(name){
 
 function switchTab(name){
   if(name==='ai'&&t22Entitled&&!t22Limits.ai){showTierUpsell('ai');return;}
-  if(!allowedTabs().includes(name)){alert('You do not have permission to access this section.');return;}
+  // 'partners' is a global app-owner permission (title22_is_partner_admin),
+  // not a per-facility role — gated separately from allowedTabs().
+  if(name==='partners'){
+    if(!isPartnerAdmin){alert('You do not have permission to access this section.');return;}
+  }else if(!allowedTabs().includes(name)){alert('You do not have permission to access this section.');return;}
   const menu=document.getElementById('user-menu');
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','partners','documents'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -910,6 +954,7 @@ function switchTab(name){
   if(name==='team')loadTeam();
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
+  if(name==='partners')loadPartners();
   if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi! Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -943,12 +988,14 @@ async function ensureProfile(user){
   // access_granted) belong to other apps on this Supabase project — never
   // read or write them here.
   let isNewProfile=false;
+  const trialDays=parseInt(sessionStorage.getItem('title22_ref_trial_days'),10)||14;
   try{
-    const{data}=await sb.from('profiles').select('id,created_at,title22_plan,title22_trial_ends_at').eq('id',user.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('id,created_at,title22_plan,title22_trial_ends_at,title22_is_partner_admin').eq('id',user.id).maybeSingle();
+    isPartnerAdmin=!!(data&&data.title22_is_partner_admin);
     if(!data){
       isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
-      const trialEnds=new Date(Date.now()+14*86400000).toISOString();
+      const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       if(error)console.error('Trial activation failed:',error.message);
     }else if(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
@@ -957,11 +1004,13 @@ async function ensureProfile(user){
       const patch={};
       if(!data.created_at)patch.created_at=new Date().toISOString();
       if(!data.title22_plan)patch.title22_plan='trial';
-      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+14*86400000).toISOString();
+      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
       if(error)console.error('Trial activation failed:',error.message);
     }
   }catch(e){console.log('Profile check:',e.message);}
+  const navPartners=document.getElementById('nav-partners');
+  if(navPartners)navPartners.style.display=isPartnerAdmin?'flex':'none';
   if(isNewProfile)await stampSignupAttribution(user);
 }
 
@@ -2871,6 +2920,53 @@ async function loadAuditLog(){
     <div style="flex:1;min-width:0"><strong>${esc(tableLabels[r.table_name]||r.table_name)}</strong>${summarize(r)?' · '+esc(summarize(r)):''}</div>
     <div style="flex-shrink:0;color:var(--text2);font-size:11px" title="${esc(r.actor||'')}">${r.actor?'by '+esc(String(r.actor).slice(0,8))+'…':''}</div>
   </div>`).join('');
+}
+
+// ===== PARTNERS (trainer codes) =====
+async function loadPartners(){
+  const el=document.getElementById('partner-list');if(!el)return;
+  el.innerHTML='<div class="empty">Loading...</div>';
+  const{data,error}=await sb.rpc('title22_trainer_signups');
+  if(error){
+    el.innerHTML=`<div class="empty">Partner report unavailable (${esc(error.message)}).<br/>Run migrations/2026-08-03_title22_trainers.sql in the Supabase SQL editor to enable it.</div>`;
+    return;
+  }
+  if(!data||!data.length){el.innerHTML='<div class="empty">No trainer codes yet. Create one above.</div>';return;}
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 100px 100px 100px 160px;gap:8px;font-size:11px;color:var(--text2);padding:0 0 8px;border-bottom:1px solid var(--border)">
+    <div>Trainer</div><div>Code</div><div>Signups</div><div>Paid</div><div>Latest signup</div>
+  </div>`+data.map(r=>`<div style="display:grid;grid-template-columns:1fr 100px 100px 100px 160px;gap:8px;font-size:13px;padding:10px 0;border-bottom:1px solid var(--border);align-items:center">
+    <div><strong>${esc(r.name)}</strong>${r.commission_rate!=null?` <span style="color:var(--text2);font-size:11px">(${Math.round(r.commission_rate*100)}%)</span>`:''}</div>
+    <div style="font-family:monospace">${esc(r.code)}</div>
+    <div>${r.signup_count}</div>
+    <div>${r.paid_count}</div>
+    <div style="color:var(--text2);font-size:12px">${r.latest_signup?new Date(r.latest_signup).toLocaleDateString():'—'}</div>
+  </div>`).join('');
+}
+
+async function createTrainerCode(){
+  const errEl=document.getElementById('partner-create-error');
+  const resultEl=document.getElementById('partner-create-result');
+  errEl.style.display='none';resultEl.style.display='none';
+  const code=document.getElementById('partner-code').value.trim();
+  const name=document.getElementById('partner-name').value.trim();
+  const email=document.getElementById('partner-email').value.trim();
+  const commissionPct=parseFloat(document.getElementById('partner-commission').value);
+  const trialDays=parseInt(document.getElementById('partner-trial-days').value,10);
+  if(!code||!name){errEl.textContent='Code and trainer name are required.';errEl.style.display='block';return;}
+  const{data,error}=await sb.rpc('title22_create_trainer',{
+    p_code:code,p_name:name,p_email:email||null,
+    p_commission_rate:isNaN(commissionPct)?0.20:commissionPct/100,
+    p_trial_days:isNaN(trialDays)?90:trialDays
+  });
+  if(error){errEl.textContent=error.message;errEl.style.display='block';return;}
+  const row=Array.isArray(data)?data[0]:data;
+  const link=`https://title22.app/?ref=${encodeURIComponent(row.code)}`;
+  resultEl.innerHTML=`Created. Send this link to <strong>${esc(name)}</strong>:<br/><a href="${esc(link)}" target="_blank" style="color:var(--teal)">${esc(link)}</a>`;
+  resultEl.style.display='block';
+  document.getElementById('partner-code').value='';
+  document.getElementById('partner-name').value='';
+  document.getElementById('partner-email').value='';
+  loadPartners();
 }
 
 // ===== BILLING =====
