@@ -2853,9 +2853,17 @@ async function sendAIQuery(btn){
       thinking.remove();
     }
     aiMessages.push({role:'assistant',content:data.content});
-    for(const t of toolBlocks){
-      const resultText=await runAITool(t.name,t.input);
-      addAIMessage(resultText,'assistant');
+    if(toolBlocks.length){
+      // Anthropic requires every tool_use block to be immediately followed by
+      // a matching tool_result in the next user turn, or the conversation
+      // history becomes invalid and every future call in this chat 500s.
+      const toolResults=[];
+      for(const t of toolBlocks){
+        const resultText=await runAITool(t.name,t.input);
+        addAIMessage(resultText,'assistant');
+        toolResults.push({type:'tool_result',tool_use_id:t.id,content:resultText});
+      }
+      aiMessages.push({role:'user',content:toolResults});
     }
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
   }catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}
