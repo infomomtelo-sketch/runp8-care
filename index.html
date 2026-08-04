@@ -2622,7 +2622,7 @@ const AI_TOOLS=[
     name:'navigate_to_tab',
     description:'Switch the app to a specific tab/page for the user. Use when the user asks to go to, open, take them to, pull up, or show a specific section of the app.',
     input_schema:{type:'object',properties:{
-      tab:{type:'string',enum:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents','partners'],description:'The tab to switch to.'}
+      tab:{type:'string',enum:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'],description:'The tab to switch to. Never partners — that\'s an owner-only admin page, not something to navigate to from a chat request.'}
     },required:['tab']}
   },
   {
