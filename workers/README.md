@@ -1,11 +1,13 @@
 # Cloudflare Workers — source of truth status
 
-Two live Workers back Title22.
+Three Workers back Title22.
 
 `title22-ai`'s deployed source **is now committed** (`title22-ai/index.js`,
 pulled 2026-08-03 via the Cloudflare API — see below to re-pull after any
-change made directly in the dashboard). `stripe-webhook`'s source is still
-not committed; pull it the same way before changing it.
+change made directly in the dashboard). `title22-extract` was written in this
+repo and has never been dashboard-edited, so its committed source is
+authoritative. `stripe-webhook`'s source is still not committed; pull it the
+same way before changing it.
 
 To re-capture deployed source after a dashboard-only edit (needs a
 Cloudflare API token with Workers Scripts:Read):
@@ -49,6 +51,67 @@ Deploy a change with `wrangler deploy` from inside `workers/<name>/`.
     string built in `sendAIQuery()` in the main app's `index.html`), not in
     this Worker. If that's meant to be a hard guarantee rather than a
     prompt-level convention, it isn't currently enforced server-side.
+
+## title22-extract
+
+Backs the "Scan to fill" button in the staff, resident, and medication modals:
+a photo of a paper form goes in, that form's fields come back as JSON for a
+human to review before anything is saved.
+
+- Route: `https://title22-extract.infomomtelo.workers.dev/api/extract`
+- **Not yet deployed** — `cd workers/title22-extract && wrangler deploy`, set
+  the three secrets below, then add the route in the dashboard. Until then the
+  frontend button surfaces a "could not read that photo" error.
+- Model: `claude-opus-5`, overridable with the `EXTRACT_MODEL` binding. This
+  reads handwriting and small pharmacy print off phone photos, which is the
+  whole point of the worker — measure on real scans before stepping down.
+- Auth and metering are copied from `title22-ai` and must stay in step with it:
+  same JWT verification, same `LIMITS` table, same default-deny on an
+  unrecognized plan, and the same monthly `ai_usage` bucket (`app='title22'`).
+  A scan costs one AI call. There is no separate tier gate — a plan's monthly
+  cap is the only limit, so trial users can scan.
+- Writes nothing. It has the service key (needed to verify the caller and
+  deduct a credit) but never touches `residents`, `staff`, or `medications`;
+  the frontend's existing save paths — and the audit-log triggers behind them
+  — remain the only way a scan reaches the database.
+
+### Request / response contract
+
+```
+POST /api/extract          Authorization: Bearer <supabase access_token>
+{ "formType": "staff" | "resident" | "medication",
+  "image": { "media_type": "image/jpeg", "data": "<base64, no data: prefix>" },
+  "hint": "optional free text from the caregiver" }
+```
+
+```
+200 { "formType", "formLabel", "notes",
+      "fields": { "<key>": { "label", "type", "value", "confidence",
+                             "source_text", "box", "unparsed"? } },
+      "plan", "limit", "remaining", "isPaid" }
+```
+
+- `confidence` is `high` | `medium` | `low` | `not_found`. Anything the worker
+  could not normalize into a usable value is downgraded to `not_found` and the
+  raw reading is preserved in `unparsed`, so a bad date surfaces to the
+  reviewer instead of vanishing.
+- `box` is `[x0, y0, x1, y1]` normalized 0-1 from the top-left, or `null`.
+  These are the model's **approximate** estimates — good enough to crop the
+  photo next to each value, not good enough to rely on as ground truth. The
+  frontend pads them generously and lets the reviewer open the full page.
+- `value` is pre-normalized for the form: dates as `YYYY-MM-DD`, booleans as
+  `yes`/`no`, phones as `(559) 555-0100`.
+- Errors: 400 bad request, 401 unauthenticated, 402 monthly limit reached,
+  413 image too large, 422 unreadable/refused/truncated, 502 upstream failure.
+  All carry a `message` the frontend shows verbatim.
+
+### Adding a field
+
+The field keys are a contract with the frontend. `FORMS` in
+`title22-extract/index.js` and `SCAN_FIELD_MAP` in the main app's `index.html`
+must list the same keys, and every `el` in `SCAN_FIELD_MAP` must be a real
+input id in the matching modal. A key with no mapping is shown in the review
+sheet as read-only — it has nowhere to go.
 
 ## stripe-webhook
 

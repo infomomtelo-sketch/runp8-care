@@ -1,0 +1,19 @@
+name = "title22-extract"
+main = "index.js"
+compatibility_date = "2026-08-05"
+
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY   — Supabase service_role key (bypasses RLS; used
+#                             server-side only to verify the caller's JWT,
+#                             read title22_* profile columns, and deduct from
+#                             the shared ai_usage bucket)
+#   ANTHROPIC_API_KEY      — Anthropic API key for the Messages API call
+#
+# Optional override (set with `wrangler secret put` or as a [vars] entry):
+#   EXTRACT_MODEL          — defaults to claude-opus-5. Extraction accuracy on
+#                            handwriting is the whole point of this worker, so
+#                            only step down after measuring on real scans.
+#
+# Public route (configured in the Cloudflare dashboard, not here):
+#   https://title22-extract.infomomtelo.workers.dev/api/extract

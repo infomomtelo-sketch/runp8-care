@@ -224,6 +224,37 @@
     .filter-bar{gap:6px}
     .filter-btn{padding:5px 10px;font-size:12px}
   }
+
+  /* ===== SCAN TO FILL ===== */
+  .scan-btn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;margin-right:10px;padding:5px 12px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .scan-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .scan-btn:disabled{opacity:.45;cursor:default;border-color:var(--border);color:var(--text2)}
+  .scan-note{background:var(--teal-light);color:var(--teal);font-size:12px;line-height:1.6;padding:10px 14px;border-radius:var(--radius);margin-bottom:14px}
+  .scan-summary{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .scan-thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;flex-shrink:0}
+  .scan-row{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border)}
+  .scan-row.is-missing{opacity:.55}
+  .scan-row>input[type=checkbox]{margin-top:26px;width:16px;height:16px;flex-shrink:0;accent-color:var(--teal);cursor:pointer}
+  .scan-cell{flex:1;min-width:0}
+  .scan-cell .scan-fieldlabel{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;flex-wrap:wrap}
+  .scan-cell input,.scan-cell select{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;outline:none;background:var(--white);color:var(--text)}
+  .scan-cell input:focus,.scan-cell select:focus{border-color:var(--teal)}
+  .scan-meta{font-size:11px;color:var(--text2);margin-top:5px;line-height:1.55;word-break:break-word}
+  .scan-meta .scan-overwrite{color:var(--amber);font-weight:500}
+  .scan-crop{width:150px;flex-shrink:0}
+  .scan-crop canvas{width:150px;height:56px;border:1px solid var(--border);border-radius:6px;background:var(--gray-bg);cursor:zoom-in;display:block}
+  .scan-crop .scan-nocrop{width:150px;height:56px;border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);text-align:center;padding:0 6px}
+  .scan-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1100;display:none;align-items:center;justify-content:center;padding:1rem;cursor:zoom-out}
+  .scan-lightbox.open{display:flex}
+  .scan-lightbox-inner{position:relative;max-width:100%;max-height:100%}
+  .scan-lightbox img{max-width:100%;max-height:88vh;display:block;border-radius:6px}
+  .scan-highlight{position:absolute;border:2px solid #FFD400;border-radius:3px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.5)}
+  @keyframes scanFilled{from{background:#FFF6D6}to{background:var(--white)}}
+  .scan-filled{animation:scanFilled 1.8s ease-out}
+  @media(max-width:620px){
+    .scan-crop,.scan-crop canvas,.scan-crop .scan-nocrop{width:96px}
+    .scan-row>input[type=checkbox]{margin-top:24px}
+  }
 </style>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "2a8582694cd940e189c47986d7068ca6"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
@@ -850,6 +881,7 @@ const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
 const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
+const EXTRACT_WORKER = 'https://title22-extract.infomomtelo.workers.dev/api/extract';
 
 function openStripe(url){
   try{
@@ -3234,6 +3266,425 @@ async function deleteTraining(id){
   await loadTrainings();
 }
 
+// ===== SCAN TO FILL =====
+// Camera capture -> title22-extract worker -> human review -> form inputs.
+//
+// Nothing on this path touches the database. applyScanToForm() only fills the
+// inputs of the modal that is already open; the existing Save button (and the
+// audit-log triggers behind it) stay the only way a record is persisted. That
+// is two deliberate gates between a photo and a compliance record.
+//
+// The keys below must match FORMS in workers/title22-extract/index.js. A key
+// the worker returns with no entry here has nowhere to go, so it is shown in
+// the review sheet as read-only rather than silently dropped.
+const SCAN_FIELD_MAP={
+  staff:{modal:'staff-modal',title:'Staff record',isEdit:()=>Boolean(currentStaffId),fields:{
+    full_name:{el:'staff-name'},
+    role:{el:'staff-role-search',kind:'role'},
+    hire_date:{el:'staff-hire-date'},
+    phone:{el:'staff-phone'},
+    tb_test_date:{el:'staff-tb-date'},
+    tb_test_due:{el:'staff-tb-due'},
+    cpr_cert_date:{el:'staff-cpr-date'},
+    cpr_cert_expiry:{el:'staff-cpr-expiry'},
+    first_aid_cert_date:{el:'staff-firstaid-date'},
+    first_aid_cert_expiry:{el:'staff-firstaid-expiry'},
+    livescan_cleared:{el:'staff-livescan',kind:'bool-truefalse'},
+    livescan_date:{el:'staff-livescan-date'},
+    mandated_reporter_completed:{el:'staff-mandated',kind:'bool-truefalse'},
+    mandated_reporter_date:{el:'staff-mandated-date'},
+    initial_training_complete:{el:'staff-training',kind:'bool-truefalse'},
+    initial_training_hours:{el:'staff-training-hours'},
+  }},
+  resident:{modal:'resident-modal',title:'Resident face sheet',isEdit:()=>Boolean(currentResidentId),fields:{
+    name:{el:'res-name'},
+    preferred_name:{el:'res-preferred'},
+    room:{el:'res-room'},
+    dob:{el:'res-dob'},
+    admission_date:{el:'res-admission'},
+    diagnosis:{el:'res-diagnosis'},
+    allergies:{el:'res-allergies'},
+    lic601:{el:'res-lic601',kind:'bool-yesno'},
+    lic602:{el:'res-lic602',kind:'bool-yesno'},
+    isp:{el:'res-isp',kind:'bool-yesno'},
+    isp_review_date:{el:'res-isp-date'},
+  }},
+  medication:{modal:'med-modal',title:'Medication',isEdit:()=>Boolean(currentMedId),fields:{
+    medication_name:{el:'med-name'},
+    dosage:{el:'med-dosage'},
+    directions:{el:'med-directions'},
+    prescriber:{el:'med-prescriber'},
+    rx_number:{el:'med-rx'},
+    pharmacy:{el:'med-pharmacy'},
+    start_date:{el:'med-start'},
+    end_date:{el:'med-end'},
+    refill_date:{el:'med-refill'},
+    status:{el:'med-status',kind:'select'},
+  }},
+};
+
+// Long edge the photo is resized to before upload. The model reads small print
+// and handwriting off these scans, so this is deliberately generous — dropping
+// it saves tokens but costs accuracy on medication labels.
+const SCAN_MAX_EDGE=2000;
+const SCAN_MAX_B64=4000000;   // stay under the worker's 4.5M cap
+
+let scanState={formType:null,canvas:null,dataUrl:null,fields:null,notes:''};
+
+const SCAN_CONFIDENCE={
+  high:{badge:'badge-green',label:'High'},
+  medium:{badge:'badge-amber',label:'Medium'},
+  low:{badge:'badge-red',label:'Low — check'},
+  not_found:{badge:'',label:'Not on page'},
+};
+
+function startScan(formType,source){
+  if(!SCAN_FIELD_MAP[formType])return;
+  if(demoMode){alert('Scan to fill needs a signed-in account. The sample facility is read-only.');return;}
+  if(!canEdit()){alert('You do not have permission to add records.');return;}
+  if(!currentFacility){alert('Open a facility first.');return;}
+  scanState.formType=formType;
+  const input=document.getElementById(source==='library'?'scan-file-library':'scan-file-camera');
+  input.value='';
+  input.click();
+}
+
+async function onScanFile(input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  if(!file)return;
+  const formType=scanState.formType;
+  const form=SCAN_FIELD_MAP[formType];
+  if(!form)return;
+
+  showScanBusy(form.title);
+  try{
+    const img=await readScanImage(file);
+    const prepared=prepareScanImage(img);
+    scanState.canvas=prepared.canvas;
+    scanState.dataUrl=prepared.dataUrl;
+
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('Your session expired. Sign in again and retry.');
+
+    const res=await fetch(EXTRACT_WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({formType,image:{media_type:'image/jpeg',data:prepared.base64}})
+    });
+    const data=await res.json().catch(()=>null);
+    if(!res.ok||!data||data.error){
+      throw new Error(data?.message||`Could not read that photo. (HTTP ${res.status})`);
+    }
+    scanState.fields=data.fields||{};
+    scanState.notes=data.notes||'';
+    renderScanReview(data);
+  }catch(e){
+    showScanError(e.message||'Something went wrong reading that photo.');
+  }
+}
+
+function readScanImage(file){
+  return new Promise((resolve,reject)=>{
+    if(!/^image\//.test(file.type||'')){reject(new Error('That file is not an image.'));return;}
+    const fr=new FileReader();
+    fr.onerror=()=>reject(new Error('Could not read that file.'));
+    fr.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('That image could not be opened.'));
+      img.onload=()=>resolve(img);
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+// Resize client-side and re-encode as JPEG. The canvas we keep here is the
+// exact frame the model saw, so the normalized boxes it returns line up with
+// the crops we draw from it.
+function prepareScanImage(img){
+  const scale=Math.min(1,SCAN_MAX_EDGE/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+  const w=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));
+  const h=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
+  const canvas=document.createElement('canvas');
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(img,0,0,w,h);
+  let quality=0.85;
+  let dataUrl=canvas.toDataURL('image/jpeg',quality);
+  while(dataUrl.length>SCAN_MAX_B64&&quality>0.4){
+    quality-=0.15;
+    dataUrl=canvas.toDataURL('image/jpeg',quality);
+  }
+  return{canvas,dataUrl,base64:dataUrl.split(',')[1]||''};
+}
+
+function openScanModal(){
+  document.getElementById('scan-modal-error').classList.remove('show');
+  document.getElementById('scan-modal').classList.add('open');
+}
+function closeScanModal(){
+  document.getElementById('scan-modal').classList.remove('open');
+  closeScanLightbox();
+  // A 2000px canvas is a few MB of pixel data; don't hold the page's photo
+  // any longer than the review that needed it.
+  scanState.canvas=null;
+  scanState.dataUrl=null;
+  scanState.fields=null;
+}
+
+function showScanBusy(title){
+  document.getElementById('scan-modal-title').textContent='Reading '+title.toLowerCase();
+  document.getElementById('scan-modal-footer').style.display='none';
+  document.getElementById('scan-modal-body').innerHTML=
+    '<div class="empty">Reading the page…<br/><span style="font-size:12px">This uses one AI call from your monthly allowance.</span></div>';
+  openScanModal();
+}
+
+function showScanError(message){
+  document.getElementById('scan-modal-title').textContent='Scan failed';
+  document.getElementById('scan-modal-footer').style.display='none';
+  document.getElementById('scan-modal-body').innerHTML=
+    `<div class="empty" style="padding:24px 12px">${esc(message)}</div>
+     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-bottom:8px">
+       <button class="btn btn-outline" onclick="startScan(scanState.formType)">Retake photo</button>
+       <button class="btn btn-outline" onclick="startScan(scanState.formType,'library')">Choose a file</button>
+       <button class="btn btn-outline" onclick="closeScanModal()">Close</button>
+     </div>`;
+  openScanModal();
+}
+
+// Read the value the target input would need, given what the worker returned.
+function scanToTargetValue(entry,value){
+  if(!value)return '';
+  let candidate=value;
+  if(entry.kind==='bool-truefalse')candidate=value==='yes'?'true':(value==='no'?'false':'');
+  if(!candidate)return '';
+  const el=document.getElementById(entry.el);
+  // A <select> can only hold one of its own options — anything else is dropped
+  // rather than written as a value the form can't represent.
+  if(el&&el.tagName==='SELECT'){
+    return [...el.options].some(o=>o.value===candidate)?candidate:'';
+  }
+  return candidate;
+}
+
+function scanCurrentValue(entry){
+  const el=document.getElementById(entry.el);
+  return el?String(el.value||'').trim():'';
+}
+
+// Human-readable form of a target value, so "true" reads as "Yes — cleared".
+function scanDisplayValue(entry,value){
+  if(!value)return '';
+  const el=document.getElementById(entry.el);
+  if(el&&el.tagName==='SELECT'){
+    const opt=[...el.options].find(o=>o.value===value);
+    if(opt)return opt.textContent.trim();
+  }
+  return value;
+}
+
+function renderScanReview(result){
+  const form=SCAN_FIELD_MAP[scanState.formType];
+  document.getElementById('scan-modal-title').textContent='Review scan · '+form.title;
+
+  const editing=form.isEdit?form.isEdit():true;
+
+  const rows=[];
+  let suggested=0;
+  Object.entries(scanState.fields).forEach(([key,f])=>{
+    const entry=form.fields[key];
+    const conf=SCAN_CONFIDENCE[f.confidence]||SCAN_CONFIDENCE.low;
+    const found=f.confidence!=='not_found';
+    const target=entry?scanToTargetValue(entry,f.value):'';
+    const current=entry?scanCurrentValue(entry):'';
+    // On a brand-new record a <select> still reads as its first option ("No —
+    // pending"). That is a placeholder, not something a person typed, so it
+    // doesn't count as a value the scan would be clobbering.
+    const el=entry?document.getElementById(entry.el):null;
+    const untouchedDefault=!editing&&el&&el.tagName==='SELECT'&&current===(el.options[0]?.value||'');
+    const overwrites=Boolean(target&&current&&current!==target&&!untouchedDefault);
+
+    // Default-on for confident reads that don't clobber an existing value.
+    // Low-confidence reads and overwrites need a deliberate tick.
+    const checked=Boolean(entry&&target&&!overwrites&&(f.confidence==='high'||f.confidence==='medium'));
+    if(checked)suggested++;
+
+    const meta=[];
+    if(f.source_text&&f.source_text!==f.value)meta.push('Read as “'+esc(f.source_text)+'”');
+    if(f.unparsed)meta.push('<span class="scan-overwrite">Couldn’t read “'+esc(f.unparsed)+'” as a valid '+esc(f.type)+' — type it in if you can make it out.</span>');
+    if(overwrites)meta.push('<span class="scan-overwrite">Replaces “'+esc(scanDisplayValue(entry,current))+'”</span>');
+    if(!entry)meta.push('No matching field on this form — for reference only.');
+
+    rows.push(`<div class="scan-row${found?'':' is-missing'}" data-key="${esc(key)}">
+      <input type="checkbox" class="scan-check" data-key="${esc(key)}" ${checked?'checked':''} ${entry?'':'disabled'} aria-label="Fill ${esc(f.label)}"/>
+      <div class="scan-cell">
+        <div class="scan-fieldlabel">${esc(f.label)}${conf.badge?`<span class="badge ${conf.badge}">${conf.label}</span>`:`<span style="font-weight:400">${conf.label}</span>`}</div>
+        ${entry?scanRowInput(key,entry,target):''}
+        ${meta.length?`<div class="scan-meta">${meta.join(' · ')}</div>`:''}
+      </div>
+      <div class="scan-crop">${f.box
+        ? `<canvas data-crop="${esc(key)}" width="300" height="112" title="Tap to see this on the full page"></canvas>`
+        : '<div class="scan-nocrop">No crop</div>'}</div>
+    </div>`);
+  });
+
+  const remaining=typeof result.remaining==='number'?`${result.remaining} AI call${result.remaining===1?'':'s'} left this month.`:'';
+  document.getElementById('scan-modal-body').innerHTML=`
+    <div class="scan-note">
+      Nothing is saved yet. Check each value against the crop beside it, correct anything that is off,
+      then <strong>Fill form</strong> — you still have to press Save on the ${esc(form.title.toLowerCase())} afterwards.
+    </div>
+    <div class="scan-summary">
+      <img class="scan-thumb" src="${scanState.dataUrl}" alt="The page you scanned" onclick="openScanLightbox()"/>
+      <div style="flex:1;min-width:180px;font-size:12px;color:var(--text2);line-height:1.6">
+        ${scanState.notes?esc(scanState.notes)+'<br/>':''}
+        <strong>${suggested}</strong> of ${Object.keys(scanState.fields).length} field${Object.keys(scanState.fields).length===1?'':'s'} ticked by default.
+        ${remaining?'<br/>'+esc(remaining):''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline" style="padding:5px 12px;font-size:12px" onclick="setAllScanChecks(true)">Tick all</button>
+        <button class="btn btn-outline" style="padding:5px 12px;font-size:12px" onclick="setAllScanChecks(false)">Clear all</button>
+      </div>
+    </div>
+    <div id="scan-rows">${rows.join('')}</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:14px">
+      Crops are approximate — tap one to see where it sits on the full page.
+      <a style="color:var(--teal);cursor:pointer;text-decoration:underline" onclick="startScan(scanState.formType,'library')">Use a different photo</a>
+    </div>`;
+
+  document.getElementById('scan-modal-footer').style.display='flex';
+
+  // Editing a value implies you want it, so tick the row on first edit.
+  document.querySelectorAll('#scan-rows .scan-value').forEach(input=>{
+    input.addEventListener('input',()=>{
+      const box=document.querySelector(`#scan-rows .scan-check[data-key="${CSS.escape(input.dataset.key)}"]`);
+      if(box&&!box.disabled)box.checked=Boolean(String(input.value||'').trim());
+    });
+  });
+  document.querySelectorAll('#scan-rows canvas[data-crop]').forEach(cv=>{
+    const key=cv.dataset.crop;
+    drawScanCrop(cv,scanState.fields[key]?.box);
+    cv.addEventListener('click',()=>openScanLightbox(scanState.fields[key]?.box));
+  });
+
+  openScanModal();
+}
+
+// Mirror the target input so the reviewed value is always something the form
+// can actually hold — a select here means a select there, same options.
+function scanRowInput(key,entry,value){
+  const target=document.getElementById(entry.el);
+  const attrs=`class="scan-value" data-key="${esc(key)}"`;
+  if(target&&target.tagName==='SELECT'){
+    const opts=[...target.options]
+      .map(o=>`<option value="${esc(o.value)}"${o.value===value?' selected':''}>${esc(o.textContent.trim())}</option>`)
+      .join('');
+    return `<select ${attrs}><option value=""${value?'':' selected'}>— leave unchanged —</option>${opts}</select>`;
+  }
+  const type=target&&target.type==='date'?'date':(target&&target.type==='number'?'number':'text');
+  const step=type==='number'?' step="0.5"':'';
+  return `<input ${attrs} type="${type}"${step} value="${esc(value)}"/>`;
+}
+
+function setAllScanChecks(on){
+  document.querySelectorAll('#scan-rows .scan-check').forEach(box=>{
+    if(box.disabled)return;
+    const input=document.querySelector(`#scan-rows .scan-value[data-key="${CSS.escape(box.dataset.key)}"]`);
+    box.checked=on&&Boolean(input&&String(input.value||'').trim());
+  });
+}
+
+function drawScanCrop(cv,box){
+  const src=scanState.canvas;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#F8F7F4';
+  ctx.fillRect(0,0,cv.width,cv.height);
+  if(!src||!box)return;
+  // Pad generously: the model's boxes are approximate, and a crop that clips
+  // the value it is meant to prove is worse than no crop at all.
+  const padX=Math.max(0.02,(box[2]-box[0])*0.18);
+  const padY=Math.max(0.02,(box[3]-box[1])*0.7);
+  const x0=Math.max(0,box[0]-padX),y0=Math.max(0,box[1]-padY);
+  const x1=Math.min(1,box[2]+padX),y1=Math.min(1,box[3]+padY);
+  const sx=x0*src.width,sy=y0*src.height;
+  const sw=Math.max(1,(x1-x0)*src.width),sh=Math.max(1,(y1-y0)*src.height);
+  const scale=Math.min(cv.width/sw,cv.height/sh);
+  const dw=sw*scale,dh=sh*scale;
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(src,sx,sy,sw,sh,(cv.width-dw)/2,(cv.height-dh)/2,dw,dh);
+}
+
+function openScanLightbox(box){
+  if(!scanState.dataUrl)return;
+  const overlay=document.getElementById('scan-lightbox');
+  const img=document.getElementById('scan-lightbox-img');
+  const hl=document.getElementById('scan-lightbox-highlight');
+  img.src=scanState.dataUrl;
+  hl.style.display='none';
+  overlay.classList.add('open');
+  if(!box)return;
+  const place=()=>{
+    if(!img.offsetWidth)return;
+    hl.style.left=(box[0]*img.offsetWidth)+'px';
+    hl.style.top=(box[1]*img.offsetHeight)+'px';
+    hl.style.width=Math.max(4,(box[2]-box[0])*img.offsetWidth)+'px';
+    hl.style.height=Math.max(4,(box[3]-box[1])*img.offsetHeight)+'px';
+    hl.style.display='block';
+  };
+  if(img.complete)requestAnimationFrame(place);
+  else img.onload=()=>requestAnimationFrame(place);
+}
+function closeScanLightbox(){document.getElementById('scan-lightbox').classList.remove('open');}
+
+// The only write this feature performs: values go into the open modal's inputs.
+// Saving is still the user's next, separate action.
+function applyScanToForm(){
+  const form=SCAN_FIELD_MAP[scanState.formType];
+  if(!form)return;
+  const err=document.getElementById('scan-modal-error');
+  const filled=[];
+
+  document.querySelectorAll('#scan-rows .scan-check:checked').forEach(box=>{
+    const key=box.dataset.key;
+    const entry=form.fields[key];
+    const input=document.querySelector(`#scan-rows .scan-value[data-key="${CSS.escape(key)}"]`);
+    if(!entry||!input)return;
+    const value=String(input.value||'').trim();
+    if(!value)return;
+    const target=document.getElementById(entry.el);
+    if(!target)return;
+
+    if(entry.kind==='role'){
+      const match=ROLE_OPTIONS.find(r=>r.label.toLowerCase()===value.toLowerCase());
+      if(match)selectRoleOption(match.value,match.label);
+      else selectCustomRole(value);
+    }else{
+      target.value=value;
+      target.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    filled.push(target);
+  });
+
+  if(!filled.length){
+    err.textContent='Nothing is ticked, so there is nothing to fill in.';
+    err.classList.add('show');
+    return;
+  }
+
+  closeScanModal();
+  // Flash what changed so the reviewer can see exactly what the scan touched.
+  filled.forEach(el=>{
+    el.classList.remove('scan-filled');
+    void el.offsetWidth;
+    el.classList.add('scan-filled');
+  });
+  filled[0].focus({preventScroll:true});
+  filled[0].scrollIntoView({block:'center',behavior:'smooth'});
+}
+
 // ===== AUTH STATE =====
 sb.auth.onAuthStateChange(async(event,session)=>{
   if(event==='PASSWORD_RECOVERY'){
@@ -3381,7 +3832,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button><button class="modal-close" onclick="closeResidentModal()">×</button></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
@@ -3419,7 +3870,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button><button class="modal-close" onclick="closeMedModal()">×</button></div>
   <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
@@ -3433,7 +3884,7 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
-    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
@@ -3474,6 +3925,29 @@ function showSetNewPassword(){
       <button class="btn btn-primary" onclick="saveStaff()">Save staff member</button>
     </div>
   </div>
+</div>
+
+<!-- Scan to fill: review gate. Nothing here writes to the database — "Fill form"
+     only populates the inputs of the modal underneath, which still needs Save. -->
+<div class="modal-overlay" id="scan-modal" onclick="if(event.target===this)closeScanModal()">
+  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="scan-modal-title">Review scan</h3>
+      <button class="modal-close" onclick="closeScanModal()">×</button>
+    </div>
+    <div id="scan-modal-body"></div>
+    <div class="error-msg" id="scan-modal-error"></div>
+    <div class="modal-footer" id="scan-modal-footer" style="display:none">
+      <button class="btn btn-outline" style="margin-right:auto" onclick="startScan(scanState.formType)">Retake</button>
+      <button class="btn btn-outline" onclick="closeScanModal()">Cancel</button>
+      <button class="btn btn-primary" id="scan-apply-btn" onclick="applyScanToForm()">Fill form</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="scan-file-camera" accept="image/*" capture="environment" style="display:none" onchange="onScanFile(this)"/>
+<input type="file" id="scan-file-library" accept="image/*" style="display:none" onchange="onScanFile(this)"/>
+<div class="scan-lightbox" id="scan-lightbox" onclick="closeScanLightbox()">
+  <div class="scan-lightbox-inner"><img id="scan-lightbox-img" alt="Scanned page"/><div class="scan-highlight" id="scan-lightbox-highlight" style="display:none"></div></div>
 </div>
 
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
