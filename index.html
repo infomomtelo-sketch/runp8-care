@@ -3370,14 +3370,31 @@ async function onScanFile(input){
     const{data:{session}}=await sb.auth.getSession();
     if(!session?.access_token)throw new Error('Your session expired. Sign in again and retry.');
 
-    const res=await fetch(EXTRACT_WORKER,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({formType,image:{media_type:'image/jpeg',data:prepared.base64}})
-    });
+    // Reading a dense page can legitimately take a while, but never forever —
+    // without this the modal sits on "Reading the page…" with no way out.
+    const abort=new AbortController();
+    const timer=setTimeout(()=>abort.abort(),150000);
+    let res;
+    try{
+      res=await fetch(EXTRACT_WORKER,{
+        method:'POST',
+        signal:abort.signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({formType,image:{media_type:'image/jpeg',data:prepared.base64}})
+      });
+    }catch(netErr){
+      throw new Error(netErr.name==='AbortError'
+        ?'That page took too long to read. Try photographing one section at a time.'
+        :'Could not reach the scanning service. Check your connection and try again.');
+    }finally{
+      clearTimeout(timer);
+    }
     const data=await res.json().catch(()=>null);
     if(!res.ok||!data||data.error){
-      throw new Error(data?.message||`Could not read that photo. (HTTP ${res.status})`);
+      // Always leave something diagnosable on screen, even when the worker
+      // sends no message — a bare "it failed" is not actionable.
+      const code=data?.error?String(data.error):`http_${res.status}`;
+      throw new Error(data?.message||`Could not read that photo. (${code}, HTTP ${res.status})`);
     }
     scanState.fields=data.fields||{};
     scanState.notes=data.notes||'';

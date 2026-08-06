@@ -408,8 +408,24 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
+    // Health check. Reports which bindings are PRESENT — booleans only, never
+    // values — because "the script deployed" and "the script is configured"
+    // are different questions and only the second one predicts whether a scan
+    // will work. A misnamed secret is invisible without this.
     if (request.method === 'GET') {
-      return json({ status: 'ok', forms: Object.keys(FORMS) });
+      const config = {
+        SUPABASE_URL: Boolean(env.SUPABASE_URL),
+        SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
+        ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
+      };
+      const missing = Object.keys(config).filter((k) => !config[k]);
+      return json({
+        status: missing.length ? 'misconfigured' : 'ok',
+        forms: Object.keys(FORMS),
+        model: env.EXTRACT_MODEL || 'claude-opus-5',
+        config,
+        ...(missing.length ? { missing, hint: `Set ${missing.join(', ')} on this Worker. Names are case-sensitive and must match exactly.` } : {}),
+      });
     }
 
     if (request.method !== 'POST') {
@@ -434,9 +450,27 @@ export default {
         return json({ error: 'image_too_large', message: 'That photo is too large. Retake it or let the app resize it before sending.' }, 413);
       }
 
+      // Checked before the credit is deducted below. A misconfigured Worker is
+      // our problem, not the caller's, and it must not cost them an AI call.
+      if (!env.ANTHROPIC_API_KEY) {
+        return json({
+          error: 'not_configured',
+          message: 'This Worker is missing its ANTHROPIC_API_KEY binding. No AI call was used.',
+        }, 503);
+      }
+
       const token = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
       const user = await getUserFromToken(token, env);
-      if (!user?.id) return json({ error: 'Unauthorized' }, 401);
+      if (!user?.id) {
+        // Two very different causes land here, so say which is which rather
+        // than making the caller guess from a bare 401.
+        return json({
+          error: 'unauthorized',
+          message: env.SUPABASE_SERVICE_KEY
+            ? 'Your session could not be verified. Sign out and back in, then try again.'
+            : 'This Worker is missing its SUPABASE_SERVICE_KEY binding, so it cannot verify who you are.',
+        }, 401);
+      }
 
       const profile = await getProfile(user.id, env);
       const plan = resolvePlan(profile);
@@ -468,7 +502,11 @@ export default {
 
       const anthropicBody = {
         model: env.EXTRACT_MODEL || 'claude-opus-5',
-        max_tokens: 8000,
+        // Thinking is ON by default on Claude Opus 5 and max_tokens caps
+        // thinking + response together, so this needs real headroom. At 8000 a
+        // dense page could spend the whole budget reasoning and return a
+        // truncated answer. Unused tokens are not billed.
+        max_tokens: 16000,
         system: systemPrompt(form),
         output_config: {
           effort: 'medium',
