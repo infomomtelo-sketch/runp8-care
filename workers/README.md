@@ -58,10 +58,20 @@ Backs the "Scan to fill" button in the staff, resident, and medication modals:
 a photo of a paper form goes in, that form's fields come back as JSON for a
 human to review before anything is saved.
 
-- Route: `https://title22-extract.infomomtelo.workers.dev/api/extract`
-- **Not yet deployed** — `cd workers/title22-extract && wrangler deploy`, set
-  the three secrets below, then add the route in the dashboard. Until then the
-  frontend button surfaces a "could not read that photo" error.
+- Route: `https://mission-control.infomomtelo.workers.dev/api/extract`
+- **The deployed script is named `mission-control`, not `title22-extract`.**
+  Cloudflare auto-generated that name when the Worker was created from the
+  dashboard, and Workers cannot be renamed. The source directory keeps the
+  descriptive name; `wrangler.toml`'s `name` field is what `wrangler deploy`
+  targets, so leave it as `mission-control` or a deploy will silently create a
+  second, empty Worker. To move to the intended name, create a new Worker
+  called `title22-extract`, deploy this source to it, set the three secrets
+  again, update `wrangler.toml` and `EXTRACT_WORKER` in `index.html`, then
+  delete `mission-control`.
+- Deployed 2026-08-05 from the Cloudflare dashboard (paste-the-file flow), not
+  via `wrangler`. Re-pull the deployed source per the instructions at the top
+  of this file before changing it, in case it has been edited in the dashboard
+  since.
 - Model: `claude-opus-5`, overridable with the `EXTRACT_MODEL` binding. This
   reads handwriting and small pharmacy print off phone photos, which is the
   whole point of the worker — measure on real scans before stepping down.

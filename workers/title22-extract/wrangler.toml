@@ -1,4 +1,13 @@
-name = "title22-extract"
+# The deployed script is named `mission-control`, not `title22-extract`:
+# Cloudflare auto-generated that name when the Worker was created from the
+# dashboard, and Workers cannot be renamed. This `name` MUST match the live
+# script — `wrangler deploy` targets whatever is named here, so changing it
+# creates a second, empty Worker instead of updating the real one.
+#
+# To move to the intended name: create a new Worker called `title22-extract`,
+# deploy this source to it, set the three secrets again, update this `name`
+# plus EXTRACT_WORKER in index.html, then delete `mission-control`.
+name = "mission-control"
 main = "index.js"
 compatibility_date = "2026-08-05"
 
@@ -16,4 +25,4 @@ compatibility_date = "2026-08-05"
 #                            only step down after measuring on real scans.
 #
 # Public route (configured in the Cloudflare dashboard, not here):
-#   https://title22-extract.infomomtelo.workers.dev/api/extract
+#   https://mission-control.infomomtelo.workers.dev/api/extract

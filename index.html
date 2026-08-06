@@ -881,7 +881,10 @@ const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
 const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
-const EXTRACT_WORKER = 'https://title22-extract.infomomtelo.workers.dev/api/extract';
+// Deployed script is named `mission-control` (Cloudflare auto-named it at
+// creation and Workers can't be renamed). The source lives in
+// workers/title22-extract/ — see that worker's wrangler.toml before deploying.
+const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extract';
 
 function openStripe(url){
   try{
