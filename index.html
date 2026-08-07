@@ -886,7 +886,16 @@ const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 // workers/title22-extract/ — see that worker's wrangler.toml before deploying.
 const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extract';
 
+// Checkout link -> plan name, so checkout_started events record which tier.
+const STRIPE_PLANS = {
+  [STRIPE_STARTER]:'starter',
+  [STRIPE_PRO]:'pro',
+  [STRIPE_SPECIALIST]:'specialist',
+  [STRIPE_AGENCY]:'agency'
+};
+
 function openStripe(url){
+  track('checkout_started',{plan:STRIPE_PLANS[url]||null});
   try{
     const link=new URL(url);
     if(currentUser?.id)link.searchParams.set('client_reference_id',currentUser.id);
@@ -898,6 +907,25 @@ function openStripe(url){
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}
 });
+
+// Lightweight usage analytics — writes a row into public.events. Fire and
+// forget: never awaited, never throws, and never blocks the calling flow, so
+// an analytics outage can't break a save or a login. Skipped when signed out
+// or in demo mode (RLS blocks those writes, and a rejected insert would just
+// noise up the console). created_at comes from the DB default, so the
+// timestamp is server-side and immune to client clock skew.
+function track(eventName,metadata){
+  try{
+    if(!currentUser||demoMode)return;
+    sb.from('events').insert({
+      user_id:currentUser.id,
+      facility_id:currentFacility?.id||null,
+      role:currentUserRole,
+      event_name:eventName,
+      metadata:metadata||null
+    }).then(()=>{},()=>{});
+  }catch(e){/* analytics must never surface to the user */}
+}
 
 // Re-check entitlement when the user returns to the tab (e.g. after completing a
 // Stripe checkout in another tab), so access unlocks without a manual reload.
@@ -1138,6 +1166,7 @@ async function handleLogin(){
   currentUser=data.user;
   await ensureProfile(currentUser);
   await loadApp();
+  track('login_success',{method:'password'});
 }
 
 async function handleLogout(){
@@ -1876,7 +1905,7 @@ async function saveResident(){
     if(!e){const idx=residents.findIndex(r=>r.id===currentResidentId);if(idx>-1)residents[idx]={...residents[idx],...payload};}
   }else{
     const{data,error:e}=await sb.from('residents').insert(payload).select().single();
-    error=e;if(!e&&data)residents.push(data);
+    error=e;if(!e&&data){residents.push(data);track('record_created',{record_type:'resident',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   closeResidentModal();renderResidents();
@@ -2110,7 +2139,7 @@ async function saveStaff(){
     if(!e){const idx=staffList.findIndex(s=>s.id===currentStaffId);if(idx>-1)staffList[idx]={...staffList[idx],...payload};}
   }else{
     const{data,error:e}=await sb.from('staff').insert(payload).select().single();
-    error=e;if(!e&&data)staffList.push(data);
+    error=e;if(!e&&data){staffList.push(data);track('record_created',{record_type:'staff',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   closeStaffModal();renderStaff();
@@ -2191,7 +2220,7 @@ async function saveMedication(){
   };
   let error;
   if(currentMedId){const{error:e}=await sb.from('medications').update(payload).eq('id',currentMedId);error=e;}
-  else{const{error:e}=await sb.from('medications').insert(payload);error=e;}
+  else{const{error:e}=await sb.from('medications').insert(payload);error=e;if(!e)track('record_created',{record_type:'medication'});}
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   closeMedModal();await loadMedications();
 }
@@ -2313,7 +2342,7 @@ async function saveIncident(){
     if(!e){const idx=incidents.findIndex(i=>i.id===currentIncidentId);if(idx>-1)incidents[idx]={...incidents[idx],...payload};}
   }else{
     const{data,error:e}=await sb.from('incidents').insert(payload).select('*, residents(name, full_name)').single();
-    error=e;if(!e&&data)incidents.unshift(data);
+    error=e;if(!e&&data){incidents.unshift(data);track('record_created',{record_type:'incident',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   closeIncidentModal();renderIncidents();refreshDashboard();
@@ -3349,6 +3378,7 @@ function startScan(formType,source){
   scanState.formType=formType;
   const input=document.getElementById(source==='library'?'scan-file-library':'scan-file-camera');
   input.value='';
+  track('ocr_scan_started',{form_type:formType,source:source||'camera'});
   input.click();
 }
 
@@ -3381,6 +3411,7 @@ async function onScanFile(input){
     }
     scanState.fields=data.fields||{};
     scanState.notes=data.notes||'';
+    track('ocr_scan_completed',{form_type:formType,field_count:Object.keys(scanState.fields).length});
     renderScanReview(data);
   }catch(e){
     showScanError(e.message||'Something went wrong reading that photo.');
@@ -3702,6 +3733,7 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     currentUser=session.user;
     await ensureProfile(currentUser);
     await loadApp();
+    track('login_success',{method:'oauth'});
   }
 });
 
