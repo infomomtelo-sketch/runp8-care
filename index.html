@@ -3378,6 +3378,7 @@ function startScan(formType,source){
   scanState.formType=formType;
   const input=document.getElementById(source==='library'?'scan-file-library':'scan-file-camera');
   input.value='';
+  track('ocr_scan_started',{form_type:formType,source:source||'camera'});
   input.click();
 }
 
@@ -3410,6 +3411,7 @@ async function onScanFile(input){
     }
     scanState.fields=data.fields||{};
     scanState.notes=data.notes||'';
+    track('ocr_scan_completed',{form_type:formType,field_count:Object.keys(scanState.fields).length});
     renderScanReview(data);
   }catch(e){
     showScanError(e.message||'Something went wrong reading that photo.');
