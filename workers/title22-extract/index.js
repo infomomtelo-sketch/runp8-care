@@ -224,43 +224,48 @@ const FORMS = {
 };
 
 function buildSchema(form) {
-  const props = {};
-  const required = [];
-  for (const f of form.fields) {
-    required.push(f.key);
-    props[f.key] = {
-      type: 'object',
-      additionalProperties: false,
-      required: ['value', 'confidence', 'source_text', 'box'],
-      properties: {
-        value: { type: 'string', description: `${f.label}. ${f.desc}` },
-        confidence: {
-          type: 'string',
-          enum: ['high', 'medium', 'low', 'not_found'],
-          description: 'high = printed clearly and unambiguously; medium = legible but inferred, abbreviated, or partly obscured; low = handwriting or image quality left real doubt; not_found = this field does not appear on the page.',
-        },
-        source_text: {
-          type: 'string',
-          description: 'The raw text on the page this value came from, transcribed verbatim before any cleanup. Empty when confidence is not_found.',
-        },
-        box: {
-          type: 'array',
-          items: { type: 'number' },
-          description: 'Approximate location of source_text as exactly four numbers [x0, y0, x1, y1], each 0-1 as a fraction of image width/height, origin at the top-left. Empty array when confidence is not_found.',
-        },
-      },
-    };
-  }
-
+  // A LIST of uniform entries, not one named property per field.
+  //
+  // The earlier shape declared every field as its own named property with a
+  // nested object under it. Structured outputs compiles the schema into a
+  // grammar, and repeating that nested shape 16 times blew the size limit —
+  // the API rejected every request with "The compiled grammar is too large"
+  // before the model ever looked at the photo. Here the entry shape is
+  // declared once and `key` is a plain enum, so the grammar stays flat as
+  // forms grow. Field descriptions moved to the system prompt, which is
+  // prose and costs the grammar nothing.
   return {
     type: 'object',
     additionalProperties: false,
     required: ['fields', 'notes'],
     properties: {
-      fields: { type: 'object', additionalProperties: false, required, properties: props },
+      fields: {
+        type: 'array',
+        description: 'One entry per field listed in the system prompt. Include every field, even the ones not present on the page — use confidence "not_found" for those.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['key', 'value', 'confidence', 'source_text', 'box'],
+          properties: {
+            key: { type: 'string', enum: form.fields.map((f) => f.key) },
+            value: { type: 'string', description: 'The value for this field, cleaned up for entry into a form. Empty string when not found.' },
+            confidence: {
+              type: 'string',
+              enum: ['high', 'medium', 'low', 'not_found'],
+              description: 'high = printed clearly; medium = legible but abbreviated or partly obscured; low = handwriting or image quality left real doubt; not_found = not on this page.',
+            },
+            source_text: { type: 'string', description: 'The raw text on the page this came from, verbatim, before cleanup. Empty when not_found.' },
+            box: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Where source_text sits: exactly four numbers [x0, y0, x1, y1], each 0-1 as a fraction of image width/height from the top-left. Empty array when not_found.',
+            },
+          },
+        },
+      },
       notes: {
         type: 'string',
-        description: 'One or two sentences for the reviewer: what kind of document this appears to be, anything illegible, and whether the page looks like it holds more records than the one extracted. Empty string if there is nothing worth flagging.',
+        description: 'One or two sentences for the reviewer: what kind of document this appears to be, anything illegible, and whether the page holds more records than the one extracted. Empty string if nothing is worth flagging.',
       },
     },
   };
@@ -278,6 +283,13 @@ function systemPrompt(form) {
     '- Dates on these forms are US-format (MM/DD/YYYY) unless the page clearly says otherwise.',
     '- If the page is the wrong kind of document for these fields, return not_found for everything and say so in `notes`.',
     '- This output is reviewed by a caregiver before it is saved. Do not add commentary about clinical appropriateness, dosing, or care decisions — transcribe only.',
+    '',
+    // These live here rather than in the JSON schema on purpose: schema
+    // descriptions are compiled into the output grammar and count against its
+    // size limit, while the system prompt is prose and costs it nothing.
+    `Return exactly ${form.fields.length} entries in \`fields\`, one for each key below, in this order. Include a key even when it is not on the page — mark that one "not_found" with an empty value.`,
+    '',
+    ...form.fields.map((f) => `- ${f.key} — ${f.label}. ${f.desc}`),
   ].join('\n');
 }
 
@@ -371,7 +383,16 @@ function normalizeBox(box) {
 // doesn't survive normalization rather than passing junk to the review sheet.
 function shapeResult(form, parsed) {
   const out = {};
-  const src = parsed?.fields || {};
+
+  // The model returns a list; index it by key so the rest of this function —
+  // and the response the frontend consumes — stays keyed by field name.
+  // Entries for unknown keys are dropped; missing keys fall through as
+  // not_found below, so a short or reordered list can't shift values onto the
+  // wrong fields.
+  const src = {};
+  for (const entry of Array.isArray(parsed?.fields) ? parsed.fields : []) {
+    if (entry && typeof entry.key === 'string') src[entry.key] = entry;
+  }
 
   for (const f of form.fields) {
     const raw = src[f.key] || {};
