@@ -75,6 +75,12 @@ It is not in `migrations/`, so its RLS policies and constraints aren't visible h
 Assume facility-scoped policies (the client-side upload path implies it), but verify in
 Supabase before relying on it.
 
+Because of that, code writing to `documents` cannot assume a column exists. `insertDocumentRow()`
+retries once without `issued_at` / `expires_at` if they are rejected, and rewrites the error
+to name the migration that adds whatever else is missing. Deliberately **not** retried:
+`training_id`. A certificate filed with no link to its training entry looks like a
+successful attach and then never appears, which is worse than a clear failure.
+
 ---
 
 ## Rules that are not negotiable
@@ -115,10 +121,24 @@ product whose entire purpose is telling you whether you'd survive an inspection,
 the most serious thing in the codebase.
 
 Agreed direction: derive from filed documents, keep the typed value, and show anything
-unverified rather than silently overwriting. `documents` already stores files; the scan
-path now files them. Next step is `documents.issued_at` / `expires_at` populated from the
-scan, with badges and alerts reading the newest filed document and falling back to the
-typed column.
+unverified rather than silently overwriting.
+
+**Done so far — document slots.** Every "on file?" control now sits inside a slot
+(`DOC_SLOTS` in `index.html`, rendered by `renderDocSlots`) that pairs the requirement
+with the document proving it: scan or upload to attach, view / print / download / share to
+produce it in an inspection. The typed value is still saved — nothing regressed, the score
+still works — but it is now the secondary line, and **a Yes with no document attached
+renders amber and says an inspector will ask to see it**. Filing a document flips the
+typed control to Yes; evidence beats claim, and Save is still the only writer.
+
+Slots exist on staff (TB, CPR, First Aid, LiveScan, Mandated Reporter, 16-hour training),
+on residents (LIC 601, LIC 602, ISP — upload only, no scan, pending the BAA), and on each
+Training history entry (certificate linked by `documents.training_id`). Documents carry
+`issued_at` / `expires_at` read off the form they were filed from.
+
+**Still open:** badges, the compliance score and the expiry alerts all still read the typed
+column. They should read the newest filed document, fall back to the typed value, and mark
+the difference — the data to do it now exists.
 
 ---
 
