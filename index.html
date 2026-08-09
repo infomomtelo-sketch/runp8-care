@@ -2098,7 +2098,15 @@ function openStaffModal(staffId){
   document.getElementById('staff-delete-btn').style.display=currentStaffId?'inline-block':'none';
   document.getElementById('staff-modal').classList.add('open');
 }
-function closeStaffModal(){document.getElementById('staff-modal').classList.remove('open');}
+function closeStaffModal(){
+  document.getElementById('staff-modal').classList.remove('open');
+  // Abandoning the form abandons its scan. Without this a document reviewed
+  // here, then cancelled, would attach itself to whichever record was saved
+  // next. saveStaff consumes it before calling this, so a real save is
+  // unaffected.
+  pendingScanDoc=null;
+  scanState.file=null;
+}
 function deleteStaffFromModal(){if(!currentStaffId)return;const s=staffList.find(x=>x.id===currentStaffId);closeStaffModal();deleteStaff(currentStaffId,s?.full_name||s?.name||'this staff member');}
 
 async function saveStaff(){
@@ -2133,16 +2141,27 @@ async function saveStaff(){
     status:isActive?'active':'inactive',
   };
   let error;
+  let savedId=currentStaffId;
   if(currentStaffId){
     const{error:e}=await sb.from('staff').update(payload).eq('id',currentStaffId);
     error=e;
     if(!e){const idx=staffList.findIndex(s=>s.id===currentStaffId);if(idx>-1)staffList[idx]={...staffList[idx],...payload};}
   }else{
     const{data,error:e}=await sb.from('staff').insert(payload).select().single();
-    error=e;if(!e&&data){staffList.push(data);track('record_created',{record_type:'staff',record_id:data.id});}
+    error=e;if(!e&&data){staffList.push(data);savedId=data.id;track('record_created',{record_type:'staff',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
+
+  // Now the row has an id, so a scanned certificate has something to attach to.
+  // Never blocks the save: the record is already stored, and a failed
+  // attachment is worth reporting but not worth undoing a successful save.
+  const filed=await fileScannedDocument({staffId:savedId});
   closeStaffModal();renderStaff();
+  if(typeof filed==='string'){
+    alert('The staff member was saved, but the scanned document could not be filed:\n\n'+filed+'\n\nYou can still upload it from the Documents tab.');
+  }else if(filed===true){
+    await loadDocuments();
+  }
 }
 async function deleteStaff(id,name){
   if(!confirm(`Delete "${name}"?`))return;
@@ -2870,7 +2889,14 @@ async function loadDocuments(){
     if(!rs){const{data}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');rs=data||[];}
     resSel.innerHTML='<option value="">Not linked to a resident</option>'+rs.map(r=>`<option value="${esc(r.id)}">${esc(r.name||r.full_name||'Resident')}</option>`).join('');
   }
-  const{data,error}=await sb.from('documents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  // staff(...) needs the staff_id column from
+  // migrations/2026-08-09_title22_document_slots.sql. Until that has run the
+  // join is rejected, so fall back to the resident-only query rather than
+  // leaving the whole Documents tab broken.
+  let{data,error}=await sb.from('documents').select('*, residents(name,full_name), staff(full_name,name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  if(error){
+    ({data,error}=await sb.from('documents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}));
+  }
   facilityDocs=error?[]:(data||[]);
   renderDocuments();
 }
@@ -2883,15 +2909,19 @@ function renderDocuments(){
   const canFaxTier=['pro','specialist','agency'].includes(t22Plan); // Fax = paid Facility+ add-on (coming soon)
   list.innerHTML=facilityDocs.map(d=>{
     const res=d.residents?(d.residents.name||d.residents.full_name||''):'';
+    const stf=d.staff?(d.staff.full_name||d.staff.name||''):'';
+    const who=res||stf;
     const when=d.uploaded_at?new Date(d.uploaded_at).toLocaleDateString():'';
     const size=d.size_bytes?(d.size_bytes>1048576?(d.size_bytes/1048576).toFixed(1)+' MB':Math.max(1,Math.round(d.size_bytes/1024))+' KB'):'';
     return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px;display:flex;align-items:center;gap:14px">
       <div style="font-size:22px">📄</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px;word-break:break-word">${esc(d.title||d.file_name||'Document')}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(DOC_TYPE_LABELS[d.doc_type]||d.doc_type||'Document')}${res?' \u00b7 '+esc(res):''}${when?' \u00b7 '+when:''}${size?' \u00b7 '+size:''}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(DOC_TYPE_LABELS[d.doc_type]||d.doc_type||'Document')}${who?' \u00b7 '+esc(who):''}${when?' \u00b7 '+when:''}${size?' \u00b7 '+size:''}${d.source==='scan'?' \u00b7 \ud83d\udcf7 scanned':''}</div>
       </div>
       <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="openDoc('${esc(d.storage_path)}')">View / Print</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="downloadDoc('${esc(d.storage_path)}','${esc(d.file_name||d.title||'document')}')" title="Download a copy">\u2b07 Download</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="shareDoc('${esc(d.storage_path)}','${esc(d.title||d.file_name||'Document')}')" title="Share a time-limited link">\u2197 Share</button>
       ${canFaxTier?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`:''}
       ${del?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteDoc('${esc(d.id)}','${esc(d.storage_path)}')">Delete</button>`:''}
     </div>`;
@@ -2917,6 +2947,44 @@ async function handleDocUpload(inp){
     await loadDocuments();
   }catch(e){ if(status)status.textContent='Upload failed: '+((e&&e.message)||e); }
 }
+// Download a copy rather than opening a viewer. Fetching the blob first means
+// the browser saves it under its real filename instead of the storage UUID.
+async function downloadDoc(path,filename){
+  try{
+    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,120);
+    if(error||!data?.signedUrl)throw error||new Error('no url');
+    const res=await fetch(data.signedUrl);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename||'document';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){ alert('Could not download this document.'); }
+}
+
+// Shares a signed link that expires in an hour. The bucket is private, so this
+// is the only way to hand a document to a pharmacy or physician without making
+// it public — and it stops working on its own, which a permanent link would not.
+async function shareDoc(path,title){
+  try{
+    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,3600);
+    if(error||!data?.signedUrl)throw error||new Error('no url');
+    const url=data.signedUrl;
+    if(navigator.share){
+      try{ await navigator.share({title:title||'Document',url}); return; }
+      catch(shareErr){ if(shareErr&&shareErr.name==='AbortError')return; }
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(url);
+      alert('A secure link has been copied to your clipboard.\n\nIt expires in 1 hour.');
+      return;
+    }
+    window.prompt('Secure link (expires in 1 hour):',url);
+  }catch(e){ alert('Could not create a share link for this document.'); }
+}
+
 async function openDoc(path){
   try{
     const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,120);
@@ -3361,7 +3429,7 @@ const SCAN_FIELD_MAP={
 const SCAN_MAX_EDGE=2000;
 const SCAN_MAX_B64=4000000;   // stay under the worker's 4.5M cap
 
-let scanState={formType:null,canvas:null,dataUrl:null,fields:null,notes:''};
+let scanState={formType:null,canvas:null,dataUrl:null,fields:null,notes:'',file:null,isPdf:false};
 
 const SCAN_CONFIDENCE={
   high:{badge:'badge-green',label:'High'},
@@ -3376,6 +3444,9 @@ function startScan(formType,source){
   if(!canEdit()){alert('You do not have permission to add records.');return;}
   if(!currentFacility){alert('Open a facility first.');return;}
   scanState.formType=formType;
+  // A fresh scan supersedes anything reviewed but not yet saved.
+  pendingScanDoc=null;
+  scanState.file=null;
   const input=document.getElementById(source==='library'?'scan-file-library':'scan-file-camera');
   input.value='';
   track('ocr_scan_started',{form_type:formType,source:source||'camera'});
@@ -3392,10 +3463,26 @@ async function onScanFile(input){
 
   showScanBusy(form.title);
   try{
-    const img=await readScanImage(file);
-    const prepared=prepareScanImage(img);
+    // Two shapes come through here. A photo gets downscaled and re-encoded so
+    // the upload stays small and the crops line up with what the model saw. A
+    // PDF is sent through untouched — it has pages rather than pixels, so there
+    // is nothing to resize and no canvas to crop from.
+    const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name||'');
+    let prepared;
+    if(isPdf){
+      if(file.size>SCAN_MAX_PDF_BYTES)throw new Error('That PDF is too large. Split it or send the pages you need.');
+      prepared={canvas:null,dataUrl:null,base64:await readFileBase64(file),mediaType:'application/pdf'};
+    }else{
+      const img=await readScanImage(file);
+      const p=prepareScanImage(img);
+      prepared={canvas:p.canvas,dataUrl:p.dataUrl,base64:p.base64,mediaType:'image/jpeg'};
+    }
     scanState.canvas=prepared.canvas;
     scanState.dataUrl=prepared.dataUrl;
+    // Kept so the reviewed document can be filed rather than thrown away — the
+    // whole point of scanning a compliance record is having the record.
+    scanState.file=file;
+    scanState.isPdf=isPdf;
 
     const{data:{session}}=await sb.auth.getSession();
     if(!session?.access_token)throw new Error('Your session expired. Sign in again and retry.');
@@ -3410,7 +3497,7 @@ async function onScanFile(input){
         method:'POST',
         signal:abort.signal,
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-        body:JSON.stringify({formType,image:{media_type:'image/jpeg',data:prepared.base64}})
+        body:JSON.stringify({formType,image:{media_type:prepared.mediaType,data:prepared.base64}})
       });
     }catch(netErr){
       throw new Error(netErr.name==='AbortError'
@@ -3433,6 +3520,68 @@ async function onScanFile(input){
   }catch(e){
     showScanError(e.message||'Something went wrong reading that photo.');
   }
+}
+
+// Anthropic caps a base64 PDF at 32MB; stay well under so a slow phone upload
+// isn't wasted on a request the API will reject anyway.
+const SCAN_MAX_PDF_BYTES=12000000;
+
+// A reviewed document waiting for its record to exist. Set when "Fill form" is
+// pressed with filing ticked, consumed by the form's save handler once the row
+// has an id, and cleared either way so it can never attach to the next record.
+let pendingScanDoc=null;
+
+// Files the scanned document against a saved record. Deliberately never throws:
+// the record is already saved by this point, and losing the attachment is worth
+// telling someone about but not worth failing the save over.
+async function fileScannedDocument({staffId=null,residentId=null}={}){
+  const pending=pendingScanDoc;
+  pendingScanDoc=null;
+  if(!pending||!currentFacility)return null;
+  try{
+    const file=pending.file;
+    const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+    const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+    const path=currentFacility.id+'/'+id+'.'+ext;
+    const{error:upErr}=await sb.storage.from('facility-documents')
+      .upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+    if(upErr)throw upErr;
+    const{error:insErr}=await sb.from('documents').insert({
+      facility_id:currentFacility.id,
+      resident_id:residentId,
+      staff_id:staffId,
+      doc_type:pending.docType,
+      title:file.name,
+      file_name:file.name,
+      storage_path:path,
+      mime_type:file.type||null,
+      size_bytes:file.size,
+      uploaded_by:currentUser.id,
+      source:'scan',
+    });
+    if(insErr)throw insErr;
+    track('scan_document_filed',{form_type:pending.formType,doc_type:pending.docType});
+    return true;
+  }catch(e){
+    // Most likely cause is the migration not having been run yet, which would
+    // reject staff_id and source as unknown columns.
+    console.warn('Scanned document could not be filed:',e&&e.message);
+    return String((e&&e.message)||e);
+  }
+}
+
+function readFileBase64(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>reject(new Error('Could not read that file.'));
+    fr.onload=()=>{
+      const s=String(fr.result||'');
+      const comma=s.indexOf(',');
+      if(comma<0){reject(new Error('Could not read that file.'));return;}
+      resolve(s.slice(comma+1));
+    };
+    fr.readAsDataURL(file);
+  });
 }
 
 function readScanImage(file){
@@ -3483,6 +3632,11 @@ function closeScanModal(){
   scanState.canvas=null;
   scanState.dataUrl=null;
   scanState.fields=null;
+  // scanState.file is deliberately NOT cleared here. The record is filed during
+  // Save, which happens after this modal closes; dropping it here would throw
+  // away the document the scan existed to capture. applyScanToForm hands it to
+  // pendingScanDoc, and saveStaff clears it once the upload settles.
+  scanState.isPdf=false;
 }
 
 function showScanBusy(title){
@@ -3585,11 +3739,13 @@ function renderScanReview(result){
   const remaining=typeof result.remaining==='number'?`${result.remaining} AI call${result.remaining===1?'':'s'} left this month.`:'';
   document.getElementById('scan-modal-body').innerHTML=`
     <div class="scan-note">
-      Nothing is saved yet. Check each value against the crop beside it, correct anything that is off,
+      Nothing is saved yet. Check each value ${scanState.isPdf?'against the document':'against the crop beside it'}, correct anything that is off,
       then <strong>Fill form</strong> — you still have to press Save on the ${esc(form.title.toLowerCase())} afterwards.
     </div>
     <div class="scan-summary">
-      <img class="scan-thumb" src="${scanState.dataUrl}" alt="The page you scanned" onclick="openScanLightbox()"/>
+      ${scanState.isPdf
+        ? '<div class="scan-thumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;cursor:default" title="PDF document">📄</div>'
+        : `<img class="scan-thumb" src="${scanState.dataUrl}" alt="The page you scanned" onclick="openScanLightbox()"/>`}
       <div style="flex:1;min-width:180px;font-size:12px;color:var(--text2);line-height:1.6">
         ${scanState.notes?esc(scanState.notes)+'<br/>':''}
         <strong>${suggested}</strong> of ${Object.keys(scanState.fields).length} field${Object.keys(scanState.fields).length===1?'':'s'} ticked by default.
@@ -3601,9 +3757,10 @@ function renderScanReview(result){
       </div>
     </div>
     <div id="scan-rows">${rows.join('')}</div>
+    ${scanFileItBlock(scanState.formType)}
     <div style="font-size:11px;color:var(--text2);margin-top:14px">
-      Crops are approximate — tap one to see where it sits on the full page.
-      <a style="color:var(--teal);cursor:pointer;text-decoration:underline" onclick="startScan(scanState.formType,'library')">Use a different photo</a>
+      ${scanState.isPdf?'':'Crops are approximate — tap one to see where it sits on the full page. '}
+      <a style="color:var(--teal);cursor:pointer;text-decoration:underline" onclick="startScan(scanState.formType,'library')">Use a different file</a>
     </div>`;
 
   document.getElementById('scan-modal-footer').style.display='flex';
@@ -3622,6 +3779,58 @@ function renderScanReview(result){
   });
 
   openScanModal();
+}
+
+// Document types a staff file actually contains. Keys match the CHECK
+// constraint in migrations/2026-08-09_title22_document_slots.sql — adding one
+// here without adding it there will make the insert fail.
+const SCAN_DOC_TYPES={
+  staff:[
+    ['cpr_card','CPR card'],
+    ['first_aid','First Aid card'],
+    ['tb_test','TB test / clearance'],
+    ['livescan','LiveScan clearance'],
+    ['training_cert','Training certificate'],
+    ['cert','Other certificate'],
+  ],
+};
+
+// Filing the document is the point of scanning a compliance record — a date
+// with nothing behind it is what DSS refuses to accept. So this defaults ON,
+// and skipping it is the deliberate act.
+function scanFileItBlock(formType){
+  const types=SCAN_DOC_TYPES[formType];
+  if(!types||!scanState.file)return '';
+  const guess=guessScanDocType(formType);
+  return `<div style="margin-top:16px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--gray-bg)">
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+      <input type="checkbox" id="scan-file-it" checked style="margin-top:2px;width:16px;height:16px;accent-color:var(--teal)"/>
+      <span style="font-size:13px;line-height:1.5">
+        <strong>Also file this ${scanState.isPdf?'PDF':'photo'} as a document</strong><br/>
+        <span style="color:var(--text2);font-size:12px">Keeps the actual record on file so you can view, print or fax it when DSS asks — not just the dates.</span>
+      </span>
+    </label>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <label style="font-size:12px;color:var(--text2)">File as</label>
+      <select id="scan-doc-type" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--white);color:var(--text)">
+        ${types.map(([v,l])=>`<option value="${esc(v)}"${v===guess?' selected':''}>${esc(l)}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+}
+
+// Pre-select from what the scan actually found, so the common case needs no
+// thought. Only the certificate fields are distinctive enough to infer from.
+function guessScanDocType(formType){
+  if(formType!=='staff')return 'cert';
+  const f=scanState.fields||{};
+  const has=k=>f[k]&&f[k].value;
+  if(has('cpr_cert_date')||has('cpr_cert_expiry'))return 'cpr_card';
+  if(has('first_aid_cert_date')||has('first_aid_cert_expiry'))return 'first_aid';
+  if(has('tb_test_date')||has('tb_test_due'))return 'tb_test';
+  if(has('livescan_date')||f.livescan_cleared?.value==='yes')return 'livescan';
+  if(has('initial_training_hours')||f.initial_training_complete?.value==='yes')return 'training_cert';
+  return 'cert';
 }
 
 // Mirror the target input so the reviewed value is always something the form
@@ -3724,6 +3933,15 @@ function applyScanToForm(){
     err.classList.add('show');
     return;
   }
+
+  // Hand the file to Save rather than uploading now: on "Add staff member" the
+  // record does not exist yet, so there is no id to attach it to. Uploading
+  // here would leave orphaned rows behind every cancelled form.
+  const fileIt=document.getElementById('scan-file-it');
+  const typeSel=document.getElementById('scan-doc-type');
+  pendingScanDoc=(fileIt&&fileIt.checked&&scanState.file)
+    ? {file:scanState.file,docType:(typeSel&&typeSel.value)||'cert',formType:scanState.formType}
+    : null;
 
   closeScanModal();
   // Flash what changed so the reviewer can see exactly what the scan touched.
@@ -3997,7 +4215,10 @@ function showSetNewPassword(){
   </div>
 </div>
 <input type="file" id="scan-file-camera" accept="image/*" capture="environment" style="display:none" onchange="onScanFile(this)"/>
-<input type="file" id="scan-file-library" accept="image/*" style="display:none" onchange="onScanFile(this)"/>
+<!-- The library picker also takes PDFs: on a computer the same document usually
+     arrives as a PDF by email rather than as a photo. The camera input above
+     stays image-only — a camera cannot produce a PDF. -->
+<input type="file" id="scan-file-library" accept="image/*,application/pdf,.pdf" style="display:none" onchange="onScanFile(this)"/>
 <div class="scan-lightbox" id="scan-lightbox" onclick="closeScanLightbox()">
   <div class="scan-lightbox-inner"><img id="scan-lightbox-img" alt="Scanned page"/><div class="scan-highlight" id="scan-lightbox-highlight" style="display:none"></div></div>
 </div>

@@ -421,7 +421,13 @@ function shapeResult(form, parsed) {
 }
 
 const MAX_IMAGE_B64 = 4_500_000; // ~3.3MB decoded; Anthropic caps a base64 image at 5MB
-const ALLOWED_MEDIA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// PDF belongs here as much as the image types do. On a phone a caregiver
+// photographs the paper; on a computer the same document arrives as a PDF by
+// email from a training provider, a pharmacy, or a physician. Claude reads
+// both — a PDF just travels as a `document` block instead of an `image` one,
+// which also means multi-page files work, where a single photo cannot.
+const ALLOWED_MEDIA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+const PDF_MEDIA = 'application/pdf';
 
 export default {
   async fetch(request, env) {
@@ -516,9 +522,15 @@ export default {
         }, 402);
       }
 
+      const isPdf = image.media_type === PDF_MEDIA;
+
       const userText = [
-        `Extract the ${form.label} fields from this image.`,
-        hint ? `Context from the caregiver who took the photo: ${String(hint).slice(0, 300)}` : '',
+        `Extract the ${form.label} fields from this ${isPdf ? 'document' : 'image'}.`,
+        // Boxes locate a value inside a single image so the app can show a crop
+        // beside it. A PDF has pages, and the app has no page to crop from, so
+        // asking for coordinates would produce numbers nobody can use.
+        isPdf ? 'This document may run to several pages. Read all of them. Leave `box` as an empty array for every field — it is not used for documents.' : '',
+        hint ? `Context from the caregiver: ${String(hint).slice(0, 300)}` : '',
       ].filter(Boolean).join('\n\n');
 
       const anthropicBody = {
@@ -547,7 +559,9 @@ export default {
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: image.media_type, data: image.data } },
+            image.media_type === PDF_MEDIA
+              ? { type: 'document', source: { type: 'base64', media_type: PDF_MEDIA, data: image.data } }
+              : { type: 'image', source: { type: 'base64', media_type: image.media_type, data: image.data } },
             { type: 'text', text: userText },
           ],
         }],
@@ -587,10 +601,16 @@ export default {
         return json({ error: 'bad_result', message: 'The extraction result could not be read. Please try again.' }, 502);
       }
 
+      const fields = shapeResult(form, parsed);
+      // Belt and braces: the prompt asks for no boxes on a PDF, but a stray one
+      // would make the review sheet try to crop a page it does not have.
+      if (isPdf) for (const f of Object.values(fields)) f.box = null;
+
       return json({
         formType,
         formLabel: form.label,
-        fields: shapeResult(form, parsed),
+        sourceKind: isPdf ? 'pdf' : 'image',
+        fields,
         notes: String(parsed?.notes ?? '').trim().slice(0, 600),
         plan,
         limit: credits.limit,
