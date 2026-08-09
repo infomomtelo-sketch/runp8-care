@@ -509,7 +509,18 @@ export default {
         max_tokens: 16000,
         system: systemPrompt(form),
         output_config: {
-          effort: 'medium',
+          // Latency is the binding constraint here, not depth of reasoning.
+          // This is transcription against a fixed schema — read the marks on
+          // the page, don't reason about them — and Claude Opus 5 scopes its
+          // work tightly at `low` rather than exploring. A scan that takes two
+          // minutes is a scan nobody uses, and at `medium` the call could
+          // outlast the caller's patience (and, before the frontend timeout
+          // landed, hang the modal outright).
+          //
+          // Thinking stays ON. Disabling it on Claude Opus 5 risks leaking
+          // <thinking> tags into the response text, which would corrupt the
+          // JSON this endpoint exists to return.
+          effort: 'low',
           format: { type: 'json_schema', schema: buildSchema(form) },
         },
         messages: [{
