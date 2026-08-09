@@ -225,6 +225,27 @@
     .filter-btn{padding:5px 10px;font-size:12px}
   }
 
+  /* ===== DOCUMENT SLOTS =====
+     A requirement and the document that proves it, in one block. The typed
+     yes/no is still here but demoted: it is a claim, and the document beside
+     it is the evidence DSS actually asks for. */
+  .doc-slot{grid-column:1/-1;border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;background:var(--white)}
+  .doc-slot.is-onfile{border-color:#a8dcc8;background:var(--green-light)}
+  .doc-slot.is-claimed{border-color:var(--amber);background:var(--amber-light)}
+  .doc-slot-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4}
+  .doc-slot-status{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5;word-break:break-word}
+  .doc-slot-status .ds-ok{color:var(--green);font-weight:600}
+  .doc-slot-status .ds-warn{color:var(--amber);font-weight:600}
+  .doc-slot-status .ds-miss{color:var(--text2);font-weight:600}
+  .doc-slot-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .doc-slot-actions button{padding:5px 10px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .doc-slot-actions button:hover{border-color:var(--teal);color:var(--teal)}
+  .doc-slot-actions button.ds-primary{border-color:var(--teal);color:var(--teal)}
+  .doc-slot-self{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+  .doc-slot-self label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin:0!important}
+  .doc-slot-self select,.doc-slot-self input{flex:1;min-width:130px;padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--white);color:var(--text)}
+  .doc-slot-hint{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5}
+
   /* ===== SCAN TO FILL ===== */
   .scan-btn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;margin-right:10px;padding:5px 12px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
   .scan-btn:hover{border-color:var(--teal);color:var(--teal)}
@@ -592,8 +613,9 @@
         <div id="doc-upload-row" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:16px;display:none">
           <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload a document</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602">LIC 602</option><option value="lic602a">LIC 602A</option><option value="physician_report">Physician report</option><option value="cert">Certificate</option><option value="isp">ISP</option><option value="other" selected>Other</option></select>
+            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602">LIC 602</option><option value="lic602a">LIC 602A</option><option value="physician_report">Physician report</option><option value="isp">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
             <select id="doc-resident" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
+            <select id="doc-staff" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a staff member</option></select>
             <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
             <span id="doc-upload-status" style="font-size:12px;color:var(--text2)"></span>
           </div>
@@ -643,6 +665,13 @@
             <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
           </div>
           <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
+          <div class="form-group"><label>Certificate (optional)</label>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <label class="btn btn-outline" style="font-size:13px;cursor:pointer;margin:0">📎 Choose file<input type="file" id="tr-cert-file" style="display:none" accept="image/*,application/pdf,.pdf,.doc,.docx" onchange="onTrainingCertPicked(this)"/></label>
+              <span id="tr-cert-name" style="font-size:12px;color:var(--text2)">No certificate attached</span>
+            </div>
+            <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">Filed against this staff member so you can print or share it when DSS asks for proof of the hours.</div>
+          </div>
           <div class="error-msg" id="tr-error"></div>
           <button class="btn btn-primary" style="margin-top:10px" onclick="saveTraining()">Save training</button>
         </div>
@@ -1874,9 +1903,18 @@ function openResidentModal(resId){
   document.getElementById('res-isp').value=r?.isp||'no';
   document.getElementById('res-isp-date').value=r?.isp_review_date||'';
   document.getElementById('res-modal-error').classList.remove('show');
+  clearRecordDocs();
+  refreshDocSlots('resident',currentResidentId);
   document.getElementById('resident-modal').classList.add('open');
 }
-function closeResidentModal(){document.getElementById('resident-modal').classList.remove('open');}
+function closeResidentModal(){
+  document.getElementById('resident-modal').classList.remove('open');
+  // Abandoning the form abandons anything attached to it but not yet filed.
+  // saveResident consumes the queue before calling this, so a real save is
+  // unaffected — but a cancelled one must not leave files to attach themselves
+  // to whichever record is saved next.
+  clearRecordDocs();
+}
 async function saveResident(){
   const name=document.getElementById('res-name').value.trim();
   const err=document.getElementById('res-modal-error');
@@ -1899,16 +1937,27 @@ async function saveResident(){
     status:'active'
   };
   let error;
+  let savedId=currentResidentId;
   if(currentResidentId){
     const{error:e}=await sb.from('residents').update(payload).eq('id',currentResidentId);
     error=e;
     if(!e){const idx=residents.findIndex(r=>r.id===currentResidentId);if(idx>-1)residents[idx]={...residents[idx],...payload};}
   }else{
     const{data,error:e}=await sb.from('residents').insert(payload).select().single();
-    error=e;if(!e&&data){residents.push(data);track('record_created',{record_type:'resident',record_id:data.id});}
+    error=e;if(!e&&data){residents.push(data);savedId=data.id;track('record_created',{record_type:'resident',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
+
+  // The row has an id now, so anything attached to a document slot before the
+  // record existed has something to attach to.
+  const hadQueue=pendingSlotDocs.length>0;
+  const failures=await fileSlotDocuments('resident',savedId);
   closeResidentModal();renderResidents();
+  if(failures.length){
+    alert('The resident was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
+  }else if(hadQueue){
+    loadDocuments();
+  }
 }
 
 function viewResident(id){
@@ -2096,6 +2145,8 @@ function openStaffModal(staffId){
   document.getElementById('staff-training-hours').value=s?.initial_training_hours||'';
   document.getElementById('staff-modal-error').classList.remove('show');
   document.getElementById('staff-delete-btn').style.display=currentStaffId?'inline-block':'none';
+  clearRecordDocs();
+  refreshDocSlots('staff',currentStaffId);
   document.getElementById('staff-modal').classList.add('open');
 }
 function closeStaffModal(){
@@ -2103,9 +2154,10 @@ function closeStaffModal(){
   // Abandoning the form abandons its scan. Without this a document reviewed
   // here, then cancelled, would attach itself to whichever record was saved
   // next. saveStaff consumes it before calling this, so a real save is
-  // unaffected.
+  // unaffected. Slot attachments are held on the same terms.
   pendingScanDoc=null;
   scanState.file=null;
+  clearRecordDocs();
 }
 function deleteStaffFromModal(){if(!currentStaffId)return;const s=staffList.find(x=>x.id===currentStaffId);closeStaffModal();deleteStaff(currentStaffId,s?.full_name||s?.name||'this staff member');}
 
@@ -2152,14 +2204,18 @@ async function saveStaff(){
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
-  // Now the row has an id, so a scanned certificate has something to attach to.
+  // Now the row has an id, so a scanned certificate — or anything attached to a
+  // document slot before the record existed — has something to attach to.
   // Never blocks the save: the record is already stored, and a failed
   // attachment is worth reporting but not worth undoing a successful save.
+  const hadQueue=pendingSlotDocs.length>0;
   const filed=await fileScannedDocument({staffId:savedId});
+  const failures=await fileSlotDocuments('staff',savedId);
+  if(typeof filed==='string')failures.unshift('Scanned document: '+filed);
   closeStaffModal();renderStaff();
-  if(typeof filed==='string'){
-    alert('The staff member was saved, but the scanned document could not be filed:\n\n'+filed+'\n\nYou can still upload it from the Documents tab.');
-  }else if(filed===true){
+  if(failures.length){
+    alert('The staff member was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
+  }else if(filed===true||hadQueue){
     await loadDocuments();
   }
 }
@@ -2878,7 +2934,7 @@ function addAIMessage(text,role){
 }
 
 // ===== DOCUMENTS =====
-const DOC_TYPE_LABELS={lic601:'LIC 601',lic602:'LIC 602',lic602a:'LIC 602A',physician_report:'Physician report',cert:'Certificate',isp:'ISP',other:'Other'};
+const DOC_TYPE_LABELS={lic601:'LIC 601',lic602:'LIC 602',lic602a:'LIC 602A',physician_report:'Physician report',cert:'Certificate',isp:'ISP',tb_test:'TB test / clearance',cpr_card:'CPR card',first_aid:'First Aid card',livescan:'LiveScan clearance',training_cert:'16-hour initial training',mandated_reporter:'Mandated Reporter training',inservice_cert:'In-service training certificate',other:'Other'};
 let facilityDocs=[];
 async function loadDocuments(){
   if(!currentFacility)return;
@@ -2888,6 +2944,14 @@ async function loadDocuments(){
     let rs=(window.residents&&window.residents.length)?window.residents:null;
     if(!rs){const{data}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');rs=data||[];}
     resSel.innerHTML='<option value="">Not linked to a resident</option>'+rs.map(r=>`<option value="${esc(r.id)}">${esc(r.name||r.full_name||'Resident')}</option>`).join('');
+  }
+  // Staff documents are first-class now (every certificate slot files one), so
+  // the manual upload path has to be able to reach a staff member too.
+  const staffSel=document.getElementById('doc-staff');
+  if(staffSel){
+    let ss=(typeof staffList!=='undefined'&&staffList&&staffList.length)?staffList:null;
+    if(!ss){const{data}=await sb.from('staff').select('id,full_name,name').eq('facility_id',currentFacility.id).order('full_name');ss=data||[];}
+    staffSel.innerHTML='<option value="">Not linked to a staff member</option>'+ss.map(s=>`<option value="${esc(s.id)}">${esc(s.full_name||s.name||'Staff member')}</option>`).join('');
   }
   // staff(...) needs the staff_id column from
   // migrations/2026-08-09_title22_document_slots.sql. Until that has run the
@@ -2933,6 +2997,7 @@ async function handleDocUpload(inp){
   const status=document.getElementById('doc-upload-status');
   const docType=(document.getElementById('doc-type')||{}).value||'other';
   const residentId=(document.getElementById('doc-resident')||{}).value||null;
+  const staffId=(document.getElementById('doc-staff')||{}).value||null;
   const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
   const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
   const path=currentFacility.id+'/'+id+'.'+ext;
@@ -2940,7 +3005,7 @@ async function handleDocUpload(inp){
   try{
     const{error:upErr}=await sb.storage.from('facility-documents').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
     if(upErr)throw upErr;
-    const{error:insErr}=await sb.from('documents').insert({facility_id:currentFacility.id,resident_id:residentId,doc_type:docType,title:file.name,file_name:file.name,storage_path:path,mime_type:file.type||null,size_bytes:file.size,uploaded_by:currentUser.id});
+    const insErr=await insertDocumentRow({facility_id:currentFacility.id,resident_id:residentId,staff_id:staffId,doc_type:docType,title:file.name,file_name:file.name,storage_path:path,mime_type:file.type||null,size_bytes:file.size,uploaded_by:currentUser.id,source:'upload'});
     if(insErr)throw insErr;
     if(status)status.textContent='';
     inp.value='';
@@ -3008,6 +3073,285 @@ function requestFax(){
   if(confirm('📠 Faxing documents to pharmacies, physicians, or DSS is coming soon.\n\nWant us to let you know when it is ready? Tap OK to send a quick note.')){
     window.location.href='mailto:hello@title-22.com?subject='+encodeURIComponent('Fax feature interest — Title22')+'&body='+encodeURIComponent('Hi — I would use a fax feature in Title22. Please let me know when it is available.');
   }
+}
+
+// ===== DOCUMENT SLOTS =====
+//
+// Every "on file?" control in this app used to be a yes/no a human typed. A
+// facility could mark everything Yes, score 100% green, and have nothing behind
+// it — and DSS does not accept the answer, it asks to see the document.
+//
+// A slot pairs a requirement with the document that proves it: attach it here
+// by scan or upload, and view, print, download or share it from the same place
+// during an inspection. The typed value is still saved (nothing regresses and
+// the compliance score keeps working), but it is now the secondary line, and a
+// Yes with no document attached is called out rather than left looking green.
+//
+// Each entry needs a matching <div id="docslot-<docType>"> in the modal, and
+// docType must be in the CHECK constraint in
+// migrations/2026-08-09b_title22_document_slot_dates.sql.
+const DOC_SLOTS={
+  staff:[
+    {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:true},
+    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:true},
+    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:true},
+    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:true},
+    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:true},
+    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:true},
+  ],
+  // scan:false throughout — a resident face sheet is PHI and scanning sends it
+  // to a third-party AI service, which we cannot do without a BAA. Uploading
+  // goes browser -> Supabase Storage and touches no AI, so it stays available.
+  resident:[
+    {docType:'lic601', selectEl:'res-lic601', yes:'yes', scan:false},
+    {docType:'lic602', selectEl:'res-lic602', yes:'yes', scan:false},
+    {docType:'isp',    selectEl:'res-isp',    yes:'yes', issuedEl:'res-isp-date', scan:false},
+  ],
+};
+
+// Documents belonging to the record currently open in a modal. Loaded fresh on
+// open rather than filtered out of facilityDocs, which is only populated when
+// the Documents tab has been visited.
+let recordDocs=[];
+let recordDocsNote='';
+// Files attached to a slot before the record exists. Uploaded once Save has
+// given the row an id, and dropped if the form is abandoned — the same
+// contract pendingScanDoc has.
+let pendingSlotDocs=[];
+let slotUploadTarget=null;
+
+function clearRecordDocs(){recordDocs=[];recordDocsNote='';pendingSlotDocs=[];slotUploadTarget=null;}
+
+async function loadRecordDocs(kind,id){
+  recordDocs=[];recordDocsNote='';
+  if(!id||!currentFacility)return;
+  const col=kind==='staff'?'staff_id':'resident_id';
+  const{data,error}=await sb.from('documents').select('*').eq('facility_id',currentFacility.id).eq(col,id).order('uploaded_at',{ascending:false});
+  if(error){
+    // Most likely the staff_id column from migration 2026-08-09 has not been
+    // run yet. Say so rather than reporting every document as missing.
+    recordDocsNote='Could not read filed documents ('+((error&&error.message)||'unknown error')+').';
+    return;
+  }
+  recordDocs=data||[];
+}
+
+function slotDocs(slot){return recordDocs.filter(d=>d.doc_type===slot.docType);}
+
+function renderDocSlots(kind){
+  const slots=DOC_SLOTS[kind];
+  if(!slots)return;
+  const recordId=kind==='staff'?currentStaffId:currentResidentId;
+  const del=canDelete();
+  const edit=canEdit()&&!demoMode;
+  const canFaxTier=['pro','specialist','agency'].includes(t22Plan);
+  slots.forEach(slot=>{
+    const host=document.getElementById('docslot-'+slot.docType);
+    if(!host)return;
+    const statusEl=host.querySelector('[data-slot-status]');
+    const actionsEl=host.querySelector('[data-slot-actions]');
+    const docs=slotDocs(slot);
+    const doc=docs[0]||null;
+    const queued=pendingSlotDocs.filter(p=>p.docType===slot.docType);
+    const sel=slot.selectEl?document.getElementById(slot.selectEl):null;
+    const claimed=sel?sel.value===slot.yes:false;
+
+    host.classList.remove('is-onfile','is-claimed');
+    let status='';
+    if(doc){
+      host.classList.add('is-onfile');
+      const when=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString():'';
+      const exp=doc.expires_at?' · expires '+new Date(doc.expires_at+'T00:00:00').toLocaleDateString():'';
+      status=`<span class="ds-ok">✅ On file</span> · ${esc(doc.title||doc.file_name||'Document')}`
+        +(when?' · added '+when:'')+exp+(doc.source==='scan'?' · 📷 scanned':'')
+        +(docs.length>1?` · <span style="color:var(--text2)">${docs.length-1} earlier version${docs.length>2?'s':''}</span>`:'');
+    }else if(queued.length){
+      status=`<span class="ds-warn">📎 ${esc(queued[queued.length-1].file.name)}</span> — will be filed when you save this record.`;
+    }else if(claimed){
+      host.classList.add('is-claimed');
+      status=`<span class="ds-warn">⚠️ Marked yes, but no document is attached.</span> An inspector will ask to see it.`;
+    }else{
+      status=`<span class="ds-miss">No document on file.</span>`;
+    }
+    if(recordDocsNote)status+=`<div class="doc-slot-hint">${esc(recordDocsNote)}</div>`;
+    if(!recordId&&!queued.length&&edit)status+=`<div class="doc-slot-hint">You can attach it now — it is filed as soon as you save this record.</div>`;
+    statusEl.innerHTML=status;
+
+    const btns=[];
+    if(doc){
+      btns.push(`<button type="button" onclick="openDoc('${esc(doc.storage_path)}')">👁 View / Print</button>`);
+      btns.push(`<button type="button" onclick="downloadDoc('${esc(doc.storage_path)}','${esc(doc.file_name||doc.title||'document')}')">⬇ Download</button>`);
+      btns.push(`<button type="button" onclick="shareDoc('${esc(doc.storage_path)}','${esc(doc.title||doc.file_name||'Document')}')">↗ Share</button>`);
+      if(canFaxTier)btns.push(`<button type="button" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`);
+    }
+    if(edit){
+      if(slot.scan)btns.push(`<button type="button" class="${doc?'':'ds-primary'}" onclick="slotScan('${kind}','${slot.docType}')">📷 ${doc?'Replace by scan':'Scan'}</button>`);
+      btns.push(`<button type="button" class="${doc||slot.scan?'':'ds-primary'}" onclick="slotUpload('${kind}','${slot.docType}')">⬆ ${doc?'Replace':'Upload'}</button>`);
+    }
+    if(doc&&del)btns.push(`<button type="button" style="color:var(--red);border-color:var(--red-light)" onclick="deleteSlotDoc('${kind}','${esc(doc.id)}','${esc(doc.storage_path)}')">Remove</button>`);
+    actionsEl.innerHTML=btns.join('');
+  });
+}
+
+// Dates that belong to the document rather than to the person. Read off the
+// form the caregiver is looking at, so a CPR card filed while "Expires on" says
+// 2027-03-01 carries that date with it. This is what lets expiry warnings
+// eventually cite a document instead of a typed field.
+function slotDocDates(kind,docType){
+  const slot=(DOC_SLOTS[kind]||[]).find(s=>s.docType===docType);
+  const read=id=>{const el=id?document.getElementById(id):null;return(el&&el.value)||null;};
+  return{issued_at:read(slot&&slot.issuedEl),expires_at:read(slot&&slot.expiresEl)};
+}
+
+// issued_at / expires_at come from migration 2026-08-09b. If that has not been
+// run the insert is rejected for unknown columns, so retry once without them —
+// filing the document matters more than carrying its dates.
+async function insertDocumentRow(row){
+  let{error}=await sb.from('documents').insert(row);
+  if(error&&/issued_at|expires_at/i.test((error.message||'')+(error.details||''))){
+    const retry={...row};delete retry.issued_at;delete retry.expires_at;
+    ({error}=await sb.from('documents').insert(retry));
+  }
+  if(error){
+    const msg=(error.message||'')+' '+(error.details||'');
+    // training_id is deliberately not stripped and retried: a certificate that
+    // files with no link to its training entry looks like a successful attach
+    // and then never appears, which is worse than a clear failure.
+    if(/doc_type|training_id/i.test(msg))error.message=(error.message||'')+' — run migrations/2026-08-09b_title22_document_slot_dates.sql in the Supabase SQL editor.';
+    else if(/staff_id|source/i.test(msg))error.message=(error.message||'')+' — run migrations/2026-08-09_title22_document_slots.sql in the Supabase SQL editor.';
+  }
+  return error||null;
+}
+
+// Storage + row insert for one slot document. Throws on failure; every caller
+// decides for itself whether that should surface as an alert.
+async function uploadSlotDoc({file,docType,staffId=null,residentId=null,kind}){
+  const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+  const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+  const path=currentFacility.id+'/'+id+'.'+ext;
+  const{error:upErr}=await sb.storage.from('facility-documents').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+  if(upErr)throw upErr;
+  const dates=slotDocDates(kind,docType);
+  const insErr=await insertDocumentRow({
+    facility_id:currentFacility.id,
+    resident_id:residentId,
+    staff_id:staffId,
+    doc_type:docType,
+    title:file.name,
+    file_name:file.name,
+    storage_path:path,
+    mime_type:file.type||null,
+    size_bytes:file.size,
+    uploaded_by:currentUser.id,
+    source:'upload',
+    issued_at:dates.issued_at,
+    expires_at:dates.expires_at,
+  });
+  if(insErr){
+    // Do not leave the object behind when its row could not be written.
+    await sb.storage.from('facility-documents').remove([path]).catch(()=>{});
+    throw insErr;
+  }
+}
+
+function slotScan(kind,docType){
+  if(kind!=='staff')return;   // resident scanning is disabled pending a BAA
+  startScan('staff','camera',docType);
+}
+
+function slotUpload(kind,docType){
+  if(demoMode){alert('Attaching documents needs a signed-in account. The sample facility is read-only.');return;}
+  if(!canEdit()){alert('You do not have permission to attach documents.');return;}
+  if(!currentFacility){alert('Open a facility first.');return;}
+  slotUploadTarget={kind,docType};
+  const inp=document.getElementById('slot-file-input');
+  inp.value='';
+  inp.click();
+}
+
+async function onSlotFile(input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  const target=slotUploadTarget;
+  slotUploadTarget=null;
+  if(!file||!target)return;
+  const{kind,docType}=target;
+  const recordId=kind==='staff'?currentStaffId:currentResidentId;
+
+  // No row yet on an "Add" form, so there is no id to attach to. Hold the file
+  // and let Save file it, rather than creating an orphan the moment someone
+  // picks a file and then cancels.
+  if(!recordId){
+    pendingSlotDocs=pendingSlotDocs.filter(p=>p.docType!==docType);
+    pendingSlotDocs.push({file,docType,kind});
+    renderDocSlots(kind);
+    return;
+  }
+
+  const host=document.getElementById('docslot-'+docType);
+  const statusEl=host&&host.querySelector('[data-slot-status]');
+  if(statusEl)statusEl.textContent='Uploading…';
+  try{
+    await uploadSlotDoc({file,docType,kind,staffId:kind==='staff'?recordId:null,residentId:kind==='resident'?recordId:null});
+    markSlotClaimed(kind,docType);
+    await loadRecordDocs(kind,recordId);
+    renderDocSlots(kind);
+    if(typeof facilityDocs!=='undefined')loadDocuments();
+  }catch(e){
+    renderDocSlots(kind);
+    alert('Could not attach that document.\n\n'+((e&&e.message)||e));
+  }
+}
+
+// A document that exists is stronger evidence than a typed answer, so filing
+// one moves the self-reported control to yes. It is only the form control —
+// the user still has to press Save, which keeps the two-gate rule intact.
+function markSlotClaimed(kind,docType){
+  const slot=(DOC_SLOTS[kind]||[]).find(s=>s.docType===docType);
+  if(!slot||!slot.selectEl)return;
+  const sel=document.getElementById(slot.selectEl);
+  if(sel&&sel.value!==slot.yes){sel.value=slot.yes;sel.classList.add('scan-filled');}
+}
+
+// Files everything queued against a record that now has an id. Never throws:
+// the record is already saved, and a failed attachment is worth reporting but
+// not worth failing the save over. Returns an array of error strings.
+async function fileSlotDocuments(kind,recordId){
+  const queue=pendingSlotDocs;
+  pendingSlotDocs=[];
+  if(!queue.length||!recordId||!currentFacility)return[];
+  const failures=[];
+  for(const item of queue){
+    try{
+      await uploadSlotDoc({file:item.file,docType:item.docType,kind,
+        staffId:kind==='staff'?recordId:null,residentId:kind==='resident'?recordId:null});
+      track('slot_document_filed',{record_type:kind,doc_type:item.docType});
+    }catch(e){
+      failures.push((DOC_TYPE_LABELS[item.docType]||item.docType)+': '+((e&&e.message)||e));
+    }
+  }
+  return failures;
+}
+
+async function deleteSlotDoc(kind,id,path){
+  if(!canDelete()){alert('You do not have permission to delete documents.');return;}
+  if(!confirm('Remove this document from the record? This cannot be undone.'))return;
+  try{
+    const{error}=await sb.from('documents').delete().eq('id',id);
+    if(error)throw error;
+    await sb.storage.from('facility-documents').remove([path]);
+    const recordId=kind==='staff'?currentStaffId:currentResidentId;
+    await loadRecordDocs(kind,recordId);
+    renderDocSlots(kind);
+    if(typeof facilityDocs!=='undefined')loadDocuments();
+  }catch(e){ alert('Could not remove that document.'); }
+}
+
+// Called on open: paint the slots immediately from what we know, then repaint
+// once the record's documents come back, so the modal never waits on a query.
+function refreshDocSlots(kind,recordId){
+  renderDocSlots(kind);
+  loadRecordDocs(kind,recordId).then(()=>renderDocSlots(kind));
 }
 
 // ===== TEAM =====
@@ -3295,6 +3639,12 @@ async function deleteDailyLog(id){
 
 // ===== TRAINING =====
 let trainings=[];let trainingStaff=[];
+// In-service certificates, keyed by the training entry they prove. A logged
+// hour with no certificate is the same self-reported claim the document slots
+// exist to replace, so the history shows which entries actually have proof.
+let trainingCerts={};
+let pendingTrainingCert=null;   // file chosen on the Log training form
+let trainingCertTarget=null;    // training id an attach button is filing to
 
 async function loadTrainings(){
   if(!currentFacility)return;
@@ -3305,7 +3655,91 @@ async function loadTrainings(){
   const sel=document.getElementById('tr-staff');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select staff...</option>'+trainingStaff.map(s=>`<option value="${s.id}">${(s.name||s.full_name||'Staff')}</option>`).join('');if(cur)sel.value=cur;}
   const{data}=await sb.from('staff_trainings').select('*, staff(name, full_name)').eq('facility_id',currentFacility.id).order('training_date',{ascending:false}).limit(300);
-  trainings=data||[];renderTrainings();
+  trainings=data||[];
+  await loadTrainingCerts();
+  renderTrainings();
+}
+
+// training_id comes from migration 2026-08-09b. Until that has been run the
+// filter is rejected, and the history simply shows no certificates rather than
+// breaking the tab.
+async function loadTrainingCerts(){
+  trainingCerts={};
+  const{data,error}=await sb.from('documents').select('*').eq('facility_id',currentFacility.id).eq('doc_type','inservice_cert').order('uploaded_at',{ascending:false});
+  if(error||!data)return;
+  data.forEach(d=>{ if(d.training_id&&!trainingCerts[d.training_id])trainingCerts[d.training_id]=d; });
+}
+
+function onTrainingCertPicked(input){
+  pendingTrainingCert=(input.files&&input.files[0])||null;
+  const label=document.getElementById('tr-cert-name');
+  if(label)label.textContent=pendingTrainingCert?('📎 '+pendingTrainingCert.name):'No certificate attached';
+}
+
+function clearTrainingCertPick(){
+  pendingTrainingCert=null;
+  const inp=document.getElementById('tr-cert-file');if(inp)inp.value='';
+  const label=document.getElementById('tr-cert-name');if(label)label.textContent='No certificate attached';
+}
+
+// Files a certificate against a logged training. Never throws: the hours are
+// already recorded, and losing the attachment is worth saying out loud but not
+// worth failing the log entry over.
+async function fileTrainingCert(file,training){
+  try{
+    const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+    const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+    const path=currentFacility.id+'/'+id+'.'+ext;
+    const{error:upErr}=await sb.storage.from('facility-documents').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+    if(upErr)throw upErr;
+    const insErr=await insertDocumentRow({
+      facility_id:currentFacility.id,
+      staff_id:training.staff_id,
+      resident_id:null,
+      training_id:training.id,
+      doc_type:'inservice_cert',
+      title:file.name,
+      file_name:file.name,
+      storage_path:path,
+      mime_type:file.type||null,
+      size_bytes:file.size,
+      uploaded_by:currentUser.id,
+      source:'upload',
+      issued_at:training.training_date||null,
+    });
+    if(insErr){
+      await sb.storage.from('facility-documents').remove([path]).catch(()=>{});
+      throw insErr;
+    }
+    track('training_cert_filed',{});
+    return null;
+  }catch(e){
+    return String((e&&e.message)||e);
+  }
+}
+
+function attachTrainingCert(trainingId){
+  if(demoMode){alert('Attaching certificates needs a signed-in account. The sample facility is read-only.');return;}
+  if(!canEdit()){alert('You do not have permission to attach certificates.');return;}
+  trainingCertTarget=trainingId;
+  const inp=document.getElementById('training-cert-input');
+  inp.value='';
+  inp.click();
+}
+
+async function onTrainingCertFile(input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  const id=trainingCertTarget;
+  trainingCertTarget=null;
+  if(!file||!id)return;
+  const training=trainings.find(t=>t.id===id);
+  if(!training)return;
+  const failure=await fileTrainingCert(file,training);
+  if(failure){alert('Could not attach that certificate.\n\n'+failure);return;}
+  await loadTrainingCerts();
+  renderTrainings();
+  loadDocuments();
 }
 
 async function saveTraining(){
@@ -3317,14 +3751,26 @@ async function saveTraining(){
   if(!staffId){err.textContent='Please select a staff member.';err.classList.add('show');return;}
   if(!topic){err.textContent='Please enter a topic.';err.classList.add('show');return;}
   if(!hours||hours<=0){err.textContent='Please enter hours.';err.classList.add('show');return;}
-  const{error}=await sb.from('staff_trainings').insert({
+  const row={
     facility_id:currentFacility.id,staff_id:staffId,topic,hours,
     training_date:document.getElementById('tr-date').value||new Date().toISOString().slice(0,10),
     notes:document.getElementById('tr-notes').value.trim()||null
-  });
+  };
+  // .select().single() so the certificate has a training id to file against.
+  const{data,error}=await sb.from('staff_trainings').insert(row).select().single();
   if(error){err.textContent=error.message;err.classList.add('show');return;}
+
+  const cert=pendingTrainingCert;
+  clearTrainingCertPick();
+  let certFailure=null;
+  if(cert&&data)certFailure=await fileTrainingCert(cert,data);
+
   document.getElementById('tr-topic').value='';document.getElementById('tr-hours').value='';document.getElementById('tr-notes').value='';
   await loadTrainings();
+  if(certFailure){
+    err.textContent='Training logged, but the certificate could not be filed: '+certFailure;
+    err.classList.add('show');
+  }
 }
 
 function renderTrainings(){
@@ -3347,15 +3793,33 @@ function renderTrainings(){
   }
   if(!trainings.length){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
+  const edit=canEdit()&&!demoMode;
   list.innerHTML=trainings.map(t=>{
     const sName=t.staff?.name||t.staff?.full_name||'Staff';
     const del=canDelete()?`<button onclick="deleteTraining('${t.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">Delete</button>`:'';
+    // Hours with a certificate behind them are what an inspector can be shown.
+    // Hours without one are still just a number somebody typed.
+    const cert=trainingCerts[t.id];
+    const certRow=cert
+      ? `<div class="doc-slot-actions" style="margin-top:8px">
+          <span style="font-size:12px;color:var(--green);font-weight:600;align-self:center">✅ Certificate on file</span>
+          <button type="button" onclick="openDoc('${esc(cert.storage_path)}')">👁 View / Print</button>
+          <button type="button" onclick="downloadDoc('${esc(cert.storage_path)}','${esc(cert.file_name||cert.title||'certificate')}')">⬇ Download</button>
+          <button type="button" onclick="shareDoc('${esc(cert.storage_path)}','${esc(cert.title||'Training certificate')}')">↗ Share</button>
+        </div>`
+      : (edit
+        ? `<div class="doc-slot-actions" style="margin-top:8px">
+            <span style="font-size:12px;color:var(--text2);align-self:center">No certificate on file</span>
+            <button type="button" onclick="attachTrainingCert('${esc(t.id)}')">📎 Attach certificate</button>
+          </div>`
+        : '');
     return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div style="font-weight:600;font-size:13px">${t.topic.replace(/</g,'&lt;')}</div>
         <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--text2)">${t.hours} hr</span>${del}</div>
       </div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">${sName} · ${new Date(t.training_date+'T00:00:00').toLocaleDateString()}${t.notes?' · '+t.notes.replace(/</g,'&lt;'):''}</div>
+      ${certRow}
     </div>`;
   }).join('');
 }
@@ -3429,7 +3893,7 @@ const SCAN_FIELD_MAP={
 const SCAN_MAX_EDGE=2000;
 const SCAN_MAX_B64=4000000;   // stay under the worker's 4.5M cap
 
-let scanState={formType:null,canvas:null,dataUrl:null,fields:null,notes:'',file:null,isPdf:false};
+let scanState={formType:null,canvas:null,dataUrl:null,fields:null,notes:'',file:null,isPdf:false,forceDocType:null};
 
 const SCAN_CONFIDENCE={
   high:{badge:'badge-green',label:'High'},
@@ -3438,12 +3902,15 @@ const SCAN_CONFIDENCE={
   not_found:{badge:'',label:'Not on page'},
 };
 
-function startScan(formType,source){
+// docType, when given, is the slot the scan was started from: the reviewer
+// should not have to re-pick "CPR card" after pressing Scan on the CPR slot.
+function startScan(formType,source,docType){
   if(!SCAN_FIELD_MAP[formType])return;
   if(demoMode){alert('Scan to fill needs a signed-in account. The sample facility is read-only.');return;}
   if(!canEdit()){alert('You do not have permission to add records.');return;}
   if(!currentFacility){alert('Open a facility first.');return;}
   scanState.formType=formType;
+  scanState.forceDocType=docType||null;
   // A fresh scan supersedes anything reviewed but not yet saved.
   pendingScanDoc=null;
   scanState.file=null;
@@ -3546,7 +4013,10 @@ async function fileScannedDocument({staffId=null,residentId=null}={}){
     const{error:upErr}=await sb.storage.from('facility-documents')
       .upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
     if(upErr)throw upErr;
-    const{error:insErr}=await sb.from('documents').insert({
+    // The scan has just written its dates into the form, and the form is still
+    // open, so the document is filed carrying the dates the model read off it.
+    const dates=slotDocDates(pending.formType,pending.docType);
+    const insErr=await insertDocumentRow({
       facility_id:currentFacility.id,
       resident_id:residentId,
       staff_id:staffId,
@@ -3558,6 +4028,8 @@ async function fileScannedDocument({staffId=null,residentId=null}={}){
       size_bytes:file.size,
       uploaded_by:currentUser.id,
       source:'scan',
+      issued_at:dates.issued_at,
+      expires_at:dates.expires_at,
     });
     if(insErr)throw insErr;
     track('scan_document_filed',{form_type:pending.formType,doc_type:pending.docType});
@@ -3790,7 +4262,8 @@ const SCAN_DOC_TYPES={
     ['first_aid','First Aid card'],
     ['tb_test','TB test / clearance'],
     ['livescan','LiveScan clearance'],
-    ['training_cert','Training certificate'],
+    ['mandated_reporter','Mandated Reporter certificate'],
+    ['training_cert','16-hour initial training certificate'],
     ['cert','Other certificate'],
   ],
 };
@@ -3822,6 +4295,8 @@ function scanFileItBlock(formType){
 // Pre-select from what the scan actually found, so the common case needs no
 // thought. Only the certificate fields are distinctive enough to infer from.
 function guessScanDocType(formType){
+  // Started from a slot, so the answer is already known.
+  if(scanState.forceDocType)return scanState.forceDocType;
   if(formType!=='staff')return 'cert';
   const f=scanState.fields||{};
   const has=k=>f[k]&&f[k].value;
@@ -3944,6 +4419,10 @@ function applyScanToForm(){
     : null;
 
   closeScanModal();
+  // Repaint the slots: the values just filled in may have changed a
+  // self-reported answer, and a document about to be filed belongs to a slot.
+  if(pendingScanDoc)markSlotClaimed(scanState.formType,pendingScanDoc.docType);
+  renderDocSlots(scanState.formType);
   // Flash what changed so the reviewer can see exactly what the scan touched.
   filled.forEach(el=>{
     el.classList.remove('scan-filled');
@@ -4111,10 +4590,30 @@ function showSetNewPassword(){
     <div class="form-group"><label>Admission date</label><input type="date" id="res-admission"/></div>
     <div class="form-group" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension"/></div>
     <div class="form-group" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin"/></div>
-    <div class="form-group"><label>LIC 601 on file?</label><select id="res-lic601"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
-    <div class="form-group"><label>LIC 602 on file?</label><select id="res-lic602"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
-    <div class="form-group"><label>ISP on file?</label><select id="res-isp"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
-    <div class="form-group"><label>ISP last reviewed</label><input type="date" id="res-isp-date"/></div>
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Required documents</div>
+    <div style="grid-column:1/-1;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:2px">DSS asks for the document, not the answer. Attach each one here so you can view, print or share it during an inspection.</div>
+
+    <div class="doc-slot" id="docslot-lic601">
+      <div class="doc-slot-title">LIC 601 — Identification and Emergency Information</div>
+      <div class="doc-slot-status" data-slot-status></div>
+      <div class="doc-slot-actions" data-slot-actions></div>
+      <div class="doc-slot-self"><label for="res-lic601">Self-reported</label><select id="res-lic601" onchange="renderDocSlots('resident')"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
+    </div>
+
+    <div class="doc-slot" id="docslot-lic602">
+      <div class="doc-slot-title">LIC 602 — Physician's Report</div>
+      <div class="doc-slot-status" data-slot-status></div>
+      <div class="doc-slot-actions" data-slot-actions></div>
+      <div class="doc-slot-self"><label for="res-lic602">Self-reported</label><select id="res-lic602" onchange="renderDocSlots('resident')"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
+    </div>
+
+    <div class="doc-slot" id="docslot-isp">
+      <div class="doc-slot-title">ISP — Individual Service Plan</div>
+      <div class="doc-slot-status" data-slot-status></div>
+      <div class="doc-slot-actions" data-slot-actions></div>
+      <div class="doc-slot-self"><label for="res-isp">Self-reported</label><select id="res-isp" onchange="renderDocSlots('resident')"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
+      <div class="doc-slot-self"><label for="res-isp-date">Last reviewed</label><input type="date" id="res-isp-date"/></div>
+    </div>
   </div>
   <div class="error-msg" id="res-modal-error"></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeResidentModal()">Cancel</button><button class="btn btn-primary" onclick="saveResident()">Save resident</button></div></div>
@@ -4167,26 +4666,57 @@ function showSetNewPassword(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group"><label>Last test date</label><input type="date" id="staff-tb-date"/></div>
       <div class="form-group"><label>Next due date</label><input type="date" id="staff-tb-due"/></div>
+      <div class="doc-slot" id="docslot-tb_test">
+        <div class="doc-slot-title">TB test / clearance</div>
+        <div class="doc-slot-status" data-slot-status></div>
+        <div class="doc-slot-actions" data-slot-actions></div>
+      </div>
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">CPR Certification</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group"><label>Certified on</label><input type="date" id="staff-cpr-date"/></div>
       <div class="form-group"><label>Expires on</label><input type="date" id="staff-cpr-expiry"/></div>
+      <div class="doc-slot" id="docslot-cpr_card">
+        <div class="doc-slot-title">CPR card</div>
+        <div class="doc-slot-status" data-slot-status></div>
+        <div class="doc-slot-actions" data-slot-actions></div>
+      </div>
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">First Aid Certification</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group"><label>Certified on</label><input type="date" id="staff-firstaid-date"/></div>
       <div class="form-group"><label>Expires on</label><input type="date" id="staff-firstaid-expiry"/></div>
+      <div class="doc-slot" id="docslot-first_aid">
+        <div class="doc-slot-title">First Aid card</div>
+        <div class="doc-slot-status" data-slot-status></div>
+        <div class="doc-slot-actions" data-slot-actions></div>
+      </div>
     </div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Background &amp; Training</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group"><label>LiveScan cleared?</label><select id="staff-livescan"><option value="false">No — pending</option><option value="true">Yes — cleared</option></select></div>
-      <div class="form-group"><label>LiveScan date</label><input type="date" id="staff-livescan-date"/></div>
-      <div class="form-group"><label>Mandated Reporter training</label><select id="staff-mandated"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
-      <div class="form-group"><label>Completed on</label><input type="date" id="staff-mandated-date"/></div>
-      
-      <div class="form-group"><label>16hr initial training</label><select id="staff-training"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
-      <div class="form-group"><label>Training hours logged</label><input type="number" id="staff-training-hours" placeholder="0" step="0.5"/></div>
+      <div class="doc-slot" id="docslot-livescan">
+        <div class="doc-slot-title">LiveScan clearance</div>
+        <div class="doc-slot-status" data-slot-status></div>
+        <div class="doc-slot-actions" data-slot-actions></div>
+        <div class="doc-slot-self"><label for="staff-livescan">Self-reported</label><select id="staff-livescan" onchange="renderDocSlots('staff')"><option value="false">No — pending</option><option value="true">Yes — cleared</option></select></div>
+        <div class="doc-slot-self"><label for="staff-livescan-date">Cleared on</label><input type="date" id="staff-livescan-date"/></div>
+      </div>
+
+      <div class="doc-slot" id="docslot-mandated_reporter">
+        <div class="doc-slot-title">Mandated Reporter training</div>
+        <div class="doc-slot-status" data-slot-status></div>
+        <div class="doc-slot-actions" data-slot-actions></div>
+        <div class="doc-slot-self"><label for="staff-mandated">Self-reported</label><select id="staff-mandated" onchange="renderDocSlots('staff')"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
+        <div class="doc-slot-self"><label for="staff-mandated-date">Completed on</label><input type="date" id="staff-mandated-date"/></div>
+      </div>
+
+      <div class="doc-slot" id="docslot-training_cert">
+        <div class="doc-slot-title">16-hour initial training</div>
+        <div class="doc-slot-status" data-slot-status></div>
+        <div class="doc-slot-actions" data-slot-actions></div>
+        <div class="doc-slot-self"><label for="staff-training">Self-reported</label><select id="staff-training" onchange="renderDocSlots('staff')"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
+        <div class="doc-slot-self"><label for="staff-training-hours">Hours logged</label><input type="number" id="staff-training-hours" placeholder="0" step="0.5"/></div>
+      </div>
     </div>
     <div class="error-msg" id="staff-modal-error"></div>
     <div class="modal-footer">
@@ -4219,6 +4749,13 @@ function showSetNewPassword(){
      arrives as a PDF by email rather than as a photo. The camera input above
      stays image-only — a camera cannot produce a PDF. -->
 <input type="file" id="scan-file-library" accept="image/*,application/pdf,.pdf" style="display:none" onchange="onScanFile(this)"/>
+<!-- Document slot upload. Unlike the scan inputs this file goes straight to
+     Supabase Storage — no AI, no extraction. It is how a document that arrived
+     as a PDF by email gets onto a record, and the only attach path offered on
+     resident records while there is no BAA. -->
+<input type="file" id="slot-file-input" accept="image/*,application/pdf,.pdf,.doc,.docx" style="display:none" onchange="onSlotFile(this)"/>
+<!-- Attaching a certificate to a training entry already in the history. -->
+<input type="file" id="training-cert-input" accept="image/*,application/pdf,.pdf,.doc,.docx" style="display:none" onchange="onTrainingCertFile(this)"/>
 <div class="scan-lightbox" id="scan-lightbox" onclick="closeScanLightbox()">
   <div class="scan-lightbox-inner"><img id="scan-lightbox-img" alt="Scanned page"/><div class="scan-highlight" id="scan-lightbox-highlight" style="display:none"></div></div>
 </div>
