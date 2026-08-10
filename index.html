@@ -4639,7 +4639,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
   <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
