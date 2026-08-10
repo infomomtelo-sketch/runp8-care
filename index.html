@@ -616,7 +616,7 @@
             <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602">LIC 602</option><option value="lic602a">LIC 602A</option><option value="physician_report">Physician report</option><option value="isp">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
             <select id="doc-resident" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
             <select id="doc-staff" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a staff member</option></select>
-            <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
+            <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif,application/pdf"/></label>
             <span id="doc-upload-status" style="font-size:12px;color:var(--text2)"></span>
           </div>
           <div style="font-size:11px;color:var(--text2);margin-top:8px">Stored privately. Only your facility can view these.</div>
@@ -2994,6 +2994,10 @@ function renderDocuments(){
 async function handleDocUpload(inp){
   if(!canEdit()){alert('You do not have permission to upload documents.');return;}
   const file=inp.files&&inp.files[0]; if(!file)return;
+
+  const err=validateUploadFile(file);
+  if(err){alert(err);inp.value='';return;}
+
   const status=document.getElementById('doc-upload-status');
   const docType=(document.getElementById('doc-type')||{}).value||'other';
   const residentId=(document.getElementById('doc-resident')||{}).value||null;
