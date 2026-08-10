@@ -3269,12 +3269,32 @@ function slotUpload(kind,docType){
   inp.click();
 }
 
+function validateUploadFile(file){
+  const ALLOWED_TYPES={
+    'application/pdf':true,'image/jpeg':true,'image/png':true,'image/heic':true,'image/heif':true,
+  };
+  const ALLOWED_EXT={'.pdf':true,'.jpg':true,'.jpeg':true,'.png':true,'.heic':true,'.heif':true};
+  const MAX_SIZE=20*1024*1024;  // 20 MB
+
+  if(!file||file.size===0)return'That file couldn\'t be read. Try a different document.';
+  if(file.size>MAX_SIZE)return'That file is too large. Please upload one under 20 MB.';
+  if(!ALLOWED_TYPES[file.type]){
+    const ext='.'+file.name.split('.').pop().toLowerCase();
+    if(!ALLOWED_EXT[ext])return'That file type isn\'t supported. Please upload a PDF or a photo (JPG, PNG, or HEIC) of the document.';
+  }
+  return null;
+}
+
 async function onSlotFile(input){
   const file=input.files&&input.files[0];
   input.value='';
   const target=slotUploadTarget;
   slotUploadTarget=null;
   if(!file||!target)return;
+
+  const err=validateUploadFile(file);
+  if(err){alert(err);return;}
+
   const{kind,docType}=target;
   const recordId=kind==='staff'?currentStaffId:currentResidentId;
 
@@ -3733,6 +3753,10 @@ async function onTrainingCertFile(input){
   const id=trainingCertTarget;
   trainingCertTarget=null;
   if(!file||!id)return;
+
+  const err=validateUploadFile(file);
+  if(err){alert(err);return;}
+
   const training=trainings.find(t=>t.id===id);
   if(!training)return;
   const failure=await fileTrainingCert(file,training);
@@ -4581,7 +4605,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
@@ -4626,7 +4650,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
-  <div class="modal" style="max-width:520px"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
   <div class="form-group"><label>Facility type</label><select id="facm-type"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity"/></div></div>
@@ -4639,7 +4663,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
   <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
@@ -4753,9 +4777,9 @@ function showSetNewPassword(){
      Supabase Storage — no AI, no extraction. It is how a document that arrived
      as a PDF by email gets onto a record, and the only attach path offered on
      resident records while there is no BAA. -->
-<input type="file" id="slot-file-input" accept="image/*,application/pdf,.pdf,.doc,.docx" style="display:none" onchange="onSlotFile(this)"/>
+<input type="file" id="slot-file-input" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif,application/pdf" style="display:none" onchange="onSlotFile(this)"/>
 <!-- Attaching a certificate to a training entry already in the history. -->
-<input type="file" id="training-cert-input" accept="image/*,application/pdf,.pdf,.doc,.docx" style="display:none" onchange="onTrainingCertFile(this)"/>
+<input type="file" id="training-cert-input" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif,application/pdf" style="display:none" onchange="onTrainingCertFile(this)"/>
 <div class="scan-lightbox" id="scan-lightbox" onclick="closeScanLightbox()">
   <div class="scan-lightbox-inner"><img id="scan-lightbox-img" alt="Scanned page"/><div class="scan-highlight" id="scan-lightbox-highlight" style="display:none"></div></div>
 </div>
