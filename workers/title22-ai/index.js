@@ -1,6 +1,6 @@
 // title22-ai — Title22 RCFE compliance assistant worker
 // Entitlement is namespaced to title22_* columns on the shared nwlhs profiles table.
-// This worker NEVER reads or writes profiles.plan (shared across RunP8 products).
+// This worker NEVER reads or writes profiles.plan (shared across services).
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
