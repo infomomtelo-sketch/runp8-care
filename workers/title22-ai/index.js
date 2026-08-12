@@ -17,9 +17,9 @@ function json(data, status = 200) {
 
 const SAFE_DOSAGE_MESSAGE = "I can't advise on medication dosages. Ask your prescriber or pharmacist.";
 const DOSAGE_PATTERNS = [
-  /\b(?:dosage|dosages|dose|doses|frequency|frequencies|prescription|prescriptions)\b/i,
-  /\b(?:how much|how many)\b/i,
-  /\bpharma[a-z]*\b/i,
+  /\b(?:dosage|dosages|dose|doses|frequency|frequencies|prescription|prescriptions)\b[\s\S]{0,40}\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|mL|units?|tablets?|capsules?|pills?)\b/i,
+  /\b(?:how much|how many)\b[\s\S]{0,40}\b(?:medication|medicine|dose|dosage|mg|mcg|g|ml|mL|tablet|capsule|pill|units?)\b/i,
+  /\bpharma[a-z]*\b[\s\S]{0,40}\b(?:medication|medicine|dose|dosage|mg|mcg|g|ml|mL|tablet|capsule|pill|units?)\b/i,
   /\b(?:take|taking|give|giving|administer|administered|administering)\b[\s\S]{0,60}\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|mL|units?)\b/i,
   /\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|mL|units?)\b[\s\S]{0,60}\b(?:once|twice|daily|hourly|every|per day|per week)\b/i,
 ];

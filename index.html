@@ -1000,6 +1000,7 @@ let activeFilter = 'all';
 let currentIncidentId = null;
 let currentUserRole = 'administrator';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
+const pendingEmailSends=new Set();
 
 function userDisplayName(user){
   const raw=user?.user_metadata?.full_name||user?.user_metadata?.name||user?.email||'there';
@@ -1015,6 +1016,8 @@ async function sendTransactionalEmail(template,payload,suffix){
   const key=suffix?emailEventKey(template,suffix):null;
   try{
     if(key&&localStorage.getItem(key))return true;
+    if(key&&pendingEmailSends.has(key))return true;
+    if(key)pendingEmailSends.add(key);
     const{data:{session}}=await sb.auth.getSession();
     if(!session?.access_token)return false;
     const res=await fetch(EMAIL_WORKER,{
@@ -1031,6 +1034,8 @@ async function sendTransactionalEmail(template,payload,suffix){
   }catch(e){
     console.log('Email worker skipped:',template,e.message);
     return false;
+  }finally{
+    if(key)pendingEmailSends.delete(key);
   }
 }
 
@@ -1043,7 +1048,7 @@ function maybeSendWelcomeEmail(user){
 }
 
 function maybeSendTrialWarning(daysLeft){
-  if(daysLeft!==3||!currentUser?.email)return;
+  if(daysLeft>3||daysLeft<1||!currentUser?.email)return;
   sendTransactionalEmail('trial_warning',{
     name:userDisplayName(currentUser),
     days_left:daysLeft,

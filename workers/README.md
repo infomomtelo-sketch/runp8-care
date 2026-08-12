@@ -139,6 +139,9 @@ sheet as read-only — it has nowhere to go.
 ## title22-email
 
 - Route: `https://title22-email.infomomtelo.workers.dev/api/email`
+- Like the other Workers here, merging a PR that changes this file does **not**
+  ship it — after merge the Worker code still has to be pasted into the
+  Cloudflare dashboard and deployed by hand.
 - Sends transactional email through Resend with `RESEND_API_KEY`.
 - Verifies the caller's Supabase JWT before sending, so the frontend can only
   email the signed-in user. Supported templates: `welcome`,
