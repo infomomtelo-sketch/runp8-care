@@ -2901,12 +2901,41 @@ async function demoBriefingHTML(){
   return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>';
 }
 
+// Patterns that indicate the user is asking for specific medical dosage
+// recommendations or prescribing advice. The assistant is a compliance tool,
+// not a clinical one; these requests must be refused before reaching the model.
+const DOSAGE_SAFETY_PATTERNS=[
+  /\bhow much\b.*\b(medication|drug|medicine|pill|tablet|capsule|mg|ml|dose|dosage)\b/i,
+  /\b(increase|decrease|change|adjust|modify|double|halve|cut)\b.*\b(dose|dosage|medication|mg|ml)\b/i,
+  /\bwhat dose\b/i,
+  /\bwhat dosage\b/i,
+  /\bmaximum dose\b/i,
+  /\blethal dose\b/i,
+  /\boverdose\b/i,
+  /\bprescribe\b/i,
+  /\bshould.*take\b.*\b(mg|ml|pill|tablet|capsule)\b/i,
+  /\b(give|administer|prescribing)\b.*\b(how much|amount|quantity)\b/i,
+  /\bdrug interaction\b/i,
+  /\bmedical advice\b/i,
+  /\bdiagnos[ei]\b/i,
+];
+function isDosageSafetyBlock(query){
+  return DOSAGE_SAFETY_PATTERNS.some(re=>re.test(query));
+}
+
 async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
   if(!query)return;
   if(input)input.value='';
   addAIMessage(query,'user');
+  // Safety gate: refuse requests for clinical dosage or medical advice before
+  // the query is sent to any backend. A caregiver asking this needs their
+  // prescriber, not a compliance chatbot.
+  if(isDosageSafetyBlock(query)){
+    addAIMessage('I can\'t provide dosage recommendations or prescribing advice — that requires a licensed prescriber. I can help with compliance tasks, staff certifications, DSS inspection readiness, and resident documentation.','assistant');
+    return;
+  }
   if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
   aiMessages.push({role:'user',content:query});
   const thinking=addAIMessage('Checking your facility data...','assistant');
