@@ -15,6 +15,75 @@ function json(data, status = 200) {
   });
 }
 
+const SAFE_DOSAGE_MESSAGE = "I can't advise on medication dosages. Ask your prescriber or pharmacist.";
+const DOSAGE_PATTERNS = [
+  /\b(?:dosage|dosages|dose|doses|frequency|frequencies|prescription|prescriptions)\b/i,
+  /\b(?:how much|how many)\b/i,
+  /\bpharma[a-z]*\b/i,
+  /\b(?:take|taking|give|giving|administer|administered|administering)\b[\s\S]{0,60}\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|mL|units?)\b/i,
+  /\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|mL|units?)\b[\s\S]{0,60}\b(?:once|twice|daily|hourly|every|per day|per week)\b/i,
+];
+
+function extractTextContent(payload) {
+  if (!Array.isArray(payload?.content)) return '';
+  return payload.content
+    .filter(item => item?.type === 'text' && typeof item.text === 'string')
+    .map(item => item.text)
+    .join('\n')
+    .trim();
+}
+
+function containsDosageAdvice(text) {
+  if (!text) return false;
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  return DOSAGE_PATTERNS.some(pattern => pattern.test(normalized));
+}
+
+async function logDosageRejection({ userId, facilityId, rejectedText }, env) {
+  const headers = {
+    'apikey': env.SUPABASE_SERVICE_KEY,
+    'Authorization': 'Bearer ' + env.SUPABASE_SERVICE_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal',
+  };
+  const record = {
+    facility_id: facilityId || null,
+    table_name: 'ai_guard',
+    row_id: crypto.randomUUID(),
+    action: 'INSERT',
+    actor: userId,
+    record: {
+      kind: 'dosage_rejected',
+      rejected_text: rejectedText,
+      user_id: userId,
+      facility_id: facilityId || null,
+      blocked_at: new Date().toISOString(),
+    },
+  };
+
+  const auditRes = await fetch(`${env.SUPABASE_URL}/rest/v1/audit_log`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(record),
+  });
+  if (auditRes.ok) return;
+
+  await fetch(`${env.SUPABASE_URL}/rest/v1/events`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      user_id: userId,
+      facility_id: facilityId || null,
+      role: 'system',
+      event_name: 'ai_dosage_rejected',
+      metadata: {
+        rejected_text: rejectedText,
+        audit_log_status: auditRes.status,
+      },
+    }),
+  }).catch(() => {});
+}
+
 function currentPeriod() {
   const now = new Date();
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
@@ -25,7 +94,7 @@ async function getUserFromToken(token, env) {
   const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
     headers: {
       'apikey': env.SUPABASE_SERVICE_KEY,
-      'Authorization': `Bearer ${token}`
+      'Authorization': 'Bearer ' + token,
     }
   });
   if (!res.ok) return null;
@@ -39,7 +108,7 @@ async function getProfile(userId, env) {
     {
       headers: {
         'apikey': env.SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'Authorization': 'Bearer ' + env.SUPABASE_SERVICE_KEY,
         'Accept': 'application/json'
       }
     }
@@ -84,7 +153,7 @@ async function checkAndDeductCredits(userId, plan, env) {
 
   const headers = {
     'apikey': KEY,
-    'Authorization': `Bearer ${KEY}`,
+    'Authorization': 'Bearer ' + KEY,
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   };
@@ -158,7 +227,13 @@ export default {
 
     // Health check
     if (request.method === 'GET') {
-      return json({ status: 'ok' });
+      const bindings = {
+        anthropic_api_key: !!env.ANTHROPIC_API_KEY,
+        supabase_url: !!env.SUPABASE_URL,
+        supabase_service_key: !!env.SUPABASE_SERVICE_KEY,
+      };
+      const ok = Object.values(bindings).every(Boolean);
+      return json({ status: ok ? 'ok' : 'misconfigured', bindings }, ok ? 200 : 500);
     }
 
     if (request.method !== 'POST') {
@@ -167,7 +242,7 @@ export default {
 
     try {
       const body = await request.json();
-      const { system, messages, tools } = body;
+      const { system, messages, tools, facility_id: facilityId } = body;
 
       const token = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
       const user = await getUserFromToken(token, env);
@@ -220,6 +295,24 @@ export default {
 
       const data = await response.json();
       if (!response.ok) return json({ error: data }, 500);
+
+      const replyText = extractTextContent(data);
+      if (containsDosageAdvice(replyText)) {
+        await logDosageRejection({
+          userId: user.id,
+          facilityId,
+          rejectedText: replyText,
+        }, env);
+        return json({
+          content: [{ type: 'text', text: SAFE_DOSAGE_MESSAGE }],
+          plan,
+          limit: credits.limit,
+          remaining: credits.remaining,
+          isPaid,
+          isPro,
+          blocked: true
+        });
+      }
 
       return json({
         ...data,

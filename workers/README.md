@@ -1,6 +1,6 @@
 # Cloudflare Workers — source of truth status
 
-Three Workers back Title22.
+Three Workers back Title22 in production, plus the dashboard-only `stripe-webhook`.
 
 `title22-ai`'s deployed source **is now committed** (`title22-ai/index.js`,
 pulled 2026-08-03 via the Cloudflare API — see below to re-pull after any
@@ -135,3 +135,14 @@ sheet as read-only — it has nowhere to go.
   `title22_plan_expires_at` on cancellation so the frontend expiry check
   (`resolveEntitlement`) locks access at period end.
 - Writes ONLY `title22_*` columns on `profiles`.
+
+## title22-email
+
+- Route: `https://title22-email.infomomtelo.workers.dev/api/email`
+- Sends transactional email through Resend with `RESEND_API_KEY`.
+- Verifies the caller's Supabase JWT before sending, so the frontend can only
+  email the signed-in user. Supported templates: `welcome`,
+  `trial_warning`, `subscription_confirmed`, and `payment_failed`.
+- Health check returns binding booleans and fails closed when
+  `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY`, or `EMAIL_FROM`
+  is missing.
