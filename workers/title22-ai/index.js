@@ -225,8 +225,18 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
-    // Health check
+    // Health check — verifies that all required bindings are present.
+    // Returns false for each missing binding so misconfiguration is visible
+    // immediately instead of surfacing as a cryptic 401/500 on first use.
     if (request.method === 'GET') {
+      return json({
+        status: 'ok',
+        bindings: {
+          SUPABASE_URL: Boolean(env.SUPABASE_URL),
+          SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
+          ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
+        },
+      });
       const bindings = {
         anthropic_api_key: !!env.ANTHROPIC_API_KEY,
         supabase_url: !!env.SUPABASE_URL,
@@ -253,6 +263,60 @@ export default {
       const isPaid = PAID_PLANS.includes(plan);
       const isPro = plan === 'pro';
 
+      // ── Dosage / medical-advice safety filter ──────────────────────────────
+      // Checked BEFORE credit deduction so a blocked prompt costs nothing.
+      // Reject any message that asks for dosage recommendations or tries to
+      // jailbreak the assistant into acting as a prescriber. This must be
+      // enforced server-side — client-side checks can be bypassed.
+      //
+      // Only the last user message is inspected: that is what the model acts
+      // on. The system prompt is server-controlled and not matched here.
+      const lastUserMsg = [...(messages || [])]
+        .reverse()
+        .find(m => m.role === 'user');
+      const userText = (
+        typeof lastUserMsg?.content === 'string'
+          ? lastUserMsg.content
+          : Array.isArray(lastUserMsg?.content)
+            ? lastUserMsg.content
+                .filter(b => b.type === 'text')
+                .map(b => b.text)
+                .join(' ')
+            : ''
+      ).toLowerCase();
+
+      const DOSAGE_PATTERNS = [
+        /\bhow much\b.{0,60}\b(give|administer|prescribe|take|dose)\b/i,
+        /\b(recommend|prescribe|calculate|increase|decrease|adjust)\b.{0,60}\b(dose|dosage|mg|mcg|units?|ml)\b/i,
+        /\bwhat (dose|dosage|amount)\b.{0,60}\b(should|can|to)\b/i,
+        /\b(dose|dosage)\b.{0,60}\bfor (a |an )?(resident|patient|elderly|senior)\b/i,
+        /\bmedical (advice|recommendation|opinion)\b/i,
+        /\bpretend (you are|to be).{0,60}\b(doctor|physician|nurse|pharmacist)\b/i,
+        /\bignore (your |all )?(previous |prior )?(instructions?|guidelines?|restrictions?|rules?)\b/i,
+        /\bact as (a |an )?(doctor|physician|nurse|pharmacist|clinician)\b/i,
+      ];
+
+      if (DOSAGE_PATTERNS.some(re => re.test(userText))) {
+        // Return in the same shape as a real Anthropic response so the frontend
+        // renders it normally (the safety message appears in the chat).
+        return json({
+          id: 'safety-block',
+          type: 'message',
+          role: 'assistant',
+          content: [{
+            type: 'text',
+            text: "I'm a Title 22 RCFE compliance assistant and can't provide dosage recommendations or prescribing advice — that requires a licensed prescriber. For medication questions, contact the resident's physician or a licensed pharmacist. I can help you document a physician order, look up compliance requirements, or review your MAR policy.",
+          }],
+          model: 'safety-filter',
+          stop_reason: 'safety',
+          plan,
+          limit: null,
+          remaining: null,
+          isPaid,
+          isPro,
+        });
+      }
+      // ── end safety filter ──────────────────────────────────────────────────
       // Server-side dosage / prescribing safety gate. Patterns mirror the
       // client-side check so a jailbreak that bypasses the frontend still gets
       // refused here before any credit is spent or the model is called.
