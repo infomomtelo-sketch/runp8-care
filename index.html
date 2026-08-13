@@ -1975,12 +1975,15 @@ function renderResidents(){
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
+    const avatarHtml=r.photo_url
+      ?`<img src="${esc(r.photo_url)}" alt="${esc(initials)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0"/>`
+      :`<div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>`;
     const lic601=residentDocStatus(r,'lic601',r.lic601);
     const lic602=residentDocStatus(r,'lic602',r.lic602);
     const isp=residentDocStatus(r,'isp',r.isp);
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${esc(r.id)}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>
+        ${avatarHtml}
         <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${r.preferred_name?'"'+esc(r.preferred_name)+'" ':''} ${r.room||r.room_number?'· '+esc(r.room||r.room_number):''}</div></div>
         ${age?`<div style="font-size:11px;color:var(--text2);text-align:right"><div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs</div></div>`:''}
       </div>
@@ -2008,12 +2011,25 @@ function openResidentModal(resId){
   document.getElementById('res-isp').value=r?.isp||'no';
   document.getElementById('res-isp-date').value=r?.isp_review_date||'';
   document.getElementById('res-modal-error').classList.remove('show');
+  // Photo preview
+  const resPhotoPreview=document.getElementById('res-photo-preview');
+  const resPhotoInput=document.getElementById('res-photo-input');
+  if(resPhotoInput)resPhotoInput.value='';
+  if(resPhotoPreview){
+    const rName=r?.name||r?.full_name||'?';
+    const rInitials=rName.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    resPhotoPreview.innerHTML=r?.photo_url
+      ?`<img src="${esc(r.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+      :esc(rInitials);
+  }
+  if(document.getElementById('res-photo-status'))document.getElementById('res-photo-status').textContent='';
   clearRecordDocs();
   refreshDocSlots('resident',currentResidentId);
   document.getElementById('resident-modal').classList.add('open');
 }
 function closeResidentModal(){
   document.getElementById('resident-modal').classList.remove('open');
+  _pendingResidentPhoto=null;
   // Abandoning the form abandons anything attached to it but not yet filed.
   // saveResident consumes the queue before calling this, so a real save is
   // unaffected — but a cancelled one must not leave files to attach themselves
@@ -2053,6 +2069,16 @@ async function saveResident(){
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
+  // Upload a pending profile photo chosen before the row existed.
+  if(_pendingResidentPhoto&&savedId){
+    const photoFile=_pendingResidentPhoto;_pendingResidentPhoto=null;
+    uploadProfilePhoto('residents',savedId,photoFile).then(url=>{
+      const idx=residents.findIndex(r=>r.id===savedId);
+      if(idx>-1)residents[idx].photo_url=url;
+      renderResidents();
+    }).catch(()=>{});
+  }else{_pendingResidentPhoto=null;}
+
   // The row has an id now, so anything attached to a document slot before the
   // record existed has something to attach to.
   const hadQueue=pendingSlotDocs.length>0;
@@ -2071,6 +2097,13 @@ function viewResident(id){
   currentResidentId=id;
   const nameField=r.name||r.full_name||'Unknown';
   document.getElementById('rd-name').textContent=nameField+(r.preferred_name?' "'+r.preferred_name+'"':'');
+  const rdPhoto=document.getElementById('rd-photo');
+  if(rdPhoto){
+    const rdInitials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    rdPhoto.innerHTML=r.photo_url
+      ?`<img src="${esc(r.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+      :esc(rdInitials);
+  }
   const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
   const docBadge=(label,status)=>{
     if(status.fromDoc){
@@ -2304,6 +2337,9 @@ function renderStaff(){
     const st=staffCertStatus(s);
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
+    const avatarHtml=s.photo_url
+      ?`<img src="${esc(s.photo_url)}" alt="${esc(initials)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0"/>`
+      :`<div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>`;
     let statusBadge='';
     if(s.active!==true)statusBadge='<span class="badge badge-gray">Inactive</span>';
     else if(st.expired.length)statusBadge=`<span class="badge badge-red">${st.expired.length} expired</span>`;
@@ -2351,7 +2387,7 @@ function renderStaff(){
     }).join('');
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${esc(initials)}</div>
+        ${avatarHtml}
         <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${esc(ROLE_LABELS[s.role]||s.role||'Staff')}</div></div>
         ${statusBadge}
       </div>
@@ -2375,6 +2411,55 @@ function filterRoleOptions(query){
 }
 function selectRoleOption(value,label){document.getElementById('staff-role').value=value;document.getElementById('staff-role-search').value=label;document.getElementById('role-options-dropdown').classList.remove('open');}
 function selectCustomRole(text){const slug=text.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_');document.getElementById('staff-role').value=slug||'other';document.getElementById('staff-role-search').value=text.trim();ROLE_LABELS[slug]=text.trim();document.getElementById('role-options-dropdown').classList.remove('open');}
+
+// Photo-upload handlers for the staff and resident edit modals.
+// If the record already exists the upload is immediate; otherwise the chosen
+// file is stored in a pending slot and uploaded after the row is saved.
+let _pendingStaffPhoto=null;
+let _pendingResidentPhoto=null;
+
+function handleStaffPhotoChange(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const status=document.getElementById('staff-photo-status');
+  const preview=document.getElementById('staff-photo-preview');
+  // Show local preview immediately so the caregiver can see what they chose.
+  const objectUrl=URL.createObjectURL(file);
+  if(preview)preview.innerHTML=`<img src="${objectUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
+  if(currentStaffId){
+    if(status)status.textContent='Uploading…';
+    uploadProfilePhoto('staff',currentStaffId,file).then(url=>{
+      const idx=staffList.findIndex(s=>s.id===currentStaffId);
+      if(idx>-1)staffList[idx].photo_url=url;
+      if(status)status.textContent='Saved ✓';
+    }).catch(e=>{
+      if(status)status.textContent='Upload failed: '+((e&&e.message)||e);
+    });
+  }else{
+    _pendingStaffPhoto=file;
+    if(status)status.textContent='Will upload when saved';
+  }
+}
+
+function handleResidentPhotoChange(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const status=document.getElementById('res-photo-status');
+  const preview=document.getElementById('res-photo-preview');
+  const objectUrl=URL.createObjectURL(file);
+  if(preview)preview.innerHTML=`<img src="${objectUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
+  if(currentResidentId){
+    if(status)status.textContent='Uploading…';
+    uploadProfilePhoto('residents',currentResidentId,file).then(url=>{
+      const idx=residents.findIndex(r=>r.id===currentResidentId);
+      if(idx>-1)residents[idx].photo_url=url;
+      if(status)status.textContent='Saved ✓';
+    }).catch(e=>{
+      if(status)status.textContent='Upload failed: '+((e&&e.message)||e);
+    });
+  }else{
+    _pendingResidentPhoto=file;
+    if(status)status.textContent='Will upload when saved';
+  }
+}
 
 function openStaffModal(staffId){
   if(!canEdit()){alert('You do not have permission to edit staff.');return;}
@@ -2403,12 +2488,25 @@ function openStaffModal(staffId){
   document.getElementById('staff-training-hours').value=s?.initial_training_hours||'';
   document.getElementById('staff-modal-error').classList.remove('show');
   document.getElementById('staff-delete-btn').style.display=currentStaffId?'inline-block':'none';
+  // Photo preview
+  const staffPhotoPreview=document.getElementById('staff-photo-preview');
+  const staffPhotoInput=document.getElementById('staff-photo-input');
+  if(staffPhotoInput)staffPhotoInput.value='';
+  if(staffPhotoPreview){
+    const sName=s?.full_name||s?.name||'?';
+    const sInitials=sName.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    staffPhotoPreview.innerHTML=s?.photo_url
+      ?`<img src="${esc(s.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+      :esc(sInitials);
+  }
+  if(document.getElementById('staff-photo-status'))document.getElementById('staff-photo-status').textContent='';
   clearRecordDocs();
   refreshDocSlots('staff',currentStaffId);
   document.getElementById('staff-modal').classList.add('open');
 }
 function closeStaffModal(){
   document.getElementById('staff-modal').classList.remove('open');
+  _pendingStaffPhoto=null;
   // Abandoning the form abandons its scan. Without this a document reviewed
   // here, then cancelled, would attach itself to whichever record was saved
   // next. saveStaff consumes it before calling this, so a real save is
@@ -2461,6 +2559,16 @@ async function saveStaff(){
     error=e;if(!e&&data){staffList.push(data);savedId=data.id;track('record_created',{record_type:'staff',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
+
+  // Upload a pending profile photo chosen before the row existed.
+  if(_pendingStaffPhoto&&savedId){
+    const photoFile=_pendingStaffPhoto;_pendingStaffPhoto=null;
+    uploadProfilePhoto('staff',savedId,photoFile).then(url=>{
+      const idx=staffList.findIndex(s=>s.id===savedId);
+      if(idx>-1)staffList[idx].photo_url=url;
+      renderStaff();
+    }).catch(()=>{});
+  }else{_pendingStaffPhoto=null;}
 
   // Now the row has an id, so a scanned certificate — or anything attached to a
   // document slot before the record existed — has something to attach to.
@@ -3325,6 +3433,23 @@ async function handleDocUpload(inp){
     refreshDashboard();
   }catch(e){ if(status)status.textContent='Upload failed: '+((e&&e.message)||e); }
 }
+// Upload a profile photo to the `profile-photos` bucket and persist the public
+// URL back to `table` (either 'staff' or 'residents') for the given recordId.
+// Returns the public URL on success, or throws on any error.
+async function uploadProfilePhoto(table,recordId,file){
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+  const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+  const path=currentFacility.id+'/'+recordId+'/'+id+'.'+ext;
+  const{error:upErr}=await sb.storage.from('profile-photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
+  if(upErr)throw upErr;
+  const{data:urlData}=sb.storage.from('profile-photos').getPublicUrl(path);
+  const publicUrl=urlData?.publicUrl;
+  if(!publicUrl)throw new Error('Could not get public URL for profile photo');
+  const{error:dbErr}=await sb.from(table).update({photo_url:publicUrl}).eq('id',recordId);
+  if(dbErr)throw dbErr;
+  return publicUrl;
+}
+
 // Download a copy rather than opening a viewer. Fetching the blob first means
 // the browser saves it under its real filename instead of the storage UUID.
 async function downloadDoc(path,filename){
@@ -4925,6 +5050,14 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
   <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div id="res-photo-row" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+    <div id="res-photo-preview" style="width:56px;height:56px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--text2)"></div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Profile photo</div>
+      <label class="btn btn-outline" style="font-size:12px;padding:5px 10px;cursor:pointer;margin:0">Choose photo<input type="file" id="res-photo-input" accept="image/*" style="display:none" onchange="handleResidentPhotoChange(this)"/></label>
+      <span id="res-photo-status" style="font-size:11px;color:var(--text2);margin-left:8px"></span>
+    </div>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
@@ -4963,7 +5096,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-detail-modal" onclick="if(event.target===this)closeResidentDetail()">
-  <div class="modal" style="max-width:520px"><div class="modal-header"><h3 id="rd-name">Resident</h3><button class="modal-close" onclick="closeResidentDetail()">×</button></div>
+  <div class="modal" style="max-width:520px"><div class="modal-header" style="align-items:flex-start"><div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0"><div id="rd-photo" style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:var(--text2)"></div><h3 id="rd-name" style="margin:0">Resident</h3></div><button class="modal-close" onclick="closeResidentDetail()">×</button></div>
   <div id="rd-body"></div>
   <div class="modal-footer"><button class="btn btn-outline" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()">🗑 Delete</button><button class="btn btn-outline" onclick="closeResidentDetail()">Close</button><button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button></div></div>
 </div>
@@ -4997,6 +5130,14 @@ function showSetNewPassword(){
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div id="staff-photo-row" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div id="staff-photo-preview" style="width:56px;height:56px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--text2)"></div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Profile photo</div>
+        <label class="btn btn-outline" style="font-size:12px;padding:5px 10px;cursor:pointer;margin:0">Choose photo<input type="file" id="staff-photo-input" accept="image/*" style="display:none" onchange="handleStaffPhotoChange(this)"/></label>
+        <span id="staff-photo-status" style="font-size:11px;color:var(--text2);margin-left:8px"></span>
+      </div>
+    </div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
