@@ -2134,7 +2134,7 @@ function makeSimpleAutocomplete(inputId,dropdownId,suggestions,extra){
   if(extra){const extraList=extra().filter(s=>s&&!suggestions.some(x=>x.toLowerCase()===s.toLowerCase())&&(!q||s.toLowerCase().includes(q)));list=[...new Set([...extraList,...list])].slice(0,10);}
   else list=list.slice(0,10);
   if(!list.length){dropdown.classList.remove('open');return;}
-  dropdown.innerHTML=list.map(s=>`<div class="searchable-option" onclick="pickAutocomplete('${inputId}','${dropdownId}','${s.replace(/'/g,"\\'")}')">${s}</div>`).join('');
+  dropdown.innerHTML=list.map(s=>`<div class="searchable-option" data-val="${esc(s)}" onclick="pickAutocomplete('${inputId}','${dropdownId}',this.dataset.val)">${esc(s)}</div>`).join('');
   dropdown.classList.add('open');
 }
 function pickAutocomplete(inputId,dropdownId,value){
