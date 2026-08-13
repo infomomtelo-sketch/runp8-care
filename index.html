@@ -914,6 +914,7 @@ const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 // creation and Workers can't be renamed). The source lives in
 // workers/title22-extract/ — see that worker's wrangler.toml before deploying.
 const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extract';
+const DOCUMENTS_WORKER = 'https://title22-documents.infomomtelo.workers.dev/api/document';
 const EMAIL_WORKER = 'https://title22-email.infomomtelo.workers.dev/api/email';
 const TITLE22_APP_URL = 'https://title22.app';
 
@@ -1065,19 +1066,48 @@ function maybeSendSubscriptionConfirmed(plan){
   },'subscription-'+plan).then(()=>{},()=>{});
 }
 
-const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
-  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
-  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
-  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
+const ROLE_TABS = {
+  administrator:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'],
+  supervisor:   ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'],
+  caregiver:    ['dashboard','mar','incidents','daily','documents'],
+  readonly:     ['dashboard','checklist','residents','incidents','daily','mar','documents'],
 };
-function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
-function canEdit(){ return getAccess().canEdit; }
-function canDelete(){ return getAccess().canDelete; }
-function canTeam(){ return getAccess().canTeam; }
+const ROLE_CAPABILITIES = {
+  administrator:{
+    'record.edit':true,'record.delete':true,'team.manage':true,'billing.manage':true,
+    'resident.read_summary':true,'resident.read_detail':true,'resident.read_sensitive':true,'resident.edit':true,'resident.delete':true,
+    'document.read_metadata':true,'document.read_content':true,'document.share':true,'document.upload':true,
+  },
+  supervisor:{
+    'record.edit':true,'record.delete':true,'team.manage':false,'billing.manage':false,
+    'resident.read_summary':true,'resident.read_detail':true,'resident.read_sensitive':true,'resident.edit':true,'resident.delete':true,
+    'document.read_metadata':true,'document.read_content':true,'document.share':true,'document.upload':true,
+  },
+  caregiver:{
+    'record.edit':true,'record.delete':false,'team.manage':false,'billing.manage':false,
+    'resident.read_summary':false,'resident.read_detail':false,'resident.read_sensitive':false,'resident.edit':false,'resident.delete':false,
+    'document.read_metadata':true,'document.read_content':true,'document.share':true,'document.upload':true,
+  },
+  readonly:{
+    'record.edit':false,'record.delete':false,'team.manage':false,'billing.manage':false,
+    'resident.read_summary':true,'resident.read_detail':true,'resident.read_sensitive':true,'resident.edit':false,'resident.delete':false,
+    'document.read_metadata':true,'document.read_content':true,'document.share':true,'document.upload':false,
+  },
+};
+function roleCaps(){ return ROLE_CAPABILITIES[currentUserRole]||ROLE_CAPABILITIES.readonly; }
+function hasCapability(cap){ return !!roleCaps()[cap]; }
+function canEdit(){ return hasCapability('record.edit'); }
+function canDelete(){ return hasCapability('record.delete'); }
+function canTeam(){ return hasCapability('team.manage'); }
+function canReadResidentDetail(){ return hasCapability('resident.read_detail'); }
+function canEditResident(){ return hasCapability('resident.edit'); }
+function canDeleteResident(){ return hasCapability('resident.delete'); }
+function canReadDocumentContent(){ return hasCapability('document.read_content'); }
+function canShareDocument(){ return hasCapability('document.share'); }
+function canUploadDocument(){ return hasCapability('document.upload'); }
 function allowedTabs(){
   if(!t22Entitled) return ['billing']; // entitlement gate (fail closed): unpaid/expired => billing only
-  return getAccess().tabs;
+  return ROLE_TABS[currentUserRole]||ROLE_TABS.readonly;
 }
 
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
@@ -2009,10 +2039,31 @@ async function saveNote(){
 let residents=[];
 window.residents=residents;
 let currentResidentId=null;
+let residentDetailsById={};
+const RESIDENT_SUMMARY_SELECT='id,facility_id,name,full_name,preferred_name,room,room_number,dob,date_of_birth,admission_date,diagnosis,lic601,lic602,isp,isp_review_date,photo_url,status';
+const RESIDENT_SUMMARY_FIELDS=RESIDENT_SUMMARY_SELECT.split(',');
+
+function residentSummaryFromRow(row){
+  const out={};
+  RESIDENT_SUMMARY_FIELDS.forEach(k=>{out[k]=row?.[k]??null;});
+  return out;
+}
+
+async function fetchResidentDetail(id,force){
+  if(!id||!currentFacility)return null;
+  if(!force&&residentDetailsById[id])return residentDetailsById[id];
+  const{data,error}=await sb.from('residents').select('*').eq('facility_id',currentFacility.id).eq('id',id).maybeSingle();
+  if(error||!data)return null;
+  residentDetailsById[id]=data;
+  const idx=residents.findIndex(r=>r.id===id);
+  if(idx>-1)residents[idx]={...residents[idx],...residentSummaryFromRow(data)};
+  return data;
+}
 
 async function loadResidents(){
   if(!currentFacility)return;
-  const{data}=await sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name');
+  residentDetailsById={};
+  const{data}=await sb.from('residents').select(RESIDENT_SUMMARY_SELECT).eq('facility_id',currentFacility.id).order('name');
   residents=data||[];window.residents=residents;renderResidents();
 }
 
@@ -2067,10 +2118,11 @@ function renderResidents(){
   }).join('');
 }
 
-function openResidentModal(resId){
-  if(!canEdit()){alert('You do not have permission to edit residents.');return;}
+async function openResidentModal(resId){
+  if(!canEditResident()){alert('You do not have permission to edit residents.');return;}
   currentResidentId=resId||null;
-  const r=resId?residents.find(x=>x.id===resId):null;
+  const r=resId?await fetchResidentDetail(resId):null;
+  if(resId&&!r){alert('Could not load this resident record.');return;}
   document.getElementById('res-modal-title').textContent=r?'Edit resident':'Add resident';
   document.getElementById('res-name').value=r?.name||r?.full_name||'';
   document.getElementById('res-preferred').value=r?.preferred_name||'';
@@ -2172,10 +2224,14 @@ async function saveResident(){
   if(currentResidentId){
     const{error:e}=await sb.from('residents').update(payload).eq('id',currentResidentId);
     error=e;
-    if(!e){const idx=residents.findIndex(r=>r.id===currentResidentId);if(idx>-1)residents[idx]={...residents[idx],...payload};}
+    if(!e){
+      const idx=residents.findIndex(r=>r.id===currentResidentId);
+      if(idx>-1)residents[idx]={...residents[idx],...residentSummaryFromRow({id:currentResidentId,...payload})};
+      residentDetailsById[currentResidentId]={...(residentDetailsById[currentResidentId]||{}),id:currentResidentId,...payload};
+    }
   }else{
     const{data,error:e}=await sb.from('residents').insert(payload).select().single();
-    error=e;if(!e&&data){residents.push(data);savedId=data.id;track('record_created',{record_type:'resident',record_id:data.id});}
+    error=e;if(!e&&data){residents.push(residentSummaryFromRow(data));residentDetailsById[data.id]=data;savedId=data.id;track('record_created',{record_type:'resident',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
@@ -2202,18 +2258,32 @@ async function saveResident(){
   refreshDashboard();
 }
 
-function viewResident(id){
-  const r=residents.find(x=>x.id===id);if(!r)return;
+function syncResidentDetailActions(){
+  const delBtn=document.getElementById('rd-delete-btn');
+  const editBtn=document.getElementById('rd-edit-btn');
+  if(delBtn)delBtn.style.display=canDeleteResident()?'':'none';
+  if(editBtn)editBtn.style.display=canEditResident()?'':'none';
+}
+
+async function viewResident(id){
+  if(!canReadResidentDetail()){alert('You do not have permission to view resident details.');return;}
+  const summary=residents.find(x=>x.id===id);if(!summary)return;
   currentResidentId=id;
-  const nameField=r.name||r.full_name||'Unknown';
-  document.getElementById('rd-name').textContent=nameField+(r.preferred_name?' "'+r.preferred_name+'"':'');
+  const nameField=summary.name||summary.full_name||'Unknown';
+  document.getElementById('rd-name').textContent=nameField+(summary.preferred_name?' "'+summary.preferred_name+'"':'');
   const rdPhoto=document.getElementById('rd-photo');
   if(rdPhoto){
     const rdInitials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
-    rdPhoto.innerHTML=r.photo_url
-      ?`<img src="${esc(r.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+    rdPhoto.innerHTML=summary.photo_url
+      ?`<img src="${esc(summary.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
       :esc(rdInitials);
   }
+  syncResidentDetailActions();
+  document.getElementById('rd-body').innerHTML='<div class="empty" style="padding:20px 0">Loading resident details…</div>';
+  document.getElementById('resident-detail-modal').classList.add('open');
+  const r=await fetchResidentDetail(id);
+  if(currentResidentId!==id||!r)return;
+  document.getElementById('rd-name').textContent=nameField+(r.preferred_name?' "'+r.preferred_name+'"':'');
   const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
   const docBadge=(label,status)=>{
     if(status.fromDoc){
@@ -2284,16 +2354,20 @@ function viewResident(id){
 
     <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div></div>
   </div>`;
-  document.getElementById('resident-detail-modal').classList.add('open');
 }
 function closeResidentDetail(){document.getElementById('resident-detail-modal').classList.remove('open');}
-function editCurrentResident(){closeResidentDetail();openResidentModal(currentResidentId);}
+function editCurrentResident(){
+  if(!canEditResident()){alert('You do not have permission to edit residents.');return;}
+  closeResidentDetail();openResidentModal(currentResidentId);
+}
 async function deleteCurrentResident(){
   if(!currentResidentId)return;
+  if(!canDeleteResident()){alert('You do not have permission to delete residents.');return;}
   const r=residents.find(x=>x.id===currentResidentId);
   if(!confirm(`Delete "${r?.name||'this resident'}"?`))return;
   await sb.from('residents').delete().eq('id',currentResidentId);
   residents=residents.filter(x=>x.id!==currentResidentId);
+  delete residentDetailsById[currentResidentId];
   closeResidentDetail();renderResidents();
   refreshDashboard();
 }
@@ -3543,7 +3617,7 @@ const DOC_TYPE_LABELS={lic601:'LIC 601',lic602:'LIC 602',lic602a:'LIC 602A',phys
 let facilityDocs=[];
 async function loadDocuments(){
   if(!currentFacility)return;
-  const up=document.getElementById('doc-upload-row'); if(up)up.style.display=canEdit()?'':'none';
+  const up=document.getElementById('doc-upload-row'); if(up)up.style.display=canUploadDocument()?'':'none';
   const resSel=document.getElementById('doc-resident');
   if(resSel){
     let rs=(window.residents&&window.residents.length)?window.residents:null;
@@ -3575,6 +3649,8 @@ function renderDocuments(){
   if(!facilityDocs.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
   if(empty)empty.style.display='none';
   const del=canDelete();
+  const canRead=canReadDocumentContent();
+  const canShare=canShareDocument();
   const canFaxTier=['pro','specialist','agency'].includes(t22Plan); // Fax = paid Facility+ add-on (coming soon)
   list.innerHTML=facilityDocs.map(d=>{
     const res=d.residents?(d.residents.name||d.residents.full_name||''):'';
@@ -3588,16 +3664,16 @@ function renderDocuments(){
         <div style="font-weight:600;font-size:14px;word-break:break-word">${esc(d.title||d.file_name||'Document')}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(DOC_TYPE_LABELS[d.doc_type]||d.doc_type||'Document')}${who?' \u00b7 '+esc(who):''}${when?' \u00b7 '+when:''}${size?' \u00b7 '+size:''}${d.source==='scan'?' \u00b7 \ud83d\udcf7 scanned':''}</div>
       </div>
-      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="openDoc('${esc(d.storage_path)}')">View / Print</button>
-      <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="downloadDoc('${esc(d.storage_path)}','${esc(d.file_name||d.title||'document')}')" title="Download a copy">\u2b07 Download</button>
-      <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="shareDoc('${esc(d.storage_path)}','${esc(d.title||d.file_name||'Document')}')" title="Share a time-limited link">\u2197 Share</button>
+      ${canRead?`<button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="openDoc('${esc(d.storage_path)}')">View / Print</button>`:''}
+      ${canRead?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="downloadDoc('${esc(d.storage_path)}','${esc(d.file_name||d.title||'document')}')" title="Download a copy">\u2b07 Download</button>`:''}
+      ${canShare?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="shareDoc('${esc(d.storage_path)}','${esc(d.title||d.file_name||'Document')}')" title="Share a time-limited link">\u2197 Share</button>`:''}
       ${canFaxTier?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`:''}
       ${del?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteDoc('${esc(d.id)}','${esc(d.storage_path)}')">Delete</button>`:''}
     </div>`;
   }).join('');
 }
 async function handleDocUpload(inp){
-  if(!canEdit()){alert('You do not have permission to upload documents.');return;}
+  if(!canUploadDocument()){alert('You do not have permission to upload documents.');return;}
   const file=inp.files&&inp.files[0]; if(!file)return;
   const status=document.getElementById('doc-upload-status');
   const docType=(document.getElementById('doc-type')||{}).value||'other';
@@ -3642,16 +3718,15 @@ async function uploadProfilePhoto(table,recordId,file){
 // the browser saves it under its real filename instead of the storage UUID.
 async function downloadDoc(path,filename){
   try{
-    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,120);
-    if(error||!data?.signedUrl)throw error||new Error('no url');
-    const res=await fetch(data.signedUrl);
+    const url=await requestDocumentUrl(path,'document.read_content',120);
+    const res=await fetch(url);
     if(!res.ok)throw new Error('HTTP '+res.status);
     const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
+    const blobUrl=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download=filename||'document';
+    a.href=blobUrl;a.download=filename||'document';
     document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    setTimeout(()=>URL.revokeObjectURL(blobUrl),10000);
   }catch(e){ alert('Could not download this document.'); }
 }
 
@@ -3660,9 +3735,7 @@ async function downloadDoc(path,filename){
 // it public — and it stops working on its own, which a permanent link would not.
 async function shareDoc(path,title){
   try{
-    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,3600);
-    if(error||!data?.signedUrl)throw error||new Error('no url');
-    const url=data.signedUrl;
+    const url=await requestDocumentUrl(path,'document.share',3600);
     if(navigator.share){
       try{ await navigator.share({title:title||'Document',url}); return; }
       catch(shareErr){ if(shareErr&&shareErr.name==='AbortError')return; }
@@ -3678,9 +3751,8 @@ async function shareDoc(path,title){
 
 async function openDoc(path){
   try{
-    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,120);
-    if(error||!data||!data.signedUrl)throw error||new Error('no url');
-    window.open(data.signedUrl,'_blank');
+    const url=await requestDocumentUrl(path,'document.read_content',120);
+    window.open(url,'_blank');
   }catch(e){ alert('Could not open this document.'); }
 }
 async function deleteDoc(id,path){
@@ -3700,6 +3772,26 @@ function requestFax(){
   // via a prefilled email — no per-page cost incurred, no capability implied.
   if(confirm('📠 Faxing documents to pharmacies, physicians, or DSS is coming soon.\n\nWant us to let you know when it is ready? Tap OK to send a quick note.')){
     window.location.href='mailto:hello@title-22.com?subject='+encodeURIComponent('Fax feature interest — Title22')+'&body='+encodeURIComponent('Hi — I would use a fax feature in Title22. Please let me know when it is available.');
+  }
+
+  async function requestDocumentUrl(path,capability,expiresIn){
+    if(demoMode){
+      const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,expiresIn);
+      if(error||!data?.signedUrl)throw error||new Error('no url');
+      return data.signedUrl;
+    }
+    if(!currentFacility?.id)throw new Error('No facility selected.');
+    if(!path)throw new Error('No document path provided.');
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('Your session expired. Sign in again and retry.');
+    const res=await fetch(DOCUMENTS_WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({facilityId:currentFacility.id,storagePath:path,capability,expiresIn})
+    });
+    const data=await res.json().catch(()=>null);
+    if(!res.ok||!data?.signedUrl)throw new Error(data?.message||`Could not access this document. (HTTP ${res.status})`);
+    return data.signedUrl;
   }
 }
 
@@ -3807,9 +3899,9 @@ function renderDocSlots(kind){
 
     const btns=[];
     if(doc){
-      btns.push(`<button type="button" onclick="openDoc('${esc(doc.storage_path)}')">👁 View / Print</button>`);
-      btns.push(`<button type="button" onclick="downloadDoc('${esc(doc.storage_path)}','${esc(doc.file_name||doc.title||'document')}')">⬇ Download</button>`);
-      btns.push(`<button type="button" onclick="shareDoc('${esc(doc.storage_path)}','${esc(doc.title||doc.file_name||'Document')}')">↗ Share</button>`);
+      if(canReadDocumentContent())btns.push(`<button type="button" onclick="openDoc('${esc(doc.storage_path)}')">👁 View / Print</button>`);
+      if(canReadDocumentContent())btns.push(`<button type="button" onclick="downloadDoc('${esc(doc.storage_path)}','${esc(doc.file_name||doc.title||'document')}')">⬇ Download</button>`);
+      if(canShareDocument())btns.push(`<button type="button" onclick="shareDoc('${esc(doc.storage_path)}','${esc(doc.title||doc.file_name||'Document')}')">↗ Share</button>`);
       if(canFaxTier)btns.push(`<button type="button" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`);
     }
     if(edit){
@@ -3889,7 +3981,7 @@ function slotScan(kind,docType){
 
 function slotUpload(kind,docType){
   if(demoMode){alert('Attaching documents needs a signed-in account. The sample facility is read-only.');return;}
-  if(!canEdit()){alert('You do not have permission to attach documents.');return;}
+  if(!canUploadDocument()){alert('You do not have permission to attach documents.');return;}
   if(!currentFacility){alert('Open a facility first.');return;}
   slotUploadTarget={kind,docType};
   const inp=document.getElementById('slot-file-input');
@@ -4044,6 +4136,13 @@ async function checkInviteToken(){
   if(!token||!currentUser)return;
   const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').single();
   if(!invite)return;
+  const inviteEmail=String(invite.email||'').trim().toLowerCase();
+  const currentEmail=String(currentUser.email||'').trim().toLowerCase();
+  if(inviteEmail&&inviteEmail!==currentEmail){
+    window.history.replaceState({},document.title,window.location.pathname);
+    alert(`This invite was sent to ${invite.email}. Sign in with that email address to accept it.`);
+    return;
+  }
   await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
   await sb.from('facility_invites').update({status:'accepted',accepted_at:new Date().toISOString()}).eq('id',invite.id);
   window.history.replaceState({},document.title,window.location.pathname);
@@ -4580,6 +4679,10 @@ const SCAN_CONFIDENCE={
 // should not have to re-pick "CPR card" after pressing Scan on the CPR slot.
 function startScan(formType,source,docType){
   if(!SCAN_FIELD_MAP[formType])return;
+  if(formType==='resident'){
+    alert('Resident scanning is disabled until a HIPAA BAA is in place. Upload resident documents instead.');
+    return;
+  }
   if(demoMode){alert('Scan to fill needs a signed-in account. The sample facility is read-only.');return;}
   if(!canEdit()){alert('You do not have permission to add records.');return;}
   if(!currentFacility){alert('Open a facility first.');return;}
@@ -5333,7 +5436,7 @@ function showSetNewPassword(){
 <div class="modal-overlay" id="resident-detail-modal" onclick="if(event.target===this)closeResidentDetail()">
   <div class="modal" style="max-width:520px"><div class="modal-header" style="align-items:flex-start"><div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0"><div id="rd-photo" style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:var(--text2)"></div><h3 id="rd-name" style="margin:0">Resident</h3></div><button class="modal-close" onclick="closeResidentDetail()">×</button></div>
   <div id="rd-body"></div>
-  <div class="modal-footer"><button class="btn btn-outline" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()">🗑 Delete</button><button class="btn btn-outline" onclick="closeResidentDetail()">Close</button><button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button></div></div>
+  <div class="modal-footer"><button class="btn btn-outline" id="rd-delete-btn" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()">🗑 Delete</button><button class="btn btn-outline" onclick="closeResidentDetail()">Close</button><button class="btn btn-primary" id="rd-edit-btn" onclick="editCurrentResident()">Edit record</button></div></div>
 </div>
 
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">

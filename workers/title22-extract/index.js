@@ -444,6 +444,7 @@ export default {
         SUPABASE_URL: Boolean(env.SUPABASE_URL),
         SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
         ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
+        ALLOW_RESIDENT_SCAN: env.ALLOW_RESIDENT_SCAN === 'true',
       };
       const missing = Object.keys(config).filter((k) => !config[k]);
       return json({
@@ -466,6 +467,12 @@ export default {
       const form = FORMS[formType];
       if (!form) {
         return json({ error: 'bad_request', message: `Unknown formType. Expected one of: ${Object.keys(FORMS).join(', ')}.` }, 400);
+      }
+      if (formType === 'resident' && env.ALLOW_RESIDENT_SCAN !== 'true') {
+        return json({
+          error: 'resident_scan_disabled',
+          message: 'Resident scanning is disabled until a HIPAA BAA is in place. Upload resident documents instead.',
+        }, 403);
       }
       if (!image?.data || typeof image.data !== 'string') {
         return json({ error: 'bad_request', message: 'image.data (base64, no data: prefix) is required.' }, 400);

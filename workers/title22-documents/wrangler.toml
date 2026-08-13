@@ -1,0 +1,13 @@
+name = "title22-documents"
+main = "index.js"
+compatibility_date = "2026-08-13"
+
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY   — Supabase service_role key; used server-side to
+#                             verify the caller's JWT, resolve facility roles,
+#                             read document metadata, sign private Storage URLs,
+#                             and log access events
+#
+# Public route (configured in the Cloudflare dashboard, not here):
+#   https://title22-documents.infomomtelo.workers.dev/api/document
