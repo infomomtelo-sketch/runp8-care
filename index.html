@@ -2079,6 +2079,25 @@ function openResidentModal(resId){
   document.getElementById('res-admission').value=r?.admission_date||'';
   document.getElementById('res-diagnosis').value=r?.diagnosis||'';
   document.getElementById('res-allergies').value=r?.allergies||'';
+  document.getElementById('res-gender').value=r?.gender||'';
+  document.getElementById('res-weight').value=r?.weight||'';
+  document.getElementById('res-height').value=r?.height||'';
+  document.getElementById('res-languages').value=r?.spoken_languages||'';
+  document.getElementById('res-dnr').value=r?.dnr||'no';
+  document.getElementById('res-polst').value=r?.polst||'no';
+  document.getElementById('res-hospice').value=r?.hospice?'true':'false';
+  document.getElementById('res-conserved').value=r?.conserved?'true':'false';
+  document.getElementById('res-conservator-row').style.display=r?.conserved?'grid':'none';
+  document.getElementById('res-conservator-name').value=r?.conservator_name||'';
+  document.getElementById('res-rp-name').value=r?.responsible_party_name||'';
+  document.getElementById('res-rp-relation').value=r?.responsible_party_relation||'';
+  document.getElementById('res-rp-phone').value=r?.responsible_party_phone||'';
+  document.getElementById('res-physician-name').value=r?.physician_name||'';
+  document.getElementById('res-physician-phone').value=r?.physician_phone||'';
+  document.getElementById('res-insurance-carrier').value=r?.insurance_carrier||'';
+  document.getElementById('res-insurance-id').value=r?.insurance_id||'';
+  document.getElementById('res-medi-cal').value=r?.medi_cal?'true':'false';
+  document.getElementById('res-ssi').value=r?.ssi?'true':'false';
   document.getElementById('res-lic601').value=r?.lic601||'no';
   document.getElementById('res-lic602').value=r?.lic602||'no';
   document.getElementById('res-isp').value=r?.isp||'no';
@@ -2124,6 +2143,24 @@ async function saveResident(){
     admission_date:document.getElementById('res-admission').value||null,
     diagnosis:document.getElementById('res-diagnosis').value.trim()||null,
     allergies:document.getElementById('res-allergies').value.trim()||null,
+    gender:document.getElementById('res-gender').value||null,
+    weight:document.getElementById('res-weight').value.trim()||null,
+    height:document.getElementById('res-height').value.trim()||null,
+    spoken_languages:document.getElementById('res-languages').value.trim()||null,
+    dnr:document.getElementById('res-dnr').value,
+    polst:document.getElementById('res-polst').value,
+    hospice:document.getElementById('res-hospice').value==='true',
+    conserved:document.getElementById('res-conserved').value==='true',
+    conservator_name:document.getElementById('res-conservator-name').value.trim()||null,
+    responsible_party_name:document.getElementById('res-rp-name').value.trim()||null,
+    responsible_party_relation:document.getElementById('res-rp-relation').value.trim()||null,
+    responsible_party_phone:document.getElementById('res-rp-phone').value.trim()||null,
+    physician_name:document.getElementById('res-physician-name').value.trim()||null,
+    physician_phone:document.getElementById('res-physician-phone').value.trim()||null,
+    insurance_carrier:document.getElementById('res-insurance-carrier').value.trim()||null,
+    insurance_id:document.getElementById('res-insurance-id').value.trim()||null,
+    medi_cal:document.getElementById('res-medi-cal').value==='true',
+    ssi:document.getElementById('res-ssi').value==='true',
     lic601:document.getElementById('res-lic601').value,
     lic602:document.getElementById('res-lic602').value,
     isp:document.getElementById('res-isp').value,
@@ -2193,14 +2230,58 @@ function viewResident(id){
   const lic602=residentDocStatus(r,'lic602',r.lic602);
   const isp=residentDocStatus(r,'isp',r.isp);
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
-      ${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}
-      ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${esc(r.room||r.room_number)}</div></div>`:''}
-      ${r.admission_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>`:''}
-      ${r.isp_review_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>`:''}
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Primary Information</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+        ${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}
+        ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${esc(r.room||r.room_number)}</div></div>`:''}
+        ${r.admission_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>`:''}
+        ${r.isp_review_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>`:''}
+        ${r.gender?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Gender</div><div style="font-weight:500">${esc(r.gender.charAt(0).toUpperCase()+r.gender.slice(1))}</div></div>`:''}
+        ${r.weight?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Weight</div><div style="font-weight:500">${esc(r.weight)}</div></div>`:''}
+        ${r.height?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Height</div><div style="font-weight:500">${esc(r.height)}</div></div>`:''}
+        ${r.spoken_languages?`<div style="grid-column:1/-1"><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Spoken languages</div><div style="font-weight:500">${esc(r.spoken_languages)}</div></div>`:''}
+        ${!r.gender&&!r.weight&&!r.height&&!r.spoken_languages&&!r.dob&&!r.room&&!r.room_number&&!r.admission_date?`<div style="grid-column:1/-1;color:var(--text2);font-size:12px">No data available</div>`:''}
+      </div>
     </div>
-    ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
-    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
+
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Responsible Party</div>
+      ${r.responsible_party_name?`<div style="font-size:13px"><div style="font-weight:500">${esc(r.responsible_party_name)}${r.responsible_party_relation?' · '+esc(r.responsible_party_relation):''}</div>${r.responsible_party_phone?`<div style="color:var(--text2);margin-top:3px">${esc(r.responsible_party_phone)}</div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px">No data available</div>`}
+    </div>
+
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Directives</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${r.dnr!=null?`<span class="badge ${r.dnr==='yes'?'badge-green':'badge-red'}">DNR ${r.dnr==='yes'?'✓':'✗'}</span>`:'<span class="badge" style="background:var(--gray-bg);color:var(--text2)">DNR —</span>'}
+        ${r.polst!=null?`<span class="badge ${r.polst==='yes'?'badge-green':'badge-red'}">POLST ${r.polst==='yes'?'✓':'✗'}</span>`:'<span class="badge" style="background:var(--gray-bg);color:var(--text2)">POLST —</span>'}
+        ${r.hospice!=null?`<span class="badge ${r.hospice?'badge-amber':'badge-red'}">Hospice ${r.hospice?'Yes':'No'}</span>`:'<span class="badge" style="background:var(--gray-bg);color:var(--text2)">Hospice —</span>'}
+        ${r.conserved!=null?`<span class="badge ${r.conserved?'badge-amber':'badge-red'}">Conserved ${r.conserved?'Yes':'No'}</span>`:'<span class="badge" style="background:var(--gray-bg);color:var(--text2)">Conserved —</span>'}
+      </div>
+      ${r.conserved&&r.conservator_name?`<div style="font-size:12px;color:var(--text2);margin-top:6px">Conservator: ${esc(r.conservator_name)}</div>`:''}
+    </div>
+
+    ${r.diagnosis||r.allergies?`<div>
+      ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px"><div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;margin-bottom:4px">Primary diagnosis</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
+      ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
+    </div>`:''}
+
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Primary Physician</div>
+      ${r.physician_name?`<div style="font-size:13px"><div style="font-weight:500">${esc(r.physician_name)}</div>${r.physician_phone?`<div style="color:var(--text2);margin-top:3px">${esc(r.physician_phone)}</div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px">No data available</div>`}
+    </div>
+
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Insurance &amp; Financial</div>
+      ${r.insurance_carrier||r.medi_cal||r.ssi?`<div style="font-size:13px">
+        ${r.insurance_carrier?`<div style="font-weight:500">${esc(r.insurance_carrier)}${r.insurance_id?' · '+esc(r.insurance_id):''}</div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:${r.insurance_carrier?'6':'0'}px">
+          ${r.medi_cal?`<span class="badge badge-green">Medi-Cal</span>`:''}
+          ${r.ssi?`<span class="badge badge-green">SSI</span>`:''}
+        </div>
+      </div>`:`<div style="color:var(--text2);font-size:12px">No data available</div>`}
+    </div>
+
     <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
@@ -4441,8 +4522,26 @@ const SCAN_FIELD_MAP={
     room:{el:'res-room'},
     dob:{el:'res-dob'},
     admission_date:{el:'res-admission'},
+    gender:{el:'res-gender'},
+    weight:{el:'res-weight'},
+    height:{el:'res-height'},
+    spoken_languages:{el:'res-languages'},
     diagnosis:{el:'res-diagnosis'},
     allergies:{el:'res-allergies'},
+    dnr:{el:'res-dnr',kind:'bool-yesno'},
+    polst:{el:'res-polst',kind:'bool-yesno'},
+    hospice:{el:'res-hospice',kind:'bool-truefalse'},
+    conserved:{el:'res-conserved',kind:'bool-truefalse'},
+    conservator_name:{el:'res-conservator-name'},
+    responsible_party_name:{el:'res-rp-name'},
+    responsible_party_relation:{el:'res-rp-relation'},
+    responsible_party_phone:{el:'res-rp-phone'},
+    physician_name:{el:'res-physician-name'},
+    physician_phone:{el:'res-physician-phone'},
+    insurance_carrier:{el:'res-insurance-carrier'},
+    insurance_id:{el:'res-insurance-id'},
+    medi_cal:{el:'res-medi-cal',kind:'bool-truefalse'},
+    ssi:{el:'res-ssi',kind:'bool-truefalse'},
     lic601:{el:'res-lic601',kind:'bool-yesno'},
     lic602:{el:'res-lic602',kind:'bool-yesno'},
     isp:{el:'res-isp',kind:'bool-yesno'},
@@ -5173,8 +5272,35 @@ function showSetNewPassword(){
     <div class="form-group"><label>Room / bed</label><input type="text" id="res-room" placeholder="e.g. Room 1"/></div>
     <div class="form-group"><label>Date of birth</label><input type="date" id="res-dob"/></div>
     <div class="form-group"><label>Admission date</label><input type="date" id="res-admission"/></div>
+    <div class="form-group"><label>Gender</label><select id="res-gender"><option value="">— not specified —</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Non-binary</option><option value="other">Other</option></select></div>
+    <div class="form-group"><label>Weight</label><input type="text" id="res-weight" placeholder="e.g. 121 lbs"/></div>
+    <div class="form-group"><label>Height</label><input type="text" id="res-height" placeholder="e.g. 5'1&quot;"/></div>
+    <div class="form-group" style="grid-column:1/-1"><label>Spoken languages</label><input type="text" id="res-languages" placeholder="e.g. English, Spanish"/></div>
     <div class="form-group searchable-select" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension" oninput="filterDiagnosisOptions(this.value)" onfocus="filterDiagnosisOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="res-diagnosis-dropdown" data-input="res-diagnosis"></div></div>
     <div class="form-group searchable-select" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin" oninput="filterAllergyOptions(this.value)" onfocus="filterAllergyOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="res-allergies-dropdown" data-input="res-allergies"></div></div>
+
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Directives</div>
+    <div class="form-group"><label>DNR on file?</label><select id="res-dnr"><option value="no">No</option><option value="yes">Yes</option></select></div>
+    <div class="form-group"><label>POLST on file?</label><select id="res-polst"><option value="no">No</option><option value="yes">Yes</option></select></div>
+    <div class="form-group"><label>Hospice?</label><select id="res-hospice"><option value="false">No</option><option value="true">Yes</option></select></div>
+    <div class="form-group"><label>Conserved?</label><select id="res-conserved" onchange="document.getElementById('res-conservator-row').style.display=this.value==='true'?'grid':'none'"><option value="false">No</option><option value="true">Yes</option></select></div>
+    <div class="form-group" id="res-conservator-row" style="grid-column:1/-1;display:none"><label>Conservator name</label><input type="text" id="res-conservator-name" placeholder="e.g. Maria Lopez"/></div>
+
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Responsible Party</div>
+    <div class="form-group" style="grid-column:1/-1"><label>Name</label><input type="text" id="res-rp-name" placeholder="e.g. Jane Smith"/></div>
+    <div class="form-group"><label>Relationship</label><input type="text" id="res-rp-relation" placeholder="e.g. Son"/></div>
+    <div class="form-group"><label>Phone</label><input type="text" id="res-rp-phone" placeholder="(559) 555-0100"/></div>
+
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Primary Physician</div>
+    <div class="form-group" style="grid-column:1/-1"><label>Physician name</label><input type="text" id="res-physician-name" placeholder="e.g. Dr. Patel"/></div>
+    <div class="form-group"><label>Phone</label><input type="text" id="res-physician-phone" placeholder="(559) 555-0200"/></div>
+
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Insurance &amp; Financial</div>
+    <div class="form-group" style="grid-column:1/-1"><label>Insurance carrier</label><input type="text" id="res-insurance-carrier" placeholder="e.g. Blue Shield of CA"/></div>
+    <div class="form-group" style="grid-column:1/-1"><label>Member / Policy ID</label><input type="text" id="res-insurance-id" placeholder="e.g. XYZ123456"/></div>
+    <div class="form-group"><label>Medi-Cal?</label><select id="res-medi-cal"><option value="false">No</option><option value="true">Yes</option></select></div>
+    <div class="form-group"><label>SSI?</label><select id="res-ssi"><option value="false">No</option><option value="true">Yes</option></select></div>
+
     <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Required documents</div>
     <div style="grid-column:1/-1;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:2px">DSS asks for the document, not the answer. Attach each one here so you can view, print or share it during an inspection.</div>
 
