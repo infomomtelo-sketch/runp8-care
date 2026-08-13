@@ -1,0 +1,13 @@
+name = "title22-email"
+main = "index.js"
+compatibility_date = "2026-08-12"
+
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY   — Supabase service_role key used to verify the
+#                             caller's JWT before sending mail
+#   RESEND_API_KEY         — Resend API key for https://api.resend.com/emails
+#   EMAIL_FROM             — verified sender, e.g. noreply@send.thejudgy.com
+#
+# Public route (configured in the Cloudflare dashboard, not here):
+#   https://title22-email.infomomtelo.workers.dev/api/email
