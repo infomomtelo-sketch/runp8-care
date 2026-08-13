@@ -3437,10 +3437,12 @@ async function handleDocUpload(inp){
 // URL back to `table` (either 'staff' or 'residents') for the given recordId.
 // Returns the public URL on success, or throws on any error.
 async function uploadProfilePhoto(table,recordId,file){
-  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-  const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
-  const path=currentFacility.id+'/'+recordId+'/'+id+'.'+ext;
-  const{error:upErr}=await sb.storage.from('profile-photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
+  const ALLOWED_TYPES=['image/jpeg','image/png','image/webp','image/gif'];
+  const contentType=file.type||'';
+  if(!ALLOWED_TYPES.includes(contentType))throw new Error('Profile photos must be a JPEG, PNG, WebP, or GIF image.');
+  const ext={jpeg:'jpg',png:'png',webp:'webp',gif:'gif'}[contentType.split('/')[1]]||'jpg';
+  const path=currentFacility.id+'/'+recordId+'/'+crypto.randomUUID()+'.'+ext;
+  const{error:upErr}=await sb.storage.from('profile-photos').upload(path,file,{contentType,upsert:false});
   if(upErr)throw upErr;
   const{data:urlData}=sb.storage.from('profile-photos').getPublicUrl(path);
   const publicUrl=urlData?.publicUrl;
