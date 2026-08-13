@@ -659,7 +659,7 @@
         <div class="card">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
-          <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
+          <div class="form-group searchable-select"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..." oninput="filterTrainingTopicOptions(this.value)" onfocus="filterTrainingTopicOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="tr-topic-dropdown" data-input="tr-topic"></div></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group"><label>Hours</label><input type="number" id="tr-hours" step="0.5" min="0" placeholder="1.0"/></div>
             <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
@@ -756,7 +756,7 @@
               <option value="held">Held per physician order</option>
               <option value="missed">Missed</option>
             </select></div>
-            <div id="mar-prn-reason-group" style="display:none" class="form-group"><label>PRN reason <span style="color:var(--red)">*</span></label><input type="text" id="mar-prn-reason" placeholder="Required: reason PRN was given"/></div>
+            <div id="mar-prn-reason-group" style="display:none" class="form-group searchable-select"><label>PRN reason <span style="color:var(--red)">*</span></label><input type="text" id="mar-prn-reason" placeholder="Required: reason PRN was given" oninput="filterPRNReasonOptions(this.value)" onfocus="filterPRNReasonOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="mar-prn-reason-dropdown" data-input="mar-prn-reason"></div></div>
             <div class="form-group"><label>Notes (optional)</label><input type="text" id="mar-notes" placeholder="Optional"/></div>
             <div class="modal-footer"><button class="btn btn-outline" onclick="closeMARModal()">Cancel</button><button class="btn btn-primary" onclick="saveMAR()">Save MAR Entry</button></div>
           </div>
@@ -1143,12 +1143,11 @@ document.addEventListener('click',function(e){
   const btn=document.getElementById('user-menu-btn');
   const menu=document.getElementById('user-menu');
   if(menu&&btn&&!btn.contains(e.target)&&!menu.contains(e.target))menu.style.display='none';
-  const dd=document.getElementById('task-options-dropdown');
-  const inp=document.getElementById('modal-task-title');
-  if(dd&&inp&&!dd.contains(e.target)&&e.target!==inp)dd.classList.remove('open');
-  const rdd=document.getElementById('role-options-dropdown');
-  const ri=document.getElementById('staff-role-search');
-  if(rdd&&ri&&!rdd.contains(e.target)&&e.target!==ri)rdd.classList.remove('open');
+  document.querySelectorAll('.searchable-dropdown.open').forEach(function(dd){
+    const inpId=dd.dataset.input;
+    const inp=inpId?document.getElementById(inpId):dd.previousElementSibling;
+    if(!dd.contains(e.target)&&e.target!==inp)dd.classList.remove('open');
+  });
 });
 
 // ===== AUTH =====
@@ -2486,6 +2485,40 @@ function filterRoleOptions(query){
 function selectRoleOption(value,label){document.getElementById('staff-role').value=value;document.getElementById('staff-role-search').value=label;document.getElementById('role-options-dropdown').classList.remove('open');}
 function selectCustomRole(text){const slug=text.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_');document.getElementById('staff-role').value=slug||'other';document.getElementById('staff-role-search').value=text.trim();ROLE_LABELS[slug]=text.trim();document.getElementById('role-options-dropdown').classList.remove('open');}
 
+// ===== AUTOCOMPLETE SUGGESTION LISTS =====
+const MED_NAME_SUGGESTIONS=['Acetaminophen (Tylenol)','Amlodipine','Aspirin','Atorvastatin','Carbidopa/Levodopa','Donepezil (Aricept)','Furosemide','Gabapentin','Hydrochlorothiazide','Lisinopril','Lorazepam (Ativan)','Memantine (Namenda)','Metformin','Metoprolol','Omeprazole','Ondansetron','Oxybutynin','Pantoprazole','Quetiapine (Seroquel)','Sertraline','Simvastatin','Tamsulosin','Trazodone','Warfarin (Coumadin)'];
+const MED_DIRECTIONS_SUGGESTIONS=['1 tablet by mouth once daily','1 tablet by mouth twice daily','1 tablet by mouth three times daily','1 tablet by mouth four times daily','1 tablet by mouth with meals','1 tablet by mouth at bedtime','1 capsule by mouth once daily','2 tablets by mouth once daily','0.5 tablet by mouth once daily','1 tablet by mouth every 8 hours','1 tablet by mouth every 12 hours','Apply topically as directed','1-2 tablets by mouth every 4-6 hours as needed for pain'];
+const DIAGNOSIS_SUGGESTIONS=["Alzheimer's disease",'Dementia (unspecified)','Vascular dementia','Lewy body dementia',"Parkinson's disease",'Hypertension','Type 2 diabetes mellitus','Congestive heart failure','COPD','Atrial fibrillation','Chronic kidney disease','Osteoporosis','Osteoarthritis','Depression','Anxiety disorder','Stroke (CVA)','Hip fracture (post-op)','Falls risk','Urinary incontinence','Dysphagia'];
+const ALLERGY_SUGGESTIONS=['Penicillin','Sulfa drugs','Codeine','Morphine','Ibuprofen (NSAIDs)','Aspirin','Latex','Shellfish','Peanuts','Eggs','Milk / Dairy','Amoxicillin','Cephalosporins','No known allergies (NKA)'];
+const TRAINING_TOPIC_SUGGESTIONS=['Dementia care and communication','First aid / CPR','Medication management and storage','Fall prevention',"Residents' rights (Title 22 §87468)",'Emergency procedures and fire safety','Infection control and standard precautions','Nutrition and hydration','Behavior intervention and de-escalation','Elder abuse and mandated reporter training','Incontinence care','Hospice and end-of-life care','Proper lifting and body mechanics','DSS inspection readiness'];
+const PRN_REASON_SUGGESTIONS=['Resident reports pain (3/10)','Resident reports pain (5/10)','Resident reports pain (7/10)','Elevated temperature (>100.4°F)','Resident agitated / anxious','Difficulty sleeping','Nausea or vomiting','Constipation','Breakthrough symptoms','Resident requested'];
+
+function makeSimpleAutocomplete(inputId,dropdownId,suggestions,extra){
+  const input=document.getElementById(inputId);
+  const dropdown=document.getElementById(dropdownId);
+  if(!dropdown)return;
+  const q=(input?.value||'').trim().toLowerCase();
+  let list=suggestions.filter(s=>!q||s.toLowerCase().includes(q));
+  if(extra){const extraList=extra().filter(s=>s&&!suggestions.some(x=>x.toLowerCase()===s.toLowerCase())&&(!q||s.toLowerCase().includes(q)));list=[...new Set([...extraList,...list])].slice(0,10);}
+  else list=list.slice(0,10);
+  if(!list.length){dropdown.classList.remove('open');return;}
+  dropdown.innerHTML=list.map(s=>`<div class="searchable-option" data-val="${esc(s)}" onclick="pickAutocomplete('${inputId}','${dropdownId}',this.dataset.val)">${esc(s)}</div>`).join('');
+  dropdown.classList.add('open');
+}
+function pickAutocomplete(inputId,dropdownId,value){
+  const input=document.getElementById(inputId);
+  const dropdown=document.getElementById(dropdownId);
+  if(input)input.value=value;
+  if(dropdown)dropdown.classList.remove('open');
+}
+function filterMedNameOptions(q){makeSimpleAutocomplete('med-name','med-name-dropdown',MED_NAME_SUGGESTIONS);}
+function filterMedDirectionsOptions(q){makeSimpleAutocomplete('med-directions','med-directions-dropdown',MED_DIRECTIONS_SUGGESTIONS);}
+function filterPrescriberOptions(q){makeSimpleAutocomplete('med-prescriber','med-prescriber-dropdown',[],()=>[...new Set((medicationsList||[]).map(m=>m.prescriber).filter(Boolean))]);}
+function filterPharmacyOptions(q){makeSimpleAutocomplete('med-pharmacy','med-pharmacy-dropdown',[],()=>[...new Set((medicationsList||[]).map(m=>m.pharmacy).filter(Boolean))]);}
+function filterDiagnosisOptions(q){makeSimpleAutocomplete('res-diagnosis','res-diagnosis-dropdown',DIAGNOSIS_SUGGESTIONS);}
+function filterAllergyOptions(q){makeSimpleAutocomplete('res-allergies','res-allergies-dropdown',ALLERGY_SUGGESTIONS);}
+function filterTrainingTopicOptions(q){makeSimpleAutocomplete('tr-topic','tr-topic-dropdown',TRAINING_TOPIC_SUGGESTIONS);}
+function filterPRNReasonOptions(q){makeSimpleAutocomplete('mar-prn-reason','mar-prn-reason-dropdown',PRN_REASON_SUGGESTIONS);}
 // Photo-upload handlers for the staff and resident edit modals.
 // If the record already exists the upload is immediate; otherwise the chosen
 // file is stored in a pending slot and uploaded after the row is saved.
@@ -5115,7 +5148,7 @@ function showSetNewPassword(){
 <!-- MODALS -->
 <div class="modal-overlay" id="add-task-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal"><div class="modal-header"><h3>Add compliance task</h3><button class="modal-close" onclick="closeModal()">×</button></div>
-  <div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or enter custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown"></div></div>
+  <div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or enter custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown" data-input="modal-task-title"></div></div>
   <div class="form-group"><label>Category</label><select id="modal-task-cat"><option value="administrator">Administrator</option><option value="staff">Staff</option><option value="residents">Residents</option><option value="medication">Medications</option><option value="facility" selected>Facility</option></select></div>
   <div class="form-group"><label>Due date</label><input type="date" id="modal-task-due"/></div>
   <div class="form-group"><label>Notes (optional)</label><textarea id="modal-task-notes" rows="2" placeholder="Any additional context..."></textarea></div>
@@ -5144,8 +5177,8 @@ function showSetNewPassword(){
     <div class="form-group"><label>Room / bed</label><input type="text" id="res-room" placeholder="e.g. Room 1"/></div>
     <div class="form-group"><label>Date of birth</label><input type="date" id="res-dob"/></div>
     <div class="form-group"><label>Admission date</label><input type="date" id="res-admission"/></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension"/></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin"/></div>
+    <div class="form-group searchable-select" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension" oninput="filterDiagnosisOptions(this.value)" onfocus="filterDiagnosisOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="res-diagnosis-dropdown" data-input="res-diagnosis"></div></div>
+    <div class="form-group searchable-select" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin" oninput="filterAllergyOptions(this.value)" onfocus="filterAllergyOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="res-allergies-dropdown" data-input="res-allergies"></div></div>
     <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Required documents</div>
     <div style="grid-column:1/-1;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:2px">DSS asks for the document, not the answer. Attach each one here so you can view, print or share it during an inspection.</div>
 
@@ -5196,11 +5229,11 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
   <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
-  <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
+  <div class="form-group searchable-select"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol" oninput="filterMedNameOptions(this.value)" onfocus="filterMedNameOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-name-dropdown" data-input="med-name"></div></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
-  <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
-  <div class="form-row"><div class="form-group"><label>Prescriber</label><input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel"/></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
-  <div class="form-group"><label>Pharmacy</label><input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy"/></div>
+  <div class="form-group searchable-select"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily" oninput="filterMedDirectionsOptions(this.value)" onfocus="filterMedDirectionsOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-directions-dropdown" data-input="med-directions"></div></div>
+  <div class="form-row"><div class="form-group searchable-select"><label>Prescriber</label><input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel" oninput="filterPrescriberOptions(this.value)" onfocus="filterPrescriberOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-prescriber-dropdown" data-input="med-prescriber"></div></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
+  <div class="form-group searchable-select"><label>Pharmacy</label><input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy" oninput="filterPharmacyOptions(this.value)" onfocus="filterPharmacyOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-pharmacy-dropdown" data-input="med-pharmacy"></div></div>
   <div class="form-row"><div class="form-group"><label>Start date</label><input type="date" id="med-start"/></div><div class="form-group"><label>End date</label><input type="date" id="med-end"/></div></div>
   <div class="form-group"><label>Refill due date</label><input type="date" id="med-refill"/></div>
   <div class="error-msg" id="med-modal-error"></div>
@@ -5221,7 +5254,7 @@ function showSetNewPassword(){
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
-      <div class="form-group searchable-select"><label>Role</label><input type="text" id="staff-role-search" placeholder="Search or type a role..." oninput="filterRoleOptions(this.value)" onfocus="filterRoleOptions(this.value)" autocomplete="off"/><input type="hidden" id="staff-role" value="caregiver"/><div class="searchable-dropdown" id="role-options-dropdown"></div></div>
+      <div class="form-group searchable-select"><label>Role</label><input type="text" id="staff-role-search" placeholder="Search or type a role..." oninput="filterRoleOptions(this.value)" onfocus="filterRoleOptions(this.value)" autocomplete="off"/><input type="hidden" id="staff-role" value="caregiver"/><div class="searchable-dropdown" id="role-options-dropdown" data-input="staff-role-search"></div></div>
       <div class="form-group"><label>Hire date</label><input type="date" id="staff-hire-date"/></div>
       <div class="form-group"><label>Phone</label><input type="text" id="staff-phone" placeholder="(559) 555-0100"/></div>
       <div class="form-group"><label>Status</label><select id="staff-active"><option value="true">Active</option><option value="false">Inactive / Terminated</option></select></div>
