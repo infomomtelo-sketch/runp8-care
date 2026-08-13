@@ -1068,7 +1068,7 @@ function maybeSendSubscriptionConfirmed(plan){
 const ROLE_ACCESS = {
   administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
   supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
-  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
+  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','residents','mar','incidents','daily','documents'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
 };
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
@@ -2229,6 +2229,11 @@ function viewResident(id){
   const lic601=residentDocStatus(r,'lic601',r.lic601);
   const lic602=residentDocStatus(r,'lic602',r.lic602);
   const isp=residentDocStatus(r,'isp',r.isp);
+  // PHI sections are restricted to roles that have a clinical care relationship
+  // with the resident. Read-only users (inspectors, auditors) see name, room,
+  // admission and compliance document status — not diagnosis, insurance, or
+  // contact details.
+  const showPHI=['administrator','supervisor','caregiver'].includes(currentUserRole);
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px">
     <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
       <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Primary Information</div>
@@ -2237,20 +2242,20 @@ function viewResident(id){
         ${r.room||r.room_number?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Room</div><div style="font-weight:500">${esc(r.room||r.room_number)}</div></div>`:''}
         ${r.admission_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Admission date</div><div style="font-weight:500">${new Date(r.admission_date).toLocaleDateString()}</div></div>`:''}
         ${r.isp_review_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>`:''}
-        ${r.gender?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Gender</div><div style="font-weight:500">${esc(r.gender.charAt(0).toUpperCase()+r.gender.slice(1))}</div></div>`:''}
-        ${r.weight?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Weight</div><div style="font-weight:500">${esc(r.weight)}</div></div>`:''}
-        ${r.height?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Height</div><div style="font-weight:500">${esc(r.height)}</div></div>`:''}
-        ${r.spoken_languages?`<div style="grid-column:1/-1"><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Spoken languages</div><div style="font-weight:500">${esc(r.spoken_languages)}</div></div>`:''}
-        ${!r.gender&&!r.weight&&!r.height&&!r.spoken_languages&&!r.dob&&!r.room&&!r.room_number&&!r.admission_date?`<div style="grid-column:1/-1;color:var(--text2);font-size:12px">No data available</div>`:''}
+        ${showPHI&&r.gender?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Gender</div><div style="font-weight:500">${esc(r.gender.charAt(0).toUpperCase()+r.gender.slice(1))}</div></div>`:''}
+        ${showPHI&&r.weight?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Weight</div><div style="font-weight:500">${esc(r.weight)}</div></div>`:''}
+        ${showPHI&&r.height?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Height</div><div style="font-weight:500">${esc(r.height)}</div></div>`:''}
+        ${showPHI&&r.spoken_languages?`<div style="grid-column:1/-1"><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Spoken languages</div><div style="font-weight:500">${esc(r.spoken_languages)}</div></div>`:''}
+        ${!r.dob&&!r.room&&!r.room_number&&!r.admission_date&&!(showPHI&&(r.gender||r.weight||r.height||r.spoken_languages))?`<div style="grid-column:1/-1;color:var(--text2);font-size:12px">No data available</div>`:''}
       </div>
     </div>
 
-    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+    ${showPHI?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
       <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Responsible Party</div>
       ${r.responsible_party_name?`<div style="font-size:13px"><div style="font-weight:500">${esc(r.responsible_party_name)}${r.responsible_party_relation?' · '+esc(r.responsible_party_relation):''}</div>${r.responsible_party_phone?`<div style="color:var(--text2);margin-top:3px">${esc(r.responsible_party_phone)}</div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px">No data available</div>`}
-    </div>
+    </div>`:''}
 
-    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+    ${showPHI?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
       <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Directives</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${r.dnr!=null?`<span class="badge ${r.dnr==='yes'?'badge-green':'badge-red'}">DNR ${r.dnr==='yes'?'✓':'✗'}</span>`:'<span class="badge" style="background:var(--gray-bg);color:var(--text2)">DNR —</span>'}
@@ -2259,19 +2264,19 @@ function viewResident(id){
         ${r.conserved!=null?`<span class="badge ${r.conserved?'badge-amber':'badge-red'}">Conserved ${r.conserved?'Yes':'No'}</span>`:'<span class="badge" style="background:var(--gray-bg);color:var(--text2)">Conserved —</span>'}
       </div>
       ${r.conserved&&r.conservator_name?`<div style="font-size:12px;color:var(--text2);margin-top:6px">Conservator: ${esc(r.conservator_name)}</div>`:''}
-    </div>
+    </div>`:''}
 
-    ${r.diagnosis||r.allergies?`<div>
+    ${showPHI&&(r.diagnosis||r.allergies)?`<div>
       ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px"><div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;margin-bottom:4px">Primary diagnosis</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
       ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
     </div>`:''}
 
-    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+    ${showPHI?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
       <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Primary Physician</div>
       ${r.physician_name?`<div style="font-size:13px"><div style="font-weight:500">${esc(r.physician_name)}</div>${r.physician_phone?`<div style="color:var(--text2);margin-top:3px">${esc(r.physician_phone)}</div>`:''}</div>`:`<div style="color:var(--text2);font-size:12px">No data available</div>`}
-    </div>
+    </div>`:''}
 
-    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
+    ${showPHI?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px">
       <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Insurance &amp; Financial</div>
       ${r.insurance_carrier||r.medi_cal||r.ssi?`<div style="font-size:13px">
         ${r.insurance_carrier?`<div style="font-weight:500">${esc(r.insurance_carrier)}${r.insurance_id?' · '+esc(r.insurance_id):''}</div>`:''}
@@ -2280,7 +2285,7 @@ function viewResident(id){
           ${r.ssi?`<span class="badge badge-green">SSI</span>`:''}
         </div>
       </div>`:`<div style="color:var(--text2);font-size:12px">No data available</div>`}
-    </div>
+    </div>`:''}
 
     <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div></div>
   </div>`;
