@@ -2109,9 +2109,10 @@ function renderStaff(){
 function filterRoleOptions(query){
   const dropdown=document.getElementById('role-options-dropdown');
   const q=(query||'').trim().toLowerCase();
+  const jsq=v=>String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   let matches=ROLE_OPTIONS.filter(r=>!q||r.label.toLowerCase().includes(q));
-  let html=matches.map(r=>`<div class="searchable-option" onclick="selectRoleOption('${r.value}','${r.label.replace(/'/g,"\\'")}')"> ${r.label}</div>`).join('');
-  if(q&&!ROLE_OPTIONS.some(r=>r.label.toLowerCase()===q))html+=`<div class="searchable-option-custom" onclick="selectCustomRole('${query.replace(/'/g,"\\'")}')">+ Custom: "${query}"</div>`;
+  let html=matches.map(r=>`<div class="searchable-option" onclick="selectRoleOption('${jsq(r.value)}','${jsq(r.label)}')"> ${esc(r.label)}</div>`).join('');
+  if(q&&!ROLE_OPTIONS.some(r=>r.label.toLowerCase()===q))html+=`<div class="searchable-option-custom" onclick="selectCustomRole('${jsq(query)}')">+ Custom: "${esc(query)}"</div>`;
   dropdown.innerHTML=html||'<div class="searchable-option-meta" style="padding:10px 12px">No roles found</div>';
   dropdown.classList.add('open');
 }
