@@ -253,6 +253,35 @@ export default {
       const isPaid = PAID_PLANS.includes(plan);
       const isPro = plan === 'pro';
 
+      // Server-side dosage / prescribing safety gate. Patterns mirror the
+      // client-side check so a jailbreak that bypasses the frontend still gets
+      // refused here before any credit is spent or the model is called.
+      const lastUserContent = (messages || []).filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+      const DOSAGE_RE = [
+        /\bhow much\b.*\b(medication|drug|medicine|pill|tablet|capsule|mg|ml|dose|dosage)\b/i,
+        /\b(increase|decrease|change|adjust|modify|double|halve|cut)\b.*\b(dose|dosage|medication|mg|ml)\b/i,
+        /\bwhat dose\b/i,
+        /\bwhat dosage\b/i,
+        /\bmaximum dose\b/i,
+        /\blethal dose\b/i,
+        /\boverdose\b/i,
+        /\bprescribe\b/i,
+        /\bshould.*take\b.*\b(mg|ml|pill|tablet|capsule)\b/i,
+        /\b(give|administer|prescribing)\b.*\b(how much|amount|quantity)\b/i,
+        /\bdrug interaction\b/i,
+        /\bmedical advice\b/i,
+        /\bdiagnos[ei]\b/i,
+      ];
+      if (DOSAGE_RE.some(re => re.test(lastUserContent))) {
+        return json({
+          content: [{ type: 'text', text: "I can't provide dosage recommendations or prescribing advice — that requires a licensed prescriber. I can help with compliance tasks, staff certifications, DSS inspection readiness, and resident documentation." }],
+          plan,
+          limit: 0,
+          remaining: 0,
+          blocked: 'dosage_safety'
+        });
+      }
+
       const credits = await checkAndDeductCredits(user.id, plan, env);
       if (!credits.allowed) {
         if (credits.error) {
