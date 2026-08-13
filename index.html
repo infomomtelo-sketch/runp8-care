@@ -659,7 +659,7 @@
         <div class="card">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
-          <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
+          <div class="form-group searchable-select"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..." oninput="filterTrainingTopicOptions(this.value)" onfocus="filterTrainingTopicOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="tr-topic-dropdown" data-input="tr-topic"></div></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group"><label>Hours</label><input type="number" id="tr-hours" step="0.5" min="0" placeholder="1.0"/></div>
             <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
@@ -728,8 +728,8 @@
         </div>
         <div id="mar-ai-briefing" style="display:none;margin-bottom:16px"></div>
         <div id="mar-entries-list"></div>
-        <div class="modal-overlay" id="mar-modal">
-          <div class="modal">
+        <div class="modal-overlay" id="mar-modal" onclick="if(event.target===this)closeMARModal()">
+          <div class="modal" style="max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
             <div class="modal-header"><h3>Log Medication</h3><button class="modal-close" onclick="closeMARModal()">×</button></div>
             <div class="form-group"><label>Resident</label><select id="mar-res-select" onchange="onMARResidentChange(this.value)"><option value="">Select Resident</option></select></div>
             <div class="form-group"><label>Medication</label><select id="mar-med-select" onchange="onMARMedChange(this.value)"><option value="">Select medication</option></select></div>
@@ -756,7 +756,7 @@
               <option value="held">Held per physician order</option>
               <option value="missed">Missed</option>
             </select></div>
-            <div id="mar-prn-reason-group" style="display:none" class="form-group"><label>PRN reason <span style="color:var(--red)">*</span></label><input type="text" id="mar-prn-reason" placeholder="Required: reason PRN was given"/></div>
+            <div id="mar-prn-reason-group" style="display:none" class="form-group searchable-select"><label>PRN reason <span style="color:var(--red)">*</span></label><input type="text" id="mar-prn-reason" placeholder="Required: reason PRN was given" oninput="filterPRNReasonOptions(this.value)" onfocus="filterPRNReasonOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="mar-prn-reason-dropdown" data-input="mar-prn-reason"></div></div>
             <div class="form-group"><label>Notes (optional)</label><input type="text" id="mar-notes" placeholder="Optional"/></div>
             <div class="modal-footer"><button class="btn btn-outline" onclick="closeMARModal()">Cancel</button><button class="btn btn-primary" onclick="saveMAR()">Save MAR Entry</button></div>
           </div>
@@ -914,6 +914,8 @@ const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 // creation and Workers can't be renamed). The source lives in
 // workers/title22-extract/ — see that worker's wrangler.toml before deploying.
 const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extract';
+const EMAIL_WORKER = 'https://title22-email.infomomtelo.workers.dev/api/email';
+const TITLE22_APP_URL = 'https://title22.app';
 
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
@@ -998,6 +1000,70 @@ let activeFilter = 'all';
 let currentIncidentId = null;
 let currentUserRole = 'administrator';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
+const pendingEmailSends=new Set();
+
+function userDisplayName(user){
+  const raw=user?.user_metadata?.full_name||user?.user_metadata?.name||user?.email||'there';
+  return String(raw).split('@')[0];
+}
+
+function emailEventKey(template,suffix){
+  return `title22:${template}:${currentUser?.id||'anon'}:${suffix||'default'}`;
+}
+
+async function sendTransactionalEmail(template,payload,suffix){
+  if(demoMode||!currentUser?.id||!EMAIL_WORKER)return false;
+  const key=suffix?emailEventKey(template,suffix):null;
+  try{
+    if(key&&localStorage.getItem(key))return true;
+    if(key&&pendingEmailSends.has(key))return true;
+    if(key)pendingEmailSends.add(key);
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)return false;
+    const res=await fetch(EMAIL_WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({template,...(payload||{})})
+    });
+    if(!res.ok){
+      console.log('Email worker skipped:',template,res.status);
+      return false;
+    }
+    if(key)localStorage.setItem(key,new Date().toISOString());
+    return true;
+  }catch(e){
+    console.log('Email worker skipped:',template,e.message);
+    return false;
+  }finally{
+    if(key)pendingEmailSends.delete(key);
+  }
+}
+
+function maybeSendWelcomeEmail(user){
+  if(!user?.id||!user?.email)return;
+  sendTransactionalEmail('welcome',{
+    name:userDisplayName(user),
+    onboarding_url:TITLE22_APP_URL+'/'
+  },'welcome').then(()=>{},()=>{});
+}
+
+function maybeSendTrialWarning(daysLeft){
+  if(daysLeft>3||daysLeft<1||!currentUser?.email)return;
+  sendTransactionalEmail('trial_warning',{
+    name:userDisplayName(currentUser),
+    days_left:daysLeft,
+    upgrade_url:TITLE22_APP_URL+'/'
+  },'trial-warning').then(()=>{},()=>{});
+}
+
+function maybeSendSubscriptionConfirmed(plan){
+  if(!currentUser?.email)return;
+  sendTransactionalEmail('subscription_confirmed',{
+    name:userDisplayName(currentUser),
+    plan,
+    access_url:TITLE22_APP_URL+'/'
+  },'subscription-'+plan).then(()=>{},()=>{});
+}
 
 const ROLE_ACCESS = {
   administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
@@ -1077,12 +1143,11 @@ document.addEventListener('click',function(e){
   const btn=document.getElementById('user-menu-btn');
   const menu=document.getElementById('user-menu');
   if(menu&&btn&&!btn.contains(e.target)&&!menu.contains(e.target))menu.style.display='none';
-  const dd=document.getElementById('task-options-dropdown');
-  const inp=document.getElementById('modal-task-title');
-  if(dd&&inp&&!dd.contains(e.target)&&e.target!==inp)dd.classList.remove('open');
-  const rdd=document.getElementById('role-options-dropdown');
-  const ri=document.getElementById('staff-role-search');
-  if(rdd&&ri&&!rdd.contains(e.target)&&e.target!==ri)rdd.classList.remove('open');
+  document.querySelectorAll('.searchable-dropdown.open').forEach(function(dd){
+    const inpId=dd.dataset.input;
+    const inp=inpId?document.getElementById(inpId):dd.previousElementSibling;
+    if(!dd.contains(e.target)&&e.target!==inp)dd.classList.remove('open');
+  });
 });
 
 // ===== AUTH =====
@@ -1123,6 +1188,7 @@ async function ensureProfile(user){
   const menuPartners=document.getElementById('menu-partners');
   if(menuPartners)menuPartners.style.display=isPartnerAdmin?'flex':'none';
   if(isNewProfile)await stampSignupAttribution(user);
+  return {isNewProfile};
 }
 
 // Stamp marketing attribution (title22_signup_plan / _utm_source / _utm_campaign)
@@ -1169,7 +1235,8 @@ async function handleSignup(){
   }
   if(!data.user){err.textContent='Check your email to confirm your account, then log in.';err.classList.add('show');return;}
   currentUser=data.user;
-  await ensureProfile(currentUser);
+  const profile=await ensureProfile(currentUser);
+  if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
   showPage('onboard');
 }
 
@@ -1193,7 +1260,8 @@ async function handleLogin(){
     err.classList.add('show');return;
   }
   currentUser=data.user;
-  await ensureProfile(currentUser);
+  const profile=await ensureProfile(currentUser);
+  if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
   await loadApp();
   track('login_success',{method:'password'});
 }
@@ -1433,9 +1501,12 @@ async function initFacility(){
   }else if(t22Plan==='trial'){
     const banner=document.getElementById('trial-banner');
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
+    maybeSendTrialWarning(t22TrialDaysLeft);
+  }else if(T22_PAID.includes(t22Plan)){
+    maybeSendSubscriptionConfirmed(t22Plan);
   }
   refreshDashboard();
-  await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
+  await Promise.all([loadResidents(),loadStaff(),loadStaffDocs(),loadIncidents()]);
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
@@ -1516,22 +1587,74 @@ async function refreshAccess(manual){
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
+  if(T22_PAID.includes(ent.plan))maybeSendSubscriptionConfirmed(ent.plan);
   if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);refreshDashboard();}
+  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadStaffDocs(),loadIncidents()]);refreshDashboard();}
   const bt=document.getElementById('tab-billing');
   if(bt&&bt.style.display!=='none')loadBilling();
 }
 
 // ===== DASHBOARD =====
+function buildEvidenceSnapshot(){
+  const today=new Date().toISOString().split('T')[0];
+  const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+  let total=0,passing=0,unverified=0,mismatches=0;
+  const expired=[],soon=[];
+
+  (residents||[]).forEach(r=>{
+    [
+      residentDocStatus(r,'lic601',r.lic601),
+      residentDocStatus(r,'lic602',r.lic602),
+      residentDocStatus(r,'isp',r.isp),
+    ].forEach(st=>{
+      total++;
+      if(st.done)passing++;
+      if(st.unverifiedClaim)unverified++;
+      if(st.mismatch)mismatches++;
+    });
+  });
+
+  (staffList||[]).filter(s=>s.active===true).forEach(s=>{
+    const st=staffCertStatus(s);
+    const name=s.full_name||s.name||'Staff';
+    [
+      {label:'TB test',meta:st.tb},
+      {label:'CPR',meta:st.cpr},
+      {label:'First Aid',meta:st.fa},
+    ].forEach(c=>{
+      total++;
+      if(c.meta.date&&c.meta.date>=today)passing++;
+      if(c.meta.unverifiedClaim)unverified++;
+      if(c.meta.mismatch)mismatches++;
+      if(c.meta.date&&c.meta.date<today)expired.push({staff:name,label:c.label,date:c.meta.date});
+      else if(c.meta.date&&c.meta.date<=in30)soon.push({staff:name,label:c.label,date:c.meta.date});
+    });
+    [st.ls,st.mr,st.tr].forEach(c=>{
+      total++;
+      if(c.done)passing++;
+      if(c.unverifiedClaim)unverified++;
+      if(c.mismatch)mismatches++;
+    });
+  });
+
+  const score=total>0?Math.round((passing/total)*100):0;
+  return{total,passing,score,unverified,mismatches,expired,soon};
+}
+
 function refreshDashboard(){
+  const evidence=buildEvidenceSnapshot();
   const total=complianceTasks.length;
   const done=complianceTasks.filter(t=>t.completed).length;
   const today=new Date().toISOString().split('T')[0];
   const nextMonth=new Date();nextMonth.setMonth(nextMonth.getMonth()+1);
   const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length;
   const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length;
-  const score=total>0?Math.round((done/total)*100):0;
+  const score=evidence.score;
   document.getElementById('dash-score').textContent=score+'%';
-  document.getElementById('dash-score-sub').textContent=`${done} of ${total} requirements complete`;
+  const notes=[];
+  if(evidence.unverified)notes.push(`${evidence.unverified} unverified`);
+  if(evidence.mismatches)notes.push(`${evidence.mismatches} mismatched`);
+  document.getElementById('dash-score-sub').textContent=`${evidence.passing} of ${evidence.total} checks passing`+(notes.length?` · ${notes.join(' · ')}`:'');
   const arc=2*Math.PI*34;
   document.getElementById('score-arc').style.strokeDashoffset=arc*(1-score/100);
   document.getElementById('stat-overdue').textContent=overdue;
@@ -1542,10 +1665,14 @@ function refreshDashboard(){
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
   const urgent=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).slice(0,5);
-  document.getElementById('alert-count').textContent=urgent.length;
-  document.getElementById('alert-list').innerHTML=urgent.length===0
+  const docUrgent=evidence.expired.slice(0,5);
+  document.getElementById('alert-count').textContent=urgent.length+docUrgent.length;
+  document.getElementById('alert-list').innerHTML=(urgent.length===0&&docUrgent.length===0)
     ?'<div class="empty">No urgent alerts</div>'
-    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`).join('');
+    :[
+      ...docUrgent.map(c=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(c.staff)} — ${esc(c.label)} document expired</strong><span>Expired on ${esc(c.date)}</span></div></div>`),
+      ...urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`),
+    ].join('');
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
@@ -1610,20 +1737,50 @@ async function exportDSSAudit(){
   if(!currentFacility)return;
   const since=new Date(Date.now()-90*86400000);
   const sinceISO=since.toISOString();
-  const[resR,stR,marR,incR]=await Promise.all([
+  const[resR,stR,docR,marR,incR]=await Promise.all([
     sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'),
     sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name'),
+    sb.from('documents').select('resident_id,staff_id,doc_type,expires_at,uploaded_at').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}),
     sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'),
     sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
   ]);
-  const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[];
+  const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[],docsD=docR.data||[];
   const f=currentFacility;
   const yn=v=>v==='yes'?'✓ On file':'✗ MISSING';
   const d=v=>v?new Date(v).toLocaleDateString():'—';
+  const docsByResident={},docsByStaff={};
+  docsD.forEach(doc=>{
+    if(doc.resident_id){
+      if(!docsByResident[doc.resident_id])docsByResident[doc.resident_id]={};
+      if(!docsByResident[doc.resident_id][doc.doc_type])docsByResident[doc.resident_id][doc.doc_type]=doc;
+    }
+    if(doc.staff_id){
+      if(!docsByStaff[doc.staff_id])docsByStaff[doc.staff_id]={};
+      if(!docsByStaff[doc.staff_id][doc.doc_type])docsByStaff[doc.staff_id][doc.doc_type]=doc;
+    }
+  });
+  const residentCell=(r,docType,typed)=>{
+    const hasDoc=Boolean((docsByResident[r.id]||{})[docType]);
+    if(hasDoc)return '✓ On file 📄';
+    if(typed==='yes')return '⚠ Self-reported only';
+    return '✗ MISSING';
+  };
+  const staffDateCell=(s,docType,typedDate)=>{
+    const doc=(docsByStaff[s.id]||{})[docType];
+    if(doc&&doc.expires_at)return d(doc.expires_at)+(typedDate&&typedDate!==doc.expires_at?' ↔':'')+' 📄';
+    if(typedDate)return d(typedDate)+' ⚠';
+    return '—';
+  };
+  const staffBoolCell=(s,docType,typedBool)=>{
+    const hasDoc=Boolean((docsByStaff[s.id]||{})[docType]);
+    if(hasDoc)return `✓${typedBool?'':' ↔'} 📄`;
+    if(typedBool)return '✓ ⚠';
+    return '✗';
+  };
   const th='padding:6px 8px;border:1px solid #ccc;background:#f0f0f0;font-size:11px;text-align:left';
   const td='padding:5px 8px;border:1px solid #ddd;font-size:11px';
-  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
-  const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${d(s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${d(s.cpr_cert_expiry)}</td><td style="${td}">${d(s.first_aid_cert_expiry)}</td><td style="${td}">${s.livescan_cleared?'✓':'✗'}</td><td style="${td}">${s.mandated_reporter_completed?'✓':'✗'}</td><td style="${td}">${(s.initial_training_complete||s.initial_training_completed)?'✓':'✗'}</td></tr>`).join('');
+  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${residentCell(r,'lic601',r.lic601)}</td><td style="${td}">${residentCell(r,'lic602',r.lic602)}</td><td style="${td}">${residentCell(r,'isp',r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
+  const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${staffDateCell(s,'tb_test',s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${staffDateCell(s,'cpr_card',s.cpr_cert_expiry)}</td><td style="${td}">${staffDateCell(s,'first_aid',s.first_aid_cert_expiry)}</td><td style="${td}">${staffBoolCell(s,'livescan',s.livescan_cleared)}</td><td style="${td}">${staffBoolCell(s,'mandated_reporter',s.mandated_reporter_completed)}</td><td style="${td}">${staffBoolCell(s,'training_cert',s.initial_training_complete||s.initial_training_completed)}</td></tr>`).join('');
   const statusLabels={given:'Given',refused:'Refused',held:'Held',missed:'MISSED'};
   const marRows=marD.map(e=>`<tr><td style="${td}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}">${esc(e.scheduled_time||'')}</td><td style="${td};${e.status!=='given'?'color:#A32D2D;font-weight:700':''}">${statusLabels[e.status]||esc(e.status)}</td><td style="${td}">${esc(e.notes||'')}</td></tr>`).join('');
   const incRows=incD.map(i=>`<tr><td style="${td}">${i.occurred_at?new Date(i.occurred_at).toLocaleString():''}</td><td style="${td}">${esc(i.residents?.name||i.residents?.full_name||'')}</td><td style="${td}">${esc(i.incident_type||'')}</td><td style="${td}">${i.injury?'Yes':'No'}</td><td style="${td}">${i.dss_reportable?'YES':'No'}</td><td style="${td}">${esc(i.description||'')}</td><td style="${td}">${esc(i.corrective_action||'')}</td></tr>`).join('');
@@ -1655,6 +1812,7 @@ function getDaysUntil(dateStr){
 }
 
 function renderExpiryBanner(){
+  const evidence=buildEvidenceSnapshot();
   const today=new Date().toISOString().split('T')[0];
   const in7=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
@@ -1662,11 +1820,16 @@ function renderExpiryBanner(){
   const critical=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=in7);
   const warning=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>in7&&t.due_date<=in30);
   const banner=document.getElementById('expiry-banner');if(!banner)return;
-  if(!expired.length&&!critical.length&&!warning.length){
+  if(!expired.length&&!critical.length&&!warning.length&&!evidence.expired.length&&!evidence.soon.length&&!evidence.unverified&&!evidence.mismatches){
     banner.innerHTML=`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">✅</span><div><div style="font-weight:600;color:var(--green);font-size:14px">All requirements are current</div></div></div>`;
     return;
   }
   let html='';
+  if(evidence.expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${evidence.expired.length} document-based item${evidence.expired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${evidence.expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.staff)} — ${esc(t.label)}</span><span style="color:var(--text2);margin-left:6px">Expired ${esc(t.date)}</span></div>`).join('')}</div></div>`;
+  if(evidence.soon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">⏰ ${evidence.soon.length} document-based item${evidence.soon.length>1?'s':''} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${evidence.soon.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.staff)} — ${esc(t.label)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.date)} days</span></div>`).join('')}</div></div>`;
+  if(evidence.unverified||evidence.mismatches){
+    html+=`<div style="background:#fff8e1;border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:6px">🧾 Verification attention needed</div><div style="font-size:12px;color:var(--text2)">${evidence.unverified?`${evidence.unverified} self-reported item${evidence.unverified>1?'s':''} still have no filed document.`:''}${evidence.unverified&&evidence.mismatches?' ':''}${evidence.mismatches?`${evidence.mismatches} item${evidence.mismatches>1?'s':''} differ between filed document and self-reported value.`:''}</div></div>`;
+  }
   if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
   if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
@@ -1859,13 +2022,25 @@ function renderResidents(){
   const summary=document.getElementById('res-summary');
   if(!residents.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
-  const docsOk=residents.filter(r=>r.lic601==='yes'&&r.lic602==='yes'&&r.isp==='yes').length;
+  const docsOk=residents.filter(r=>{
+    const s1=residentDocStatus(r,'lic601',r.lic601);
+    const s2=residentDocStatus(r,'lic602',r.lic602);
+    const s3=residentDocStatus(r,'isp',r.isp);
+    return s1.done&&s2.done&&s3.done&&!s1.unverifiedClaim&&!s2.unverifiedClaim&&!s3.unverifiedClaim;
+  }).length;
   document.getElementById('res-count').textContent=residents.length;
   document.getElementById('res-docs-ok').textContent=docsOk;
   document.getElementById('res-docs-missing').textContent=residents.length-docsOk;
-  const docBadge=(label,val)=>{
-    if(val==='yes')return`<span class="badge badge-green">${label} ✓</span>`;
-    return`<span class="badge badge-red">${label} ✗</span>`;
+  const docBadge=(label,status)=>{
+    if(status.fromDoc){
+      return`<span class="badge badge-green">${label} ✓ 📄${status.mismatch?' ↔':''}</span>`;
+    }
+    if(status.unverifiedClaim){
+      return`<span class="badge badge-amber">${label} ⚠</span>`;
+    }
+    return status.done
+      ?`<span class="badge badge-green">${label} ✓</span>`
+      :`<span class="badge badge-red">${label} ✗</span>`;
   };
   const colors=['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
   grid.innerHTML=residents.map(r=>{
@@ -1873,14 +2048,20 @@ function renderResidents(){
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
+    const avatarHtml=r.photo_url
+      ?`<img src="${esc(r.photo_url)}" alt="${esc(initials)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0"/>`
+      :`<div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>`;
+    const lic601=residentDocStatus(r,'lic601',r.lic601);
+    const lic602=residentDocStatus(r,'lic602',r.lic602);
+    const isp=residentDocStatus(r,'isp',r.isp);
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${esc(r.id)}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>
+        ${avatarHtml}
         <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${r.preferred_name?'"'+esc(r.preferred_name)+'" ':''} ${r.room||r.room_number?'· '+esc(r.room||r.room_number):''}</div></div>
         ${age?`<div style="font-size:11px;color:var(--text2);text-align:right"><div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs</div></div>`:''}
       </div>
       ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${esc(r.diagnosis)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',r.lic601)}${docBadge('LIC 602',r.lic602)}${r.isp==='yes'?'<span class="badge badge-green">ISP ✓</span>':'<span class="badge badge-red">ISP ✗</span>'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div>
       ${r.admission_date?`<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()}</div>`:''}
     </div>`;
   }).join('');
@@ -1903,12 +2084,25 @@ function openResidentModal(resId){
   document.getElementById('res-isp').value=r?.isp||'no';
   document.getElementById('res-isp-date').value=r?.isp_review_date||'';
   document.getElementById('res-modal-error').classList.remove('show');
+  // Photo preview
+  const resPhotoPreview=document.getElementById('res-photo-preview');
+  const resPhotoInput=document.getElementById('res-photo-input');
+  if(resPhotoInput)resPhotoInput.value='';
+  if(resPhotoPreview){
+    const rName=r?.name||r?.full_name||'?';
+    const rInitials=rName.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    resPhotoPreview.innerHTML=r?.photo_url
+      ?`<img src="${esc(r.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+      :esc(rInitials);
+  }
+  if(document.getElementById('res-photo-status'))document.getElementById('res-photo-status').textContent='';
   clearRecordDocs();
   refreshDocSlots('resident',currentResidentId);
   document.getElementById('resident-modal').classList.add('open');
 }
 function closeResidentModal(){
   document.getElementById('resident-modal').classList.remove('open');
+  _pendingResidentPhoto=null;
   // Abandoning the form abandons anything attached to it but not yet filed.
   // saveResident consumes the queue before calling this, so a real save is
   // unaffected — but a cancelled one must not leave files to attach themselves
@@ -1948,6 +2142,16 @@ async function saveResident(){
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
+  // Upload a pending profile photo chosen before the row existed.
+  if(_pendingResidentPhoto&&savedId){
+    const photoFile=_pendingResidentPhoto;_pendingResidentPhoto=null;
+    uploadProfilePhoto('residents',savedId,photoFile).then(url=>{
+      const idx=residents.findIndex(r=>r.id===savedId);
+      if(idx>-1)residents[idx].photo_url=url;
+      renderResidents();
+    }).catch(()=>{});
+  }else{_pendingResidentPhoto=null;}
+
   // The row has an id now, so anything attached to a document slot before the
   // record existed has something to attach to.
   const hadQueue=pendingSlotDocs.length>0;
@@ -1956,8 +2160,9 @@ async function saveResident(){
   if(failures.length){
     alert('The resident was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
   }else if(hadQueue){
-    loadDocuments();
+    await Promise.all([loadDocuments(),loadStaffDocs()]);
   }
+  refreshDashboard();
 }
 
 function viewResident(id){
@@ -1965,8 +2170,28 @@ function viewResident(id){
   currentResidentId=id;
   const nameField=r.name||r.full_name||'Unknown';
   document.getElementById('rd-name').textContent=nameField+(r.preferred_name?' "'+r.preferred_name+'"':'');
+  const rdPhoto=document.getElementById('rd-photo');
+  if(rdPhoto){
+    const rdInitials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    rdPhoto.innerHTML=r.photo_url
+      ?`<img src="${esc(r.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+      :esc(rdInitials);
+  }
   const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
-  const badge=(label,val)=>val==='yes'?`<span class="badge badge-green">${label} ✓</span>`:`<span class="badge badge-red">${label} ✗</span>`;
+  const docBadge=(label,status)=>{
+    if(status.fromDoc){
+      return`<span class="badge badge-green">${label} ✓ 📄${status.mismatch?' ↔':''}</span>`;
+    }
+    if(status.unverifiedClaim){
+      return`<span class="badge badge-amber">${label} ⚠</span>`;
+    }
+    return status.done
+      ?`<span class="badge badge-green">${label} ✓</span>`
+      :`<span class="badge badge-red">${label} ✗</span>`;
+  };
+  const lic601=residentDocStatus(r,'lic601',r.lic601);
+  const lic602=residentDocStatus(r,'lic602',r.lic602);
+  const isp=residentDocStatus(r,'isp',r.isp);
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
       ${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}
@@ -1976,7 +2201,7 @@ function viewResident(id){
     </div>
     ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
     ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
-    <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div>
+    <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
 }
@@ -1989,6 +2214,7 @@ async function deleteCurrentResident(){
   await sb.from('residents').delete().eq('id',currentResidentId);
   residents=residents.filter(x=>x.id!==currentResidentId);
   closeResidentDetail();renderResidents();
+  refreshDashboard();
 }
 
 // ===== STAFF =====
@@ -2012,22 +2238,138 @@ async function loadStaff(){
   staffList=data||[];window.staffList=staffList;renderStaff();
 }
 
+// Most-recent filed document per record × doc_type, loaded once per facility
+// open and refreshed whenever a document changes so badges/summaries always use
+// what is actually on file first.
+//
+// Shape: { [id]: { [docType]: {expires_at, issued_at, uploaded_at} } }
+let staffDocsByStaffId={};
+let residentDocsByResidentId={};
+
+async function loadStaffDocs(){
+  staffDocsByStaffId={};
+  residentDocsByResidentId={};
+  if(!currentFacility)return;
+  const[staffRes,residentRes]=await Promise.all([
+    sb.from('documents')
+      .select('staff_id,doc_type,issued_at,expires_at,uploaded_at')
+      .eq('facility_id',currentFacility.id)
+      .not('staff_id','is',null)
+      .order('uploaded_at',{ascending:false}),
+    sb.from('documents')
+      .select('resident_id,doc_type,issued_at,expires_at,uploaded_at')
+      .eq('facility_id',currentFacility.id)
+      .not('resident_id','is',null)
+      .order('uploaded_at',{ascending:false}),
+  ]);
+  const staffDocs=staffRes.data||[];
+  const residentDocs=residentRes.data||[];
+  // Keep only the first (newest) document per record × doc_type — queries are
+  // ordered newest-first, so one pass gives the winner for each pair.
+  staffDocs.forEach(d=>{
+    if(!staffDocsByStaffId[d.staff_id])staffDocsByStaffId[d.staff_id]={};
+    if(!staffDocsByStaffId[d.staff_id][d.doc_type])staffDocsByStaffId[d.staff_id][d.doc_type]=d;
+  });
+  residentDocs.forEach(d=>{
+    if(!residentDocsByResidentId[d.resident_id])residentDocsByResidentId[d.resident_id]={};
+    if(!residentDocsByResidentId[d.resident_id][d.doc_type])residentDocsByResidentId[d.resident_id][d.doc_type]=d;
+  });
+  // Keep visible badges in sync if the tab was already rendered.
+  if(typeof renderStaff==='function')renderStaff();
+  if(typeof renderResidents==='function')renderResidents();
+}
+
+function residentDocStatus(r,docType,typedValue){
+  const docs=residentDocsByResidentId[r.id]||{};
+  const hasDoc=Boolean(docs[docType]);
+  const typedYes=typedValue==='yes';
+  return{
+    done:hasDoc||typedYes,
+    fromDoc:hasDoc,
+    typedYes,
+    // A claim with no file is unverified; a file with typed "no" is mismatch.
+    unverifiedClaim:typedYes&&!hasDoc,
+    mismatch:hasDoc&&!typedYes,
+  };
+}
+
 function staffCertStatus(s){
   const today=new Date().toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
-  const checks=[];
+  // Filed documents for this staff member, if the map has been loaded.
+  const docs=staffDocsByStaffId[s.id]||{};
+
+  // Helper: best expiry date — prefers the filed document's expires_at, falls
+  // back to the typed column value. Returns the winning date and whether it
+  // came from a document.
+  const bestExpiry=(docType,typedDate)=>{
+    const d=docs[docType];
+    const typed=typedDate||null;
+    if(d&&d.expires_at)return{
+      date:d.expires_at,fromDoc:true,hasDoc:true,
+      mismatch:Boolean(typed&&typed!==d.expires_at),
+      unverifiedClaim:false,
+    };
+    return{
+      date:typed,fromDoc:false,hasDoc:Boolean(d),
+      mismatch:false,
+      unverifiedClaim:Boolean(typed&&!d),
+    };
+  };
+  // Helper: best boolean — a filed document beats a false typed value.
+  const bestBool=(docType,typedBool)=>{
+    const typed=Boolean(typedBool);
+    if(docs[docType])return{
+      done:true,fromDoc:true,hasDoc:true,
+      mismatch:!typed,
+      unverifiedClaim:false,
+    };
+    return{
+      done:typed,fromDoc:false,hasDoc:false,
+      mismatch:false,
+      unverifiedClaim:typed,
+    };
+  };
+
   const tbDue=s.tb_test_due||s.tb_test_expiry;
-  if(tbDue)checks.push({label:'TB Test',date:tbDue});
-  if(s.cpr_cert_expiry)checks.push({label:'CPR',date:s.cpr_cert_expiry});
-  if(s.first_aid_cert_expiry)checks.push({label:'First Aid',date:s.first_aid_cert_expiry});
-  
+  const tb=bestExpiry('tb_test',tbDue);
+  const cpr=bestExpiry('cpr_card',s.cpr_cert_expiry);
+  const fa=bestExpiry('first_aid',s.first_aid_cert_expiry);
+  const ls=bestBool('livescan',s.livescan_cleared);
+  const mr=bestBool('mandated_reporter',s.mandated_reporter_completed);
+  const tr=bestBool('training_cert',s.initial_training_complete||s.initial_training_completed);
+
+  const checks=[];
+  if(tb.date)checks.push({label:'TB Test',date:tb.date,fromDoc:tb.fromDoc});
+  if(cpr.date)checks.push({label:'CPR',date:cpr.date,fromDoc:cpr.fromDoc});
+  if(fa.date)checks.push({label:'First Aid',date:fa.date,fromDoc:fa.fromDoc});
+
   const expired=checks.filter(c=>c.date<today);
   const soon=checks.filter(c=>c.date>=today&&c.date<=in30);
   const missingDocs=[];
-  if(!s.livescan_cleared)missingDocs.push('LiveScan');
-  if(!s.mandated_reporter_completed)missingDocs.push('Mandated Reporter');
-  if(!s.initial_training_complete&&!s.initial_training_completed)missingDocs.push('16hr Training');
-  return{expired,soon,missingDocs};
+  if(!ls.done)missingDocs.push('LiveScan');
+  if(!mr.done)missingDocs.push('Mandated Reporter');
+  if(!tr.done)missingDocs.push('16hr Training');
+  const unverified=[
+    tb.unverifiedClaim?'TB Test':null,
+    cpr.unverifiedClaim?'CPR':null,
+    fa.unverifiedClaim?'First Aid':null,
+    ls.unverifiedClaim?'LiveScan':null,
+    mr.unverifiedClaim?'Mandated Reporter':null,
+    tr.unverifiedClaim?'16hr Training':null,
+  ].filter(Boolean);
+  const mismatches=[
+    tb.mismatch?'TB Test':null,
+    cpr.mismatch?'CPR':null,
+    fa.mismatch?'First Aid':null,
+    ls.mismatch?'LiveScan':null,
+    mr.mismatch?'Mandated Reporter':null,
+    tr.mismatch?'16hr Training':null,
+  ].filter(Boolean);
+  return{expired,soon,missingDocs,
+    unverified,mismatches,
+    // Per-cert metadata for the card renderer
+    tb,cpr,fa,ls,mr,tr};
 }
 
 function renderStaff(){
@@ -2055,7 +2397,7 @@ function renderStaff(){
   if(!staffList.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
   let certsOk=0,certsSoon=0,certsExpired=0;
-  active.forEach(s=>{const st=staffCertStatus(s);if(st.expired.length)certsExpired++;else if(st.soon.length||st.missingDocs.length)certsSoon++;else certsOk++;});
+  active.forEach(s=>{const st=staffCertStatus(s);if(st.expired.length)certsExpired++;else if(st.soon.length||st.missingDocs.length||st.unverified.length||st.mismatches.length)certsSoon++;else certsOk++;});
   document.getElementById('staff-count').textContent=active.length;
   document.getElementById('staff-certs-ok').textContent=certsOk;
   document.getElementById('staff-certs-soon').textContent=certsSoon;
@@ -2068,32 +2410,57 @@ function renderStaff(){
     const st=staffCertStatus(s);
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
+    const avatarHtml=s.photo_url
+      ?`<img src="${esc(s.photo_url)}" alt="${esc(initials)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0"/>`
+      :`<div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>`;
     let statusBadge='';
     if(s.active!==true)statusBadge='<span class="badge badge-gray">Inactive</span>';
     else if(st.expired.length)statusBadge=`<span class="badge badge-red">${st.expired.length} expired</span>`;
-    else if(st.soon.length||st.missingDocs.length)statusBadge='<span class="badge badge-amber">Action needed</span>';
+    else if(st.soon.length||st.missingDocs.length||st.unverified.length||st.mismatches.length)statusBadge='<span class="badge badge-amber">Action needed</span>';
     else statusBadge='<span class="badge badge-green">✓ Compliant</span>';
-    const tbDue=s.tb_test_due||s.tb_test_expiry;
+    // Use the per-cert metadata that staffCertStatus already computed rather than
+    // re-reading the typed columns, so the document-verified paths show here too.
     const certRows=[
-      {label:'TB Test',date:tbDue,done:!!s.tb_test_date},
-      {label:'CPR',date:s.cpr_cert_expiry,done:!!s.cpr_cert_date},
-      {label:'First Aid',date:s.first_aid_cert_expiry,done:!!s.first_aid_cert_date},
-      {label:'LiveScan',done:s.livescan_cleared===true,noDate:true},
-      {label:'Mandated Reporter',done:s.mandated_reporter_completed===true,noDate:true},
-      {label:'16hr Training',done:(s.initial_training_complete===true||s.initial_training_completed===true),noDate:true},
+      {label:'TB Test',  date:st.tb.date,  fromDoc:st.tb.fromDoc,  done:!!st.tb.date},
+      {label:'CPR',      date:st.cpr.date, fromDoc:st.cpr.fromDoc, done:!!st.cpr.date},
+      {label:'First Aid',date:st.fa.date,  fromDoc:st.fa.fromDoc,  done:!!st.fa.date},
+      {label:'LiveScan',          done:st.ls.done, fromDoc:st.ls.fromDoc, noDate:true},
+      {label:'Mandated Reporter', done:st.mr.done, fromDoc:st.mr.fromDoc, noDate:true},
+      {label:'16hr Training',     done:st.tr.done, fromDoc:st.tr.fromDoc, noDate:true},
     ];
     const certHtml=certRows.map(c=>{
-      let icon,col,text;
-      if(c.noDate){icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';}
-      else if(!c.date){icon='—';col='var(--text2)';text='Not set';}
-      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+esc(c.date);}
-      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+esc(c.date);}
-      else{icon='✓';col='var(--green)';text='Valid to '+esc(c.date);}
-      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
+      let icon,col,text,note='';
+      if(c.noDate){
+        icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';
+        // A filed document verified this — add a tiny indicator.
+        if(c.done&&c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+        if(c.done&&!c.fromDoc)note=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="Self-reported only — no document on file">⚠</span>';
+      }else if(!c.date){
+        icon='—';col='var(--text2)';text='Not set';
+      }else if(c.date<today){
+        icon='⚠';col='var(--red)';text='Expired '+esc(c.date);
+        if(c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }else if(c.date<=in30){
+        icon='⏰';col='var(--amber)';text='Due '+esc(c.date);
+        if(c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }else{
+        icon='✓';col='var(--green)';text='Valid to '+esc(c.date);
+        if(c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }
+      // A date is set from the typed field but has no backing document — amber
+      // "unverified" hint, same visual language the doc slots already use.
+      if(c.date&&!c.fromDoc&&c.date>=today)note=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="No document on file — an inspector will ask to see it">⚠</span>';
+      if(c.fromDoc&&c.date&&((c.label==='TB Test'&&st.tb.mismatch)||(c.label==='CPR'&&st.cpr.mismatch)||(c.label==='First Aid'&&st.fa.mismatch))){
+        note+=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="Document date and self-reported date differ">↔</span>';
+      }
+      if(c.fromDoc&&c.noDate&&((c.label==='LiveScan'&&st.ls.mismatch)||(c.label==='Mandated Reporter'&&st.mr.mismatch)||(c.label==='16hr Training'&&st.tr.mismatch))){
+        note+=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="Document attached but self-reported field says no">↔</span>';
+      }
+      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}${note}</span></div>`;
     }).join('');
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px">${esc(initials)}</div>
+        ${avatarHtml}
         <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">${esc(nameField)}</div><div style="font-size:12px;color:var(--text2)">${esc(ROLE_LABELS[s.role]||s.role||'Staff')}</div></div>
         ${statusBadge}
       </div>
@@ -2118,6 +2485,89 @@ function filterRoleOptions(query){
 }
 function selectRoleOption(value,label){document.getElementById('staff-role').value=value;document.getElementById('staff-role-search').value=label;document.getElementById('role-options-dropdown').classList.remove('open');}
 function selectCustomRole(text){const slug=text.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_');document.getElementById('staff-role').value=slug||'other';document.getElementById('staff-role-search').value=text.trim();ROLE_LABELS[slug]=text.trim();document.getElementById('role-options-dropdown').classList.remove('open');}
+
+// ===== AUTOCOMPLETE SUGGESTION LISTS =====
+const MED_NAME_SUGGESTIONS=['Acetaminophen (Tylenol)','Amlodipine','Aspirin','Atorvastatin','Carbidopa/Levodopa','Donepezil (Aricept)','Furosemide','Gabapentin','Hydrochlorothiazide','Lisinopril','Lorazepam (Ativan)','Memantine (Namenda)','Metformin','Metoprolol','Omeprazole','Ondansetron','Oxybutynin','Pantoprazole','Quetiapine (Seroquel)','Sertraline','Simvastatin','Tamsulosin','Trazodone','Warfarin (Coumadin)'];
+const MED_DIRECTIONS_SUGGESTIONS=['1 tablet by mouth once daily','1 tablet by mouth twice daily','1 tablet by mouth three times daily','1 tablet by mouth four times daily','1 tablet by mouth with meals','1 tablet by mouth at bedtime','1 capsule by mouth once daily','2 tablets by mouth once daily','0.5 tablet by mouth once daily','1 tablet by mouth every 8 hours','1 tablet by mouth every 12 hours','Apply topically as directed','1-2 tablets by mouth every 4-6 hours as needed for pain'];
+const DIAGNOSIS_SUGGESTIONS=["Alzheimer's disease",'Dementia (unspecified)','Vascular dementia','Lewy body dementia',"Parkinson's disease",'Hypertension','Type 2 diabetes mellitus','Congestive heart failure','COPD','Atrial fibrillation','Chronic kidney disease','Osteoporosis','Osteoarthritis','Depression','Anxiety disorder','Stroke (CVA)','Hip fracture (post-op)','Falls risk','Urinary incontinence','Dysphagia'];
+const ALLERGY_SUGGESTIONS=['Penicillin','Sulfa drugs','Codeine','Morphine','Ibuprofen (NSAIDs)','Aspirin','Latex','Shellfish','Peanuts','Eggs','Milk / Dairy','Amoxicillin','Cephalosporins','No known allergies (NKA)'];
+const TRAINING_TOPIC_SUGGESTIONS=['Dementia care and communication','First aid / CPR','Medication management and storage','Fall prevention',"Residents' rights (Title 22 §87468)",'Emergency procedures and fire safety','Infection control and standard precautions','Nutrition and hydration','Behavior intervention and de-escalation','Elder abuse and mandated reporter training','Incontinence care','Hospice and end-of-life care','Proper lifting and body mechanics','DSS inspection readiness'];
+const PRN_REASON_SUGGESTIONS=['Resident reports pain (3/10)','Resident reports pain (5/10)','Resident reports pain (7/10)','Elevated temperature (>100.4°F)','Resident agitated / anxious','Difficulty sleeping','Nausea or vomiting','Constipation','Breakthrough symptoms','Resident requested'];
+
+function makeSimpleAutocomplete(inputId,dropdownId,suggestions,extra){
+  const input=document.getElementById(inputId);
+  const dropdown=document.getElementById(dropdownId);
+  if(!dropdown)return;
+  const q=(input?.value||'').trim().toLowerCase();
+  let list=suggestions.filter(s=>!q||s.toLowerCase().includes(q));
+  if(extra){const extraList=extra().filter(s=>s&&!suggestions.some(x=>x.toLowerCase()===s.toLowerCase())&&(!q||s.toLowerCase().includes(q)));list=[...new Set([...extraList,...list])].slice(0,10);}
+  else list=list.slice(0,10);
+  if(!list.length){dropdown.classList.remove('open');return;}
+  dropdown.innerHTML=list.map(s=>`<div class="searchable-option" data-val="${esc(s)}" onclick="pickAutocomplete('${inputId}','${dropdownId}',this.dataset.val)">${esc(s)}</div>`).join('');
+  dropdown.classList.add('open');
+}
+function pickAutocomplete(inputId,dropdownId,value){
+  const input=document.getElementById(inputId);
+  const dropdown=document.getElementById(dropdownId);
+  if(input)input.value=value;
+  if(dropdown)dropdown.classList.remove('open');
+}
+function filterMedNameOptions(q){makeSimpleAutocomplete('med-name','med-name-dropdown',MED_NAME_SUGGESTIONS);}
+function filterMedDirectionsOptions(q){makeSimpleAutocomplete('med-directions','med-directions-dropdown',MED_DIRECTIONS_SUGGESTIONS);}
+function filterPrescriberOptions(q){makeSimpleAutocomplete('med-prescriber','med-prescriber-dropdown',[],()=>[...new Set((medicationsList||[]).map(m=>m.prescriber).filter(Boolean))]);}
+function filterPharmacyOptions(q){makeSimpleAutocomplete('med-pharmacy','med-pharmacy-dropdown',[],()=>[...new Set((medicationsList||[]).map(m=>m.pharmacy).filter(Boolean))]);}
+function filterDiagnosisOptions(q){makeSimpleAutocomplete('res-diagnosis','res-diagnosis-dropdown',DIAGNOSIS_SUGGESTIONS);}
+function filterAllergyOptions(q){makeSimpleAutocomplete('res-allergies','res-allergies-dropdown',ALLERGY_SUGGESTIONS);}
+function filterTrainingTopicOptions(q){makeSimpleAutocomplete('tr-topic','tr-topic-dropdown',TRAINING_TOPIC_SUGGESTIONS);}
+function filterPRNReasonOptions(q){makeSimpleAutocomplete('mar-prn-reason','mar-prn-reason-dropdown',PRN_REASON_SUGGESTIONS);}
+// Photo-upload handlers for the staff and resident edit modals.
+// If the record already exists the upload is immediate; otherwise the chosen
+// file is stored in a pending slot and uploaded after the row is saved.
+let _pendingStaffPhoto=null;
+let _pendingResidentPhoto=null;
+
+function handleStaffPhotoChange(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const status=document.getElementById('staff-photo-status');
+  const preview=document.getElementById('staff-photo-preview');
+  // Show local preview immediately so the caregiver can see what they chose.
+  const objectUrl=URL.createObjectURL(file);
+  if(preview)preview.innerHTML=`<img src="${objectUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
+  if(currentStaffId){
+    if(status)status.textContent='Uploading…';
+    uploadProfilePhoto('staff',currentStaffId,file).then(url=>{
+      const idx=staffList.findIndex(s=>s.id===currentStaffId);
+      if(idx>-1)staffList[idx].photo_url=url;
+      if(status)status.textContent='Saved ✓';
+    }).catch(e=>{
+      if(status)status.textContent='Upload failed: '+((e&&e.message)||e);
+    });
+  }else{
+    _pendingStaffPhoto=file;
+    if(status)status.textContent='Will upload when saved';
+  }
+}
+
+function handleResidentPhotoChange(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const status=document.getElementById('res-photo-status');
+  const preview=document.getElementById('res-photo-preview');
+  const objectUrl=URL.createObjectURL(file);
+  if(preview)preview.innerHTML=`<img src="${objectUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
+  if(currentResidentId){
+    if(status)status.textContent='Uploading…';
+    uploadProfilePhoto('residents',currentResidentId,file).then(url=>{
+      const idx=residents.findIndex(r=>r.id===currentResidentId);
+      if(idx>-1)residents[idx].photo_url=url;
+      if(status)status.textContent='Saved ✓';
+    }).catch(e=>{
+      if(status)status.textContent='Upload failed: '+((e&&e.message)||e);
+    });
+  }else{
+    _pendingResidentPhoto=file;
+    if(status)status.textContent='Will upload when saved';
+  }
+}
 
 function openStaffModal(staffId){
   if(!canEdit()){alert('You do not have permission to edit staff.');return;}
@@ -2146,12 +2596,25 @@ function openStaffModal(staffId){
   document.getElementById('staff-training-hours').value=s?.initial_training_hours||'';
   document.getElementById('staff-modal-error').classList.remove('show');
   document.getElementById('staff-delete-btn').style.display=currentStaffId?'inline-block':'none';
+  // Photo preview
+  const staffPhotoPreview=document.getElementById('staff-photo-preview');
+  const staffPhotoInput=document.getElementById('staff-photo-input');
+  if(staffPhotoInput)staffPhotoInput.value='';
+  if(staffPhotoPreview){
+    const sName=s?.full_name||s?.name||'?';
+    const sInitials=sName.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    staffPhotoPreview.innerHTML=s?.photo_url
+      ?`<img src="${esc(s.photo_url)}" style="width:100%;height:100%;object-fit:cover"/>`
+      :esc(sInitials);
+  }
+  if(document.getElementById('staff-photo-status'))document.getElementById('staff-photo-status').textContent='';
   clearRecordDocs();
   refreshDocSlots('staff',currentStaffId);
   document.getElementById('staff-modal').classList.add('open');
 }
 function closeStaffModal(){
   document.getElementById('staff-modal').classList.remove('open');
+  _pendingStaffPhoto=null;
   // Abandoning the form abandons its scan. Without this a document reviewed
   // here, then cancelled, would attach itself to whichever record was saved
   // next. saveStaff consumes it before calling this, so a real save is
@@ -2205,6 +2668,16 @@ async function saveStaff(){
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
+  // Upload a pending profile photo chosen before the row existed.
+  if(_pendingStaffPhoto&&savedId){
+    const photoFile=_pendingStaffPhoto;_pendingStaffPhoto=null;
+    uploadProfilePhoto('staff',savedId,photoFile).then(url=>{
+      const idx=staffList.findIndex(s=>s.id===savedId);
+      if(idx>-1)staffList[idx].photo_url=url;
+      renderStaff();
+    }).catch(()=>{});
+  }else{_pendingStaffPhoto=null;}
+
   // Now the row has an id, so a scanned certificate — or anything attached to a
   // document slot before the record existed — has something to attach to.
   // Never blocks the save: the record is already stored, and a failed
@@ -2217,13 +2690,16 @@ async function saveStaff(){
   if(failures.length){
     alert('The staff member was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
   }else if(filed===true||hadQueue){
-    await loadDocuments();
+    await Promise.all([loadDocuments(),loadStaffDocs()]);
+    renderStaff();
   }
+  refreshDashboard();
 }
 async function deleteStaff(id,name){
   if(!confirm(`Delete "${name}"?`))return;
   await sb.from('staff').delete().eq('id',id);
   staffList=staffList.filter(s=>s.id!==id);renderStaff();
+  refreshDashboard();
 }
 
 // ===== MEDICATIONS =====
@@ -2661,6 +3137,8 @@ function showMAREntry(){
   const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
   document.getElementById('mar-notes').value='';
   document.getElementById('mar-status').value='given';
+  document.getElementById('mar-scheduled-time').selectedIndex=0;
+  onMARStatusChange('given');
   document.getElementById('mar-modal').classList.add('open');
 }
 
@@ -2763,7 +3241,20 @@ async function buildFacilityContext(){
       sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
     ]);
     const today=new Date().toISOString().split('T')[0];
-    return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
+    // Annotate each resident/staff record with has_doc flags so the AI
+    // can distinguish a filed document from a self-reported typed value.
+    const residents=(resData.data||[]).map(r=>{
+      const d=residentDocsByResidentId[r.id]||{};
+      return{...r,has_doc:{lic601:Boolean(d.lic601),lic602:Boolean(d.lic602),isp:Boolean(d.isp)}};
+    });
+    const staff=(staffData.data||[]).map(s=>{
+      const d=staffDocsByStaffId[s.id]||{};
+      return{...s,has_doc:{
+        tb_test:Boolean(d.tb_test),cpr_card:Boolean(d.cpr_card),first_aid:Boolean(d.first_aid),
+        livescan:Boolean(d.livescan),mandated_reporter:Boolean(d.mandated_reporter),training_cert:Boolean(d.training_cert),
+      }};
+    });
+    return JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
   }catch(e){return'Error loading facility data: '+e.message;}
 }
 
@@ -2776,6 +3267,7 @@ async function loadDashboardAIBriefing(force){
     const context=await buildFacilityContext();
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+      facility_id:currentFacility?.id||null,
       system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
@@ -2903,12 +3395,41 @@ async function demoBriefingHTML(){
   return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>';
 }
 
+// Patterns that indicate the user is asking for specific medical dosage
+// recommendations or prescribing advice. The assistant is a compliance tool,
+// not a clinical one; these requests must be refused before reaching the model.
+const DOSAGE_SAFETY_PATTERNS=[
+  /\bhow much\b.*\b(medication|drug|medicine|pill|tablet|capsule|mg|ml|dose|dosage)\b/i,
+  /\b(increase|decrease|change|adjust|modify|double|halve|cut)\b.*\b(dose|dosage|medication|mg|ml)\b/i,
+  /\bwhat dose\b/i,
+  /\bwhat dosage\b/i,
+  /\bmaximum dose\b/i,
+  /\blethal dose\b/i,
+  /\boverdose\b/i,
+  /\bprescribe\b/i,
+  /\bshould.*take\b.*\b(mg|ml|pill|tablet|capsule)\b/i,
+  /\b(give|administer|prescribing)\b.*\b(how much|amount|quantity)\b/i,
+  /\bdrug interaction\b/i,
+  /\bmedical advice\b/i,
+  /\bdiagnos[ei]\b/i,
+];
+function isDosageSafetyBlock(query){
+  return DOSAGE_SAFETY_PATTERNS.some(re=>re.test(query));
+}
+
 async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
   if(!query)return;
   if(input)input.value='';
   addAIMessage(query,'user');
+  // Safety gate: refuse requests for clinical dosage or medical advice before
+  // the query is sent to any backend. A caregiver asking this needs their
+  // prescriber, not a compliance chatbot.
+  if(isDosageSafetyBlock(query)){
+    addAIMessage('I can\'t provide dosage recommendations or prescribing advice — that requires a licensed prescriber. I can help with compliance tasks, staff certifications, DSS inspection readiness, and resident documentation.','assistant');
+    return;
+  }
   if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
   aiMessages.push({role:'user',content:query});
   const thinking=addAIMessage('Checking your facility data...','assistant');
@@ -2916,6 +3437,7 @@ async function sendAIQuery(btn){
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+      facility_id:currentFacility?.id||null,
       system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,
       messages:aiMessages.slice(-10)
     })});
@@ -3012,8 +3534,29 @@ async function handleDocUpload(inp){
     if(status)status.textContent='';
     inp.value='';
     await loadDocuments();
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){ if(status)status.textContent='Upload failed: '+((e&&e.message)||e); }
 }
+// Upload a profile photo to the `profile-photos` bucket and persist the public
+// URL back to `table` (either 'staff' or 'residents') for the given recordId.
+// Returns the public URL on success, or throws on any error.
+async function uploadProfilePhoto(table,recordId,file){
+  const ALLOWED_TYPES=['image/jpeg','image/png','image/webp','image/gif'];
+  const contentType=file.type||'';
+  if(!ALLOWED_TYPES.includes(contentType))throw new Error('Profile photos must be a JPEG, PNG, WebP, or GIF image.');
+  const ext={jpeg:'jpg',png:'png',webp:'webp',gif:'gif'}[contentType.split('/')[1]]||'jpg';
+  const path=currentFacility.id+'/'+recordId+'/'+crypto.randomUUID()+'.'+ext;
+  const{error:upErr}=await sb.storage.from('profile-photos').upload(path,file,{contentType,upsert:false});
+  if(upErr)throw upErr;
+  const{data:urlData}=sb.storage.from('profile-photos').getPublicUrl(path);
+  const publicUrl=urlData?.publicUrl;
+  if(!publicUrl)throw new Error('Could not get public URL for profile photo');
+  const{error:dbErr}=await sb.from(table).update({photo_url:publicUrl}).eq('id',recordId);
+  if(dbErr)throw dbErr;
+  return publicUrl;
+}
+
 // Download a copy rather than opening a viewer. Fetching the blob first means
 // the browser saves it under its real filename instead of the storage UUID.
 async function downloadDoc(path,filename){
@@ -3067,6 +3610,8 @@ async function deleteDoc(id,path){
     if(error)throw error;
     await sb.storage.from('facility-documents').remove([path]);
     await loadDocuments();
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){ alert('Delete failed.'); }
 }
 function requestFax(){
@@ -3099,7 +3644,7 @@ const DOC_SLOTS={
     {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:true},
     {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:true},
     {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:true},
-    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:true},
+    {docType:'inservice_cert',                                    selectEl:'staff-training', yes:'true', scan:true},
   ],
   // scan:false throughout — a resident face sheet is PHI and scanning sends it
   // to a third-party AI service, which we cannot do without a BAA. Uploading
@@ -3319,6 +3864,8 @@ async function onSlotFile(input){
     await loadRecordDocs(kind,recordId);
     renderDocSlots(kind);
     if(typeof facilityDocs!=='undefined')loadDocuments();
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){
     renderDocSlots(kind);
     alert('Could not attach that document.\n\n'+((e&&e.message)||e));
@@ -3366,6 +3913,8 @@ async function deleteSlotDoc(kind,id,path){
     await loadRecordDocs(kind,recordId);
     renderDocSlots(kind);
     if(typeof facilityDocs!=='undefined')loadDocuments();
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){ alert('Could not remove that document.'); }
 }
 
@@ -4471,7 +5020,8 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }
   if(event==='SIGNED_IN'&&session&&!currentUser&&!window.location.hash.includes('type=recovery')){
     currentUser=session.user;
-    await ensureProfile(currentUser);
+    const profile=await ensureProfile(currentUser);
+    if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
     await loadApp();
     track('login_success',{method:'oauth'});
   }
@@ -4573,7 +5123,8 @@ function showSetNewPassword(){
     const{data:{session}}=await sb.auth.getSession();
     if(session&&session.user){
       currentUser=session.user;
-      await ensureProfile(currentUser);
+      const profile=await ensureProfile(currentUser);
+      if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
       await loadApp();
     }else{
       document.getElementById('nav-public').style.display='flex';
@@ -4593,7 +5144,7 @@ function showSetNewPassword(){
 <!-- MODALS -->
 <div class="modal-overlay" id="add-task-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal"><div class="modal-header"><h3>Add compliance task</h3><button class="modal-close" onclick="closeModal()">×</button></div>
-  <div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or enter custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown"></div></div>
+  <div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or enter custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown" data-input="modal-task-title"></div></div>
   <div class="form-group"><label>Category</label><select id="modal-task-cat"><option value="administrator">Administrator</option><option value="staff">Staff</option><option value="residents">Residents</option><option value="medication">Medications</option><option value="facility" selected>Facility</option></select></div>
   <div class="form-group"><label>Due date</label><input type="date" id="modal-task-due"/></div>
   <div class="form-group"><label>Notes (optional)</label><textarea id="modal-task-notes" rows="2" placeholder="Any additional context..."></textarea></div>
@@ -4608,14 +5159,22 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
   <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div id="res-photo-row" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+    <div id="res-photo-preview" style="width:56px;height:56px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--text2)"></div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Profile photo</div>
+      <label class="btn btn-outline" style="font-size:12px;padding:5px 10px;cursor:pointer;margin:0">Choose photo<input type="file" id="res-photo-input" accept="image/*" style="display:none" onchange="handleResidentPhotoChange(this)"/></label>
+      <span id="res-photo-status" style="font-size:11px;color:var(--text2);margin-left:8px"></span>
+    </div>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
     <div class="form-group"><label>Room / bed</label><input type="text" id="res-room" placeholder="e.g. Room 1"/></div>
     <div class="form-group"><label>Date of birth</label><input type="date" id="res-dob"/></div>
     <div class="form-group"><label>Admission date</label><input type="date" id="res-admission"/></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension"/></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin"/></div>
+    <div class="form-group searchable-select" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension" oninput="filterDiagnosisOptions(this.value)" onfocus="filterDiagnosisOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="res-diagnosis-dropdown" data-input="res-diagnosis"></div></div>
+    <div class="form-group searchable-select" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin" oninput="filterAllergyOptions(this.value)" onfocus="filterAllergyOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="res-allergies-dropdown" data-input="res-allergies"></div></div>
     <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Required documents</div>
     <div style="grid-column:1/-1;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:2px">DSS asks for the document, not the answer. Attach each one here so you can view, print or share it during an inspection.</div>
 
@@ -4646,7 +5205,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-detail-modal" onclick="if(event.target===this)closeResidentDetail()">
-  <div class="modal" style="max-width:520px"><div class="modal-header"><h3 id="rd-name">Resident</h3><button class="modal-close" onclick="closeResidentDetail()">×</button></div>
+  <div class="modal" style="max-width:520px"><div class="modal-header" style="align-items:flex-start"><div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0"><div id="rd-photo" style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:var(--text2)"></div><h3 id="rd-name" style="margin:0">Resident</h3></div><button class="modal-close" onclick="closeResidentDetail()">×</button></div>
   <div id="rd-body"></div>
   <div class="modal-footer"><button class="btn btn-outline" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()">🗑 Delete</button><button class="btn btn-outline" onclick="closeResidentDetail()">Close</button><button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button></div></div>
 </div>
@@ -4666,11 +5225,11 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
   <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
-  <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
+  <div class="form-group searchable-select"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol" oninput="filterMedNameOptions(this.value)" onfocus="filterMedNameOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-name-dropdown" data-input="med-name"></div></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
-  <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
-  <div class="form-row"><div class="form-group"><label>Prescriber</label><input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel"/></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
-  <div class="form-group"><label>Pharmacy</label><input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy"/></div>
+  <div class="form-group searchable-select"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily" oninput="filterMedDirectionsOptions(this.value)" onfocus="filterMedDirectionsOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-directions-dropdown" data-input="med-directions"></div></div>
+  <div class="form-row"><div class="form-group searchable-select"><label>Prescriber</label><input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel" oninput="filterPrescriberOptions(this.value)" onfocus="filterPrescriberOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-prescriber-dropdown" data-input="med-prescriber"></div></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
+  <div class="form-group searchable-select"><label>Pharmacy</label><input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy" oninput="filterPharmacyOptions(this.value)" onfocus="filterPharmacyOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="med-pharmacy-dropdown" data-input="med-pharmacy"></div></div>
   <div class="form-row"><div class="form-group"><label>Start date</label><input type="date" id="med-start"/></div><div class="form-group"><label>End date</label><input type="date" id="med-end"/></div></div>
   <div class="form-group"><label>Refill due date</label><input type="date" id="med-refill"/></div>
   <div class="error-msg" id="med-modal-error"></div>
@@ -4680,10 +5239,18 @@ function showSetNewPassword(){
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div id="staff-photo-row" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div id="staff-photo-preview" style="width:56px;height:56px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--text2)"></div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Profile photo</div>
+        <label class="btn btn-outline" style="font-size:12px;padding:5px 10px;cursor:pointer;margin:0">Choose photo<input type="file" id="staff-photo-input" accept="image/*" style="display:none" onchange="handleStaffPhotoChange(this)"/></label>
+        <span id="staff-photo-status" style="font-size:11px;color:var(--text2);margin-left:8px"></span>
+      </div>
+    </div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
-      <div class="form-group searchable-select"><label>Role</label><input type="text" id="staff-role-search" placeholder="Search or type a role..." oninput="filterRoleOptions(this.value)" onfocus="filterRoleOptions(this.value)" autocomplete="off"/><input type="hidden" id="staff-role" value="caregiver"/><div class="searchable-dropdown" id="role-options-dropdown"></div></div>
+      <div class="form-group searchable-select"><label>Role</label><input type="text" id="staff-role-search" placeholder="Search or type a role..." oninput="filterRoleOptions(this.value)" onfocus="filterRoleOptions(this.value)" autocomplete="off"/><input type="hidden" id="staff-role" value="caregiver"/><div class="searchable-dropdown" id="role-options-dropdown" data-input="staff-role-search"></div></div>
       <div class="form-group"><label>Hire date</label><input type="date" id="staff-hire-date"/></div>
       <div class="form-group"><label>Phone</label><input type="text" id="staff-phone" placeholder="(559) 555-0100"/></div>
       <div class="form-group"><label>Status</label><select id="staff-active"><option value="true">Active</option><option value="false">Inactive / Terminated</option></select></div>
