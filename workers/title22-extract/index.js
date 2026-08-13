@@ -444,14 +444,15 @@ export default {
         SUPABASE_URL: Boolean(env.SUPABASE_URL),
         SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
         ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
-        ALLOW_RESIDENT_SCAN: env.ALLOW_RESIDENT_SCAN === 'true',
       };
+      const residentScanningEnabled = env.ALLOW_RESIDENT_SCAN === 'true';
       const missing = Object.keys(config).filter((k) => !config[k]);
       return json({
         status: missing.length ? 'misconfigured' : 'ok',
         forms: Object.keys(FORMS),
         model: env.EXTRACT_MODEL || 'claude-opus-5',
         config,
+        resident_scanning_enabled: residentScanningEnabled,
         ...(missing.length ? { missing, hint: `Set ${missing.join(', ')} on this Worker. Names are case-sensitive and must match exactly.` } : {}),
       });
     }

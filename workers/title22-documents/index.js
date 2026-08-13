@@ -55,16 +55,16 @@ async function getFacilityRole(userId, facilityId, env) {
     `${env.SUPABASE_URL}/rest/v1/facility_members?facility_id=eq.${facilityId}&user_id=eq.${userId}&select=role&limit=1`,
     { headers }
   );
-  if (!memberRes.ok) return 'readonly';
+  if (!memberRes.ok) return null;
   const members = await memberRes.json();
-  return members[0]?.role || 'readonly';
+  return members[0]?.role || null;
 }
 
 const ROLE_CAPABILITIES = {
   administrator: { 'document.read_content': true, 'document.share': true },
   supervisor:    { 'document.read_content': true, 'document.share': true },
-  caregiver:     { 'document.read_content': true, 'document.share': true },
-  readonly:      { 'document.read_content': true, 'document.share': true },
+  caregiver:     { 'document.read_content': true, 'document.share': false },
+  readonly:      { 'document.read_content': true, 'document.share': false },
 };
 
 function hasCapability(role, capability) {

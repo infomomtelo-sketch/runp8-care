@@ -17,13 +17,13 @@ as $$
       where f.id = p_facility_id
         and f.user_id = auth.uid()
     ) then 'administrator'
-    else coalesce((
+    else (
       select fm.role
       from public.facility_members fm
       where fm.facility_id = p_facility_id
         and fm.user_id = auth.uid()
       limit 1
-    ), 'readonly')
+    )
   end
 $$;
 
@@ -39,6 +39,10 @@ as $$
 declare
   v_role text := public.title22_current_facility_role(p_facility_id);
 begin
+  if v_role is null then
+    return false;
+  end if;
+
   if v_role = 'administrator' then
     return p_capability in (
       'facility.view_directory',
@@ -74,7 +78,6 @@ begin
     return p_capability in (
       'document.read_metadata',
       'document.read_content',
-      'document.share',
       'document.upload'
     );
   end if;
@@ -86,8 +89,7 @@ begin
       'resident.read_detail',
       'resident.read_sensitive',
       'document.read_metadata',
-      'document.read_content',
-      'document.share'
+      'document.read_content'
     );
   end if;
 

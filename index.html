@@ -1086,12 +1086,12 @@ const ROLE_CAPABILITIES = {
   caregiver:{
     'record.edit':true,'record.delete':false,'team.manage':false,'billing.manage':false,
     'resident.read_summary':false,'resident.read_detail':false,'resident.read_sensitive':false,'resident.edit':false,'resident.delete':false,
-    'document.read_metadata':true,'document.read_content':true,'document.share':true,'document.upload':true,
+    'document.read_metadata':true,'document.read_content':true,'document.share':false,'document.upload':true,
   },
   readonly:{
     'record.edit':false,'record.delete':false,'team.manage':false,'billing.manage':false,
     'resident.read_summary':true,'resident.read_detail':true,'resident.read_sensitive':true,'resident.edit':false,'resident.delete':false,
-    'document.read_metadata':true,'document.read_content':true,'document.share':true,'document.upload':false,
+    'document.read_metadata':true,'document.read_content':true,'document.share':false,'document.upload':false,
   },
 };
 function roleCaps(){ return ROLE_CAPABILITIES[currentUserRole]||ROLE_CAPABILITIES.readonly; }
@@ -3773,26 +3773,26 @@ function requestFax(){
   if(confirm('📠 Faxing documents to pharmacies, physicians, or DSS is coming soon.\n\nWant us to let you know when it is ready? Tap OK to send a quick note.')){
     window.location.href='mailto:hello@title-22.com?subject='+encodeURIComponent('Fax feature interest — Title22')+'&body='+encodeURIComponent('Hi — I would use a fax feature in Title22. Please let me know when it is available.');
   }
+}
 
-  async function requestDocumentUrl(path,capability,expiresIn){
-    if(demoMode){
-      const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,expiresIn);
-      if(error||!data?.signedUrl)throw error||new Error('no url');
-      return data.signedUrl;
-    }
-    if(!currentFacility?.id)throw new Error('No facility selected.');
-    if(!path)throw new Error('No document path provided.');
-    const{data:{session}}=await sb.auth.getSession();
-    if(!session?.access_token)throw new Error('Your session expired. Sign in again and retry.');
-    const res=await fetch(DOCUMENTS_WORKER,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({facilityId:currentFacility.id,storagePath:path,capability,expiresIn})
-    });
-    const data=await res.json().catch(()=>null);
-    if(!res.ok||!data?.signedUrl)throw new Error(data?.message||`Could not access this document. (HTTP ${res.status})`);
+async function requestDocumentUrl(path,capability,expiresIn){
+  if(demoMode){
+    const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,expiresIn);
+    if(error||!data?.signedUrl)throw error||new Error('no url');
     return data.signedUrl;
   }
+  if(!currentFacility?.id)throw new Error('No facility selected.');
+  if(!path)throw new Error('No document path provided.');
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session?.access_token)throw new Error('Your session expired. Sign in again and retry.');
+  const res=await fetch(DOCUMENTS_WORKER,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({facilityId:currentFacility.id,storagePath:path,capability,expiresIn})
+  });
+  const data=await res.json().catch(()=>null);
+  if(!res.ok||!data?.signedUrl)throw new Error(data?.message||`Could not access this document. (HTTP ${res.status})`);
+  return data.signedUrl;
 }
 
 // ===== DOCUMENT SLOTS =====
