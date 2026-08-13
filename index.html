@@ -914,6 +914,8 @@ const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 // creation and Workers can't be renamed). The source lives in
 // workers/title22-extract/ — see that worker's wrangler.toml before deploying.
 const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extract';
+const EMAIL_WORKER = 'https://title22-email.infomomtelo.workers.dev/api/email';
+const TITLE22_APP_URL = 'https://title22.app';
 
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
@@ -998,6 +1000,70 @@ let activeFilter = 'all';
 let currentIncidentId = null;
 let currentUserRole = 'administrator';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
+const pendingEmailSends=new Set();
+
+function userDisplayName(user){
+  const raw=user?.user_metadata?.full_name||user?.user_metadata?.name||user?.email||'there';
+  return String(raw).split('@')[0];
+}
+
+function emailEventKey(template,suffix){
+  return `title22:${template}:${currentUser?.id||'anon'}:${suffix||'default'}`;
+}
+
+async function sendTransactionalEmail(template,payload,suffix){
+  if(demoMode||!currentUser?.id||!EMAIL_WORKER)return false;
+  const key=suffix?emailEventKey(template,suffix):null;
+  try{
+    if(key&&localStorage.getItem(key))return true;
+    if(key&&pendingEmailSends.has(key))return true;
+    if(key)pendingEmailSends.add(key);
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)return false;
+    const res=await fetch(EMAIL_WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({template,...(payload||{})})
+    });
+    if(!res.ok){
+      console.log('Email worker skipped:',template,res.status);
+      return false;
+    }
+    if(key)localStorage.setItem(key,new Date().toISOString());
+    return true;
+  }catch(e){
+    console.log('Email worker skipped:',template,e.message);
+    return false;
+  }finally{
+    if(key)pendingEmailSends.delete(key);
+  }
+}
+
+function maybeSendWelcomeEmail(user){
+  if(!user?.id||!user?.email)return;
+  sendTransactionalEmail('welcome',{
+    name:userDisplayName(user),
+    onboarding_url:TITLE22_APP_URL+'/'
+  },'welcome').then(()=>{},()=>{});
+}
+
+function maybeSendTrialWarning(daysLeft){
+  if(daysLeft>3||daysLeft<1||!currentUser?.email)return;
+  sendTransactionalEmail('trial_warning',{
+    name:userDisplayName(currentUser),
+    days_left:daysLeft,
+    upgrade_url:TITLE22_APP_URL+'/'
+  },'trial-warning').then(()=>{},()=>{});
+}
+
+function maybeSendSubscriptionConfirmed(plan){
+  if(!currentUser?.email)return;
+  sendTransactionalEmail('subscription_confirmed',{
+    name:userDisplayName(currentUser),
+    plan,
+    access_url:TITLE22_APP_URL+'/'
+  },'subscription-'+plan).then(()=>{},()=>{});
+}
 
 const ROLE_ACCESS = {
   administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
@@ -1123,6 +1189,7 @@ async function ensureProfile(user){
   const menuPartners=document.getElementById('menu-partners');
   if(menuPartners)menuPartners.style.display=isPartnerAdmin?'flex':'none';
   if(isNewProfile)await stampSignupAttribution(user);
+  return {isNewProfile};
 }
 
 // Stamp marketing attribution (title22_signup_plan / _utm_source / _utm_campaign)
@@ -1169,7 +1236,8 @@ async function handleSignup(){
   }
   if(!data.user){err.textContent='Check your email to confirm your account, then log in.';err.classList.add('show');return;}
   currentUser=data.user;
-  await ensureProfile(currentUser);
+  const profile=await ensureProfile(currentUser);
+  if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
   showPage('onboard');
 }
 
@@ -1193,7 +1261,8 @@ async function handleLogin(){
     err.classList.add('show');return;
   }
   currentUser=data.user;
-  await ensureProfile(currentUser);
+  const profile=await ensureProfile(currentUser);
+  if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
   await loadApp();
   track('login_success',{method:'password'});
 }
@@ -1433,6 +1502,9 @@ async function initFacility(){
   }else if(t22Plan==='trial'){
     const banner=document.getElementById('trial-banner');
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
+    maybeSendTrialWarning(t22TrialDaysLeft);
+  }else if(T22_PAID.includes(t22Plan)){
+    maybeSendSubscriptionConfirmed(t22Plan);
   }
   refreshDashboard();
   await Promise.all([loadResidents(),loadStaff(),loadStaffDocs(),loadIncidents()]);
@@ -1516,6 +1588,8 @@ async function refreshAccess(manual){
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
+  if(T22_PAID.includes(ent.plan))maybeSendSubscriptionConfirmed(ent.plan);
+  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);refreshDashboard();}
   if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadStaffDocs(),loadIncidents()]);refreshDashboard();}
   const bt=document.getElementById('tab-billing');
   if(bt&&bt.style.display!=='none')loadBilling();
@@ -3157,6 +3231,7 @@ async function loadDashboardAIBriefing(force){
     const context=await buildFacilityContext();
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+      facility_id:currentFacility?.id||null,
       system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
@@ -3333,6 +3408,7 @@ async function sendAIQuery(btn){
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+      facility_id:currentFacility?.id||null,
       system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,
       messages:aiMessages.slice(-10)
     })});
@@ -4915,7 +4991,8 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }
   if(event==='SIGNED_IN'&&session&&!currentUser&&!window.location.hash.includes('type=recovery')){
     currentUser=session.user;
-    await ensureProfile(currentUser);
+    const profile=await ensureProfile(currentUser);
+    if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
     await loadApp();
     track('login_success',{method:'oauth'});
   }
@@ -5017,7 +5094,8 @@ function showSetNewPassword(){
     const{data:{session}}=await sb.auth.getSession();
     if(session&&session.user){
       currentUser=session.user;
-      await ensureProfile(currentUser);
+      const profile=await ensureProfile(currentUser);
+      if(profile?.isNewProfile)maybeSendWelcomeEmail(currentUser);
       await loadApp();
     }else{
       document.getElementById('nav-public').style.display='flex';
