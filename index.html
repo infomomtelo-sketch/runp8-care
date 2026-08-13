@@ -728,8 +728,8 @@
         </div>
         <div id="mar-ai-briefing" style="display:none;margin-bottom:16px"></div>
         <div id="mar-entries-list"></div>
-        <div class="modal-overlay" id="mar-modal">
-          <div class="modal">
+        <div class="modal-overlay" id="mar-modal" onclick="if(event.target===this)closeMARModal()">
+          <div class="modal" style="max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
             <div class="modal-header"><h3>Log Medication</h3><button class="modal-close" onclick="closeMARModal()">×</button></div>
             <div class="form-group"><label>Resident</label><select id="mar-res-select" onchange="onMARResidentChange(this.value)"><option value="">Select Resident</option></select></div>
             <div class="form-group"><label>Medication</label><select id="mar-med-select" onchange="onMARMedChange(this.value)"><option value="">Select medication</option></select></div>
@@ -2660,6 +2660,8 @@ function showMAREntry(){
   const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
   document.getElementById('mar-notes').value='';
   document.getElementById('mar-status').value='given';
+  document.getElementById('mar-scheduled-time').selectedIndex=0;
+  onMARStatusChange('given');
   document.getElementById('mar-modal').classList.add('open');
 }
 
@@ -3097,7 +3099,7 @@ const DOC_SLOTS={
     {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:true},
     {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:true},
     {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:true},
-    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:true},
+    {docType:'inservice_cert',                                    selectEl:'staff-training', yes:'true', scan:true},
   ],
   // scan:false throughout — a resident face sheet is PHI and scanning sends it
   // to a third-party AI service, which we cannot do without a BAA. Uploading
