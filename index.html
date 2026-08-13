@@ -1516,22 +1516,72 @@ async function refreshAccess(manual){
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
-  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);refreshDashboard();}
+  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadStaffDocs(),loadIncidents()]);refreshDashboard();}
   const bt=document.getElementById('tab-billing');
   if(bt&&bt.style.display!=='none')loadBilling();
 }
 
 // ===== DASHBOARD =====
+function buildEvidenceSnapshot(){
+  const today=new Date().toISOString().split('T')[0];
+  const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+  let total=0,passing=0,unverified=0,mismatches=0;
+  const expired=[],soon=[];
+
+  (residents||[]).forEach(r=>{
+    [
+      residentDocStatus(r,'lic601',r.lic601),
+      residentDocStatus(r,'lic602',r.lic602),
+      residentDocStatus(r,'isp',r.isp),
+    ].forEach(st=>{
+      total++;
+      if(st.done)passing++;
+      if(st.unverifiedClaim)unverified++;
+      if(st.mismatch)mismatches++;
+    });
+  });
+
+  (staffList||[]).filter(s=>s.active===true).forEach(s=>{
+    const st=staffCertStatus(s);
+    const name=s.full_name||s.name||'Staff';
+    [
+      {label:'TB test',meta:st.tb},
+      {label:'CPR',meta:st.cpr},
+      {label:'First Aid',meta:st.fa},
+    ].forEach(c=>{
+      total++;
+      if(c.meta.date&&c.meta.date>=today)passing++;
+      if(c.meta.unverifiedClaim)unverified++;
+      if(c.meta.mismatch)mismatches++;
+      if(c.meta.date&&c.meta.date<today)expired.push({staff:name,label:c.label,date:c.meta.date});
+      else if(c.meta.date&&c.meta.date<=in30)soon.push({staff:name,label:c.label,date:c.meta.date});
+    });
+    [st.ls,st.mr,st.tr].forEach(c=>{
+      total++;
+      if(c.done)passing++;
+      if(c.unverifiedClaim)unverified++;
+      if(c.mismatch)mismatches++;
+    });
+  });
+
+  const score=total>0?Math.round((passing/total)*100):0;
+  return{total,passing,score,unverified,mismatches,expired,soon};
+}
+
 function refreshDashboard(){
+  const evidence=buildEvidenceSnapshot();
   const total=complianceTasks.length;
   const done=complianceTasks.filter(t=>t.completed).length;
   const today=new Date().toISOString().split('T')[0];
   const nextMonth=new Date();nextMonth.setMonth(nextMonth.getMonth()+1);
   const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length;
   const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length;
-  const score=total>0?Math.round((done/total)*100):0;
+  const score=evidence.score;
   document.getElementById('dash-score').textContent=score+'%';
-  document.getElementById('dash-score-sub').textContent=`${done} of ${total} requirements complete`;
+  const notes=[];
+  if(evidence.unverified)notes.push(`${evidence.unverified} unverified`);
+  if(evidence.mismatches)notes.push(`${evidence.mismatches} mismatched`);
+  document.getElementById('dash-score-sub').textContent=`${evidence.passing} of ${evidence.total} checks passing`+(notes.length?` · ${notes.join(' · ')}`:'');
   const arc=2*Math.PI*34;
   document.getElementById('score-arc').style.strokeDashoffset=arc*(1-score/100);
   document.getElementById('stat-overdue').textContent=overdue;
@@ -1542,10 +1592,14 @@ function refreshDashboard(){
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
   const urgent=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).slice(0,5);
-  document.getElementById('alert-count').textContent=urgent.length;
-  document.getElementById('alert-list').innerHTML=urgent.length===0
+  const docUrgent=evidence.expired.slice(0,5);
+  document.getElementById('alert-count').textContent=urgent.length+docUrgent.length;
+  document.getElementById('alert-list').innerHTML=(urgent.length===0&&docUrgent.length===0)
     ?'<div class="empty">No urgent alerts</div>'
-    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`).join('');
+    :[
+      ...docUrgent.map(c=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(c.staff)} — ${esc(c.label)} document expired</strong><span>Expired on ${esc(c.date)}</span></div></div>`),
+      ...urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`),
+    ].join('');
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
@@ -1610,20 +1664,50 @@ async function exportDSSAudit(){
   if(!currentFacility)return;
   const since=new Date(Date.now()-90*86400000);
   const sinceISO=since.toISOString();
-  const[resR,stR,marR,incR]=await Promise.all([
+  const[resR,stR,docR,marR,incR]=await Promise.all([
     sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'),
     sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name'),
+    sb.from('documents').select('resident_id,staff_id,doc_type,expires_at,uploaded_at').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}),
     sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'),
     sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
   ]);
-  const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[];
+  const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[],docsD=docR.data||[];
   const f=currentFacility;
   const yn=v=>v==='yes'?'✓ On file':'✗ MISSING';
   const d=v=>v?new Date(v).toLocaleDateString():'—';
+  const docsByResident={},docsByStaff={};
+  docsD.forEach(doc=>{
+    if(doc.resident_id){
+      if(!docsByResident[doc.resident_id])docsByResident[doc.resident_id]={};
+      if(!docsByResident[doc.resident_id][doc.doc_type])docsByResident[doc.resident_id][doc.doc_type]=doc;
+    }
+    if(doc.staff_id){
+      if(!docsByStaff[doc.staff_id])docsByStaff[doc.staff_id]={};
+      if(!docsByStaff[doc.staff_id][doc.doc_type])docsByStaff[doc.staff_id][doc.doc_type]=doc;
+    }
+  });
+  const residentCell=(r,docType,typed)=>{
+    const hasDoc=Boolean((docsByResident[r.id]||{})[docType]);
+    if(hasDoc)return '✓ On file 📄';
+    if(typed==='yes')return '⚠ Self-reported only';
+    return '✗ MISSING';
+  };
+  const staffDateCell=(s,docType,typedDate)=>{
+    const doc=(docsByStaff[s.id]||{})[docType];
+    if(doc&&doc.expires_at)return d(doc.expires_at)+(typedDate&&typedDate!==doc.expires_at?' ↔':'')+' 📄';
+    if(typedDate)return d(typedDate)+' ⚠';
+    return '—';
+  };
+  const staffBoolCell=(s,docType,typedBool)=>{
+    const hasDoc=Boolean((docsByStaff[s.id]||{})[docType]);
+    if(hasDoc)return `✓${typedBool?'':' ↔'} 📄`;
+    if(typedBool)return '✓ ⚠';
+    return '✗';
+  };
   const th='padding:6px 8px;border:1px solid #ccc;background:#f0f0f0;font-size:11px;text-align:left';
   const td='padding:5px 8px;border:1px solid #ddd;font-size:11px';
-  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
-  const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${d(s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${d(s.cpr_cert_expiry)}</td><td style="${td}">${d(s.first_aid_cert_expiry)}</td><td style="${td}">${s.livescan_cleared?'✓':'✗'}</td><td style="${td}">${s.mandated_reporter_completed?'✓':'✗'}</td><td style="${td}">${(s.initial_training_complete||s.initial_training_completed)?'✓':'✗'}</td></tr>`).join('');
+  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${residentCell(r,'lic601',r.lic601)}</td><td style="${td}">${residentCell(r,'lic602',r.lic602)}</td><td style="${td}">${residentCell(r,'isp',r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
+  const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${staffDateCell(s,'tb_test',s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${staffDateCell(s,'cpr_card',s.cpr_cert_expiry)}</td><td style="${td}">${staffDateCell(s,'first_aid',s.first_aid_cert_expiry)}</td><td style="${td}">${staffBoolCell(s,'livescan',s.livescan_cleared)}</td><td style="${td}">${staffBoolCell(s,'mandated_reporter',s.mandated_reporter_completed)}</td><td style="${td}">${staffBoolCell(s,'training_cert',s.initial_training_complete||s.initial_training_completed)}</td></tr>`).join('');
   const statusLabels={given:'Given',refused:'Refused',held:'Held',missed:'MISSED'};
   const marRows=marD.map(e=>`<tr><td style="${td}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}">${esc(e.scheduled_time||'')}</td><td style="${td};${e.status!=='given'?'color:#A32D2D;font-weight:700':''}">${statusLabels[e.status]||esc(e.status)}</td><td style="${td}">${esc(e.notes||'')}</td></tr>`).join('');
   const incRows=incD.map(i=>`<tr><td style="${td}">${i.occurred_at?new Date(i.occurred_at).toLocaleString():''}</td><td style="${td}">${esc(i.residents?.name||i.residents?.full_name||'')}</td><td style="${td}">${esc(i.incident_type||'')}</td><td style="${td}">${i.injury?'Yes':'No'}</td><td style="${td}">${i.dss_reportable?'YES':'No'}</td><td style="${td}">${esc(i.description||'')}</td><td style="${td}">${esc(i.corrective_action||'')}</td></tr>`).join('');
@@ -1655,6 +1739,7 @@ function getDaysUntil(dateStr){
 }
 
 function renderExpiryBanner(){
+  const evidence=buildEvidenceSnapshot();
   const today=new Date().toISOString().split('T')[0];
   const in7=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
@@ -1662,11 +1747,16 @@ function renderExpiryBanner(){
   const critical=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=in7);
   const warning=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>in7&&t.due_date<=in30);
   const banner=document.getElementById('expiry-banner');if(!banner)return;
-  if(!expired.length&&!critical.length&&!warning.length){
+  if(!expired.length&&!critical.length&&!warning.length&&!evidence.expired.length&&!evidence.soon.length&&!evidence.unverified&&!evidence.mismatches){
     banner.innerHTML=`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">✅</span><div><div style="font-weight:600;color:var(--green);font-size:14px">All requirements are current</div></div></div>`;
     return;
   }
   let html='';
+  if(evidence.expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${evidence.expired.length} document-based item${evidence.expired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${evidence.expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.staff)} — ${esc(t.label)}</span><span style="color:var(--text2);margin-left:6px">Expired ${esc(t.date)}</span></div>`).join('')}</div></div>`;
+  if(evidence.soon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">⏰ ${evidence.soon.length} document-based item${evidence.soon.length>1?'s':''} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${evidence.soon.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.staff)} — ${esc(t.label)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.date)} days</span></div>`).join('')}</div></div>`;
+  if(evidence.unverified||evidence.mismatches){
+    html+=`<div style="background:#fff8e1;border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:6px">🧾 Verification attention needed</div><div style="font-size:12px;color:var(--text2)">${evidence.unverified?`${evidence.unverified} self-reported item${evidence.unverified>1?'s':''} still have no filed document.`:''}${evidence.unverified&&evidence.mismatches?' ':''}${evidence.mismatches?`${evidence.mismatches} item${evidence.mismatches>1?'s':''} differ between filed document and self-reported value.`:''}</div></div>`;
+  }
   if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
   if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
@@ -1859,13 +1949,25 @@ function renderResidents(){
   const summary=document.getElementById('res-summary');
   if(!residents.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
-  const docsOk=residents.filter(r=>r.lic601==='yes'&&r.lic602==='yes'&&r.isp==='yes').length;
+  const docsOk=residents.filter(r=>{
+    const s1=residentDocStatus(r,'lic601',r.lic601);
+    const s2=residentDocStatus(r,'lic602',r.lic602);
+    const s3=residentDocStatus(r,'isp',r.isp);
+    return s1.done&&s2.done&&s3.done&&!s1.unverifiedClaim&&!s2.unverifiedClaim&&!s3.unverifiedClaim;
+  }).length;
   document.getElementById('res-count').textContent=residents.length;
   document.getElementById('res-docs-ok').textContent=docsOk;
   document.getElementById('res-docs-missing').textContent=residents.length-docsOk;
-  const docBadge=(label,val)=>{
-    if(val==='yes')return`<span class="badge badge-green">${label} ✓</span>`;
-    return`<span class="badge badge-red">${label} ✗</span>`;
+  const docBadge=(label,status)=>{
+    if(status.fromDoc){
+      return`<span class="badge badge-green">${label} ✓ 📄${status.mismatch?' ↔':''}</span>`;
+    }
+    if(status.unverifiedClaim){
+      return`<span class="badge badge-amber">${label} ⚠</span>`;
+    }
+    return status.done
+      ?`<span class="badge badge-green">${label} ✓</span>`
+      :`<span class="badge badge-red">${label} ✗</span>`;
   };
   const colors=['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
   grid.innerHTML=residents.map(r=>{
@@ -1873,6 +1975,9 @@ function renderResidents(){
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     const color=colors[nameField.charCodeAt(0)%colors.length];
+    const lic601=residentDocStatus(r,'lic601',r.lic601);
+    const lic602=residentDocStatus(r,'lic602',r.lic602);
+    const isp=residentDocStatus(r,'isp',r.isp);
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer" onclick="viewResident('${esc(r.id)}')" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
         <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0">${esc(initials)}</div>
@@ -1880,7 +1985,7 @@ function renderResidents(){
         ${age?`<div style="font-size:11px;color:var(--text2);text-align:right"><div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs</div></div>`:''}
       </div>
       ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${esc(r.diagnosis)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',r.lic601)}${docBadge('LIC 602',r.lic602)}${r.isp==='yes'?'<span class="badge badge-green">ISP ✓</span>':'<span class="badge badge-red">ISP ✗</span>'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div>
       ${r.admission_date?`<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()}</div>`:''}
     </div>`;
   }).join('');
@@ -1956,8 +2061,9 @@ async function saveResident(){
   if(failures.length){
     alert('The resident was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
   }else if(hadQueue){
-    loadDocuments();
+    await Promise.all([loadDocuments(),loadStaffDocs()]);
   }
+  refreshDashboard();
 }
 
 function viewResident(id){
@@ -1966,7 +2072,20 @@ function viewResident(id){
   const nameField=r.name||r.full_name||'Unknown';
   document.getElementById('rd-name').textContent=nameField+(r.preferred_name?' "'+r.preferred_name+'"':'');
   const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
-  const badge=(label,val)=>val==='yes'?`<span class="badge badge-green">${label} ✓</span>`:`<span class="badge badge-red">${label} ✗</span>`;
+  const docBadge=(label,status)=>{
+    if(status.fromDoc){
+      return`<span class="badge badge-green">${label} ✓ 📄${status.mismatch?' ↔':''}</span>`;
+    }
+    if(status.unverifiedClaim){
+      return`<span class="badge badge-amber">${label} ⚠</span>`;
+    }
+    return status.done
+      ?`<span class="badge badge-green">${label} ✓</span>`
+      :`<span class="badge badge-red">${label} ✗</span>`;
+  };
+  const lic601=residentDocStatus(r,'lic601',r.lic601);
+  const lic602=residentDocStatus(r,'lic602',r.lic602);
+  const isp=residentDocStatus(r,'isp',r.isp);
   document.getElementById('rd-body').innerHTML=`<div style="display:grid;gap:14px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
       ${r.dob?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Date of birth</div><div style="font-weight:500">${new Date(r.dob).toLocaleDateString()}${age?' · '+age+' yrs':''}</div></div>`:''}
@@ -1976,7 +2095,7 @@ function viewResident(id){
     </div>
     ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
     ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
-    <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div>
+    <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${docBadge('LIC 601',lic601)}${docBadge('LIC 602',lic602)}${docBadge('ISP',isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
 }
@@ -1989,6 +2108,7 @@ async function deleteCurrentResident(){
   await sb.from('residents').delete().eq('id',currentResidentId);
   residents=residents.filter(x=>x.id!==currentResidentId);
   closeResidentDetail();renderResidents();
+  refreshDashboard();
 }
 
 // ===== STAFF =====
@@ -2012,28 +2132,59 @@ async function loadStaff(){
   staffList=data||[];window.staffList=staffList;renderStaff();
 }
 
-// Most-recent filed document per (staff × doc_type). Loaded once per facility
-// open, then refreshed whenever a document is added or removed so the badges
-// and expiry dates the staff grid shows always reflect what is actually on file.
+// Most-recent filed document per record × doc_type, loaded once per facility
+// open and refreshed whenever a document changes so badges/summaries always use
+// what is actually on file first.
 //
-// Shape: { [staffId]: { [docType]: {expires_at, issued_at, uploaded_at} } }
+// Shape: { [id]: { [docType]: {expires_at, issued_at, uploaded_at} } }
 let staffDocsByStaffId={};
+let residentDocsByResidentId={};
 
 async function loadStaffDocs(){
   staffDocsByStaffId={};
+  residentDocsByResidentId={};
   if(!currentFacility)return;
-  const{data}=await sb.from('documents')
-    .select('staff_id,doc_type,issued_at,expires_at,uploaded_at')
-    .eq('facility_id',currentFacility.id)
-    .not('staff_id','is',null)
-    .order('uploaded_at',{ascending:false});
-  if(!data)return;
-  // Keep only the first (newest) document per staff × doc_type — the query is
-  // ordered newest-first, so iterating once gives us the winner for each pair.
-  data.forEach(d=>{
+  const[staffRes,residentRes]=await Promise.all([
+    sb.from('documents')
+      .select('staff_id,doc_type,issued_at,expires_at,uploaded_at')
+      .eq('facility_id',currentFacility.id)
+      .not('staff_id','is',null)
+      .order('uploaded_at',{ascending:false}),
+    sb.from('documents')
+      .select('resident_id,doc_type,issued_at,expires_at,uploaded_at')
+      .eq('facility_id',currentFacility.id)
+      .not('resident_id','is',null)
+      .order('uploaded_at',{ascending:false}),
+  ]);
+  const staffDocs=staffRes.data||[];
+  const residentDocs=residentRes.data||[];
+  // Keep only the first (newest) document per record × doc_type — queries are
+  // ordered newest-first, so one pass gives the winner for each pair.
+  staffDocs.forEach(d=>{
     if(!staffDocsByStaffId[d.staff_id])staffDocsByStaffId[d.staff_id]={};
     if(!staffDocsByStaffId[d.staff_id][d.doc_type])staffDocsByStaffId[d.staff_id][d.doc_type]=d;
   });
+  residentDocs.forEach(d=>{
+    if(!residentDocsByResidentId[d.resident_id])residentDocsByResidentId[d.resident_id]={};
+    if(!residentDocsByResidentId[d.resident_id][d.doc_type])residentDocsByResidentId[d.resident_id][d.doc_type]=d;
+  });
+  // Keep visible badges in sync if the tab was already rendered.
+  if(typeof renderStaff==='function')renderStaff();
+  if(typeof renderResidents==='function')renderResidents();
+}
+
+function residentDocStatus(r,docType,typedValue){
+  const docs=residentDocsByResidentId[r.id]||{};
+  const hasDoc=Boolean(docs[docType]);
+  const typedYes=typedValue==='yes';
+  return{
+    done:hasDoc||typedYes,
+    fromDoc:hasDoc,
+    typedYes,
+    // A claim with no file is unverified; a file with typed "no" is mismatch.
+    unverifiedClaim:typedYes&&!hasDoc,
+    mismatch:hasDoc&&!typedYes,
+  };
 }
 
 function staffCertStatus(s){
@@ -2047,13 +2198,31 @@ function staffCertStatus(s){
   // came from a document.
   const bestExpiry=(docType,typedDate)=>{
     const d=docs[docType];
-    if(d&&d.expires_at)return{date:d.expires_at,fromDoc:true};
-    return{date:typedDate||null,fromDoc:false};
+    const typed=typedDate||null;
+    if(d&&d.expires_at)return{
+      date:d.expires_at,fromDoc:true,hasDoc:true,
+      mismatch:Boolean(typed&&typed!==d.expires_at),
+      unverifiedClaim:false,
+    };
+    return{
+      date:typed,fromDoc:false,hasDoc:Boolean(d),
+      mismatch:false,
+      unverifiedClaim:Boolean(typed&&!d),
+    };
   };
   // Helper: best boolean — a filed document beats a false typed value.
   const bestBool=(docType,typedBool)=>{
-    if(docs[docType])return{done:true,fromDoc:true};
-    return{done:Boolean(typedBool),fromDoc:false};
+    const typed=Boolean(typedBool);
+    if(docs[docType])return{
+      done:true,fromDoc:true,hasDoc:true,
+      mismatch:!typed,
+      unverifiedClaim:false,
+    };
+    return{
+      done:typed,fromDoc:false,hasDoc:false,
+      mismatch:false,
+      unverifiedClaim:typed,
+    };
   };
 
   const tbDue=s.tb_test_due||s.tb_test_expiry;
@@ -2075,7 +2244,24 @@ function staffCertStatus(s){
   if(!ls.done)missingDocs.push('LiveScan');
   if(!mr.done)missingDocs.push('Mandated Reporter');
   if(!tr.done)missingDocs.push('16hr Training');
+  const unverified=[
+    tb.unverifiedClaim?'TB Test':null,
+    cpr.unverifiedClaim?'CPR':null,
+    fa.unverifiedClaim?'First Aid':null,
+    ls.unverifiedClaim?'LiveScan':null,
+    mr.unverifiedClaim?'Mandated Reporter':null,
+    tr.unverifiedClaim?'16hr Training':null,
+  ].filter(Boolean);
+  const mismatches=[
+    tb.mismatch?'TB Test':null,
+    cpr.mismatch?'CPR':null,
+    fa.mismatch?'First Aid':null,
+    ls.mismatch?'LiveScan':null,
+    mr.mismatch?'Mandated Reporter':null,
+    tr.mismatch?'16hr Training':null,
+  ].filter(Boolean);
   return{expired,soon,missingDocs,
+    unverified,mismatches,
     // Per-cert metadata for the card renderer
     tb,cpr,fa,ls,mr,tr};
 }
@@ -2105,7 +2291,7 @@ function renderStaff(){
   if(!staffList.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
   let certsOk=0,certsSoon=0,certsExpired=0;
-  active.forEach(s=>{const st=staffCertStatus(s);if(st.expired.length)certsExpired++;else if(st.soon.length||st.missingDocs.length)certsSoon++;else certsOk++;});
+  active.forEach(s=>{const st=staffCertStatus(s);if(st.expired.length)certsExpired++;else if(st.soon.length||st.missingDocs.length||st.unverified.length||st.mismatches.length)certsSoon++;else certsOk++;});
   document.getElementById('staff-count').textContent=active.length;
   document.getElementById('staff-certs-ok').textContent=certsOk;
   document.getElementById('staff-certs-soon').textContent=certsSoon;
@@ -2121,7 +2307,7 @@ function renderStaff(){
     let statusBadge='';
     if(s.active!==true)statusBadge='<span class="badge badge-gray">Inactive</span>';
     else if(st.expired.length)statusBadge=`<span class="badge badge-red">${st.expired.length} expired</span>`;
-    else if(st.soon.length||st.missingDocs.length)statusBadge='<span class="badge badge-amber">Action needed</span>';
+    else if(st.soon.length||st.missingDocs.length||st.unverified.length||st.mismatches.length)statusBadge='<span class="badge badge-amber">Action needed</span>';
     else statusBadge='<span class="badge badge-green">✓ Compliant</span>';
     // Use the per-cert metadata that staffCertStatus already computed rather than
     // re-reading the typed columns, so the document-verified paths show here too.
@@ -2139,6 +2325,7 @@ function renderStaff(){
         icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';
         // A filed document verified this — add a tiny indicator.
         if(c.done&&c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+        if(c.done&&!c.fromDoc)note=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="Self-reported only — no document on file">⚠</span>';
       }else if(!c.date){
         icon='—';col='var(--text2)';text='Not set';
       }else if(c.date<today){
@@ -2154,6 +2341,12 @@ function renderStaff(){
       // A date is set from the typed field but has no backing document — amber
       // "unverified" hint, same visual language the doc slots already use.
       if(c.date&&!c.fromDoc&&c.date>=today)note=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="No document on file — an inspector will ask to see it">⚠</span>';
+      if(c.fromDoc&&c.date&&((c.label==='TB Test'&&st.tb.mismatch)||(c.label==='CPR'&&st.cpr.mismatch)||(c.label==='First Aid'&&st.fa.mismatch))){
+        note+=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="Document date and self-reported date differ">↔</span>';
+      }
+      if(c.fromDoc&&c.noDate&&((c.label==='LiveScan'&&st.ls.mismatch)||(c.label==='Mandated Reporter'&&st.mr.mismatch)||(c.label==='16hr Training'&&st.tr.mismatch))){
+        note+=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="Document attached but self-reported field says no">↔</span>';
+      }
       return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}${note}</span></div>`;
     }).join('');
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
@@ -2284,11 +2477,13 @@ async function saveStaff(){
     await Promise.all([loadDocuments(),loadStaffDocs()]);
     renderStaff();
   }
+  refreshDashboard();
 }
 async function deleteStaff(id,name){
   if(!confirm(`Delete "${name}"?`))return;
   await sb.from('staff').delete().eq('id',id);
   staffList=staffList.filter(s=>s.id!==id);renderStaff();
+  refreshDashboard();
 }
 
 // ===== MEDICATIONS =====
@@ -3105,6 +3300,8 @@ async function handleDocUpload(inp){
     if(status)status.textContent='';
     inp.value='';
     await loadDocuments();
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){ if(status)status.textContent='Upload failed: '+((e&&e.message)||e); }
 }
 // Download a copy rather than opening a viewer. Fetching the blob first means
@@ -3160,6 +3357,8 @@ async function deleteDoc(id,path){
     if(error)throw error;
     await sb.storage.from('facility-documents').remove([path]);
     await loadDocuments();
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){ alert('Delete failed.'); }
 }
 function requestFax(){
@@ -3412,7 +3611,8 @@ async function onSlotFile(input){
     await loadRecordDocs(kind,recordId);
     renderDocSlots(kind);
     if(typeof facilityDocs!=='undefined')loadDocuments();
-    if(kind==='staff'){await loadStaffDocs();renderStaff();}
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){
     renderDocSlots(kind);
     alert('Could not attach that document.\n\n'+((e&&e.message)||e));
@@ -3460,7 +3660,8 @@ async function deleteSlotDoc(kind,id,path){
     await loadRecordDocs(kind,recordId);
     renderDocSlots(kind);
     if(typeof facilityDocs!=='undefined')loadDocuments();
-    if(kind==='staff'){await loadStaffDocs();renderStaff();}
+    await loadStaffDocs();
+    refreshDashboard();
   }catch(e){ alert('Could not remove that document.'); }
 }
 
