@@ -1435,7 +1435,7 @@ async function initFacility(){
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
   }
   refreshDashboard();
-  await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
+  await Promise.all([loadResidents(),loadStaff(),loadStaffDocs(),loadIncidents()]);
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
@@ -2012,22 +2012,72 @@ async function loadStaff(){
   staffList=data||[];window.staffList=staffList;renderStaff();
 }
 
+// Most-recent filed document per (staff × doc_type). Loaded once per facility
+// open, then refreshed whenever a document is added or removed so the badges
+// and expiry dates the staff grid shows always reflect what is actually on file.
+//
+// Shape: { [staffId]: { [docType]: {expires_at, issued_at, uploaded_at} } }
+let staffDocsByStaffId={};
+
+async function loadStaffDocs(){
+  staffDocsByStaffId={};
+  if(!currentFacility)return;
+  const{data}=await sb.from('documents')
+    .select('staff_id,doc_type,issued_at,expires_at,uploaded_at')
+    .eq('facility_id',currentFacility.id)
+    .not('staff_id','is',null)
+    .order('uploaded_at',{ascending:false});
+  if(!data)return;
+  // Keep only the first (newest) document per staff × doc_type — the query is
+  // ordered newest-first, so iterating once gives us the winner for each pair.
+  data.forEach(d=>{
+    if(!staffDocsByStaffId[d.staff_id])staffDocsByStaffId[d.staff_id]={};
+    if(!staffDocsByStaffId[d.staff_id][d.doc_type])staffDocsByStaffId[d.staff_id][d.doc_type]=d;
+  });
+}
+
 function staffCertStatus(s){
   const today=new Date().toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
-  const checks=[];
+  // Filed documents for this staff member, if the map has been loaded.
+  const docs=staffDocsByStaffId[s.id]||{};
+
+  // Helper: best expiry date — prefers the filed document's expires_at, falls
+  // back to the typed column value. Returns the winning date and whether it
+  // came from a document.
+  const bestExpiry=(docType,typedDate)=>{
+    const d=docs[docType];
+    if(d&&d.expires_at)return{date:d.expires_at,fromDoc:true};
+    return{date:typedDate||null,fromDoc:false};
+  };
+  // Helper: best boolean — a filed document beats a false typed value.
+  const bestBool=(docType,typedBool)=>{
+    if(docs[docType])return{done:true,fromDoc:true};
+    return{done:Boolean(typedBool),fromDoc:false};
+  };
+
   const tbDue=s.tb_test_due||s.tb_test_expiry;
-  if(tbDue)checks.push({label:'TB Test',date:tbDue});
-  if(s.cpr_cert_expiry)checks.push({label:'CPR',date:s.cpr_cert_expiry});
-  if(s.first_aid_cert_expiry)checks.push({label:'First Aid',date:s.first_aid_cert_expiry});
-  
+  const tb=bestExpiry('tb_test',tbDue);
+  const cpr=bestExpiry('cpr_card',s.cpr_cert_expiry);
+  const fa=bestExpiry('first_aid',s.first_aid_cert_expiry);
+  const ls=bestBool('livescan',s.livescan_cleared);
+  const mr=bestBool('mandated_reporter',s.mandated_reporter_completed);
+  const tr=bestBool('training_cert',s.initial_training_complete||s.initial_training_completed);
+
+  const checks=[];
+  if(tb.date)checks.push({label:'TB Test',date:tb.date,fromDoc:tb.fromDoc});
+  if(cpr.date)checks.push({label:'CPR',date:cpr.date,fromDoc:cpr.fromDoc});
+  if(fa.date)checks.push({label:'First Aid',date:fa.date,fromDoc:fa.fromDoc});
+
   const expired=checks.filter(c=>c.date<today);
   const soon=checks.filter(c=>c.date>=today&&c.date<=in30);
   const missingDocs=[];
-  if(!s.livescan_cleared)missingDocs.push('LiveScan');
-  if(!s.mandated_reporter_completed)missingDocs.push('Mandated Reporter');
-  if(!s.initial_training_complete&&!s.initial_training_completed)missingDocs.push('16hr Training');
-  return{expired,soon,missingDocs};
+  if(!ls.done)missingDocs.push('LiveScan');
+  if(!mr.done)missingDocs.push('Mandated Reporter');
+  if(!tr.done)missingDocs.push('16hr Training');
+  return{expired,soon,missingDocs,
+    // Per-cert metadata for the card renderer
+    tb,cpr,fa,ls,mr,tr};
 }
 
 function renderStaff(){
@@ -2073,23 +2123,38 @@ function renderStaff(){
     else if(st.expired.length)statusBadge=`<span class="badge badge-red">${st.expired.length} expired</span>`;
     else if(st.soon.length||st.missingDocs.length)statusBadge='<span class="badge badge-amber">Action needed</span>';
     else statusBadge='<span class="badge badge-green">✓ Compliant</span>';
-    const tbDue=s.tb_test_due||s.tb_test_expiry;
+    // Use the per-cert metadata that staffCertStatus already computed rather than
+    // re-reading the typed columns, so the document-verified paths show here too.
     const certRows=[
-      {label:'TB Test',date:tbDue,done:!!s.tb_test_date},
-      {label:'CPR',date:s.cpr_cert_expiry,done:!!s.cpr_cert_date},
-      {label:'First Aid',date:s.first_aid_cert_expiry,done:!!s.first_aid_cert_date},
-      {label:'LiveScan',done:s.livescan_cleared===true,noDate:true},
-      {label:'Mandated Reporter',done:s.mandated_reporter_completed===true,noDate:true},
-      {label:'16hr Training',done:(s.initial_training_complete===true||s.initial_training_completed===true),noDate:true},
+      {label:'TB Test',  date:st.tb.date,  fromDoc:st.tb.fromDoc,  done:!!st.tb.date},
+      {label:'CPR',      date:st.cpr.date, fromDoc:st.cpr.fromDoc, done:!!st.cpr.date},
+      {label:'First Aid',date:st.fa.date,  fromDoc:st.fa.fromDoc,  done:!!st.fa.date},
+      {label:'LiveScan',          done:st.ls.done, fromDoc:st.ls.fromDoc, noDate:true},
+      {label:'Mandated Reporter', done:st.mr.done, fromDoc:st.mr.fromDoc, noDate:true},
+      {label:'16hr Training',     done:st.tr.done, fromDoc:st.tr.fromDoc, noDate:true},
     ];
     const certHtml=certRows.map(c=>{
-      let icon,col,text;
-      if(c.noDate){icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';}
-      else if(!c.date){icon='—';col='var(--text2)';text='Not set';}
-      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+esc(c.date);}
-      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+esc(c.date);}
-      else{icon='✓';col='var(--green)';text='Valid to '+esc(c.date);}
-      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
+      let icon,col,text,note='';
+      if(c.noDate){
+        icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';
+        // A filed document verified this — add a tiny indicator.
+        if(c.done&&c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }else if(!c.date){
+        icon='—';col='var(--text2)';text='Not set';
+      }else if(c.date<today){
+        icon='⚠';col='var(--red)';text='Expired '+esc(c.date);
+        if(c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }else if(c.date<=in30){
+        icon='⏰';col='var(--amber)';text='Due '+esc(c.date);
+        if(c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }else{
+        icon='✓';col='var(--green)';text='Valid to '+esc(c.date);
+        if(c.fromDoc)note=' <span style="font-size:10px;opacity:.7">📄</span>';
+      }
+      // A date is set from the typed field but has no backing document — amber
+      // "unverified" hint, same visual language the doc slots already use.
+      if(c.date&&!c.fromDoc&&c.date>=today)note=' <span style="font-size:10px;color:var(--amber);opacity:.85" title="No document on file — an inspector will ask to see it">⚠</span>';
+      return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}${note}</span></div>`;
     }).join('');
     return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;${s.active!==true?'opacity:.5':''}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -2216,7 +2281,8 @@ async function saveStaff(){
   if(failures.length){
     alert('The staff member was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
   }else if(filed===true||hadQueue){
-    await loadDocuments();
+    await Promise.all([loadDocuments(),loadStaffDocs()]);
+    renderStaff();
   }
 }
 async function deleteStaff(id,name){
@@ -3346,6 +3412,7 @@ async function onSlotFile(input){
     await loadRecordDocs(kind,recordId);
     renderDocSlots(kind);
     if(typeof facilityDocs!=='undefined')loadDocuments();
+    if(kind==='staff'){await loadStaffDocs();renderStaff();}
   }catch(e){
     renderDocSlots(kind);
     alert('Could not attach that document.\n\n'+((e&&e.message)||e));
@@ -3393,6 +3460,7 @@ async function deleteSlotDoc(kind,id,path){
     await loadRecordDocs(kind,recordId);
     renderDocSlots(kind);
     if(typeof facilityDocs!=='undefined')loadDocuments();
+    if(kind==='staff'){await loadStaffDocs();renderStaff();}
   }catch(e){ alert('Could not remove that document.'); }
 }
 
