@@ -3023,7 +3023,20 @@ async function buildFacilityContext(){
       sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
     ]);
     const today=new Date().toISOString().split('T')[0];
-    return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
+    // Annotate each resident/staff record with has_doc flags so the AI
+    // can distinguish a filed document from a self-reported typed value.
+    const residents=(resData.data||[]).map(r=>{
+      const d=residentDocsByResidentId[r.id]||{};
+      return{...r,has_doc:{lic601:Boolean(d.lic601),lic602:Boolean(d.lic602),isp:Boolean(d.isp)}};
+    });
+    const staff=(staffData.data||[]).map(s=>{
+      const d=staffDocsByStaffId[s.id]||{};
+      return{...s,has_doc:{
+        tb_test:Boolean(d.tb_test),cpr_card:Boolean(d.cpr_card),first_aid:Boolean(d.first_aid),
+        livescan:Boolean(d.livescan),mandated_reporter:Boolean(d.mandated_reporter),training_cert:Boolean(d.training_cert),
+      }};
+    });
+    return JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
   }catch(e){return'Error loading facility data: '+e.message;}
 }
 
@@ -3107,18 +3120,26 @@ async function demoFindings(){
   const overdue=tasks.filter(t=>!t.completed&&t.due_date&&past(t.due_date));
   const certIssues=[];
   staff.forEach(s=>{ const w=nm(s);
-    if(past(s.cpr_cert_expiry))certIssues.push(w+' — CPR expired '+s.cpr_cert_expiry);
-    else if(soon(s.cpr_cert_expiry,30))certIssues.push(w+' — CPR expires '+s.cpr_cert_expiry);
-    if(past(s.first_aid_cert_expiry))certIssues.push(w+' — First Aid expired '+s.first_aid_cert_expiry);
-    if(past(s.tb_test_expiry)||past(s.tb_test_due))certIssues.push(w+' — TB test overdue');
-    if(s.livescan_cleared===false)certIssues.push(w+' — LiveScan/background not cleared');
-    if(s.mandated_reporter_completed===false)certIssues.push(w+' — Mandated Reporter training incomplete');
+    // Prefer filed document expiry dates over typed columns, matching the live score logic.
+    const sDocs=staffDocsByStaffId[s.id]||{};
+    const cprExp=(sDocs.cpr_card&&sDocs.cpr_card.expires_at)||s.cpr_cert_expiry;
+    const faExp=(sDocs.first_aid&&sDocs.first_aid.expires_at)||s.first_aid_cert_expiry;
+    const tbDue=(sDocs.tb_test&&sDocs.tb_test.expires_at)||s.tb_test_expiry||s.tb_test_due;
+    const lsOk=Boolean(sDocs.livescan)||s.livescan_cleared===true;
+    const mrOk=Boolean(sDocs.mandated_reporter)||s.mandated_reporter_completed===true;
+    if(past(cprExp))certIssues.push(w+' — CPR expired '+cprExp);
+    else if(soon(cprExp,30))certIssues.push(w+' — CPR expires '+cprExp);
+    if(past(faExp))certIssues.push(w+' — First Aid expired '+faExp);
+    if(past(tbDue))certIssues.push(w+' — TB test overdue');
+    if(!lsOk)certIssues.push(w+' — LiveScan/background not cleared');
+    if(!mrOk)certIssues.push(w+' — Mandated Reporter training incomplete');
   });
   const docGaps=[];
   residents.forEach(r=>{ const w=nm(r);
-    if(!r.lic601)docGaps.push(w+' — missing LIC 601 (admission agreement)');
-    if(!r.lic602)docGaps.push(w+" — missing LIC 602 (physician's report)");
-    if(!r.isp)docGaps.push(w+' — no ISP on file');
+    const rDocs=residentDocsByResidentId[r.id]||{};
+    if(!rDocs.lic601&&r.lic601!=='yes')docGaps.push(w+' — missing LIC 601 (admission agreement)');
+    if(!rDocs.lic602&&r.lic602!=='yes')docGaps.push(w+" — missing LIC 602 (physician's report)");
+    if(!rDocs.isp&&r.isp!=='yes')docGaps.push(w+' — no ISP on file');
     else if(past(r.isp_review_date))docGaps.push(w+' — ISP review overdue ('+r.isp_review_date+')');
   });
   const marGaps=mar.filter(m=>m.status&&!/given|administered|complete/i.test(m.status)).length;
