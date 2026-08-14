@@ -3235,10 +3235,10 @@ function resetMARModal(){
   const notes=document.getElementById('mar-notes');if(notes)notes.value='';
   const status=document.getElementById('mar-status');if(status)status.value='given';
   const scheduled=document.getElementById('mar-scheduled-time');if(scheduled)scheduled.selectedIndex=0;
-  document.getElementById('mar-med-info-name').textContent='';
-  document.getElementById('mar-med-info-dosage').textContent='';
-  document.getElementById('mar-med-info-directions').textContent='';
-  document.getElementById('mar-med-info-prescriber').textContent='';
+  const infoName=document.getElementById('mar-med-info-name');if(infoName)infoName.textContent='';
+  const infoDosage=document.getElementById('mar-med-info-dosage');if(infoDosage)infoDosage.textContent='';
+  const infoDirections=document.getElementById('mar-med-info-directions');if(infoDirections)infoDirections.textContent='';
+  const infoPrescriber=document.getElementById('mar-med-info-prescriber');if(infoPrescriber)infoPrescriber.textContent='';
   clearMARModalError();
   onMARStatusChange('given');
 }
@@ -3351,11 +3351,11 @@ async function onMARResidentChange(resId){
   const loadToken=++marResidentLoadToken;
   try{
     if(!marMedCache[resId]){
-      const query=sb.from('medications')
+      let query=sb.from('medications')
         .select('id,medication_name,dosage,directions,prescriber,rx_number')
         .eq('resident_id',resId)
         .eq('status','active');
-      if(currentFacility?.id)query.eq('facility_id',currentFacility.id);
+      if(currentFacility?.id)query=query.eq('facility_id',currentFacility.id);
       const{data,error}=await query;
       if(loadToken!==marResidentLoadToken)return;
       if(error)throw error;
@@ -3456,8 +3456,6 @@ async function saveMAR(){
     const{error}=await sb.from('mar_entries').insert(payload);
     if(error)throw error;
     delete marMedCache[resId];
-    const listFilter=document.getElementById('mar-resident-filter');
-    if(listFilter)listFilter.value='';
     closeMARModal();
     await loadMAR();
   }catch(e){
