@@ -2134,12 +2134,10 @@ async function saveResident(){
   if(!name){err.textContent='Name is required.';err.classList.add('show');return;}
   const payload={
     facility_id:currentFacility.id,
-    name,full_name:name,
+    name,
     preferred_name:document.getElementById('res-preferred').value.trim()||null,
     room:document.getElementById('res-room').value.trim()||null,
-    room_number:document.getElementById('res-room').value.trim()||null,
     dob:document.getElementById('res-dob').value||null,
-    date_of_birth:document.getElementById('res-dob').value||null,
     admission_date:document.getElementById('res-admission').value||null,
     diagnosis:document.getElementById('res-diagnosis').value.trim()||null,
     allergies:document.getElementById('res-allergies').value.trim()||null,
@@ -3053,7 +3051,7 @@ async function seedDemoData(){
       administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
     }).select().single();
     if(fe)throw fe;
-    const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
+    const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,room,dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
     const{data:resD,error:re}=await sb.from('residents').insert([
       R('Betty Alvarez','Room 1','1938-04-12',dISO(-400),'Dementia, Hypertension','Penicillin','yes','yes','yes'),
       R('Harold Chen','Room 2','1941-09-03',dISO(-350),'Type 2 Diabetes','None known','yes','yes','yes'),
