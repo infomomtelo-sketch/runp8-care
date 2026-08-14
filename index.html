@@ -419,8 +419,10 @@
         <h2>Set new password</h2>
         <p>Enter your new password below.</p>
         <div class="error-msg" id="reset-newpass-error"></div>
-        <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/></div>
-        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
+        <form onsubmit="handleSetNewPassword();return false;">
+          <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/></div>
+          <button type="submit" class="btn btn-primary" style="width:100%;padding:11px">Update password</button>
+        </form>
       </div>
     </div>
   </div>
@@ -1071,6 +1073,7 @@ const ROLE_TABS = {
   supervisor:   ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'],
   caregiver:    ['dashboard','mar','incidents','daily','documents'],
   readonly:     ['dashboard','checklist','residents','incidents','daily','mar','documents'],
+};
 const ROLE_ACCESS = {
   administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
   supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
