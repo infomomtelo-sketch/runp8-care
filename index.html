@@ -2196,6 +2196,18 @@ async function saveResident(){
   const name=document.getElementById('res-name').value.trim();
   const err=document.getElementById('res-modal-error');
   if(!name){err.textContent='Name is required.';err.classList.add('show');return;}
+  err.classList.remove('show');
+  err.textContent='';
+  const legacyResidentCols=['allergies','gender','weight','height','spoken_languages','dnr','polst','hospice','conserved','conservator_name','responsible_party_name','responsible_party_relation','responsible_party_phone','physician_name','physician_phone','insurance_carrier','insurance_id','medi_cal','ssi'];
+  const legacyResidentPayload=src=>{
+    const out={...src};
+    legacyResidentCols.forEach(k=>delete out[k]);
+    return out;
+  };
+  const shouldRetryResidentLegacy=error=>{
+    const msg=((error&&error.message)||'')+' '+((error&&error.details)||'');
+    return /allergies|gender|weight|height|spoken_languages|dnr|polst|hospice|conserved|conservator_name|responsible_party_name|responsible_party_relation|responsible_party_phone|physician_name|physician_phone|insurance_carrier|insurance_id|medi_cal|ssi/i.test(msg);
+  };
   const payload={
     facility_id:currentFacility.id,
     name,full_name:name,
@@ -2270,18 +2282,69 @@ async function saveResident(){
       renderResidents();
     }).catch(()=>{});
   }else{_pendingResidentPhoto=null;}
+  try{
+    let error;
+    let savedId=currentResidentId;
+    if(currentResidentId){
+      let attemptedPayload=payload;
+      let{error:e}=await sb.from('residents').update(attemptedPayload).eq('id',currentResidentId);
+      if(e&&shouldRetryResidentLegacy(e)){
+        attemptedPayload=legacyResidentPayload(payload);
+        ({error:e}=await sb.from('residents').update(attemptedPayload).eq('id',currentResidentId));
+      }
+      error=e;
+      if(!e){
+        const idx=residents.findIndex(r=>r.id===currentResidentId);
+        if(idx>-1)residents[idx]={...residents[idx],...residentSummaryFromRow({id:currentResidentId,...attemptedPayload})};
+        residentDetailsById[currentResidentId]={...(residentDetailsById[currentResidentId]||{}),id:currentResidentId,...attemptedPayload};
+      }
+    }else{
+      let attemptedPayload=payload;
+      let result=await sb.from('residents').insert(attemptedPayload).select().single();
+      if(result.error&&shouldRetryResidentLegacy(result.error)){
+        attemptedPayload=legacyResidentPayload(payload);
+        result=await sb.from('residents').insert(attemptedPayload).select().single();
+      }
+      error=result.error;
+      const data=result.data;
+      if(!error&&data){
+        residents.push(residentSummaryFromRow(data));
+        residentDetailsById[data.id]={...attemptedPayload,...data};
+        savedId=data.id;
+        track('record_created',{record_type:'resident',record_id:data.id});
+      }
+    }
+    if(error){
+      err.textContent=(error.message||'Could not save resident.')+(/allergies|gender|weight|height|spoken_languages|dnr|polst|hospice|conserved|conservator_name|responsible_party_name|responsible_party_relation|responsible_party_phone|physician_name|physician_phone|insurance_carrier|insurance_id|medi_cal|ssi/i.test(((error&&error.message)||'')+' '+((error&&error.details)||''))?' — run migrations/2026-08-13_title22_resident_extended_fields.sql in the Supabase SQL editor.':'');
+      err.classList.add('show');
+      return;
+    }
 
-  // The row has an id now, so anything attached to a document slot before the
-  // record existed has something to attach to.
-  const hadQueue=pendingSlotDocs.length>0;
-  const failures=await fileSlotDocuments('resident',savedId);
-  closeResidentModal();renderResidents();
-  if(failures.length){
-    alert('The resident was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
-  }else if(hadQueue){
-    await Promise.all([loadDocuments(),loadStaffDocs()]);
+    // Upload a pending profile photo chosen before the row existed.
+    if(_pendingResidentPhoto&&savedId){
+      const photoFile=_pendingResidentPhoto;_pendingResidentPhoto=null;
+      uploadProfilePhoto('residents',savedId,photoFile).then(url=>{
+        const idx=residents.findIndex(r=>r.id===savedId);
+        if(idx>-1)residents[idx].photo_url=url;
+        renderResidents();
+      }).catch(()=>{});
+    }else{_pendingResidentPhoto=null;}
+
+    // The row has an id now, so anything attached to a document slot before the
+    // record existed has something to attach to.
+    const hadQueue=pendingSlotDocs.length>0;
+    const failures=await fileSlotDocuments('resident',savedId);
+    closeResidentModal();renderResidents();
+    if(failures.length){
+      alert('The resident was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
+    }else if(hadQueue){
+      await Promise.all([loadDocuments(),loadStaffDocs()]);
+    }
+    refreshDashboard();
+  }catch(e){
+    err.textContent='Could not save resident. '+((e&&e.message)||e||'');
+    err.classList.add('show');
   }
-  refreshDashboard();
 }
 
 function syncResidentDetailActions(){
