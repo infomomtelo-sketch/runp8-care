@@ -2051,6 +2051,9 @@ let currentResidentId=null;
 let residentDetailsById={};
 const RESIDENT_SUMMARY_SELECT='id,facility_id,name,full_name,preferred_name,room,room_number,dob,date_of_birth,admission_date,diagnosis,lic601,lic602,isp,isp_review_date,photo_url,status';
 const RESIDENT_SUMMARY_FIELDS=RESIDENT_SUMMARY_SELECT.split(',');
+// Extended columns added by migration 2026-08-13_title22_resident_extended_fields.sql.
+// saveResident strips these and retries if the migration has not been applied yet.
+const EXTENDED_RESIDENT_FIELDS=['gender','spoken_languages','weight','height','dnr','polst','hospice','conserved','conservator_name','responsible_party_name','responsible_party_relation','responsible_party_phone','physician_name','physician_phone','insurance_carrier','insurance_id','medi_cal','ssi'];
 
 function residentSummaryFromRow(row){
   const out={};
@@ -2240,6 +2243,45 @@ async function saveResident(){
     isp_review_date:document.getElementById('res-isp-date').value||null,
     status:'active'
   };
+  const upsertResident=async(p)=>{
+    if(currentResidentId){
+      let{error:e}=await sb.from('residents').update(p).eq('id',currentResidentId);
+      if(e&&EXTENDED_RESIDENT_FIELDS.some(f=>(e.message+' '+(e.details||'')).includes(f))){
+        const base={...p};EXTENDED_RESIDENT_FIELDS.forEach(f=>delete base[f]);
+        ({error:e}=await sb.from('residents').update(base).eq('id',currentResidentId));
+        if(e)e.message=(e.message||'')+' — run migrations/2026-08-13_title22_resident_extended_fields.sql in the Supabase SQL editor.';
+      }
+      if(!e){
+        const idx=residents.findIndex(r=>r.id===currentResidentId);
+        if(idx>-1)residents[idx]={...residents[idx],...residentSummaryFromRow({id:currentResidentId,...p})};
+        residentDetailsById[currentResidentId]={...(residentDetailsById[currentResidentId]||{}),id:currentResidentId,...p};
+      }
+      return{error:e,data:null};
+    }else{
+      let{data,error:e}=await sb.from('residents').insert(p).select().single();
+      if(e&&EXTENDED_RESIDENT_FIELDS.some(f=>(e.message+' '+(e.details||'')).includes(f))){
+        const base={...p};EXTENDED_RESIDENT_FIELDS.forEach(f=>delete base[f]);
+        ({data,error:e}=await sb.from('residents').insert(base).select().single());
+        if(e)e.message=(e.message||'')+' — run migrations/2026-08-13_title22_resident_extended_fields.sql in the Supabase SQL editor.';
+      }
+      if(!e&&data){residents.push(residentSummaryFromRow(data));residentDetailsById[data.id]=data;savedId=data.id;track('record_created',{record_type:'resident',record_id:data.id});}
+      return{error:e,data};
+    }
+  }
+  let error;
+  let savedId=currentResidentId;
+  ({error}=await upsertResident(payload));
+  if(error){err.textContent=error.message;err.classList.add('show');return;}
+
+  // Upload a pending profile photo chosen before the row existed.
+  if(_pendingResidentPhoto&&savedId){
+    const photoFile=_pendingResidentPhoto;_pendingResidentPhoto=null;
+    uploadProfilePhoto('residents',savedId,photoFile).then(url=>{
+      const idx=residents.findIndex(r=>r.id===savedId);
+      if(idx>-1)residents[idx].photo_url=url;
+      renderResidents();
+    }).catch(()=>{});
+  }else{_pendingResidentPhoto=null;}
   try{
     let error;
     let savedId=currentResidentId;
