@@ -733,6 +733,7 @@
         <div class="modal-overlay" id="mar-modal" onclick="if(event.target===this)closeMARModal()">
           <div class="modal" style="max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
             <div class="modal-header"><h3>Log Medication</h3><button class="modal-close" onclick="closeMARModal()">×</button></div>
+            <div class="error-msg" id="mar-modal-error"></div>
             <div class="form-group"><label>Resident</label><select id="mar-res-select" onchange="onMARResidentChange(this.value)"><option value="">Select Resident</option></select></div>
             <div class="form-group"><label>Medication</label><select id="mar-med-select" onchange="onMARMedChange(this.value)"><option value="">Select medication</option></select></div>
             <div id="mar-med-info" style="display:none;background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px">
@@ -3208,6 +3209,39 @@ async function seedDemoData(){
 
 // ===== MAR =====
 let marMedCache={};
+let marResidentLoadToken=0;
+
+function setMARModalError(message){
+  const err=document.getElementById('mar-modal-error');
+  if(!err)return;
+  err.textContent=message||'';
+  err.classList.toggle('show',!!message);
+}
+
+function clearMARModalError(){setMARModalError('');}
+
+function resetMARModal(){
+  const resSel=document.getElementById('mar-res-select');
+  if(resSel)resSel.value='';
+  const medSel=document.getElementById('mar-med-select');
+  if(medSel)medSel.innerHTML='<option value="">Select medication (choose resident first)</option>';
+  const info=document.getElementById('mar-med-info');
+  if(info)info.style.display='none';
+  const tip=document.getElementById('mar-ai-tip');
+  if(tip)tip.style.display='none';
+  const prnGroup=document.getElementById('mar-prn-reason-group');
+  if(prnGroup)prnGroup.style.display='none';
+  const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
+  const notes=document.getElementById('mar-notes');if(notes)notes.value='';
+  const status=document.getElementById('mar-status');if(status)status.value='given';
+  const scheduled=document.getElementById('mar-scheduled-time');if(scheduled)scheduled.selectedIndex=0;
+  document.getElementById('mar-med-info-name').textContent='';
+  document.getElementById('mar-med-info-dosage').textContent='';
+  document.getElementById('mar-med-info-directions').textContent='';
+  document.getElementById('mar-med-info-prescriber').textContent='';
+  clearMARModalError();
+  onMARStatusChange('given');
+}
 
 async function loadMAR(){
   if(!currentFacility)return;
@@ -3298,28 +3332,41 @@ function showMAREntry(){
     opt.value=r.id;opt.textContent=r.name||r.full_name||'Unknown';
     resSel.appendChild(opt);
   });
-  document.getElementById('mar-med-select').innerHTML='<option value="">Select medication (choose resident first)</option>';
-  document.getElementById('mar-med-info').style.display='none';
-  document.getElementById('mar-ai-tip').style.display='none';
-  document.getElementById('mar-prn-reason-group').style.display='none';
-  const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
-  document.getElementById('mar-notes').value='';
-  document.getElementById('mar-status').value='given';
-  document.getElementById('mar-scheduled-time').selectedIndex=0;
-  onMARStatusChange('given');
+  resetMARModal();
+  const filteredResId=document.getElementById('mar-resident-filter')?.value||'';
+  if(filteredResId&&resList.some(r=>r.id===filteredResId)){
+    resSel.value=filteredResId;
+    onMARResidentChange(filteredResId);
+  }
   document.getElementById('mar-modal').classList.add('open');
 }
 
 async function onMARResidentChange(resId){
+  clearMARModalError();
   const medSel=document.getElementById('mar-med-select');
   document.getElementById('mar-med-info').style.display='none';
   document.getElementById('mar-ai-tip').style.display='none';
   medSel.innerHTML='<option value="">Select medication</option>';
   if(!resId)return;
-  if(!marMedCache[resId]){
-    const{data}=await sb.from('medications').select('id,medication_name,dosage,directions,prescriber,rx_number').eq('resident_id',resId).eq('status','active');
-    marMedCache[resId]=data||[];
+  const loadToken=++marResidentLoadToken;
+  try{
+    if(!marMedCache[resId]){
+      const query=sb.from('medications')
+        .select('id,medication_name,dosage,directions,prescriber,rx_number')
+        .eq('resident_id',resId)
+        .eq('status','active');
+      if(currentFacility?.id)query.eq('facility_id',currentFacility.id);
+      const{data,error}=await query;
+      if(loadToken!==marResidentLoadToken)return;
+      if(error)throw error;
+      marMedCache[resId]=data||[];
+    }
+  }catch(e){
+    if(loadToken!==marResidentLoadToken)return;
+    setMARModalError('Could not load medications for this resident: '+((e&&e.message)||e));
+    return;
   }
+  if(loadToken!==marResidentLoadToken)return;
   const meds=marMedCache[resId];
   if(!meds.length){medSel.innerHTML='<option value="">No active medications on file</option>';return;}
   meds.forEach(m=>{
@@ -3339,7 +3386,8 @@ function onMARMedChange(medId){
   const tip=document.getElementById('mar-ai-tip');
   if(!medId||!sel.dataset.name){info.style.display='none';tip.style.display='none';return;}
   document.getElementById('mar-med-info-name').textContent=sel.dataset.name+(sel.dataset.dosage?' · '+sel.dataset.dosage:'');
-  document.getElementById('mar-med-info-dosage').textContent=sel.dataset.directions||'';
+  document.getElementById('mar-med-info-dosage').textContent=sel.dataset.dosage?('Dosage: '+sel.dataset.dosage):'';
+  document.getElementById('mar-med-info-directions').textContent=sel.dataset.directions?('Directions: '+sel.dataset.directions):'';
   document.getElementById('mar-med-info-prescriber').textContent=sel.dataset.prescriber?'Prescriber: Dr. '+sel.dataset.prescriber+(sel.dataset.rx?' · Rx# '+sel.dataset.rx:''):'';
   info.style.display='block';
   const tipText=getMARComplianceTip(sel.dataset.name,document.getElementById('mar-scheduled-time').value);
@@ -3366,33 +3414,55 @@ function onMARStatusChange(status){
   if(prnGroup)prnGroup.style.display=document.getElementById('mar-scheduled-time')?.value==='PRN'&&status==='given'?'block':'none';
 }
 
-function closeMARModal(){document.getElementById('mar-modal').classList.remove('open');}
+function closeMARModal(){
+  document.getElementById('mar-modal').classList.remove('open');
+  resetMARModal();
+}
 
 async function saveMAR(){
-  const resId=document.getElementById('mar-res-select').value;
-  const medId=document.getElementById('mar-med-select').value;
-  if(!resId||!medId){alert('Please select a resident and medication.');return;}
-  const status=document.getElementById('mar-status').value;
-  const scheduledTime=document.getElementById('mar-scheduled-time').value;
-  let notes=document.getElementById('mar-notes').value.trim();
-  if((status==='refused'||status==='missed')&&!notes){
-    alert('Please document the reason in the notes field — required for '+status+' medications.');
-    return;
+  clearMARModalError();
+  try{
+    if(!currentFacility?.id){setMARModalError('Open a facility before logging MAR entries.');return;}
+    const resId=document.getElementById('mar-res-select')?.value||'';
+    const medId=document.getElementById('mar-med-select')?.value||'';
+    if(!resId||!medId){setMARModalError('Please select a resident and medication.');return;}
+    const status=document.getElementById('mar-status')?.value||'given';
+    const scheduledTime=document.getElementById('mar-scheduled-time')?.value||'';
+    let notes=document.getElementById('mar-notes')?.value?.trim()||'';
+    if((status==='refused'||status==='missed')&&!notes){
+      setMARModalError('Please document the reason in the notes field — required for '+status+' medications.');
+      return;
+    }
+    const prnReason=document.getElementById('mar-prn-reason')?.value?.trim()||'';
+    if(scheduledTime==='PRN'&&status==='given'){
+      if(!prnReason){
+        setMARModalError('Please document the reason this PRN medication was given — required per Title 22.');
+        return;
+      }
+      notes='PRN reason: '+prnReason+(notes?' — '+notes:'');
+    }
+    const medRow=(marMedCache[resId]||[]).find(m=>m.id===medId);
+    if(!medRow){setMARModalError('Please reselect the medication for this resident.');return;}
+    const payload={
+      facility_id:currentFacility.id,
+      resident_id:resId,
+      medication_id:medId,
+      staff_id:currentUser?.id||null,
+      administered_at:new Date().toISOString(),
+      scheduled_time:scheduledTime||null,
+      status,
+      notes:notes||null,
+    };
+    const{error}=await sb.from('mar_entries').insert(payload);
+    if(error)throw error;
+    delete marMedCache[resId];
+    const listFilter=document.getElementById('mar-resident-filter');
+    if(listFilter)listFilter.value='';
+    closeMARModal();
+    await loadMAR();
+  }catch(e){
+    setMARModalError('Could not save MAR entry: '+((e&&e.message)||e));
   }
-  const prnReason=document.getElementById('mar-prn-reason')?.value?.trim()||'';
-  if(scheduledTime==='PRN'&&status==='given'){
-    if(!prnReason){alert('Please document the reason this PRN medication was given — required per Title 22.');return;}
-    notes='PRN reason: '+prnReason+(notes?' — '+notes:'');
-  }
-  const{error}=await sb.from('mar_entries').insert({
-    facility_id:currentFacility.id,resident_id:resId,medication_id:medId,
-    staff_id:currentUser.id,administered_at:new Date().toISOString(),
-    scheduled_time:scheduledTime,status,notes:notes||null,
-  });
-  if(error){alert('Error: '+error.message);return;}
-  const resSel=document.getElementById('mar-res-select');
-  if(resSel?.value)delete marMedCache[resSel.value];
-  closeMARModal();loadMAR();
 }
 
 // ===== AI =====
