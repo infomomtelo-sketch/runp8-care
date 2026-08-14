@@ -2725,10 +2725,9 @@ function renderStaff(){
 function filterRoleOptions(query){
   const dropdown=document.getElementById('role-options-dropdown');
   const q=(query||'').trim().toLowerCase();
-  const jsq=v=>String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   let matches=ROLE_OPTIONS.filter(r=>!q||r.label.toLowerCase().includes(q));
-  let html=matches.map(r=>`<div class="searchable-option" onclick="selectRoleOption('${jsq(r.value)}','${jsq(r.label)}')"> ${esc(r.label)}</div>`).join('');
-  if(q&&!ROLE_OPTIONS.some(r=>r.label.toLowerCase()===q))html+=`<div class="searchable-option-custom" onclick="selectCustomRole('${jsq(query)}')">+ Custom: "${esc(query)}"</div>`;
+  let html=matches.map(r=>`<div class="searchable-option" onclick="selectRoleOption('${r.value}','${r.label.replace(/'/g,"\\'")}')"> ${r.label}</div>`).join('');
+  if(q&&!ROLE_OPTIONS.some(r=>r.label.toLowerCase()===q))html+=`<div class="searchable-option-custom" onclick="selectCustomRole('${query.replace(/'/g,"\\'")}')">+ Custom: "${query}"</div>`;
   dropdown.innerHTML=html||'<div class="searchable-option-meta" style="padding:10px 12px">No roles found</div>';
   dropdown.classList.add('open');
 }
@@ -3645,7 +3644,6 @@ async function demoFindings(){
   const t0=new Date(today);
   const past=d=>d?new Date(d)<t0:false;
   const soon=(d,n)=>d?(new Date(d)>=t0&&new Date(d)<=new Date(t0.getTime()+n*864e5)):false;
-  const yes=v=>v===true||v==='true'||v==='yes';
   const nm=o=>o.full_name||o.name||'Unnamed';
   const residents=ctx.residents||[];
   const staff=(ctx.staff||[]).filter(s=>s.active!==false);
@@ -3656,18 +3654,26 @@ async function demoFindings(){
   const overdue=tasks.filter(t=>!t.completed&&t.due_date&&past(t.due_date));
   const certIssues=[];
   staff.forEach(s=>{ const w=nm(s);
-    if(past(s.cpr_cert_expiry))certIssues.push(w+' — CPR expired '+s.cpr_cert_expiry);
-    else if(soon(s.cpr_cert_expiry,30))certIssues.push(w+' — CPR expires '+s.cpr_cert_expiry);
-    if(past(s.first_aid_cert_expiry))certIssues.push(w+' — First Aid expired '+s.first_aid_cert_expiry);
-    if(past(s.tb_test_expiry)||past(s.tb_test_due))certIssues.push(w+' — TB test overdue');
-    if(!yes(s.livescan_cleared))certIssues.push(w+' — LiveScan/background not cleared');
-    if(!yes(s.mandated_reporter_completed))certIssues.push(w+' — Mandated Reporter training incomplete');
+    // Prefer filed document expiry dates over typed columns, matching the live score logic.
+    const sDocs=staffDocsByStaffId[s.id]||{};
+    const cprExp=(sDocs.cpr_card&&sDocs.cpr_card.expires_at)||s.cpr_cert_expiry;
+    const faExp=(sDocs.first_aid&&sDocs.first_aid.expires_at)||s.first_aid_cert_expiry;
+    const tbDue=(sDocs.tb_test&&sDocs.tb_test.expires_at)||s.tb_test_expiry||s.tb_test_due;
+    const lsOk=Boolean(sDocs.livescan)||s.livescan_cleared===true;
+    const mrOk=Boolean(sDocs.mandated_reporter)||s.mandated_reporter_completed===true;
+    if(past(cprExp))certIssues.push(w+' — CPR expired '+cprExp);
+    else if(soon(cprExp,30))certIssues.push(w+' — CPR expires '+cprExp);
+    if(past(faExp))certIssues.push(w+' — First Aid expired '+faExp);
+    if(past(tbDue))certIssues.push(w+' — TB test overdue');
+    if(!lsOk)certIssues.push(w+' — LiveScan/background not cleared');
+    if(!mrOk)certIssues.push(w+' — Mandated Reporter training incomplete');
   });
   const docGaps=[];
   residents.forEach(r=>{ const w=nm(r);
-    if(!yes(r.lic601))docGaps.push(w+' — missing LIC 601 (admission agreement)');
-    if(!yes(r.lic602))docGaps.push(w+" — missing LIC 602 (physician's report)");
-    if(!yes(r.isp))docGaps.push(w+' — no ISP on file');
+    const rDocs=residentDocsByResidentId[r.id]||{};
+    if(!rDocs.lic601&&r.lic601!=='yes')docGaps.push(w+' — missing LIC 601 (admission agreement)');
+    if(!rDocs.lic602&&r.lic602!=='yes')docGaps.push(w+" — missing LIC 602 (physician's report)");
+    if(!rDocs.isp&&r.isp!=='yes')docGaps.push(w+' — no ISP on file');
     else if(past(r.isp_review_date))docGaps.push(w+' — ISP review overdue ('+r.isp_review_date+')');
   });
   const marGaps=mar.filter(m=>m.status&&!/given|administered|complete/i.test(m.status)).length;
