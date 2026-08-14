@@ -1,6 +1,6 @@
 # Cloudflare Workers — source of truth status
 
-Three Workers back Title22 in production, plus the dashboard-only `stripe-webhook`.
+Four Workers back Title22 in production, plus the dashboard-only `stripe-webhook`.
 
 `title22-ai`'s deployed source **is now committed** (`title22-ai/index.js`,
 pulled 2026-08-03 via the Cloudflare API — see below to re-pull after any
@@ -80,6 +80,10 @@ human to review before anything is saved.
   unrecognized plan, and the same monthly `ai_usage` bucket (`app='title22'`).
   A scan costs one AI call. There is no separate tier gate — a plan's monthly
   cap is the only limit, so trial users can scan.
+- Resident scans are additionally guarded by the optional `ALLOW_RESIDENT_SCAN`
+  binding. Leave it unset / false until a HIPAA BAA exists. The frontend still
+  hides the button, but the Worker now rejects `formType: "resident"` unless
+  that binding is explicitly set to `true`.
 - Writes nothing. It has the service key (needed to verify the caller and
   deduct a credit) but never touches `residents`, `staff`, or `medications`;
   the frontend's existing save paths — and the audit-log triggers behind them
@@ -135,6 +139,19 @@ sheet as read-only — it has nowhere to go.
   `title22_plan_expires_at` on cancellation so the frontend expiry check
   (`resolveEntitlement`) locks access at period end.
 - Writes ONLY `title22_*` columns on `profiles`.
+
+## title22-documents
+
+- Route: `https://title22-documents.infomomtelo.workers.dev/api/document`
+- Like the other Workers here, merging a PR that changes this file does **not**
+  ship it — after merge the Worker code still has to be pasted into the
+  Cloudflare dashboard and deployed by hand.
+- Verifies the caller's Supabase JWT, resolves their facility role
+  server-side, checks a document capability (`document.read_content` or
+  `document.share`), then signs only that private Storage object.
+- Uses `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`. It reads `facilities`,
+  `facility_members`, `documents`, and writes best-effort access events into
+  `public.events`.
 
 ## title22-email
 

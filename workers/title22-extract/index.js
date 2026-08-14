@@ -445,12 +445,14 @@ export default {
         SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
         ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
       };
+      const residentScanningEnabled = env.ALLOW_RESIDENT_SCAN === 'true';
       const missing = Object.keys(config).filter((k) => !config[k]);
       return json({
         status: missing.length ? 'misconfigured' : 'ok',
         forms: Object.keys(FORMS),
         model: env.EXTRACT_MODEL || 'claude-opus-5',
         config,
+        resident_scanning_enabled: residentScanningEnabled,
         ...(missing.length ? { missing, hint: `Set ${missing.join(', ')} on this Worker. Names are case-sensitive and must match exactly.` } : {}),
       });
     }
@@ -466,6 +468,12 @@ export default {
       const form = FORMS[formType];
       if (!form) {
         return json({ error: 'bad_request', message: `Unknown formType. Expected one of: ${Object.keys(FORMS).join(', ')}.` }, 400);
+      }
+      if (formType === 'resident' && env.ALLOW_RESIDENT_SCAN !== 'true') {
+        return json({
+          error: 'resident_scan_disabled',
+          message: 'Resident scanning is disabled until a HIPAA BAA is in place. Upload resident documents instead.',
+        }, 403);
       }
       if (!image?.data || typeof image.data !== 'string') {
         return json({ error: 'bad_request', message: 'image.data (base64, no data: prefix) is required.' }, 400);

@@ -23,6 +23,8 @@ compatibility_date = "2026-08-05"
 #   EXTRACT_MODEL          — defaults to claude-opus-5. Extraction accuracy on
 #                            handwriting is the whole point of this worker, so
 #                            only step down after measuring on real scans.
+#   ALLOW_RESIDENT_SCAN    — set to "true" only after a HIPAA BAA is in place;
+#                            otherwise resident scans are rejected server-side
 #
 # Public route (configured in the Cloudflare dashboard, not here):
 #   https://mission-control.infomomtelo.workers.dev/api/extract
