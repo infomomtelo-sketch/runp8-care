@@ -107,8 +107,19 @@ create policy mar_entries_insert on public.mar_entries
   );
 
 -- UPDATE/DELETE: facility owner only (corrections must be auditable).
+-- INSERT is intentionally excluded here; owners inserting must still sign as
+-- themselves via mar_entries_insert (staff_id = auth.uid()).
 create policy mar_entries_owner_write on public.mar_entries
-  for all to authenticated
+  for update to authenticated
+  using (
+    exists (
+      select 1 from public.facilities f
+      where f.id = mar_entries.facility_id and f.user_id = auth.uid()
+    )
+  );
+
+create policy mar_entries_owner_delete on public.mar_entries
+  for delete to authenticated
   using (
     exists (
       select 1 from public.facilities f
@@ -209,7 +220,7 @@ create policy subscriptions_select on public.subscriptions
     or exists (
       select 1 from public.facilities f
       where f.user_id = auth.uid()
-        and f.id::text = (subscriptions.metadata->>'facility_id')
+        and f.id = (subscriptions.metadata->>'facility_id')::uuid
     )
   );
 
