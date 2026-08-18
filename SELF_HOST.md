@@ -27,10 +27,30 @@ static files or a single Worker script.
 
 ### Auth redirect rule
 
-The Supabase project is shared by multiple apps. Every `redirectTo` in this
-app hardcodes `https://title22.app` — **never** use `window.location.origin`.
+The Supabase project is shared by multiple apps. Every `redirectTo` /
+`emailRedirectTo` in this app hardcodes `https://title22.app` — **never** use
+`window.location.origin`, and never omit it. Omitting it is not a no-op: the
+link falls back to the project-wide Site URL, which belongs to whichever app
+happens to own it, and the caregiver lands somewhere that isn't Title22. The
+calls that must carry it are `signUp`, `resend` and `resetPasswordForEmail`.
 If you self-host under a different domain, change those hardcoded URLs *and*
 add your domain to Supabase Auth → URL Configuration → Redirect URLs.
+
+### `flowType` must stay `implicit`
+
+`index.html` pins `flowType:'implicit'` on the Supabase client. Do not change
+it to `pkce`. PKCE keeps the `code_verifier` in the requesting browser's
+localStorage, so a link opened anywhere else — which for these users means the
+Gmail app's in-app webview, or their laptop when they asked from their phone —
+can never be exchanged. Implicit puts the tokens in the URL fragment and works
+from any browser on any device.
+
+It is also the library default, but leaving it implied is what broke the
+`?code=` boot path once already: supabase-js only treats `?code=` as a
+callback when it finds a verifier it wrote itself, so the handler in
+`index.html` sat behind a condition that could never be true and every such
+link died with an error blaming the user's browser. The app now exchanges
+`?code=` explicitly, so both shapes work.
 
 ## 2. Database (Supabase)
 
@@ -76,6 +96,25 @@ In Supabase Auth → Email Templates → Reset Password, link to:
 and include the line: *"For security, open this link on the device and browser
 where you requested the reset if the button doesn't work."*
 
-The token-hash flow verifies server-side, so it works from email-app webviews;
-the default PKCE `?code=` flow only works in the browser that requested the
-reset. The app supports both (`index.html` boot logic).
+The token-hash flow verifies server-side, so it works from email-app webviews
+and from a different device than the one that asked. The app supports both
+shapes (`index.html` boot logic), but token-hash is the one to configure.
+
+### Confirm signup template (required if email confirmation is on)
+
+Same reasoning, same shape. In Supabase Auth → Email Templates → Confirm
+signup, link to:
+
+```
+{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=signup
+```
+
+The boot logic handles `type=signup`, `invite`, `magiclink`, `email` and
+`email_change` this way; anything else falls through to a normal cold boot.
+A link that fails to verify lands on the login page with a **Send it again**
+control (`sb.auth.resend({type:'signup'})`), not on the password-reset form.
+
+If email confirmation is **off** in Supabase Auth → Providers → Email, signup
+returns a session immediately and goes straight to onboarding. Both paths are
+supported — `handleSignup` branches on whether a session came back, never on
+whether a user object came back.
