@@ -1,4 +1,4 @@
-// title22-ai — Title22 RCFE compliance assistant worker
+// title22-ai — worker behind Tello, the Title22 RCFE compliance assistant
 // Entitlement is namespaced to title22_* columns on the shared nwlhs profiles table.
 // This worker NEVER reads or writes profiles.plan (shared across RunP8 products).
 
@@ -305,7 +305,7 @@ export default {
           role: 'assistant',
           content: [{
             type: 'text',
-            text: "I'm a Title 22 RCFE compliance assistant and can't provide dosage recommendations or prescribing advice — that requires a licensed prescriber. For medication questions, contact the resident's physician or a licensed pharmacist. I can help you document a physician order, look up compliance requirements, or review your MAR policy.",
+            text: "I'm Tello, a Title 22 RCFE compliance assistant, and I can't provide dosage recommendations or prescribing advice — that requires a licensed prescriber. For medication questions, contact the resident's physician or a licensed pharmacist. I can help you document a physician order, look up compliance requirements, or review your MAR policy.",
           }],
           model: 'safety-filter',
           stop_reason: 'safety',
@@ -371,7 +371,7 @@ export default {
       const anthropicBody = {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
-        system: system || 'You are a Title 22 RCFE compliance assistant.',
+        system: system || 'You are Tello, a Title 22 RCFE compliance assistant.',
         messages: messages || [],
       };
       if (Array.isArray(tools) && tools.length) anthropicBody.tools = tools;
