@@ -98,6 +98,49 @@
      class, never inline styles — inline styles stuck and turned the *next*
      error message green. See authMsg(). */
   .error-msg.is-ok{background:var(--green-light);color:var(--green)}
+
+  /* ===== Mobile navigation drawer =====
+     The panel sits behind the app, not on top of it: #app-frame slides aside
+     and reveals what was already there. Phone-only — the desktop sidebar is a
+     better nav on a wide screen, and two navs on one screen is what made the
+     old dropdown feel redundant. */
+  #drawer-panel{position:fixed;inset:0;z-index:1;display:none;overflow-y:auto;
+    background:linear-gradient(158deg,#0B5744 0%,#0F6E56 42%,#1D9E75 100%);
+    padding:84px 22px 44px 27vw;-webkit-overflow-scrolling:touch}
+  #app-frame{position:relative;z-index:2;background:var(--gray-bg);min-height:100vh;
+    transition:transform .44s cubic-bezier(.32,.72,0,1),border-radius .44s cubic-bezier(.32,.72,0,1),box-shadow .44s ease}
+  body.drawer-open{overflow:hidden}
+  body.drawer-open #drawer-panel{display:block}
+  body.drawer-open #app-frame{transform:translateX(-79vw) scale(.93);border-radius:24px;
+    box-shadow:-24px 0 70px rgba(6,32,24,.34);height:100vh;overflow:hidden}
+  .drawer-item{display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;
+    color:#fff;font-size:27px;font-weight:600;letter-spacing:-.015em;line-height:1.25;
+    padding:9px 0;font-family:inherit;
+    opacity:0;transform:translateY(16px);
+    transition:opacity .42s ease,transform .42s cubic-bezier(.32,.72,0,1)}
+  body.drawer-open .drawer-item{opacity:1;transform:none}
+  .drawer-item.is-current{color:#EAF3DE}
+  .drawer-item.is-current::after{content:'';display:block;height:2px;width:34px;background:#EAF3DE;margin-top:7px;border-radius:2px}
+  .drawer-rule{height:1px;background:rgba(255,255,255,.22);margin:18px 0 16px;
+    opacity:0;transition:opacity .42s ease}
+  body.drawer-open .drawer-rule{opacity:1}
+  .drawer-meta{color:rgba(255,255,255,.72);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    opacity:0;transition:opacity .42s ease}
+  body.drawer-open .drawer-meta{opacity:1}
+  #drawer-btn{display:none;align-items:center;justify-content:center;width:40px;height:40px;
+    border:none;border-radius:50%;background:var(--teal);color:#fff;cursor:pointer;flex-shrink:0;
+    transition:transform .18s ease}
+  #drawer-btn:active{transform:scale(.92)}
+  @media(max-width:768px){
+    #drawer-btn{display:flex}
+    /* The drawer is the navigation on a phone, so the cramped horizontal icon
+       strip stops being a second copy of it. */
+    body.has-drawer .sidebar{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){
+    #app-frame,.drawer-item,.drawer-rule,.drawer-meta,#drawer-btn{transition:none!important}
+    .drawer-item{opacity:1;transform:none}
+  }
   .app-shell{display:flex;min-height:calc(100vh - 65px);background:var(--gray-bg)}
   .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
   .sidebar-facility{font-size:12px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
@@ -285,6 +328,11 @@
 </head>
 <body style="visibility:hidden">
 
+<div id="drawer-panel" aria-hidden="true">
+  <div class="drawer-meta" id="drawer-facility"></div>
+  <div id="drawer-items" style="margin-top:14px"></div>
+</div>
+<div id="app-frame">
 <nav id="main-nav">
   <div class="logo">
     <div class="logo-icon">
@@ -298,6 +346,7 @@
   </div>
   <div class="nav-actions" id="nav-app" style="display:none">
     <div style="position:relative">
+      <button id="drawer-btn" onclick="toggleDrawer()" aria-label="Menu" aria-expanded="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <button class="btn btn-ghost" onclick="toggleUserMenu()" id="user-menu-btn" style="display:flex;align-items:center;gap:8px;padding:6px 12px;border:1.5px solid var(--border);border-radius:var(--radius)">
         <div style="width:28px;height:28px;background:var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700" id="user-avatar">E</div>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -905,6 +954,7 @@
     </div>
   </div>
 </div>
+</div><!-- /#app-frame -->
 
 <script>
 const SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
@@ -1080,6 +1130,58 @@ function switchTab(name){
   if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello — your AI compliance assistant. Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+// Mobile navigation drawer. Items are built from allowedTabs() rather than
+// written into the markup, so a caregiver's drawer shows a caregiver's app —
+// the role rules stay in one place instead of being restated here.
+const DRAWER_LABELS={dashboard:'Dashboard',checklist:'Compliance',staff:'Staff',residents:'Residents',
+  incidents:'Incidents',daily:'Daily Log',training:'Training',facility:'Facility',medications:'Medications',
+  mar:'MAR',team:'Team',ai:'Tello',billing:'Billing',audit:'Audit Log',documents:'Documents'};
+
+function renderDrawer(){
+  const box=document.getElementById('drawer-items');
+  if(!box)return;
+  const allowed=allowedTabs();
+  const order=['dashboard','checklist','residents','staff','mar','medications','incidents','daily','training','documents','facility','team','ai','billing','audit'];
+  const items=order.filter(t=>allowed.includes(t));
+  // There is no currentTab variable — switchTab() marks the active nav button,
+  // so that is the single source of truth for which tab is showing.
+  const isCurrent=t=>!!document.getElementById('nav-'+t)?.classList.contains('active');
+  let html=items.map((t,i)=>`<button class="drawer-item${isCurrent(t)?' is-current':''}" style="transition-delay:${40+i*26}ms" onclick="switchTab('${t}');closeDrawer()">${esc(DRAWER_LABELS[t]||t)}</button>`).join('');
+  if(isPartnerAdmin)html+=`<button class="drawer-item" style="transition-delay:${40+items.length*26}ms" onclick="switchTab('partners');closeDrawer()">Partners</button>`;
+  html+=`<div class="drawer-rule" style="transition-delay:${90+items.length*26}ms"></div>`;
+  html+=`<button class="drawer-item" style="font-size:19px;font-weight:500;transition-delay:${110+items.length*26}ms" onclick="window.open('https://title-22.com/walkthrough/','_blank');closeDrawer()">Walkthrough</button>`;
+  box.innerHTML=html;
+  const fac=document.getElementById('drawer-facility');
+  if(fac)fac.textContent=currentFacility?.name||'';
+}
+
+function toggleDrawer(){
+  document.body.classList.contains('drawer-open')?closeDrawer():openDrawer();
+}
+function openDrawer(){
+  renderDrawer();
+  const panel=document.getElementById('drawer-panel');
+  const btn=document.getElementById('drawer-btn');
+  if(panel)panel.setAttribute('aria-hidden','false');
+  if(btn)btn.setAttribute('aria-expanded','true');
+  document.body.classList.add('drawer-open');
+}
+function closeDrawer(){
+  const panel=document.getElementById('drawer-panel');
+  const btn=document.getElementById('drawer-btn');
+  if(panel)panel.setAttribute('aria-hidden','true');
+  if(btn)btn.setAttribute('aria-expanded','false');
+  document.body.classList.remove('drawer-open');
+}
+// Tapping the visible sliver of the app closes it, the way the gesture implies.
+document.addEventListener('click',function(e){
+  if(!document.body.classList.contains('drawer-open'))return;
+  const frame=document.getElementById('app-frame');
+  const btn=document.getElementById('drawer-btn');
+  if(frame&&frame.contains(e.target)&&btn&&!btn.contains(e.target))closeDrawer();
+},true);
+document.addEventListener('keydown',function(e){ if(e.key==='Escape')closeDrawer(); });
 
 function toggleUserMenu(){
   const menu=document.getElementById('user-menu');
@@ -1454,6 +1556,7 @@ if(T22_PAID.includes(plan)){
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
+  document.body.classList.add('has-drawer');
   const{data:ownedFacilities}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).order('name');
   const{data:memberFacilities}=await sb.from('facility_members').select('facility_id, facilities(*)').eq('user_id',currentUser.id);
   const memberFacs=(memberFacilities||[]).map(m=>m.facilities).filter(Boolean);
