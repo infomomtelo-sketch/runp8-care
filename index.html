@@ -1001,6 +1001,13 @@ document.addEventListener('visibilitychange',()=>{
       if (row && row.trial_days) sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
     } catch (e) { /* default trial length applies */ }
   }
+  // Hold the invite token for the rest of the session. The token only ever
+  // appears on the first URL the invited caregiver opens; by the time they
+  // finish signing up it has been replaced by an onboarding page, an OAuth
+  // callback, or a confirmation link from their email — none of which carry
+  // it. sessionStorage survives all of those within one browser.
+  const invite = params.get('invite');
+  if (invite) sessionStorage.setItem('title22_invite', invite);
   const plan = (params.get('plan')||'').toLowerCase();
   if (['starter','pro','specialist','agency'].includes(plan)) sessionStorage.setItem('title22_signup_plan', plan);
   const src = params.get('utm_source');
@@ -1196,11 +1203,15 @@ async function handleSignup(){
   const btn=document.querySelector('#page-signup .btn-primary');
   if(btn){btn.textContent='Creating account…';btn.disabled=true;}
   const referredBy=sessionStorage.getItem('title22_ref')||null;
+  // Carried into user_metadata so the invite still resolves when the
+  // confirmation link is opened in a different browser from the one that
+  // signed up — sessionStorage does not travel, user_metadata does.
+  const inviteToken=sessionStorage.getItem('title22_invite')||null;
   // emailRedirectTo is required here, not optional: this Supabase project is
   // shared with other apps, so without it the confirmation link falls back to
   // the project-wide Site URL and lands the new caregiver on someone else's
   // app. Hardcoded like every other redirect — never window.location.origin.
-  const{data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy}}});
+  const{data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy,invite_token:inviteToken}}});
   if(btn){btn.textContent='Create account';btn.disabled=false;}
   if(error){
     const m=(error.message||'').toLowerCase();
@@ -1227,7 +1238,10 @@ async function handleSignup(){
   }
   currentUser=data.user;
   await ensureProfile(currentUser);
-  showPage('onboard');
+  // Not showPage('onboard') — that skipped the invite entirely. loadApp()
+  // accepts any pending invite first and only falls through to onboarding
+  // when the caregiver genuinely has no facility.
+  await loadApp();
 }
 
 // A caregiver whose confirmation mail never arrived has no other way in.
@@ -1461,6 +1475,10 @@ if(T22_PAID.includes(plan)){
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
+  // Before the facility count, not after. An invited caregiver usually owns no
+  // facility of their own, so the old ordering hit the `!allFacilities.length`
+  // return below and bailed to onboarding without ever reading the invite.
+  await checkInviteToken();
   const{data:ownedFacilities}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).order('name');
   const{data:memberFacilities}=await sb.from('facility_members').select('facility_id, facilities(*)').eq('user_id',currentUser.id);
   const memberFacs=(memberFacilities||[]).map(m=>m.facilities).filter(Boolean);
@@ -1470,7 +1488,6 @@ async function loadApp(){
   if(!allFacilities.length){showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
-  await checkInviteToken();
 }
 
 async function initFacility(){
@@ -3495,15 +3512,37 @@ async function updateMemberRole(id,role){await sb.from('facility_members').updat
 async function removeMember(id){if(!confirm('Remove this team member?'))return;await sb.from('facility_members').delete().eq('id',id);loadTeam();}
 async function cancelInvite(id){await sb.from('facility_invites').update({status:'cancelled'}).eq('id',id);loadTeam();}
 
+// Accept a pending team invite for the signed-in user.
+//
+// The token is looked for in three places, because the URL only holds it on
+// the very first page load:
+//   1. ?invite= on the current URL          — existing user clicks the link
+//   2. sessionStorage                       — survives signup, onboarding and
+//                                             the Google OAuth round trip
+//   3. user_metadata.invite_token           — survives an email confirmation
+//                                             link opened in a *different*
+//                                             browser, where sessionStorage
+//                                             is not there to help
+// Without 2 and 3 an invited caregiver signed up, never joined the facility
+// they were invited to, and was asked to create their own — ending up with a
+// duplicate facility that has to be unpicked by hand.
 async function checkInviteToken(){
+  if(!currentUser)return;
   const params=new URLSearchParams(window.location.search);
-  const token=params.get('invite');
-  if(!token||!currentUser)return;
-  const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').single();
+  const token=params.get('invite')
+    ||sessionStorage.getItem('title22_invite')
+    ||currentUser?.user_metadata?.invite_token
+    ||null;
+  if(!token)return;
+  const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').maybeSingle();
   if(!invite)return;
-  await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
+  const{error}=await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
+  // A duplicate row means they were already a member — the invite is still
+  // theirs to accept, so mark it accepted rather than leaving it pending.
+  if(error&&!String(error.message||'').toLowerCase().includes('duplicate'))return;
   await sb.from('facility_invites').update({status:'accepted',accepted_at:new Date().toISOString()}).eq('id',invite.id);
-  window.history.replaceState({},document.title,window.location.pathname);
+  sessionStorage.removeItem('title22_invite');
+  if(params.get('invite'))window.history.replaceState({},document.title,window.location.pathname);
 }
 
 // ===== AUDIT LOG =====
