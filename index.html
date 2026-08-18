@@ -212,6 +212,35 @@
   .onboard-card h2{font-size:1.4rem;font-weight:700;margin-bottom:6px}
   .onboard-card p{font-size:14px;color:var(--text2);margin-bottom:24px}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  /* Trust section + solid footer. No animation here on purpose — this is the
+     part of the page a buyer reads carefully, and movement under text you are
+     trying to read is a cost, not a feature. */
+  .trust{background:var(--white);padding:64px 2rem;border-top:1px solid var(--border)}
+  .trust-inner{max-width:820px;margin:0 auto}
+  .trust h2{font-size:1.6rem;line-height:1.25;margin:0 0 10px;letter-spacing:-.02em}
+  .trust .lede{color:var(--text2);font-size:15px;line-height:1.7;margin:0 0 30px;max-width:640px}
+  .trust-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+  .trust-item{border-left:2px solid var(--teal-light);padding-left:16px}
+  .trust-item h3{font-size:14px;margin:0 0 6px;letter-spacing:-.01em}
+  .trust-item p{font-size:14px;color:var(--text2);line-height:1.65;margin:0}
+  .site-footer{background:#0B2E24;color:#fff;padding:56px 2rem 32px}
+  .footer-inner{max-width:1000px;margin:0 auto}
+  .footer-top{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px}
+  .footer-brand p{color:rgba(255,255,255,.62);font-size:13px;line-height:1.7;margin:10px 0 0;max-width:270px}
+  .footer-col h4{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);margin:0 0 14px}
+  .footer-col a,.footer-col button{display:block;color:#fff;text-decoration:none;font-size:14px;line-height:1;padding:0 0 13px;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left}
+  .footer-col a:hover,.footer-col button:hover{color:var(--teal-light)}
+  .footer-rule{height:1px;background:rgba(255,255,255,.16);margin:36px 0 20px}
+  .footer-legal{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px;color:rgba(255,255,255,.55)}
+  .footer-legal a{color:rgba(255,255,255,.78);text-decoration:none}
+  .footer-legal a:hover{color:#fff}
+  @media(max-width:768px){
+    .site-footer{padding:40px 1.25rem 28px}
+    .footer-top{grid-template-columns:1fr 1fr;gap:26px}
+    .footer-brand{grid-column:1/-1}
+    .trust{padding:44px 1.25rem}
+    .trust h2{font-size:1.35rem}
+  }
   .section-title{font-size:1rem;font-weight:700;margin-bottom:6px;text-align:center}
   .section-sub{font-size:14px;color:var(--text2);text-align:center;margin-bottom:40px}
   .empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
@@ -400,10 +429,65 @@
       <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)">📁</div><h3>Resident records</h3><p>LIC 601, LIC 602, ISP, admission agreements — every required form tracked.</p></div>
     </div>
   </div>
-  <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
-    © Title22 · California RCFE compliance software<br/>
-    <a href="https://title-22.com" style="color:var(--teal);text-decoration:none">title-22.com</a> · <a href="/privacy.html" style="color:var(--teal);text-decoration:none">Privacy Policy</a> · <a href="/terms.html" style="color:var(--teal);text-decoration:none">Terms of Service</a>
-  </div>
+  <!-- Deliberately NOT a HIPAA badge. Title22 does not hold a BAA — that is why
+       resident face-sheet scanning is still disabled — and a compliance product
+       cannot make a compliance claim it has not earned. This says what actually
+       happens instead, which is also what an administrator who has been through
+       an audit will check. -->
+  <section class="trust">
+    <div class="trust-inner">
+      <h2>Your records, and where they go</h2>
+      <p class="lede">Facilities ask us this before they trust us with resident files. Here is the straight answer, including the parts that are still in progress.</p>
+      <div class="trust-grid">
+        <div class="trust-item">
+          <h3>Where the records live</h3>
+          <p>An encrypted Postgres database with row-level access rules, so a caregiver's account reaches a caregiver's data. Every change is written to an audit log you can read yourself.</p>
+        </div>
+        <div class="trust-item">
+          <h3>What reaches an AI service</h3>
+          <p>When you ask Tello a question or scan a document, that content is sent to Anthropic to generate the answer. Nothing is sent unless you start it, and nothing an AI reads is saved to a record without you pressing Save.</p>
+        </div>
+        <div class="trust-item">
+          <h3>What we do not claim</h3>
+          <p>We do not claim HIPAA compliance. Resident face sheets cannot be scanned — that stays off until a signed BAA is in place. Your facility's own BAA obligations remain yours; ask us in writing for what you need.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Title22</div>
+          <p>Compliance software for California RCFEs and CBRCs. Built in Fresno, by people who have sat through the inspection.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <button onclick="showPage('signup')">Start free trial</button>
+          <button onclick="showPage('login')">Log in</button>
+          <a href="https://title-22.com/walkthrough/" target="_blank" rel="noopener">Walkthrough</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="https://title-22.com" target="_blank" rel="noopener">title-22.com</a>
+          <a href="mailto:hello@title-22.com">Contact</a>
+          <a href="mailto:support@title22.app">Support</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="/privacy.html">Privacy Policy</a>
+          <a href="/terms.html">Terms of Service</a>
+          <a href="/legal.html">Compliance &amp; data</a>
+        </div>
+      </div>
+      <div class="footer-rule"></div>
+      <div class="footer-legal">
+        <span>© 2026 Title22 · California RCFE compliance software</span>
+        <span>Not affiliated with the California Department of Social Services.</span>
+      </div>
+    </div>
+  </footer>
 </div>
 
 <!-- LOGIN -->
