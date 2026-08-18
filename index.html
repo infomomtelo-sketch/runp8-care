@@ -875,6 +875,14 @@
           <div style="font-size:24px">🔒</div>
           <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
         </div>
+        <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email support@title22.app.</div></div>
+          <button class="btn btn-primary" style="font-size:13px" onclick="initFacility()">Try again</button>
+        </div>
+        <div id="entitlement-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't check your account just now</div><div style="font-size:13px;color:var(--text2);margin-top:4px">This is on our side, not yours — your trial has not expired. The rest of Title22 is hidden until we can confirm your plan. Try again, and if it keeps happening email support@title22.app.</div></div>
+          <button class="btn btn-primary" style="font-size:13px" onclick="retryEntitlement()">Try again</button>
+        </div>
         <div id="tier-upsell-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px">⭐</div>
           <div style="flex:1"><div style="font-weight:700;color:var(--teal);font-size:15px">Upgrade required</div><div id="tier-upsell-msg" style="font-size:13px;color:var(--teal);margin-top:4px"></div></div>
@@ -1150,7 +1158,11 @@ async function ensureProfile(user){
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
-      if(error)console.error('Trial activation failed:',error.message);
+      // Not just console.error. If this write fails the trial is never stamped,
+      // resolveEntitlement finds no plan, and the new customer is shown "your
+      // trial has expired" on their first minute. Record it so the banner can
+      // tell the truth instead.
+      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
     }else if(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
       // Row exists (e.g. created by a DB trigger) but title22 entitlement never stamped.
       isNewProfile=!data.title22_plan;
@@ -1159,7 +1171,7 @@ async function ensureProfile(user){
       if(!data.title22_plan)patch.title22_plan='trial';
       if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
-      if(error)console.error('Trial activation failed:',error.message);
+      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
     }
   }catch(e){console.log('Profile check:',e.message);}
   const navPartners=document.getElementById('nav-partners');
@@ -1428,8 +1440,21 @@ let t22Entitled=false;                    // fail closed: locked until verified 
 let t22Plan='trial';
 let t22Limits={facilities:0,ai:false};    // fail closed
 let t22TrialDaysLeft=0;
+let t22EntitlementVerified=true;  // false => we could not read the account, not that it lapsed
+let t22TrialActivationError=null; // set when the trial could not be stamped on the profile
+let t22RoleLookupFailed=false;    // true => 'readonly' is a fallback, not a granted role
 
+// Fail closed, but not on the first stumble. A single dropped read used to
+// lock a paying customer out of every tool and tell them their trial had
+// expired, so the read is retried once before that verdict is reached.
 async function resolveEntitlement(){
+  const first=await readEntitlement();
+  if(first.ok)return first;
+  await new Promise(r=>setTimeout(r,700));
+  return await readEntitlement();
+}
+
+async function readEntitlement(){
   // Single source of truth for access. Fail CLOSED: any read error or missing
   // row => NOT entitled. Never falls through to full access on failure.
   try{
@@ -1486,19 +1511,37 @@ async function initFacility(){
     if(demoMode){currentUserRole='readonly';}
     else if(currentFacility.user_id===currentUser.id){currentUserRole='administrator';}
     else{
-      const{data:m}=await sb.from('facility_members').select('role').eq('facility_id',currentFacility.id).eq('user_id',currentUser.id).maybeSingle();
+      // The error used to be discarded here. A dropped read produced m===null,
+      // which fell through to 'readonly' — an app that looks complete but
+      // refuses every button, with nothing on screen saying why. That is
+      // indistinguishable from "the tools are broken" to the person using it.
+      let{data:m,error:roleErr}=await sb.from('facility_members').select('role').eq('facility_id',currentFacility.id).eq('user_id',currentUser.id).maybeSingle();
+      if(roleErr){
+        await new Promise(r=>setTimeout(r,700));
+        ({data:m,error:roleErr}=await sb.from('facility_members').select('role').eq('facility_id',currentFacility.id).eq('user_id',currentUser.id).maybeSingle());
+      }
+      // Still fail closed to the least privilege — but remember which kind of
+      // 'readonly' this is, so the banner can tell the difference between
+      // "you were given view access" and "we could not look it up".
+      t22RoleLookupFailed=!!roleErr;
       currentUserRole=m?.role||'readonly';
     }
-  }catch(e){currentUserRole='readonly';}
+  }catch(e){currentUserRole='readonly';t22RoleLookupFailed=true;}
   {
     // Sandbox is entitled by construction: role is readonly and anon RLS
     // blocks writes, so this grants view access only.
     const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
     t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+    // ent.ok was already computed and then thrown away. It is the difference
+    // between "your trial ran out" and "we could not check", and those need
+    // very different words in front of a customer.
+    t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
     t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
   }
   applyRoleUI();
   applyTierUI();
+  const roleBanner=document.getElementById('role-unknown-banner');
+  if(roleBanner)roleBanner.style.display=t22RoleLookupFailed?'flex':'none';
   const{data:items}=await sb.from('checklist_items').select('*');
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
@@ -1510,10 +1553,17 @@ async function initFacility(){
   dashBriefingLoaded=false;
   showPage('app');
   if(!t22Entitled){
-    // Locked (unpaid / expired trial / unverifiable). applyRoleUI() already hid
-    // every tab except billing via allowedTabs(); just surface the banner.
+    // Locked. applyRoleUI() already hid every tab except billing. Which banner
+    // shows matters: telling a first-day trial user their trial expired, when
+    // in fact their account could not be read, is what made a client ask
+    // whether their account was limited or the app was simply broken.
     const expiredBanner=document.getElementById('trial-expired-banner');
-    if(expiredBanner)expiredBanner.style.display='flex';
+    const unknownBanner=document.getElementById('entitlement-unknown-banner');
+    if(t22EntitlementVerified){
+      if(expiredBanner)expiredBanner.style.display='flex';
+    }else{
+      if(unknownBanner)unknownBanner.style.display='flex';
+    }
     switchTab('billing');
     return;
   }
@@ -1568,6 +1618,26 @@ function applyRoleUI(){
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
   if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Multi-Facility & Agency feature';}
+}
+
+// Re-check the account after a failed read, without making anyone reload.
+async function retryEntitlement(){
+  const banner=document.getElementById('entitlement-unknown-banner');
+  const btn=banner?banner.querySelector('button'):null;
+  if(btn){btn.textContent='Checking…';btn.disabled=true;}
+  const ent=await resolveEntitlement();
+  if(btn){btn.textContent='Try again';btn.disabled=false;}
+  if(ent.entitled){
+    if(banner)banner.style.display='none';
+    await initFacility();
+    return;
+  }
+  t22EntitlementVerified=ent.ok!==false;
+  if(t22EntitlementVerified){
+    if(banner)banner.style.display='none';
+    const expiredBanner=document.getElementById('trial-expired-banner');
+    if(expiredBanner)expiredBanner.style.display='flex';
+  }
 }
 
 // Show an upgrade prompt for a tier-locked feature and route to billing.
@@ -2838,6 +2908,24 @@ async function saveMAR(){
 }
 
 // ===== AI =====
+// The Worker replies with both a machine code and a human sentence:
+//   { error:'limit_reached', message:"You've used all your AI calls this month…" }
+// Both call sites used to prefer data.error, so a caregiver was shown the bare
+// string "limit_reached" while the sentence written for them sat unused in the
+// same response. Prefer the message; keep the code only as a last resort.
+function aiErrorText(data,status){
+  if(!data)return 'Tello could not be reached. (HTTP '+status+')';
+  if(typeof data.message==='string'&&data.message)return data.message;
+  if(data.error&&typeof data.error==='object'&&data.error.message)return data.error.message;
+  if(typeof data.error==='string'&&data.error){
+    // A code with no sentence attached. Say something a person can act on.
+    if(data.error==='limit_reached')return 'You have used all your AI questions for this month. They reset at the start of next month, or you can upgrade your plan.';
+    if(data.error==='credit_system_error')return 'Tello could not check your remaining questions. Try again in a moment.';
+    return 'Tello could not answer that ('+data.error+').';
+  }
+  return 'Tello could not be reached. (HTTP '+status+')';
+}
+
 let aiMessages=[];
 let dashBriefingLoaded=false;
 
@@ -2855,10 +2943,38 @@ async function buildFacilityContext(){
   }catch(e){return'Error loading facility data: '+e.message;}
 }
 
+// The briefing is generated automatically — nobody asks for it — and it costs
+// one AI call. dashBriefingLoaded only guarded it within a single page view, so
+// every refresh spent another. On a trial that is 50 calls a month, an
+// evaluating customer clicking around burns the whole allowance in a day
+// without ever asking a question, and then everything answers limit_reached.
+// It is a daily briefing, so cache it for the day it describes.
+function briefingCacheKey(){
+  return 'title22_briefing_'+(currentFacility?.id||'none')+'_'+new Date().toISOString().slice(0,10);
+}
+function readCachedBriefing(){
+  try{ return localStorage.getItem(briefingCacheKey())||null; }catch(e){ return null; }
+}
+function writeCachedBriefing(html){
+  try{
+    // Yesterday's briefings are worthless; drop them so this cannot grow.
+    const keep=briefingCacheKey();
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('title22_briefing_')&&k!==keep)localStorage.removeItem(k);
+    }
+    localStorage.setItem(keep,html);
+  }catch(e){/* private mode or full: the briefing just re-generates */}
+}
+
 async function loadDashboardAIBriefing(force){
   if(dashBriefingLoaded&&!force)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
   if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
+  if(!force){
+    const cached=readCachedBriefing();
+    if(cached){el.innerHTML=cached;dashBriefingLoaded=true;return;}
+  }
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
@@ -2868,9 +2984,12 @@ async function loadDashboardAIBriefing(force){
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
-    const bErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
-    const reply=data.content?.[0]?.text||(bErr?'⚠️ '+bErr:'Unable to load briefing. (HTTP '+res.status+')');
-    el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    const reply=data.content?.[0]?.text||('⚠️ '+aiErrorText(data,res.status));
+    const html=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    el.innerHTML=html;
+    // Only a real briefing is worth keeping — caching an error would hide the
+    // problem for the rest of the day and spend nothing to fix it.
+    if(data.content?.[0]?.text)writeCachedBriefing(html);
     dashBriefingLoaded=true;
   }catch(e){
     el.innerHTML='<div style="font-size:13px;color:var(--text2)">Tello&#39;s briefing is unavailable. Check your AI Worker deployment.</div>';
@@ -3007,8 +3126,7 @@ async function sendAIQuery(btn){
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
-    const workerErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
-    const reply=data.content?.[0]?.text||(workerErr?'⚠️ '+workerErr:'Unable to get a response. (HTTP '+res.status+')');
+    const reply=data.content?.[0]?.text||('⚠️ '+aiErrorText(data,res.status));
     thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
