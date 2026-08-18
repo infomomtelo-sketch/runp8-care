@@ -875,6 +875,10 @@
           <div style="font-size:24px">🔒</div>
           <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
         </div>
+        <div id="entitlement-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't check your account just now</div><div style="font-size:13px;color:var(--text2);margin-top:4px">This is on our side, not yours — your trial has not expired. The rest of Title22 is hidden until we can confirm your plan. Try again, and if it keeps happening email support@title22.app.</div></div>
+          <button class="btn btn-primary" style="font-size:13px" onclick="retryEntitlement()">Try again</button>
+        </div>
         <div id="tier-upsell-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px">⭐</div>
           <div style="flex:1"><div style="font-weight:700;color:var(--teal);font-size:15px">Upgrade required</div><div id="tier-upsell-msg" style="font-size:13px;color:var(--teal);margin-top:4px"></div></div>
@@ -1150,7 +1154,11 @@ async function ensureProfile(user){
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
-      if(error)console.error('Trial activation failed:',error.message);
+      // Not just console.error. If this write fails the trial is never stamped,
+      // resolveEntitlement finds no plan, and the new customer is shown "your
+      // trial has expired" on their first minute. Record it so the banner can
+      // tell the truth instead.
+      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
     }else if(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
       // Row exists (e.g. created by a DB trigger) but title22 entitlement never stamped.
       isNewProfile=!data.title22_plan;
@@ -1159,7 +1167,7 @@ async function ensureProfile(user){
       if(!data.title22_plan)patch.title22_plan='trial';
       if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
-      if(error)console.error('Trial activation failed:',error.message);
+      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
     }
   }catch(e){console.log('Profile check:',e.message);}
   const navPartners=document.getElementById('nav-partners');
@@ -1428,8 +1436,20 @@ let t22Entitled=false;                    // fail closed: locked until verified 
 let t22Plan='trial';
 let t22Limits={facilities:0,ai:false};    // fail closed
 let t22TrialDaysLeft=0;
+let t22EntitlementVerified=true;  // false => we could not read the account, not that it lapsed
+let t22TrialActivationError=null; // set when the trial could not be stamped on the profile
 
+// Fail closed, but not on the first stumble. A single dropped read used to
+// lock a paying customer out of every tool and tell them their trial had
+// expired, so the read is retried once before that verdict is reached.
 async function resolveEntitlement(){
+  const first=await readEntitlement();
+  if(first.ok)return first;
+  await new Promise(r=>setTimeout(r,700));
+  return await readEntitlement();
+}
+
+async function readEntitlement(){
   // Single source of truth for access. Fail CLOSED: any read error or missing
   // row => NOT entitled. Never falls through to full access on failure.
   try{
@@ -1495,6 +1515,10 @@ async function initFacility(){
     // blocks writes, so this grants view access only.
     const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
     t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+    // ent.ok was already computed and then thrown away. It is the difference
+    // between "your trial ran out" and "we could not check", and those need
+    // very different words in front of a customer.
+    t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
     t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
   }
   applyRoleUI();
@@ -1510,10 +1534,17 @@ async function initFacility(){
   dashBriefingLoaded=false;
   showPage('app');
   if(!t22Entitled){
-    // Locked (unpaid / expired trial / unverifiable). applyRoleUI() already hid
-    // every tab except billing via allowedTabs(); just surface the banner.
+    // Locked. applyRoleUI() already hid every tab except billing. Which banner
+    // shows matters: telling a first-day trial user their trial expired, when
+    // in fact their account could not be read, is what made a client ask
+    // whether their account was limited or the app was simply broken.
     const expiredBanner=document.getElementById('trial-expired-banner');
-    if(expiredBanner)expiredBanner.style.display='flex';
+    const unknownBanner=document.getElementById('entitlement-unknown-banner');
+    if(t22EntitlementVerified){
+      if(expiredBanner)expiredBanner.style.display='flex';
+    }else{
+      if(unknownBanner)unknownBanner.style.display='flex';
+    }
     switchTab('billing');
     return;
   }
@@ -1568,6 +1599,26 @@ function applyRoleUI(){
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
   if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Multi-Facility & Agency feature';}
+}
+
+// Re-check the account after a failed read, without making anyone reload.
+async function retryEntitlement(){
+  const banner=document.getElementById('entitlement-unknown-banner');
+  const btn=banner?banner.querySelector('button'):null;
+  if(btn){btn.textContent='Checking…';btn.disabled=true;}
+  const ent=await resolveEntitlement();
+  if(btn){btn.textContent='Try again';btn.disabled=false;}
+  if(ent.entitled){
+    if(banner)banner.style.display='none';
+    await initFacility();
+    return;
+  }
+  t22EntitlementVerified=ent.ok!==false;
+  if(t22EntitlementVerified){
+    if(banner)banner.style.display='none';
+    const expiredBanner=document.getElementById('trial-expired-banner');
+    if(expiredBanner)expiredBanner.style.display='flex';
+  }
 }
 
 // Show an upgrade prompt for a tier-locked feature and route to billing.
