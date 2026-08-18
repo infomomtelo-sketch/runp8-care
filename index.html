@@ -4377,10 +4377,20 @@ async function loadTeam(){
 }
 function showInviteModal(){if(!canTeam()){alert('Only the Administrator can invite team members.');return;}document.getElementById('invite-modal').classList.add('open');}
 function closeInviteModal(){document.getElementById('invite-modal').classList.remove('open');document.getElementById('invite-link-result').style.display='none';}
+// Roles a team manager may hand out. 'administrator' is deliberately absent:
+// that is the facility owner, decided by facilities.user_id, not something to
+// be granted from this screen.
+const ASSIGNABLE_ROLES=['caregiver','supervisor','readonly'];
+
 async function sendInvite(){
+  // Guarding showInviteModal() alone only hid the door. These four functions
+  // are the ones that actually change who can see resident records, and each
+  // is reachable without the modal.
+  if(!canTeam()){alert('Only the Administrator can invite team members.');return;}
   const email=document.getElementById('invite-email').value.trim();
   const role=document.getElementById('invite-role').value;
   if(!email){alert('Please enter an email.');return;}
+  if(!ASSIGNABLE_ROLES.includes(role)){alert('That role cannot be assigned.');return;}
   const token=crypto.randomUUID();
   const{error}=await sb.from('facility_invites').insert({facility_id:currentFacility.id,email,role,token,status:'pending',created_by:currentUser.id});
   if(error){alert('Error: '+error.message);return;}
@@ -4390,9 +4400,26 @@ async function sendInvite(){
   loadTeam();
 }
 function copyInviteLink(){navigator.clipboard.writeText(document.getElementById('invite-link-text').textContent).then(()=>alert('Link copied!'));}
-async function updateMemberRole(id,role){await sb.from('facility_members').update({role}).eq('id',id);loadTeam();}
-async function removeMember(id){if(!confirm('Remove this team member?'))return;await sb.from('facility_members').delete().eq('id',id);loadTeam();}
-async function cancelInvite(id){await sb.from('facility_invites').update({status:'cancelled'}).eq('id',id);loadTeam();}
+async function updateMemberRole(id,role){
+  if(!canTeam()){alert('Only the Administrator can change team roles.');loadTeam();return;}
+  if(!ASSIGNABLE_ROLES.includes(role)){alert('That role cannot be assigned.');loadTeam();return;}
+  const{error}=await sb.from('facility_members').update({role}).eq('id',id).eq('facility_id',currentFacility.id);
+  if(error)alert('Could not change that role: '+error.message);
+  loadTeam();
+}
+async function removeMember(id){
+  if(!canTeam()){alert('Only the Administrator can remove team members.');return;}
+  if(!confirm('Remove this team member?'))return;
+  const{error}=await sb.from('facility_members').delete().eq('id',id).eq('facility_id',currentFacility.id);
+  if(error)alert('Could not remove that member: '+error.message);
+  loadTeam();
+}
+async function cancelInvite(id){
+  if(!canTeam()){alert('Only the Administrator can cancel invites.');return;}
+  const{error}=await sb.from('facility_invites').update({status:'cancelled'}).eq('id',id).eq('facility_id',currentFacility.id);
+  if(error)alert('Could not cancel that invite: '+error.message);
+  loadTeam();
+}
 
 // Accept a pending team invite for the signed-in user. The token is looked for
 // in three places, because the URL only holds it on the very first page load:
