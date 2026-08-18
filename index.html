@@ -2908,6 +2908,24 @@ async function saveMAR(){
 }
 
 // ===== AI =====
+// The Worker replies with both a machine code and a human sentence:
+//   { error:'limit_reached', message:"You've used all your AI calls this month…" }
+// Both call sites used to prefer data.error, so a caregiver was shown the bare
+// string "limit_reached" while the sentence written for them sat unused in the
+// same response. Prefer the message; keep the code only as a last resort.
+function aiErrorText(data,status){
+  if(!data)return 'Tello could not be reached. (HTTP '+status+')';
+  if(typeof data.message==='string'&&data.message)return data.message;
+  if(data.error&&typeof data.error==='object'&&data.error.message)return data.error.message;
+  if(typeof data.error==='string'&&data.error){
+    // A code with no sentence attached. Say something a person can act on.
+    if(data.error==='limit_reached')return 'You have used all your AI questions for this month. They reset at the start of next month, or you can upgrade your plan.';
+    if(data.error==='credit_system_error')return 'Tello could not check your remaining questions. Try again in a moment.';
+    return 'Tello could not answer that ('+data.error+').';
+  }
+  return 'Tello could not be reached. (HTTP '+status+')';
+}
+
 let aiMessages=[];
 let dashBriefingLoaded=false;
 
@@ -2925,10 +2943,38 @@ async function buildFacilityContext(){
   }catch(e){return'Error loading facility data: '+e.message;}
 }
 
+// The briefing is generated automatically — nobody asks for it — and it costs
+// one AI call. dashBriefingLoaded only guarded it within a single page view, so
+// every refresh spent another. On a trial that is 50 calls a month, an
+// evaluating customer clicking around burns the whole allowance in a day
+// without ever asking a question, and then everything answers limit_reached.
+// It is a daily briefing, so cache it for the day it describes.
+function briefingCacheKey(){
+  return 'title22_briefing_'+(currentFacility?.id||'none')+'_'+new Date().toISOString().slice(0,10);
+}
+function readCachedBriefing(){
+  try{ return localStorage.getItem(briefingCacheKey())||null; }catch(e){ return null; }
+}
+function writeCachedBriefing(html){
+  try{
+    // Yesterday's briefings are worthless; drop them so this cannot grow.
+    const keep=briefingCacheKey();
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('title22_briefing_')&&k!==keep)localStorage.removeItem(k);
+    }
+    localStorage.setItem(keep,html);
+  }catch(e){/* private mode or full: the briefing just re-generates */}
+}
+
 async function loadDashboardAIBriefing(force){
   if(dashBriefingLoaded&&!force)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
   if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
+  if(!force){
+    const cached=readCachedBriefing();
+    if(cached){el.innerHTML=cached;dashBriefingLoaded=true;return;}
+  }
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
     const context=await buildFacilityContext();
@@ -2938,9 +2984,12 @@ async function loadDashboardAIBriefing(force){
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
-    const bErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
-    const reply=data.content?.[0]?.text||(bErr?'⚠️ '+bErr:'Unable to load briefing. (HTTP '+res.status+')');
-    el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    const reply=data.content?.[0]?.text||('⚠️ '+aiErrorText(data,res.status));
+    const html=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    el.innerHTML=html;
+    // Only a real briefing is worth keeping — caching an error would hide the
+    // problem for the rest of the day and spend nothing to fix it.
+    if(data.content?.[0]?.text)writeCachedBriefing(html);
     dashBriefingLoaded=true;
   }catch(e){
     el.innerHTML='<div style="font-size:13px;color:var(--text2)">Tello&#39;s briefing is unavailable. Check your AI Worker deployment.</div>';
@@ -3077,8 +3126,7 @@ async function sendAIQuery(btn){
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
-    const workerErr=typeof data.error==='string'?data.error:(data.error?.message||data.message);
-    const reply=data.content?.[0]?.text||(workerErr?'⚠️ '+workerErr:'Unable to get a response. (HTTP '+res.status+')');
+    const reply=data.content?.[0]?.text||('⚠️ '+aiErrorText(data,res.status));
     thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
