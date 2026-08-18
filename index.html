@@ -94,6 +94,10 @@
   .auth-switch a{color:var(--teal);cursor:pointer;text-decoration:underline}
   .error-msg{background:var(--red-light);color:var(--red);font-size:13px;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;display:none}
   .error-msg.show{display:block}
+  /* Auth pages reuse one strip for errors and confirmations. Success is a
+     class, never inline styles — inline styles stuck and turned the *next*
+     error message green. See authMsg(). */
+  .error-msg.is-ok{background:var(--green-light);color:var(--green)}
   .app-shell{display:flex;min-height:calc(100vh - 65px);background:var(--gray-bg)}
   .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
   .sidebar-facility{font-size:12px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
@@ -314,7 +318,7 @@
         <button onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
         <button onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 MAR</button>
         <button onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👤 Team</button>
-        <button onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:600" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✨ AI Assistant</button>
+        <button onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:600" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✨ Ask Tello</button>
         <button onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💳 Billing</button>
         <button onclick="switchTab('audit');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🛡️ Audit Log</button>
         <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:none;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🤝 Partners</button>
@@ -375,6 +379,7 @@
         <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••"/></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
       </form>
+      <div class="auth-switch" id="login-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('login')">Send it again</a></div>
       <div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Start 14-day free trial</a></div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="showPage('reset')">Forgot your password?</a></div>
     </div>
@@ -396,6 +401,7 @@
         <div class="form-group"><label>Password</label><input type="password" id="signup-password" autocomplete="new-password" placeholder="Create a password"/></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
       </form>
+      <div class="auth-switch" id="signup-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('signup')">Send it again</a></div>
       <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>
     </div>
   </div>
@@ -410,8 +416,10 @@
         <h2>Reset your password</h2>
         <p>Enter your sign-in email and we'll send a reset link.</p>
         <div class="error-msg" id="reset-error"></div>
-        <div class="form-group"><label>Email address</label><input type="email" id="reset-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
-        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handlePasswordReset()">Send reset link</button>
+        <form onsubmit="return false;">
+          <div class="form-group"><label>Email address</label><input type="email" id="reset-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
+          <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handlePasswordReset()">Send reset link</button>
+        </form>
         <div class="auth-switch" style="margin-top:16px"><a onclick="showPage('login')">← Back to login</a></div>
       </div>
       <!-- State 2: Set new password (after email link) -->
@@ -419,8 +427,11 @@
         <h2>Set new password</h2>
         <p>Enter your new password below.</p>
         <div class="error-msg" id="reset-newpass-error"></div>
-        <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/></div>
-        <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
+        <form onsubmit="return false;">
+          <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/></div>
+          <div class="form-group"><label>Confirm new password</label><input type="password" id="reset-newpass-confirm" autocomplete="new-password" placeholder="Type it again"/></div>
+          <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
+        </form>
       </div>
     </div>
   </div>
@@ -470,7 +481,7 @@
       <button class="nav-item" id="nav-medications" onclick="switchTab('medications')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>Medications</button>
       <button class="nav-item" id="nav-mar" onclick="switchTab('mar')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>MAR</button>
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
-      <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>AI</button>
+      <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Tello</button>
       <button class="nav-item" id="nav-billing" onclick="switchTab('billing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Billing</button>
       <button class="nav-item" id="nav-audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
       <button class="nav-item" id="nav-partners" onclick="switchTab('partners')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-1a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Partners</button>
@@ -491,11 +502,11 @@
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px">👋 New here? Let's get you started.</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask the AI to check it for DSS gaps.</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask Tello to check it for DSS gaps.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" style="font-size:13px" onclick="window.open('https://title-22.com/walkthrough/','_blank')">▶ Watch 2-min walkthrough</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="seedDemoData()">🧪 Load sample facility</button>
-            <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')">🤖 Ask the AI</button>
+            <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')">🤖 Ask Tello</button>
           </div>
         </div>
         <div class="score-banner">
@@ -517,7 +528,7 @@
         <div style="margin-top:20px" class="card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
         <div style="margin-top:20px" class="card" id="dash-ai-briefing-card">
           <div class="card-title">
-            <span>✨ AI Daily Briefing</span>
+            <span>✨ Tello's daily briefing</span>
             <button onclick="loadDashboardAIBriefing(true)" style="font-size:11px;background:var(--teal-light);color:var(--teal);border:none;border-radius:20px;padding:4px 12px;cursor:pointer;font-weight:600">Refresh</button>
           </div>
           <div id="dash-ai-briefing" style="font-size:13px;color:var(--text2);line-height:1.8">
@@ -740,7 +751,7 @@
               <div style="color:var(--text2);margin-top:2px;font-size:11px" id="mar-med-info-prescriber"></div>
             </div>
             <div id="mar-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
-              <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ AI COMPLIANCE TIP</div>
+              <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — COMPLIANCE TIP</div>
               <div id="mar-ai-tip-text"></div>
             </div>
             <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time" onchange="onMARStatusChange(document.getElementById('mar-status').value)">
@@ -791,8 +802,8 @@
 
       <!-- AI -->
       <div id="tab-ai" style="display:none">
-        <div class="page-header"><h1>AI Compliance Assistant</h1><span class="badge badge-teal">Included in your plan</span></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ Responses are based on data recorded in Title22 only.</div>
+        <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
+        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ Tello is an AI assistant. Responses are based on data recorded in Title22 only, and can be incomplete or wrong — check anything you would show an inspector.</div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -802,7 +813,7 @@
             <button class="filter-btn" onclick="sendAIQuery(this)">Simulate DSS inspection</button>
           </div>
           <div style="display:flex;gap:10px;">
-            <textarea id="ai-query-input" placeholder="Ask anything about your facility..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
+            <textarea id="ai-query-input" placeholder="Ask Tello anything about your facility..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
             <button class="btn btn-primary" style="align-self:flex-end;padding:9px 16px;" onclick="sendAIQuery()">↑ Ask</button>
           </div>
         </div>
@@ -883,15 +894,15 @@
           <div class="card-title">Upgrade your plan</div>
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff · AI assistant</div></div>
+              <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff · Tello AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · AI assistant</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · Tello AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · AI assistant</div></div>
+              <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · Tello AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_AGENCY)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
           </div>
@@ -933,8 +944,17 @@ function openStripe(url){
   }catch(e){window.open(url,'_blank');}
 }
 
+// flowType is pinned to 'implicit' on purpose — do not "upgrade" it to 'pkce'.
+// PKCE stores a code_verifier in *this* browser's localStorage and the email
+// link is worthless without it, so a reset link opened in the Gmail app's
+// webview (which is how this app's phone-first users open mail) can never be
+// exchanged. Implicit returns the tokens in the URL fragment and works from
+// any browser on any device. It is also the default, but leaving it implied
+// once already made the ?code= boot path unreachable — supabase-js only
+// treats ?code= as a callback when a verifier exists, so index.html's handler
+// sat behind a condition the library could never satisfy.
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}
+  auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,flowType:'implicit'}
 });
 
 // Lightweight usage analytics — writes a row into public.events. Fire and
@@ -1064,7 +1084,7 @@ function switchTab(name){
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
-  if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi! Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
+  if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello — your AI compliance assistant. Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1086,9 +1106,33 @@ document.addEventListener('click',function(e){
 });
 
 // ===== AUTH =====
+// Every auth screen shows one message strip that has to carry both failures
+// and confirmations. Route all of them through here: the success case used to
+// paint background/color inline and nothing ever removed them, so the next
+// error on that screen rendered as green success text.
+function authMsg(id,text,kind){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.style.background='';el.style.color='';el.style.border='';
+  el.classList.toggle('is-ok',kind==='ok');
+  el.textContent=text;
+  el.classList.add('show');
+}
+function authMsgClear(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.style.background='';el.style.color='';el.style.border='';
+  el.classList.remove('show','is-ok');
+  el.textContent='';
+}
+function showResend(which,on){
+  const el=document.getElementById(which+'-resend');
+  if(el)el.style.display=on?'block':'none';
+}
+
 async function handleGoogleAuth(errId){
   const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:'https://title22.app',queryParams:{access_type:'offline',prompt:'consent'}}});
-  if(error){const el=document.getElementById(errId);if(el){el.textContent=error.message;el.classList.add('show');}}
+  if(error)authMsg(errId,error.message);
 }
 
 async function ensureProfile(user){
@@ -1146,39 +1190,66 @@ async function stampSignupAttribution(user){
 async function handleSignup(){
   const email=document.getElementById('signup-email').value.trim();
   const pass=document.getElementById('signup-password').value;
-  const err=document.getElementById('signup-error');
-  err.classList.remove('show');
-  if(!email||!pass){err.textContent='Please fill in all fields.';err.classList.add('show');return;}
-  if(pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  authMsgClear('signup-error');showResend('signup',false);
+  if(!email||!pass){authMsg('signup-error','Please fill in all fields.');return;}
+  if(pass.length<6){authMsg('signup-error','Password must be at least 6 characters.');return;}
   const btn=document.querySelector('#page-signup .btn-primary');
   if(btn){btn.textContent='Creating account…';btn.disabled=true;}
   const referredBy=sessionStorage.getItem('title22_ref')||null;
-  const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{referred_by:referredBy}}});
+  // emailRedirectTo is required here, not optional: this Supabase project is
+  // shared with other apps, so without it the confirmation link falls back to
+  // the project-wide Site URL and lands the new caregiver on someone else's
+  // app. Hardcoded like every other redirect — never window.location.origin.
+  const{data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy}}});
   if(btn){btn.textContent='Create account';btn.disabled=false;}
   if(error){
     const m=(error.message||'').toLowerCase();
     if(m.includes('already registered')||m.includes('already exists')||m.includes('already been registered')){
-      err.textContent='You already have an account with this email. Please sign in.';err.classList.add('show');
+      authMsg('signup-error','You already have an account with this email. Please sign in.');
       setTimeout(function(){showPage('login');},1800);return;
     }
-    err.textContent=error.message;err.classList.add('show');return;
+    authMsg('signup-error',error.message);return;
   }
   if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){
-    err.textContent='You already have an account with this email. Please sign in.';err.classList.add('show');
+    authMsg('signup-error','You already have an account with this email. Please sign in.');
     setTimeout(function(){showPage('login');},1800);return;
   }
-  if(!data.user){err.textContent='Check your email to confirm your account, then log in.';err.classList.add('show');return;}
+  // Gate on the *session*, not the user. With email confirmation switched on
+  // Supabase returns a user and a null session; the old !data.user check let
+  // that through and dropped the caregiver into onboarding signed out, where
+  // the facility insert and every profile write failed against RLS with
+  // nothing on screen to explain why.
+  if(!data.session){
+    pendingConfirmEmail=email;
+    authMsg('signup-error','Account created. Check '+email+' for a confirmation link, then log in.','ok');
+    showResend('signup',true);
+    return;
+  }
   currentUser=data.user;
   await ensureProfile(currentUser);
   showPage('onboard');
 }
 
+// A caregiver whose confirmation mail never arrived has no other way in.
+// Supabase rate-limits resends server-side and the error text says how long to
+// wait, so surface it rather than swallowing it.
+let pendingConfirmEmail=null;
+async function handleResendConfirmation(which){
+  const input=document.getElementById(which==='login'?'login-email':'signup-email');
+  const email=(input&&input.value.trim())||pendingConfirmEmail;
+  const errId=which+'-error';
+  if(!email){authMsg(errId,'Enter your email address first.');return;}
+  authMsg(errId,'Sending…','ok');
+  const{error}=await sb.auth.resend({type:'signup',email,options:{emailRedirectTo:'https://title22.app'}});
+  if(error){authMsg(errId,error.message);return;}
+  authMsg(errId,'Confirmation email sent to '+email+'. It can take a minute — check spam too.','ok');
+}
+
 async function handleLogin(){
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-password').value;
-  const err=document.getElementById('login-error');
-  err.classList.remove('show');
-  if(!email||!pass){err.textContent='Please fill in all fields.';err.classList.add('show');return;}
+  authMsgClear('login-error');showResend('login',false);
+  if(!email||!pass){authMsg('login-error','Please fill in all fields.');return;}
   const btn=document.querySelector('#page-login .btn-primary');
   if(btn){btn.textContent='Logging in…';btn.disabled=true;}
   const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
@@ -1186,11 +1257,13 @@ async function handleLogin(){
   if(error){
     const m=(error.message||'').toLowerCase();
     if(m.includes('invalid login')||m.includes('invalid credentials')){
-      err.textContent='That email or password did not match an account. Check them, or sign up if you are new.';
-    } else if(m.includes('confirm')){
-      err.textContent='Please confirm your email first — check your inbox for the confirmation link.';
-    } else { err.textContent=error.message; }
-    err.classList.add('show');return;
+      authMsg('login-error','That email or password did not match an account. Check them, or sign up if you are new.');
+    } else if(m.includes('confirm')||m.includes('not confirmed')){
+      pendingConfirmEmail=email;
+      authMsg('login-error','Please confirm your email first — check your inbox for the confirmation link.');
+      showResend('login',true);
+    } else { authMsg('login-error',error.message); }
+    return;
   }
   currentUser=data.user;
   await ensureProfile(currentUser);
@@ -1209,29 +1282,45 @@ async function handleLogout(){
 
 async function handlePasswordReset(){
   const email=document.getElementById('reset-email').value.trim();
-  const err=document.getElementById('reset-error');
-  err.classList.remove('show');
-  if(!email){err.textContent='Please enter your email.';err.classList.add('show');return;}
+  authMsgClear('reset-error');
+  if(!email){authMsg('reset-error','Please enter your email.');return;}
+  const btn=document.querySelector('#reset-request .btn-primary');
+  if(btn){btn.textContent='Sending…';btn.disabled=true;}
   const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://title22.app'});
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
-  err.style.background='var(--green-light)';err.style.color='var(--green)';
-  err.textContent='✓ Reset link sent! Check your email — and open the link in this browser, on this device.';err.classList.add('show');
+  if(btn){btn.textContent='Send reset link';btn.disabled=false;}
+  if(error){authMsg('reset-error',error.message);return;}
+  authMsg('reset-error','✓ Reset link sent! Check your email — it can take a minute, and it may land in spam.','ok');
 }
 
 async function handleSetNewPassword(){
   const pass=document.getElementById('reset-newpass-input').value;
-  const err=document.getElementById('reset-newpass-error');
-  err.classList.remove('show');
-  if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  const confirm=document.getElementById('reset-newpass-confirm').value;
+  authMsgClear('reset-newpass-error');
+  if(!pass||pass.length<6){authMsg('reset-newpass-error','Password must be at least 6 characters.');return;}
+  // Typed twice on purpose. This field is reached from an email link with no
+  // way to reveal the text, and a typo here locks a caregiver out of their own
+  // resident records until they run the whole reset again.
+  if(pass!==confirm){authMsg('reset-newpass-error','The two passwords do not match.');return;}
+  const btn=document.querySelector('#reset-newpass .btn-primary');
+  if(btn){btn.textContent='Updating…';btn.disabled=true;}
   const{error}=await sb.auth.updateUser({password:pass});
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
-  err.style.background='var(--green-light)';err.style.color='var(--green)';err.style.border='1px solid #b7d68e';
-  err.textContent='✓ Password updated! Redirecting…';err.classList.add('show');
+  if(error){
+    if(btn){btn.textContent='Update password';btn.disabled=false;}
+    const m=(error.message||'').toLowerCase();
+    if(m.includes('session')||m.includes('jwt')||m.includes('logged in')){
+      showResetLinkProblem('That reset link is no longer valid. Enter your email below for a fresh one.');
+    }else{
+      authMsg('reset-newpass-error',error.message);
+    }
+    return;
+  }
+  authMsg('reset-newpass-error','✓ Password updated! Redirecting…','ok');
   setTimeout(async()=>{
     history.replaceState(null,'',window.location.pathname);
     const{data:{session}}=await sb.auth.getSession();
     if(session&&session.user){currentUser=session.user;await ensureProfile(currentUser);await loadApp();}
     else{showPage('login');}
+    if(btn){btn.textContent='Update password';btn.disabled=false;}
   },1500);
 }
 
@@ -1484,7 +1573,7 @@ function applyTierUI(){
 // Show an upgrade prompt for a tier-locked feature and route to billing.
 function showTierUpsell(feature){
   const msg=feature==='ai'
-    ?'The AI Compliance Assistant is available on Multi-Facility and Agency plans. Upgrade to unlock it.'
+    ?'Tello, the AI compliance assistant, is available on Multi-Facility and Agency plans. Upgrade to unlock it.'
     :`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
   const banner=document.getElementById('tier-upsell-banner');
   const m=document.getElementById('tier-upsell-msg');
@@ -2638,7 +2727,7 @@ async function loadMARBriefing(){
   if(!tips.length){el.style.display='none';return;}
   el.style.display='block';
   el.innerHTML=`<div style="background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:var(--radius);padding:12px 16px;color:#fff">
-    <div style="font-size:11px;font-weight:600;opacity:.8;margin-bottom:8px">✨ AI MAR BRIEFING — TODAY</div>
+    <div style="font-size:11px;font-weight:600;opacity:.8;margin-bottom:8px">✨ TELLO — MAR BRIEFING, TODAY</div>
     ${tips.map(t=>`<div style="font-size:13px;margin-bottom:4px">${t}</div>`).join('')}
   </div>`;
 }
@@ -2775,7 +2864,7 @@ async function loadDashboardAIBriefing(force){
     const context=await buildFacilityContext();
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
-      system:`You are an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
+      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
@@ -2784,7 +2873,7 @@ async function loadDashboardAIBriefing(force){
     el.innerHTML=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
     dashBriefingLoaded=true;
   }catch(e){
-    el.innerHTML='<div style="font-size:13px;color:var(--text2)">AI briefing unavailable. Check your AI Worker deployment.</div>';
+    el.innerHTML='<div style="font-size:13px;color:var(--text2)">Tello&#39;s briefing is unavailable. Check your AI Worker deployment.</div>';
   }
 }
 
@@ -2914,7 +3003,7 @@ async function sendAIQuery(btn){
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
-      system:`You are an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,
+      system:`You are Tello, an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
@@ -2923,7 +3012,7 @@ async function sendAIQuery(btn){
     thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
-  }catch(e){thinking.textContent='AI assistant unavailable. Check Worker deployment.';}
+  }catch(e){thinking.textContent='Tello is unavailable right now. Check the AI Worker deployment.';}
 }
 
 function addAIMessage(text,role){
@@ -4468,9 +4557,14 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     return;
   }
   if(event==='SIGNED_IN'&&session&&!currentUser&&!window.location.hash.includes('type=recovery')){
+    // Stand the boot fallback down and paint. Without this the page stayed
+    // hidden behind the fallback's timer for its full delay after an already
+    // successful Google sign-in or email confirmation.
+    if(window.__recoveryFallback){clearTimeout(window.__recoveryFallback);window.__recoveryFallback=null;}
     currentUser=session.user;
     await ensureProfile(currentUser);
     await loadApp();
+    document.body.style.visibility='visible';
     track('login_success',{method:'oauth'});
   }
 });
@@ -4481,9 +4575,18 @@ function showResetLinkProblem(message){
   showPage('reset');
   document.getElementById('reset-request').style.display='block';
   document.getElementById('reset-newpass').style.display='none';
-  const err=document.getElementById('reset-error');
-  err.textContent=message||'That reset link expired or was already used. Enter your email and we\'ll send a fresh one.';
-  err.classList.add('show');
+  authMsg('reset-error',message||'That reset link expired or was already used. Enter your email and we\'ll send a fresh one.');
+}
+
+// A confirmation / magic link that didn't verify. Different dead end from a
+// reset link: the way out is a fresh confirmation mail, not a password reset.
+function showConfirmLinkProblem(message){
+  history.replaceState(null,'',window.location.pathname);
+  document.body.style.visibility='visible';
+  document.getElementById('nav-public').style.display='flex';
+  showPage('login');
+  authMsg('login-error',message?'Could not confirm this link: '+message:'That confirmation link expired or was already used. Enter your email below and send a fresh one, or log in if you are already confirmed.');
+  showResend('login',true);
 }
 
 function showSetNewPassword(){
@@ -4502,40 +4605,52 @@ function showSetNewPassword(){
     return;
   }
   const qs=new URLSearchParams(window.location.search);
-  // Token-hash recovery link (?token_hash=...&type=recovery). Unlike PKCE
-  // ?code= links this verifies server-side with no dependency on this
-  // browser's localStorage, so it works from email-app webviews and any
-  // device. Requires the Supabase recovery email template to link
-  // {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=recovery.
-  if(qs.get('token_hash')&&qs.get('type')==='recovery'){
+  // Token-hash links (?token_hash=...&type=...). Unlike ?code= links these
+  // verify server-side with no dependency on this browser's localStorage, so
+  // they work from email-app webviews and from a different device than the one
+  // that asked. This is the preferred shape for every auth mail — see
+  // SELF_HOST.md for the templates:
+  //   {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=recovery   (reset)
+  //   {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=signup     (confirm)
+  // 'signup', 'invite', 'magiclink' and 'email' all just sign the user in;
+  // only 'recovery' routes to the set-a-new-password form.
+  const th=qs.get('token_hash'), thType=qs.get('type');
+  if(th&&['recovery','signup','invite','magiclink','email','email_change'].includes(thType)){
     try{
-      const{data,error}=await sb.auth.verifyOtp({type:'recovery',token_hash:qs.get('token_hash')});
+      const{data,error}=await sb.auth.verifyOtp({type:thType,token_hash:th});
       history.replaceState(null,'',window.location.pathname);
-      if(error||!data?.session){showResetLinkProblem(error?.message?'Could not verify this reset link: '+error.message+' Request a fresh one below.':undefined);return;}
-      showSetNewPassword();
-    }catch(e){showResetLinkProblem();}
+      if(error||!data?.session){
+        if(thType==='recovery'){showResetLinkProblem(error?.message?'Could not verify this reset link: '+error.message+' Request a fresh one below.':undefined);}
+        else{showConfirmLinkProblem(error?.message);}
+        return;
+      }
+      if(thType==='recovery'){showSetNewPassword();return;}
+      // verifyOtp already emitted SIGNED_IN and that handler signs us in;
+      // only cover the case where it didn't run (currentUser still unset).
+      if(!currentUser){currentUser=data.session.user;await ensureProfile(currentUser);await loadApp();}
+      document.body.style.visibility='visible';
+    }catch(e){thType==='recovery'?showResetLinkProblem():showConfirmLinkProblem();}
     return;
   }
-  // PKCE recovery link (?code=...). supabase-js exchanges the code
-  // automatically on init, and success is routed by onAuthStateChange
-  // (PASSWORD_RECOVERY / SIGNED_IN). But the exchange needs the code_verifier
-  // stored by the browser that requested the reset — from a different browser
-  // (e.g. the Gmail app's in-app webview) it fails silently. Detect that and
-  // say so instead of leaving a dead page.
+  // ?code= link. supabase-js only auto-exchanges these when it finds a
+  // code_verifier it stored itself, which this client (flowType 'implicit')
+  // never writes — so the old 2.5s "wait and see if a session appeared"
+  // fallback could not succeed and always ended on an error that blamed the
+  // user's browser. Exchange the code explicitly instead and report what
+  // actually came back. redirectType tells recovery apart from a plain
+  // sign-in, so a Google callback no longer gets password-reset copy.
   if(qs.get('code')){
-    window.__recoveryFallback=setTimeout(async()=>{
-      window.__recoveryFallback=null;
-      try{
-        const{data:{session}}=await sb.auth.getSession();
-        if(session&&session.user){
-          if(!currentUser){currentUser=session.user;await ensureProfile(currentUser);await loadApp();}
-          document.body.style.visibility='visible';
-        }else{
-          showResetLinkProblem('This link couldn\'t be opened here. Password reset links only work in the browser where you requested them — open the link in that browser, or enter your email below for a fresh link.');
-        }
-      }catch(e){showResetLinkProblem();}
-    },2500);
-    setTimeout(()=>{document.body.style.visibility='visible';},2600);
+    try{
+      const{data,error}=await sb.auth.exchangeCodeForSession(qs.get('code'));
+      history.replaceState(null,'',window.location.pathname);
+      if(error||!data?.session){
+        showResetLinkProblem(error?.message?'That link could not be opened: '+error.message+' Request a fresh one below, or log in.':'That link expired or was already used. Enter your email below for a fresh one, or log in.');
+        return;
+      }
+      if(data.redirectType==='recovery'){showSetNewPassword();return;}
+      if(!currentUser){currentUser=data.session.user;await ensureProfile(currentUser);await loadApp();}
+      document.body.style.visibility='visible';
+    }catch(e){showResetLinkProblem();}
     return;
   }
   // Password reset link clicked — back off and let onAuthStateChange
@@ -4788,7 +4903,7 @@ function showSetNewPassword(){
   <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
     <div id="inc-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
-      <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ AI — DSS REQUIREMENTS</div>
+      <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — DSS REQUIREMENTS</div>
       <div id="inc-ai-tip-text"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
