@@ -2758,6 +2758,7 @@ async function seedDemoData(){
 
 // ===== MAR =====
 let marMedCache={};
+let marEmbedNote='';   // set when the joined read failed and names were resolved separately
 
 async function loadMAR(){
   if(!currentFacility)return;
@@ -2780,24 +2781,55 @@ async function loadMAR(){
     .order('administered_at',{ascending:false})
     .limit(100);
   if(resFilter)query=query.eq('resident_id',resFilter);
-  const{data,error}=await query;
-  if(error){document.getElementById('mar-entries-list').innerHTML=`<div class="empty">Error loading MAR: ${error.message}</div>`;return;}
+  let{data,error}=await query;
+  // The embedded select above is the only two-table embed in the app, and it is
+  // the entire view: if PostgREST cannot resolve either relationship, every
+  // dose renders as one error line and a caregiver halfway through a
+  // medication pass has nothing to work from. Retry without the embeds and
+  // fill the names in from plain reads instead. Only a failure to read the
+  // entries themselves is worth stopping for.
+  let resById=null,medById=null;
+  if(error){
+    let plain=sb.from('mar_entries').select('*')
+      .eq('facility_id',currentFacility.id)
+      .order('administered_at',{ascending:false})
+      .limit(100);
+    if(resFilter)plain=plain.eq('resident_id',resFilter);
+    const retry=await plain;
+    if(retry.error){
+      document.getElementById('mar-entries-list').innerHTML=`<div class="empty">Error loading MAR: ${esc(retry.error.message||error.message||'unknown error')}</div>`;
+      return;
+    }
+    data=retry.data;
+    // Names come from their own tables rather than medicationsByResident,
+    // which is only populated once the Medications tab has been opened.
+    const[rs,ms]=await Promise.all([
+      sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id),
+      sb.from('medications').select('id,medication_name,dosage').eq('facility_id',currentFacility.id),
+    ]);
+    resById={};(rs.data||[]).forEach(r=>{resById[r.id]=r;});
+    medById={};(ms.data||[]).forEach(m=>{medById[m.id]=m;});
+    marEmbedNote=error.message||'';
+  }else{marEmbedNote='';}
   const entries=data||[];
   const list=document.getElementById('mar-entries-list');if(!list)return;
-  if(!entries.length){list.innerHTML='<div class="empty" style="margin-top:24px">No MAR entries yet. Tap + Log Medication to begin.</div>';return;}
+  const note=marEmbedNote?`<div class="empty" style="text-align:left;background:var(--amber-light,#FDF3E3);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px">⚠️ Resident and medication names were looked up separately — the database could not join them (${esc(marEmbedNote)}). The doses below are complete; the names are worth spot-checking.</div>`:'';
+  if(!entries.length){list.innerHTML=note+'<div class="empty" style="margin-top:24px">No MAR entries yet. Tap + Log Medication to begin.</div>';return;}
   const grouped={};
   entries.forEach(e=>{
     const date=e.administered_at?new Date(e.administered_at).toISOString().split('T')[0]:'Unknown';
     if(!grouped[date])grouped[date]=[];
     grouped[date].push(e);
   });
-  list.innerHTML=Object.entries(grouped).map(([date,dayEntries])=>`
+  list.innerHTML=note+Object.entries(grouped).map(([date,dayEntries])=>`
     <div class="card" style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">${new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
       ${dayEntries.map(e=>{
-        const resName=e.residents?.name||e.residents?.full_name||'Unknown';
-        const medName=e.medications?.medication_name||'Unknown medication';
-        const dosage=e.medications?.dosage||'';
+        const rf=resById?resById[e.resident_id]:null;
+        const mf=medById?medById[e.medication_id]:null;
+        const resName=e.residents?.name||e.residents?.full_name||rf?.name||rf?.full_name||'Unknown';
+        const medName=e.medications?.medication_name||mf?.medication_name||'Unknown medication';
+        const dosage=e.medications?.dosage||mf?.dosage||'';
         const time=e.administered_at?new Date(e.administered_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
         const statusColor=e.status==='given'?'var(--green)':e.status==='refused'?'var(--amber)':'var(--red)';
         const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'⚠ Refused':e.status==='held'?'⏸ Held':'✗ Missed';
