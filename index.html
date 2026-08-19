@@ -1576,7 +1576,7 @@ async function initFacility(){
   complianceTasks=tasks||[];
   residents=[];
   staffList=[];
-  incidents=[];window.incidents=[];
+  incidents=[];
   marMedCache={};
   dashBriefingLoaded=false;
   showPage('app');
@@ -2424,6 +2424,7 @@ let medicationsByResident={};
 async function loadMedications(){
   if(!currentFacility)return;
   const{data}=await sb.from('medications').select('*').eq('facility_id',currentFacility.id).order('created_at');
+  marMedCache={};
   const meds=data||[];
   medicationsByResident={};
   meds.forEach(m=>{if(!medicationsByResident[m.resident_id])medicationsByResident[m.resident_id]=[];medicationsByResident[m.resident_id].push(m);});
@@ -2506,7 +2507,10 @@ async function deleteMedication(){
 
 // ===== INCIDENTS =====
 let incidents=[];
-window.incidents=incidents;
+// Same divergence residents and staffList had: deleteCurrentIncident
+// reassigns incidents and left window.incidents, which the dashboard count
+// reads, still holding the deleted report.
+Object.defineProperty(window,'incidents',{get:()=>incidents,configurable:true});
 let currentIncidentResidentId=null;
 
 async function loadIncidents(){
@@ -2515,7 +2519,7 @@ async function loadIncidents(){
     .select('*, residents(name, full_name)')
     .eq('facility_id',currentFacility.id)
     .order('occurred_at',{ascending:false});
-  incidents=data||[];window.incidents=incidents;renderIncidents();
+  incidents=data||[];renderIncidents();
 }
 
 function renderIncidents(){
@@ -2693,28 +2697,54 @@ async function seedDemoData(){
   // One sample per account is still the rule: a second click switches to the
   // one already there rather than seeding a duplicate.
   const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
+  // The facility row is written before any of its contents, so a run that
+  // failed part-way leaves the row behind with nothing in it. That row then
+  // matched here on every later attempt, and the button switched to an empty
+  // sample facility instead of retrying — the seed could never recover by
+  // itself. Completeness is judged on the MAR history, the last bulk insert,
+  // rather than on the row existing.
+  let reuse=null;
   if(existing){
-    currentFacility=existing;
-    await initFacility();
-    switchTab('dashboard');
-    alert('You already have a sample facility — switching to it now. Your own facilities are untouched.');
-    return;
+    const{data:seeded}=await sb.from('mar_entries').select('id').eq('facility_id',existing.id).limit(1);
+    if(seeded&&seeded.length){
+      currentFacility=existing;
+      await initFacility();
+      switchTab('dashboard');
+      alert('You already have a sample facility — switching to it now. Your own facilities are untouched.');
+      return;
+    }
+    reuse=existing;
   }
-  if(!confirm('This creates a separate sample facility ("Sunrise Demo Home") with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
+  if(!confirm((reuse
+      ?'A previous attempt at the sample facility did not finish. This clears out what it left behind and loads it again'
+      :'This creates a separate sample facility ("Sunrise Demo Home")')
+    +' with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
   const btns=[...document.querySelectorAll('[data-seed-demo]')];
   btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
   seedDemoRunning=true;
   // Named so a failure says which insert stopped it. "Demo data failed:
   // <postgres error>" on its own does not say whether it was the residents,
   // the 300 MAR rows, or the compliance tasks.
-  let stage='creating the sample facility';
+  let stage=reuse?'clearing out the unfinished attempt':'creating the sample facility';
   try{
-    const{data:fac,error:fe}=await sb.from('facilities').insert({
-      user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
-      license_number:'197000000',capacity:10,address:'123 Sample Lane, Fresno, CA 93701',
-      administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
-    }).select().single();
-    if(fe)throw fe;
+    let fac=reuse;
+    if(reuse){
+      // Children first, so a half-finished run cannot leave duplicates behind
+      // when this one re-inserts them. Scoped to the sample facility only.
+      for(const t of ['mar_entries','incidents','medications','staff','residents','compliance_tasks']){
+        const{error:de}=await sb.from(t).delete().eq('facility_id',reuse.id);
+        if(de)throw de;
+      }
+      stage='creating the sample facility';
+    }else{
+      const{data,error:fe}=await sb.from('facilities').insert({
+        user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
+        license_number:'197000000',capacity:10,address:'123 Sample Lane, Fresno, CA 93701',
+        administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
+      }).select().single();
+      if(fe)throw fe;
+      fac=data;
+    }
     stage='adding the 8 residents';
     const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
     const{data:resD,error:re}=await sb.from('residents').insert([
@@ -2778,13 +2808,13 @@ async function seedDemoData(){
     ]);
     stage='building the compliance checklist';
     await seedComplianceTasks(fac.id,dISO(300));
-    allFacilities.push(fac);
+    if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
     alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
   }catch(e){
-    alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nNothing was added to your own facility.');
+    alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
   }
   finally{
     seedDemoRunning=false;
