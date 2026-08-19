@@ -2,7 +2,7 @@
 <html lang="en"> 
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
 <meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
 <link rel="canonical" href="https://title22.app/"/>
@@ -60,7 +60,7 @@
   .logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center}
   .logo-icon svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2}
   .nav-actions{display:flex;gap:12px;align-items:center}
-  #user-menu{max-height:calc(100vh - 90px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #user-menu{max-height:calc(100vh - 90px);max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain}
   .btn{padding:8px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
   .btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
   .btn-outline:hover{border-color:var(--teal);color:var(--teal)}
@@ -176,9 +176,9 @@
   .progress-fill{height:100%;border-radius:3px;background:var(--teal);transition:width .3s}
   .progress-fill.warn{background:var(--amber)}
   .progress-fill.danger{background:var(--red)}
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;overscroll-behavior:contain}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto;overflow-y:auto;max-height:90vh;max-height:90dvh}
   .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
   .modal-header h3{font-size:1rem;font-weight:700}
   .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:0 4px}
@@ -505,7 +505,7 @@
           <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask Tello to check it for DSS gaps.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" style="font-size:13px" onclick="window.open('https://title-22.com/walkthrough/','_blank')">▶ Watch 2-min walkthrough</button>
-            <button class="btn btn-outline" style="font-size:13px" onclick="seedDemoData()">🧪 Load sample facility</button>
+            <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()">🧪 Load sample facility</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')">🤖 Ask Tello</button>
           </div>
         </div>
@@ -717,7 +717,7 @@
         <div class="card" style="margin-top:20px" id="demo-data-card">
           <div class="card-title">Demo data</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
-          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" onclick="seedDemoData()">🧪 Load demo data</button>
+          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()">🧪 Load demo data</button>
         </div>
       </div>
 
@@ -1574,8 +1574,8 @@ async function initFacility(){
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
   complianceTasks=tasks||[];
-  residents=[];window.residents=[];
-  staffList=[];window.staffList=[];
+  residents=[];
+  staffList=[];
   incidents=[];window.incidents=[];
   marMedCache={};
   dashBriefingLoaded=false;
@@ -2030,13 +2030,18 @@ async function saveNote(){
 
 // ===== RESIDENTS =====
 let residents=[];
-window.residents=residents;
+// window.residents was a second binding that had to be kept in step by hand,
+// and deleteCurrentResident already forgot: it reassigned residents and left
+// window.residents holding the deleted person, who then still appeared in the
+// MAR resident dropdown and in the dashboard count — a deleted resident you
+// could still log a dose against. A getter onto the one array cannot drift.
+Object.defineProperty(window,'residents',{get:()=>residents,configurable:true});
 let currentResidentId=null;
 
 async function loadResidents(){
   if(!currentFacility)return;
   const{data}=await sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name');
-  residents=data||[];window.residents=residents;renderResidents();
+  residents=data||[];renderResidents();
 }
 
 function renderResidents(){
@@ -2179,7 +2184,10 @@ async function deleteCurrentResident(){
 
 // ===== STAFF =====
 let staffList=[];
-window.staffList=staffList;
+// Same divergence as residents above: deleteStaff reassigns staffList and left
+// window.staffList, which the dashboard head-count reads, holding the removed
+// person.
+Object.defineProperty(window,'staffList',{get:()=>staffList,configurable:true});
 let currentStaffId=null;
 
 const ROLE_LABELS={
@@ -2195,7 +2203,7 @@ const ROLE_OPTIONS=Object.entries(ROLE_LABELS).map(([value,label])=>({value,labe
 async function loadStaff(){
   if(!currentFacility)return;
   const{data}=await sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name');
-  staffList=data||[];window.staffList=staffList;renderStaff();
+  staffList=data||[];renderStaff();
 }
 
 function staffCertStatus(s){
@@ -2424,7 +2432,12 @@ async function loadMedications(){
 function renderMedications(){
   const list=document.getElementById('medications-list');
   const empty=document.getElementById('medications-empty');
-  if(!residents.length){list.innerHTML='';empty.style.display='block';return;}
+  if(!residents.length){
+    list.innerHTML='';
+    empty.innerHTML=noResidentsYetHTML('Medications are prescribed to a resident, so add one before prescribing.');
+    empty.style.display='block';
+    return;
+  }
   empty.style.display='none';
   list.innerHTML=residents.map(r=>{
     const nameField=r.name||r.full_name||'Unknown';
@@ -2667,7 +2680,14 @@ async function saveFacility(){
 
 // ===== DEMO DATA SEEDING =====
 const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
+// Guards a second press while the first is still inserting. allFacilities is
+// not updated until the very end, so without this the existing-sample check
+// below still reads empty on a re-press and a second sample facility is built
+// alongside the first.
+let seedDemoRunning=false;
+
 async function seedDemoData(){
+  if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
   // One sample per account is still the rule: a second click switches to the
@@ -2681,8 +2701,13 @@ async function seedDemoData(){
     return;
   }
   if(!confirm('This creates a separate sample facility ("Sunrise Demo Home") with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
-  const btn=document.getElementById('seed-demo-btn');
-  if(btn){btn.disabled=true;btn.textContent='Loading demo data…';}
+  const btns=[...document.querySelectorAll('[data-seed-demo]')];
+  btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
+  seedDemoRunning=true;
+  // Named so a failure says which insert stopped it. "Demo data failed:
+  // <postgres error>" on its own does not say whether it was the residents,
+  // the 300 MAR rows, or the compliance tasks.
+  let stage='creating the sample facility';
   try{
     const{data:fac,error:fe}=await sb.from('facilities').insert({
       user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
@@ -2690,6 +2715,7 @@ async function seedDemoData(){
       administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
     }).select().single();
     if(fe)throw fe;
+    stage='adding the 8 residents';
     const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
     const{data:resD,error:re}=await sb.from('residents').insert([
       R('Betty Alvarez','Room 1','1938-04-12',dISO(-400),'Dementia, Hypertension','Penicillin','yes','yes','yes'),
@@ -2702,6 +2728,7 @@ async function seedDemoData(){
       R('Walter Kim','Room 8','1940-05-09',dISO(-30),'Atrial fibrillation','None known','yes','yes','yes'),
     ]).select();
     if(re)throw re;
+    stage='adding the 5 staff';
     const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
     const{error:se}=await sb.from('staff').insert([
       S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),
@@ -2711,6 +2738,7 @@ async function seedDemoData(){
       S('Sofia Ivanova','night_caregiver',dISO(-100),dISO(200),dISO(220),dISO(220)),
     ]);
     if(se)throw se;
+    stage='adding the medications';
     const M=(resIdx,med,dose,dir,doc)=>({facility_id:fac.id,resident_id:resD[resIdx].id,medication_name:med,dosage:dose,directions:dir,prescriber:doc,rx_number:String(1000000+Math.floor(Math.random()*899999)),pharmacy:'CVS Pharmacy',start_date:dISO(-100),refill_date:dISO(12),status:'active'});
     const{data:medD,error:me}=await sb.from('medications').insert([
       M(0,'Donepezil','10mg','1 tablet by mouth at bedtime','Patel'),
@@ -2725,6 +2753,7 @@ async function seedDemoData(){
       M(1,'Acetaminophen','500mg','1-2 tablets by mouth as needed for pain','Warren'),
     ]).select();
     if(me)throw me;
+    stage='writing 30 days of MAR history';
     const marRows=[];
     for(let day=30;day>=1;day--){
       medD.forEach((m,i)=>{
@@ -2741,23 +2770,31 @@ async function seedDemoData(){
     marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:currentUser.id,administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
     const{error:mre}=await sb.from('mar_entries').insert(marRows);
     if(mre)throw mre;
+    stage='adding the incident reports';
     const inc=(resIdx,type,daysAgo,desc,action,dss)=>({facility_id:fac.id,resident_id:resD[resIdx].id,reported_by:currentUser.id,incident_type:type,occurred_at:new Date(Date.now()-daysAgo*86400000).toISOString(),description:desc,injury:false,physician_notified:true,family_notified:true,dss_reportable:dss,corrective_action:action,status:'open'});
     await sb.from('incidents').insert([
       inc(2,'fall',12,'Resident found seated on floor next to bed at 06:40. No injury on assessment.','Fall mat placed; PT evaluation requested; night checks increased.',false),
       inc(5,'behavioral',20,'Resident became agitated during evening activity, raised voice at peer.','Redirected to quiet area; trigger noted; ISP update scheduled.',false),
     ]);
+    stage='building the compliance checklist';
     await seedComplianceTasks(fac.id,dISO(300));
     allFacilities.push(fac);
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
     alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
-  }catch(e){alert('Demo data failed: '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent='🧪 Load demo data';}}
+  }catch(e){
+    alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nNothing was added to your own facility.');
+  }
+  finally{
+    seedDemoRunning=false;
+    btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
+  }
 }
 
 // ===== MAR =====
 let marMedCache={};
+let marEmbedNote='';   // set when the joined read failed and names were resolved separately
 
 async function loadMAR(){
   if(!currentFacility)return;
@@ -2780,24 +2817,62 @@ async function loadMAR(){
     .order('administered_at',{ascending:false})
     .limit(100);
   if(resFilter)query=query.eq('resident_id',resFilter);
-  const{data,error}=await query;
-  if(error){document.getElementById('mar-entries-list').innerHTML=`<div class="empty">Error loading MAR: ${error.message}</div>`;return;}
+  let{data,error}=await query;
+  // The embedded select above is the only two-table embed in the app, and it is
+  // the entire view: if PostgREST cannot resolve either relationship, every
+  // dose renders as one error line and a caregiver halfway through a
+  // medication pass has nothing to work from. Retry without the embeds and
+  // fill the names in from plain reads instead. Only a failure to read the
+  // entries themselves is worth stopping for.
+  let resById=null,medById=null;
+  if(error){
+    let plain=sb.from('mar_entries').select('*')
+      .eq('facility_id',currentFacility.id)
+      .order('administered_at',{ascending:false})
+      .limit(100);
+    if(resFilter)plain=plain.eq('resident_id',resFilter);
+    const retry=await plain;
+    if(retry.error){
+      document.getElementById('mar-entries-list').innerHTML=`<div class="empty">Error loading MAR: ${esc(retry.error.message||error.message||'unknown error')}</div>`;
+      return;
+    }
+    data=retry.data;
+    // Names come from their own tables rather than medicationsByResident,
+    // which is only populated once the Medications tab has been opened.
+    const[rs,ms]=await Promise.all([
+      sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id),
+      sb.from('medications').select('id,medication_name,dosage').eq('facility_id',currentFacility.id),
+    ]);
+    resById={};(rs.data||[]).forEach(r=>{resById[r.id]=r;});
+    medById={};(ms.data||[]).forEach(m=>{medById[m.id]=m;});
+    marEmbedNote=error.message||'';
+  }else{marEmbedNote='';}
   const entries=data||[];
   const list=document.getElementById('mar-entries-list');if(!list)return;
-  if(!entries.length){list.innerHTML='<div class="empty" style="margin-top:24px">No MAR entries yet. Tap + Log Medication to begin.</div>';return;}
+  const note=marEmbedNote?`<div class="empty" style="text-align:left;background:var(--amber-light,#FDF3E3);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px">⚠️ Resident and medication names were looked up separately — the database could not join them (${esc(marEmbedNote)}). The doses below are complete; the names are worth spot-checking.</div>`:'';
+  if(!entries.length){
+    const anyResidents=(window.residents||residents||[]).length;
+    list.innerHTML=note+`<div class="empty" style="margin-top:24px">`+(anyResidents
+      ?'No MAR entries yet. Tap + Log Medication to begin.'
+      :noResidentsYetHTML('A MAR entry records a dose given to a resident, so there is nothing to log yet.'))
+      +`</div>`;
+    return;
+  }
   const grouped={};
   entries.forEach(e=>{
     const date=e.administered_at?new Date(e.administered_at).toISOString().split('T')[0]:'Unknown';
     if(!grouped[date])grouped[date]=[];
     grouped[date].push(e);
   });
-  list.innerHTML=Object.entries(grouped).map(([date,dayEntries])=>`
+  list.innerHTML=note+Object.entries(grouped).map(([date,dayEntries])=>`
     <div class="card" style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">${new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
       ${dayEntries.map(e=>{
-        const resName=e.residents?.name||e.residents?.full_name||'Unknown';
-        const medName=e.medications?.medication_name||'Unknown medication';
-        const dosage=e.medications?.dosage||'';
+        const rf=resById?resById[e.resident_id]:null;
+        const mf=medById?medById[e.medication_id]:null;
+        const resName=e.residents?.name||e.residents?.full_name||rf?.name||rf?.full_name||'Unknown';
+        const medName=e.medications?.medication_name||mf?.medication_name||'Unknown medication';
+        const dosage=e.medications?.dosage||mf?.dosage||'';
         const time=e.administered_at?new Date(e.administered_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
         const statusColor=e.status==='given'?'var(--green)':e.status==='refused'?'var(--amber)':'var(--red)';
         const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'⚠ Refused':e.status==='held'?'⏸ Held':'✗ Missed';
@@ -2838,9 +2913,30 @@ async function loadMARBriefing(){
   </div>`;
 }
 
+// Both the MAR and the Medications tab record against a resident, so with none
+// on file neither can do anything. Saying so is not enough on a phone — the
+// Residents tab is behind the menu — so offer the way there.
+function goAddResident(){
+  switchTab('residents');
+  openResidentModal(null);
+}
+
+function noResidentsYetHTML(what){
+  return `<div style="font-size:2.5rem;margin-bottom:12px">🏠</div>`
+    +`<div style="font-weight:600;margin-bottom:6px">No residents yet</div>`
+    +`<div style="margin-bottom:14px">${what}</div>`
+    +(canEdit()?`<button class="btn btn-primary" style="font-size:13px" onclick="goAddResident()">Add your first resident</button>`:'');
+}
+
 function showMAREntry(){
   const resList=window.residents||residents;
-  if(!resList.length){alert('No residents found. Add a resident first.');return;}
+  // Was a bare alert and nothing else — a dead end reached from an empty state
+  // that told you to press this very button.
+  if(!resList.length){
+    if(canEdit()&&confirm('A MAR entry records a dose given to a resident, and there are no residents on file yet.\n\nAdd one now?'))goAddResident();
+    else if(!canEdit())alert('There are no residents on file yet, so there is nothing to log against.');
+    return;
+  }
   const resSel=document.getElementById('mar-res-select');
   resSel.innerHTML='<option value="">Select Resident</option>';
   resList.forEach(r=>{
@@ -4888,7 +4984,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
-  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
@@ -4933,7 +5029,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
+  <div class="modal" style="max-width:520px"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
   <div class="form-group"><label>Facility type</label><select id="facm-type"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity"/></div></div>
@@ -4946,7 +5042,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
   <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
@@ -4959,7 +5055,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
-  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -5037,7 +5133,7 @@ function showSetNewPassword(){
 <!-- Scan to fill: review gate. Nothing here writes to the database — "Fill form"
      only populates the inputs of the modal underneath, which still needs Save. -->
 <div class="modal-overlay" id="scan-modal" onclick="if(event.target===this)closeScanModal()">
-  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div class="modal" style="max-width:760px">
     <div class="modal-header">
       <h3 id="scan-modal-title">Review scan</h3>
       <button class="modal-close" onclick="closeScanModal()">×</button>
@@ -5068,7 +5164,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div class="modal" style="max-width:520px">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
     <div id="inc-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
       <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — DSS REQUIREMENTS</div>
