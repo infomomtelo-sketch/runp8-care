@@ -1077,7 +1077,7 @@ function switchTab(name){
   const selNav=document.getElementById('nav-'+name);
   if(sel)sel.style.display='block';
   if(selNav)selNav.classList.add('active');
-  if(name==='dashboard'){refreshDashboard();loadDashboardMARStats();maybeShowOnboarding();setTimeout(()=>loadDashboardAIBriefing(false),500);}
+  if(name==='dashboard'){refreshDashboard();loadComplianceDocs().then(refreshDashboard);loadDashboardMARStats();maybeShowOnboarding();setTimeout(()=>loadDashboardAIBriefing(false),500);}
   if(name==='checklist'){renderExpiryBanner();renderChecklist(activeFilter);}
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
@@ -1635,7 +1635,7 @@ async function initFacility(){
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
   }
   refreshDashboard();
-  await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
+  await Promise.all([loadResidents(),loadStaff(),loadIncidents(),loadComplianceDocs()]);
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
@@ -1735,22 +1735,134 @@ async function refreshAccess(manual){
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
-  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);refreshDashboard();}
+  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents(),loadComplianceDocs()]);refreshDashboard();}
   const bt=document.getElementById('tab-billing');
   if(bt&&bt.style.display!=='none')loadBilling();
 }
 
 // ===== DASHBOARD =====
+// Compliance read from the records, document first.
+//
+// The dashboard used to read complianceTasks and nothing else — a checklist
+// somebody ticks by hand. It never looked at staff or residents, so a facility
+// whose every certification date was blank reported "No urgent alerts". A blank
+// date was not even a gap: getDaysUntil(null) returns null and every expiry
+// check skipped it silently.
+//
+// The order CLAUDE.md sets out is followed here: read the newest filed
+// document, fall back to the typed value, and mark the difference. So a
+// certificate that is on file decides the answer; a typed value with nothing
+// behind it still counts — nobody's score collapses because they have not
+// uploaded yet — but it is marked unverified and says an inspector will ask to
+// see it. An expired document, or an expired typed date, does not count.
+const COMPLIANCE_REQUIREMENTS={
+  staff:[
+    {docType:'tb_test',           label:'TB test',                    dates:['tb_test_due','tb_test_expiry']},
+    {docType:'cpr_card',          label:'CPR certification',          dates:['cpr_cert_expiry']},
+    {docType:'first_aid',         label:'First aid certification',    dates:['first_aid_cert_expiry']},
+    {docType:'livescan',          label:'LiveScan clearance',         truthy:['livescan_cleared']},
+    {docType:'mandated_reporter', label:'Mandated reporter training', truthy:['mandated_reporter_completed']},
+    {docType:'training_cert',     label:'16-hour initial training',   truthy:['initial_training_complete','initial_training_completed']},
+  ],
+  resident:[
+    {docType:'lic601', label:'LIC 601', yes:['lic601']},
+    {docType:'lic602', label:'LIC 602', yes:['lic602']},
+    {docType:'isp',    label:'ISP',     yes:['isp'], dates:['isp_review_date']},
+  ],
+};
+
+// Newest filed document per record and requirement.
+let complianceDocs={staff:{},resident:{}};
+
+async function loadComplianceDocs(){
+  complianceDocs={staff:{},resident:{}};
+  if(!currentFacility)return;
+  const{data,error}=await sb.from('documents')
+    .select('id,staff_id,resident_id,doc_type,issued_at,expires_at,uploaded_at')
+    .eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  // No documents table, or columns from a migration that has not been run:
+  // leave the index empty and every requirement falls back to its typed value,
+  // which is exactly the behaviour before any of this existed.
+  if(error||!data)return;
+  data.forEach(d=>{
+    const kind=d.staff_id?'staff':(d.resident_id?'resident':null);
+    const id=d.staff_id||d.resident_id;
+    if(!kind||!id||!d.doc_type)return;
+    const byRecord=complianceDocs[kind][id]||(complianceDocs[kind][id]={});
+    if(!byRecord[d.doc_type])byRecord[d.doc_type]=d;   // ordered newest first
+  });
+}
+
+function evaluateCompliance(){
+  const out={items:[],met:0,total:0,verified:0,claimedOnly:0};
+  const consider=(kind,rec,who)=>{
+    (COMPLIANCE_REQUIREMENTS[kind]||[]).forEach(req=>{
+      const doc=((complianceDocs[kind]||{})[rec.id]||{})[req.docType]||null;
+      const typedDate=(req.dates||[]).map(f=>rec[f]).find(Boolean)||null;
+      const claimed=(req.truthy||req.yes)
+        ?((req.truthy||[]).some(f=>rec[f]===true)||(req.yes||[]).some(f=>String(rec[f]||'').toLowerCase()==='yes'))
+        :!!typedDate;
+      // Document first, typed value as the fallback.
+      const expiry=(doc&&doc.expires_at)||typedDate||null;
+      const days=expiry?getDaysUntil(expiry):null;
+      let level=null;
+      if(days!==null&&days<0)level='expired';
+      else if(!doc&&!claimed)level='missing';
+      else if(!doc&&claimed)level='unverified';
+      else if(days!==null&&days<=30)level='soon';
+      const met=level!=='expired'&&level!=='missing';
+      out.total++;
+      if(met)out.met++;
+      if(doc)out.verified++;
+      if(level==='unverified')out.claimedOnly++;
+      if(level){
+        const n=days===null?null:Math.abs(days),unit=n===1?'day':'days';
+        const what=level==='expired'
+            ?req.label+' expired '+n+' '+unit+' ago'+(doc?' (per the filed document)':'')
+          :level==='missing'
+            ?req.label+' is not on file and not recorded'
+          :level==='unverified'
+            ?req.label+' is recorded, but no document is attached — an inspector will ask to see it'
+            :req.label+' expires in '+n+' '+unit;
+        out.items.push({level,who,what});
+      }
+    });
+  };
+  (window.staffList||[]).forEach(s=>{
+    if(s&&s.active!==false&&s.status!=='inactive')consider('staff',s,s.full_name||s.name||'A staff member');
+  });
+  (window.residents||[]).forEach(r=>{
+    if(r&&r.status!=='discharged')consider('resident',r,r.name||r.full_name||'A resident');
+  });
+  const rank={expired:0,missing:1,unverified:2,soon:3};
+  out.items.sort((a,b)=>rank[a.level]-rank[b.level]);
+  return out;
+}
+
+function recordGaps(){return evaluateCompliance().items;}
+
 function refreshDashboard(){
-  const total=complianceTasks.length;
-  const done=complianceTasks.filter(t=>t.completed).length;
+  // The score now counts what is in the records as well as what is ticked on
+  // the checklist. It was the checklist alone, which is how a facility with
+  // every certification date blank could read 100%.
+  const comp=evaluateCompliance();
+  const total=complianceTasks.length+comp.total;
+  const done=complianceTasks.filter(t=>t.completed).length+comp.met;
   const today=new Date().toISOString().split('T')[0];
   const nextMonth=new Date();nextMonth.setMonth(nextMonth.getMonth()+1);
-  const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length;
-  const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length;
+  const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length
+    +comp.items.filter(i=>i.level==='expired').length;
+  const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length
+    +comp.items.filter(i=>i.level==='soon').length;
   const score=total>0?Math.round((done/total)*100):0;
   document.getElementById('dash-score').textContent=score+'%';
-  document.getElementById('dash-score-sub').textContent=`${done} of ${total} requirements complete`;
+  // A green number still has to say what is behind it. Requirements met counts
+  // a typed value; how many are backed by a filed document is the separate
+  // question an inspector actually asks, so it is stated rather than implied.
+  document.getElementById('dash-score-sub').textContent=
+    `${done} of ${total} requirements met`
+    +(comp.total?` · ${comp.verified} of ${comp.total} backed by a document`:'')
+    +(comp.claimedOnly?` · ${comp.claimedOnly} recorded but unverified`:'');
   const arc=2*Math.PI*34;
   document.getElementById('score-arc').style.strokeDashoffset=arc*(1-score/100);
   document.getElementById('stat-overdue').textContent=overdue;
@@ -1760,11 +1872,17 @@ function refreshDashboard(){
   document.getElementById('prog-overdue').style.width=total>0?Math.round((overdue/total)*100)+'%':'0%';
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
-  const urgent=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).slice(0,5);
-  document.getElementById('alert-count').textContent=urgent.length;
-  document.getElementById('alert-list').innerHTML=urgent.length===0
+  const overdueTasks=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today);
+  const gaps=comp.items;
+  const dot={expired:'red',missing:'red',unverified:'amber',soon:'amber'};
+  const rows=overdueTasks.map(t=>({dot:'red',title:t.title,sub:'Overdue since '+t.due_date}))
+    .concat(gaps.map(g=>({dot:dot[g.level]||'amber',title:g.who,sub:g.what})));
+  document.getElementById('alert-count').textContent=rows.length;
+  const shown=rows.slice(0,6);
+  document.getElementById('alert-list').innerHTML=rows.length===0
     ?'<div class="empty">No urgent alerts</div>'
-    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`).join('');
+    :shown.map(r=>`<div class="alert-item"><div class="alert-dot ${r.dot}"></div><div class="alert-text"><strong>${esc(r.title)}</strong><span>${esc(r.sub)}</span></div></div>`).join('')
+      +(rows.length>shown.length?`<div class="empty" style="margin-top:8px;font-size:12px">and ${rows.length-shown.length} more across staff and residents</div>`:'');
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
@@ -3124,18 +3242,41 @@ function aiErrorText(data,status){
 let aiMessages=[];
 let dashBriefingLoaded=false;
 
+// Returns {json} when every read succeeded, or {failed:[...]} naming the ones
+// that did not.
+//
+// Each read used to be taken as `res.data||[]`, with res.error dropped. A
+// residents read refused by RLS therefore reached the model as "residents: []",
+// and Tello wrote a confident briefing about a facility it had been told was
+// empty — a fabricated all-clear on the screen whose job is telling you whether
+// you would survive an inspection. The catch was worse: it returned the error
+// text itself, which was then interpolated in as FACILITY DATA.
+//
+// dob and the incident narrative are no longer sent. A compliance briefing has
+// no use for a date of birth, and "what type of incident, when" is what it
+// reasons about — the free-text description is where resident detail lives.
+// Photos already go to this service only behind two human gates; this call is
+// automatic, so it should carry as little as it can do its job with.
 async function buildFacilityContext(){
   try{
     const[resData,staffData,tasksData,incData,marData]=await Promise.all([
-      sb.from('residents').select('name,full_name,dob,admission_date,isp_review_date,lic601,lic602,isp,status').eq('facility_id',currentFacility.id),
+      sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602,isp,status').eq('facility_id',currentFacility.id),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
-      sb.from('incidents').select('incident_type,occurred_at,description').eq('facility_id',currentFacility.id).limit(10),
+      sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
       sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
     ]);
+    const failed=[];
+    const rows=(res,label)=>{if(res&&res.error){failed.push(label);return[];}return(res&&res.data)||[];};
+    const residents=rows(resData,'residents');
+    const staff=rows(staffData,'staff');
+    const compliance_tasks=rows(tasksData,'the compliance checklist');
+    const recent_incidents=rows(incData,'incidents');
+    const recent_mar=rows(marData,'the MAR');
+    if(failed.length)return{failed};
     const today=new Date().toISOString().split('T')[0];
-    return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
-  }catch(e){return'Error loading facility data: '+e.message;}
+    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar},null,2)};
+  }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
 
 // The briefing is generated automatically — nobody asks for it — and it costs
@@ -3172,7 +3313,15 @@ async function loadDashboardAIBriefing(force){
   }
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
-    const context=await buildFacilityContext();
+    const ctx=await buildFacilityContext();
+    if(ctx.failed){
+      // No AI call and nothing cached. A briefing written without these would
+      // read as an all-clear, and caching that would hide it for the day.
+      el.innerHTML=`<div style="font-size:13px;color:var(--text2)">Tello did not write a briefing today — ${esc(ctx.failed.join(', '))} could not be read, and a briefing without them would look like an all-clear. `
+        +`<button onclick="loadDashboardAIBriefing(true)" style="font-size:12px;background:var(--teal-light);color:var(--teal);border:none;border-radius:20px;padding:3px 10px;cursor:pointer;font-weight:600">Try again</button></div>`;
+      return;
+    }
+    const context=ctx.json;
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
       system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
@@ -3234,7 +3383,7 @@ async function maybeShowOnboarding(){
 }
 
 async function demoFindings(){
-  let ctx; try{ ctx=JSON.parse(await buildFacilityContext()); }catch(e){ ctx={}; }
+  let ctx; try{ const built=await buildFacilityContext(); ctx=built.json?JSON.parse(built.json):{}; }catch(e){ ctx={}; }
   const today=ctx.today||new Date().toISOString().split('T')[0];
   const t0=new Date(today);
   const past=d=>d?new Date(d)<t0:false;
@@ -3313,7 +3462,16 @@ async function sendAIQuery(btn){
   if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
   aiMessages.push({role:'user',content:query});
   const thinking=addAIMessage('Checking your facility data...','assistant');
-  const facilityContext=await buildFacilityContext();
+  const ctx=await buildFacilityContext();
+  if(ctx.failed){
+    // Same reason the briefing refuses: answering a compliance question from
+    // data that could not be read produces a confident wrong answer, and here
+    // the caregiver asked directly.
+    thinking.textContent='I could not read '+ctx.failed.join(', ')+', so I am not going to answer from what is left — it would look like an all-clear. Try again in a moment.';
+    aiMessages.pop();
+    return;
+  }
+  const facilityContext=ctx.json;
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
