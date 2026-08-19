@@ -4,7 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Title22 — Training Center</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Vendored, like index.html. Was cdn.jsdelivr.net/@supabase/supabase-js@2:
+     a third-party script this page could not load without, on an unpinned major
+     range, so the library could change under it with no deploy. -->
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
