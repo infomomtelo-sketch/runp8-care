@@ -1741,6 +1741,50 @@ async function refreshAccess(manual){
 }
 
 // ===== DASHBOARD =====
+// Gaps visible in the staff and resident records themselves.
+//
+// The dashboard read complianceTasks and nothing else — a checklist somebody
+// ticks by hand. It never looked at the records, so a facility whose every
+// certification date was blank still reported "No urgent alerts", which is the
+// opposite of what this product exists to tell you. A blank date is not a pass:
+// getDaysUntil(null) returns null and every expiry check quietly skipped it.
+//
+// These are still self-reported values — a Yes with no document behind it is
+// counted as a Yes here, exactly as the document slots already warn. This
+// closes the gap between the records and the dashboard, not the one between a
+// typed Yes and a filed document.
+function recordGaps(){
+  const gaps=[];
+  const dated=(who,label,value)=>{
+    if(!value){gaps.push({level:'missing',who,what:label+' has no date on file'});return;}
+    const d=getDaysUntil(value);
+    if(d===null)return;
+    const n=Math.abs(d),unit=n===1?'day':'days';
+    if(d<0)gaps.push({level:'expired',who,what:label+' expired '+n+' '+unit+' ago'});
+    else if(d<=30)gaps.push({level:'soon',who,what:label+' expires in '+n+' '+unit});
+  };
+  (window.staffList||[]).forEach(s=>{
+    if(!s||s.active===false||s.status==='inactive')return;
+    const who=s.full_name||s.name||'A staff member';
+    dated(who,'TB test',s.tb_test_due||s.tb_test_expiry);
+    dated(who,'CPR certification',s.cpr_cert_expiry);
+    dated(who,'First aid certification',s.first_aid_cert_expiry);
+    if(s.livescan_cleared!==true)gaps.push({level:'missing',who,what:'LiveScan is not recorded as cleared'});
+    if(s.mandated_reporter_completed!==true)gaps.push({level:'missing',who,what:'Mandated reporter training is not recorded as complete'});
+    if(!(s.initial_training_complete===true||s.initial_training_completed===true))gaps.push({level:'missing',who,what:'16-hour initial training is not recorded as complete'});
+  });
+  (window.residents||[]).forEach(r=>{
+    if(!r||r.status==='discharged')return;
+    const who=r.name||r.full_name||'A resident';
+    if(r.lic601!=='yes')gaps.push({level:'missing',who,what:'LIC 601 is not recorded as on file'});
+    if(r.lic602!=='yes')gaps.push({level:'missing',who,what:'LIC 602 is not recorded as on file'});
+    if(r.isp!=='yes')gaps.push({level:'missing',who,what:'ISP is not recorded as on file'});
+    else dated(who,'ISP review',r.isp_review_date);
+  });
+  const rank={expired:0,missing:1,soon:2};
+  return gaps.sort((a,b)=>rank[a.level]-rank[b.level]);
+}
+
 function refreshDashboard(){
   const total=complianceTasks.length;
   const done=complianceTasks.filter(t=>t.completed).length;
@@ -1750,7 +1794,13 @@ function refreshDashboard(){
   const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length;
   const score=total>0?Math.round((done/total)*100):0;
   document.getElementById('dash-score').textContent=score+'%';
-  document.getElementById('dash-score-sub').textContent=`${done} of ${total} requirements complete`;
+  // The score counts checklist tasks only. Saying just "N of M complete" beside
+  // a facility with unfilled certification dates reads as an all-clear, so the
+  // count of record gaps is stated next to it rather than left to be inferred.
+  const gapCount=recordGaps().length;
+  document.getElementById('dash-score-sub').textContent=
+    `${done} of ${total} checklist requirements complete`
+    +(gapCount?` · ${gapCount} record gap${gapCount===1?'':'s'} not counted here`:'');
   const arc=2*Math.PI*34;
   document.getElementById('score-arc').style.strokeDashoffset=arc*(1-score/100);
   document.getElementById('stat-overdue').textContent=overdue;
@@ -1760,11 +1810,17 @@ function refreshDashboard(){
   document.getElementById('prog-overdue').style.width=total>0?Math.round((overdue/total)*100)+'%':'0%';
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
-  const urgent=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).slice(0,5);
-  document.getElementById('alert-count').textContent=urgent.length;
-  document.getElementById('alert-list').innerHTML=urgent.length===0
+  const overdueTasks=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today);
+  const gaps=recordGaps();
+  const dot={expired:'red',missing:'amber',soon:'amber'};
+  const rows=overdueTasks.map(t=>({dot:'red',title:t.title,sub:'Overdue since '+t.due_date}))
+    .concat(gaps.map(g=>({dot:dot[g.level]||'amber',title:g.who,sub:g.what})));
+  document.getElementById('alert-count').textContent=rows.length;
+  const shown=rows.slice(0,6);
+  document.getElementById('alert-list').innerHTML=rows.length===0
     ?'<div class="empty">No urgent alerts</div>'
-    :urgent.map(t=>`<div class="alert-item"><div class="alert-dot red"></div><div class="alert-text"><strong>${esc(t.title)}</strong><span>Overdue since ${esc(t.due_date)}</span></div></div>`).join('');
+    :shown.map(r=>`<div class="alert-item"><div class="alert-dot ${r.dot}"></div><div class="alert-text"><strong>${esc(r.title)}</strong><span>${esc(r.sub)}</span></div></div>`).join('')
+      +(rows.length>shown.length?`<div class="empty" style="margin-top:8px;font-size:12px">and ${rows.length-shown.length} more across staff and residents</div>`:'');
   const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
