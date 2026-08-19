@@ -1239,6 +1239,7 @@ async function handleSignup(){
   }
   currentUser=data.user;
   await ensureProfile(currentUser);
+  await resolveTierLimits();
   showPage('onboard');
 }
 
@@ -1342,7 +1343,7 @@ async function handleOnboard(){
   const err=document.getElementById('ob-error');
   err.classList.remove('show');
   if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
-  const ownedCount=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
+  const ownedCount=ownedFacilityCount();
   if(ownedCount>=t22Limits.facilities){err.textContent=`Your ${T22_LABEL[t22Plan]||t22Plan} plan allows ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;err.classList.add('show');return;}
   const adminCertExpiry=document.getElementById('ob-cert-expiry').value||null;
   const{data,error}=await sb.from('facilities').insert({
@@ -1426,7 +1427,7 @@ async function enterDemoMode(){
 const T22_PAID=['starter','pro','specialist','agency'];
 // Display labels only — the underlying plan keys and Stripe price IDs are
 // unchanged (renaming Stripe products would orphan live subscriptions).
-const T22_LABEL={trial:'Free Trial',starter:'Starter',pro:'Facility',specialist:'Multi-Facility',agency:'Agency'};
+const T22_LABEL={trial:'Free Trial',edu:'Classroom',starter:'Starter',pro:'Facility',specialist:'Multi-Facility',agency:'Agency'};
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:5,        ai:true},
@@ -1436,6 +1437,21 @@ const TIER_LIMITS={
   specialist: {facilities:5,        ai:true},
   agency:     {facilities:Infinity, ai:true}
 };
+// The sample facility is the product's own walkthrough, not one of the
+// facilities a plan pays for. Both the empty-state card and the trainer
+// classroom instructions send people to it as the first thing they do, so
+// counting it against the tier cap made "Load sample facility" open the
+// billing page instead — on every 1-facility plan, which is edu and starter.
+// edu is the plan the classroom flow tells trainers to sign up for, so the
+// documented path upsold the people it was written for.
+const SAMPLE_FACILITY_NAME='Sunrise Demo Home (Sample)';
+function isSampleFacility(f){return !!f&&f.name===SAMPLE_FACILITY_NAME;}
+
+// Facilities that count against the tier cap: owned, and not the sample.
+function ownedFacilityCount(){
+  return (allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id&&!isSampleFacility(f)).length;
+}
+
 let t22Entitled=false;                    // fail closed: locked until verified this session
 let t22Plan='trial';
 let t22Limits={facilities:0,ai:false};    // fail closed
@@ -1483,6 +1499,28 @@ if(T22_PAID.includes(plan)){
   }
 }
 
+// Resolve the plan and the limits that come with it. Lifted out of
+// initFacility because a brand-new account has no facility to init: loadApp()
+// returns at its zero-facility early exit and handleSignup() goes straight to
+// onboarding, so neither ever reached the block that sets t22Limits. It stayed
+// at its fail-closed {facilities:0} default, and handleOnboard's
+// ownedCount >= t22Limits.facilities compared 0 >= 0 and refused — telling
+// someone who had just signed up that their Free Trial plan allows 0
+// facilities and they should upgrade. That was every new account, on the
+// first facility, in the first minute.
+async function resolveTierLimits(){
+  // Sandbox is entitled by construction: role is readonly and anon RLS
+  // blocks writes, so this grants view access only.
+  const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
+  t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+  // ent.ok was already computed and then thrown away. It is the difference
+  // between "your trial ran out" and "we could not check", and those need
+  // very different words in front of a customer.
+  t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
+  t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
+  return ent;
+}
+
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
@@ -1492,7 +1530,7 @@ async function loadApp(){
   const facilityMap={};
   [...(ownedFacilities||[]),...memberFacs].forEach(f=>{if(f&&f.id)facilityMap[f.id]=f;});
   allFacilities=Object.values(facilityMap);
-  if(!allFacilities.length){showPage('onboard');return;}
+  if(!allFacilities.length){await resolveTierLimits();showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
   await checkInviteToken();
@@ -1527,17 +1565,7 @@ async function initFacility(){
       currentUserRole=m?.role||'readonly';
     }
   }catch(e){currentUserRole='readonly';t22RoleLookupFailed=true;}
-  {
-    // Sandbox is entitled by construction: role is readonly and anon RLS
-    // blocks writes, so this grants view access only.
-    const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
-    t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
-    // ent.ok was already computed and then thrown away. It is the difference
-    // between "your trial ran out" and "we could not check", and those need
-    // very different words in front of a customer.
-    t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
-    t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
-  }
+  await resolveTierLimits();
   applyRoleUI();
   applyTierUI();
   const roleBanner=document.getElementById('role-unknown-banner');
@@ -1654,8 +1682,7 @@ function showTierUpsell(feature){
 
 // Guard the "Add new facility" action against the tier's facility cap.
 function addFacilityGuard(){
-  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
-  if(owned>=t22Limits.facilities){showTierUpsell('facilities');return;}
+  if(ownedFacilityCount()>=t22Limits.facilities){showTierUpsell('facilities');return;}
   showPage('onboard');
 }
 
@@ -2642,14 +2669,23 @@ async function saveFacility(){
 const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 async function seedDemoData(){
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
-  const owned=(allFacilities||[]).filter(f=>f&&f.user_id===currentUser?.id).length;
-  if(owned>=t22Limits.facilities){showTierUpsell('facilities');return;}
+  // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
+  // One sample per account is still the rule: a second click switches to the
+  // one already there rather than seeding a duplicate.
+  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
+  if(existing){
+    currentFacility=existing;
+    await initFacility();
+    switchTab('dashboard');
+    alert('You already have a sample facility — switching to it now. Your own facilities are untouched.');
+    return;
+  }
   if(!confirm('This creates a separate sample facility ("Sunrise Demo Home") with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
   const btn=document.getElementById('seed-demo-btn');
   if(btn){btn.disabled=true;btn.textContent='Loading demo data…';}
   try{
     const{data:fac,error:fe}=await sb.from('facilities').insert({
-      user_id:currentUser.id,name:'Sunrise Demo Home (Sample)',facility_type:'rcfe',
+      user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
       license_number:'197000000',capacity:10,address:'123 Sample Lane, Fresno, CA 93701',
       administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
     }).select().single();
