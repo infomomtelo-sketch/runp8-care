@@ -690,6 +690,7 @@
               <option value="dementia">Dementia care (8 hr minimum)</option>
               <option value="special_care">Special care — postural, restricted, hospice (4 hr minimum)</option>
               <option value="general">General — medication, resident rights, fire safety (8 hr minimum)</option>
+              <option value="hands_on">Hands-on at the facility — counts toward the 16 hr initial, not the annual 20</option>
             </select>
             <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">The 20 annual hours have minimums inside them. Hours left unspecified still count toward the 20, but cannot satisfy a minimum.</div>
           </div>
@@ -707,6 +708,16 @@
         <div class="card" style="margin-top:16px">
           <div class="card-title">Annual hours — 20 hr in-service, with minimums inside it</div>
           <div id="training-summary" style="display:grid;gap:8px;font-size:13px"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Initial hands-on training — 16 hr, delivered by you</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">A new caregiver's 40 initial hours split 24 / 16: 24 hours of instruction from an approved vendor, and these 16 hours of supervised practice at the facility. No vendor provides them — you are the required trainer. Log each session above with <strong>Hands-on at the facility</strong> selected.</div>
+          <div id="handson-summary" style="display:grid;gap:10px;font-size:13px"></div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Suggested topics to cover</div>
+            <div id="handson-topics" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5">A starting point, not a regulated list. §87412 requires the hours and verification of hands-on skills competency in the personnel record; what a shift needs to cover is yours to define.</div>
+          </div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Training history</div>
@@ -4346,14 +4357,39 @@ const ANNUAL_CE={
   ],
 };
 
+// Initial training for a new direct care staff member is 40 hours, and it
+// splits by who delivers it: 24 hours of instruction from an approved vendor,
+// and 16 hours hands-on at the facility. The facility is the required trainer
+// for the second half — no vendor sells it, and it cannot be a video, because
+// it is supervised practice with a resident present. That is the only training
+// this app should ever host itself, and it is what these hours record.
+const INITIAL_TRAINING={vendorHours:24,handsOnHours:16,total:40};
+
+// A starting checklist, not a regulated list. Title 22 requires the hours and
+// verification of hands-on skills competency in the personnel record (§87412);
+// what a shift actually needs to cover is the facility's to define. Adapt it.
+const HANDS_ON_TOPICS=[
+  'Transfers and mobility assistance',
+  'Personal care and activities of daily living',
+  'Assisting with self-administration of medication, observed',
+  'Emergency procedures and evacuation',
+  'Infection control in practice',
+  'Communicating with residents, including dementia',
+  'Documentation — MAR, daily log, incident reports',
+];
+
 // Hours logged per category for one staff member in the given year, plus the
 // ones filed before categories existed — those count toward the 20 but cannot
 // count toward a minimum, and the summary says so rather than guessing.
+//
+// Hands-on hours are excluded on purpose: they are initial training, counted
+// once at hire, not part of the recurring 20.
 function annualCE(staffId,year){
   const out={total:0,uncategorised:0};
   ANNUAL_CE.categories.forEach(c=>{out[c.key]=0;});
   (trainings||[]).forEach(t=>{
     if(!t||t.staff_id!==staffId)return;
+    if(t.category==='hands_on')return;
     if(!t.training_date||new Date(t.training_date).getFullYear()!==year)return;
     const h=parseFloat(t.hours)||0;
     out.total+=h;
@@ -4361,6 +4397,18 @@ function annualCE(staffId,year){
     else out.uncategorised+=h;
   });
   return out;
+}
+
+// Hands-on hours are counted across all time rather than per year — this is a
+// one-off at hire, not an annual clock.
+function handsOnHours(staffId){
+  let hours=0;const topics=[];
+  (trainings||[]).forEach(t=>{
+    if(!t||t.staff_id!==staffId||t.category!=='hands_on')return;
+    hours+=parseFloat(t.hours)||0;
+    if(t.topic)topics.push(t.topic);
+  });
+  return{hours,topics};
 }
 let trainings=[];let trainingStaff=[];
 // In-service certificates, keyed by the training entry they prove. A logged
@@ -4516,6 +4564,38 @@ async function saveTraining(){
   }
 }
 
+// Per staff member: hands-on hours logged against the 16, and which of the
+// suggested topics have been covered at least once. Topic matching is a plain
+// case-insensitive comparison of what was typed — a topic ticks only when it
+// was actually logged under that name, never inferred.
+function renderHandsOn(){
+  const el=document.getElementById('handson-summary');
+  const topicsEl=document.getElementById('handson-topics');
+  if(topicsEl){
+    const coveredAll=new Set();
+    (trainings||[]).forEach(t=>{if(t&&t.category==='hands_on'&&t.topic)coveredAll.add(String(t.topic).trim().toLowerCase());});
+    topicsEl.innerHTML=HANDS_ON_TOPICS.map(topic=>{
+      const done=coveredAll.has(topic.toLowerCase());
+      return `<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:${done?'var(--green-light)':'var(--gray-light)'};color:${done?'var(--green)':'var(--text2)'}">${done?'✓ ':''}${esc(topic)}</span>`;
+    }).join('');
+  }
+  if(!el)return;
+  if(!trainingStaff.length){el.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';return;}
+  const withHours=trainingStaff.map(s=>({s,ho:handsOnHours(s.id)})).filter(x=>x.ho.hours>0);
+  if(!withHours.length){
+    el.innerHTML='<div style="color:var(--text2)">No hands-on hours logged yet. These are the 16 hours you deliver on shift — they are separate from the annual 20 above.</div>';
+    return;
+  }
+  el.innerHTML=withHours.map(({s,ho})=>{
+    const target=INITIAL_TRAINING.handsOnHours;
+    const pct=Math.min(100,Math.round(ho.hours/target*100));
+    const done=ho.hours>=target;
+    const color=done?'var(--green)':(ho.hours>=target/2?'var(--amber)':'var(--red)');
+    return `<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:500">${esc(s.name||s.full_name||'Staff')}</span><span style="color:${color};font-weight:600">${ho.hours} / ${target} hrs${done?' ✓':''}</span></div>
+    <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div></div>`;
+  }).join('');
+}
+
 function renderTrainings(){
   const summary=document.getElementById('training-summary');
   const list=document.getElementById('training-list');
@@ -4542,6 +4622,7 @@ function renderTrainings(){
       }).join('');
     }
   }
+  renderHandsOn();
   if(!trainings.length){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   const edit=canEdit()&&!demoMode;
