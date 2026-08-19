@@ -1239,6 +1239,7 @@ async function handleSignup(){
   }
   currentUser=data.user;
   await ensureProfile(currentUser);
+  await resolveTierLimits();
   showPage('onboard');
 }
 
@@ -1498,6 +1499,28 @@ if(T22_PAID.includes(plan)){
   }
 }
 
+// Resolve the plan and the limits that come with it. Lifted out of
+// initFacility because a brand-new account has no facility to init: loadApp()
+// returns at its zero-facility early exit and handleSignup() goes straight to
+// onboarding, so neither ever reached the block that sets t22Limits. It stayed
+// at its fail-closed {facilities:0} default, and handleOnboard's
+// ownedCount >= t22Limits.facilities compared 0 >= 0 and refused — telling
+// someone who had just signed up that their Free Trial plan allows 0
+// facilities and they should upgrade. That was every new account, on the
+// first facility, in the first minute.
+async function resolveTierLimits(){
+  // Sandbox is entitled by construction: role is readonly and anon RLS
+  // blocks writes, so this grants view access only.
+  const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
+  t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+  // ent.ok was already computed and then thrown away. It is the difference
+  // between "your trial ran out" and "we could not check", and those need
+  // very different words in front of a customer.
+  t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
+  t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
+  return ent;
+}
+
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
@@ -1507,7 +1530,7 @@ async function loadApp(){
   const facilityMap={};
   [...(ownedFacilities||[]),...memberFacs].forEach(f=>{if(f&&f.id)facilityMap[f.id]=f;});
   allFacilities=Object.values(facilityMap);
-  if(!allFacilities.length){showPage('onboard');return;}
+  if(!allFacilities.length){await resolveTierLimits();showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
   await checkInviteToken();
@@ -1542,17 +1565,7 @@ async function initFacility(){
       currentUserRole=m?.role||'readonly';
     }
   }catch(e){currentUserRole='readonly';t22RoleLookupFailed=true;}
-  {
-    // Sandbox is entitled by construction: role is readonly and anon RLS
-    // blocks writes, so this grants view access only.
-    const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
-    t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
-    // ent.ok was already computed and then thrown away. It is the difference
-    // between "your trial ran out" and "we could not check", and those need
-    // very different words in front of a customer.
-    t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
-    t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
-  }
+  await resolveTierLimits();
   applyRoleUI();
   applyTierUI();
   const roleBanner=document.getElementById('role-unknown-banner');
