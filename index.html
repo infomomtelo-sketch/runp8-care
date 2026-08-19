@@ -1703,6 +1703,11 @@ async function loadApp(){
   // facility of their own yet, so the exit fired first and the link did
   // nothing at all. They were shown onboarding and told to create a facility.
   if(await checkInviteToken())await readFacilities();
+  // checkInviteToken can end the session: signing out to continue as the
+  // invited address does exactly that. Everything below here assumes somebody
+  // is signed in — initFacility reads currentUser.email on its second line —
+  // so stop rather than initialise a facility for nobody.
+  if(!currentUser)return;
   if(!allFacilities.length){await resolveTierLimits();showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
@@ -4446,6 +4451,39 @@ function renderInviteNotice(){
   });
 }
 
+// An invitation link is not a login. It attaches whoever is already signed in
+// on that browser — so an administrator who taps their own invitation to see
+// what it does lands right back in their own account, which is the correct
+// behaviour and looks like the link is broken.
+//
+// Rather than an alert and a dead end, offer the only thing that actually
+// helps: sign this account out and continue as the invited address. The token
+// is deliberately kept while doing so — clearing it here is what made the
+// second attempt fail too.
+async function offerToSwitchAccount(invitedEmail){
+  const who=invitedEmail||'a different address';
+  const ok=confirm('This invitation was sent to '+who+', but you are signed in as '+(currentUser?.email||'another account')+'.'+
+    '\n\nAn invitation link does not switch accounts on its own — it joins whoever is signed in here.'+
+    '\n\nSign out and continue as '+who+'?');
+  if(!ok){
+    // They chose to stay. Leave the invitation pending — the emailed link
+    // still works — but stop it re-asking on every load.
+    clearInviteToken();renderInviteNotice();
+    return;
+  }
+  try{await sb.auth.signOut();}catch(e){}
+  clearSession();
+  renderInviteNotice();
+  showPage('signup');
+  // The address is the whole point of the match, so put it in front of them
+  // rather than making them remember which one it was.
+  if(invitedEmail){
+    ['signup-email','login-email'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.value=invitedEmail;
+    });
+  }
+}
+
 // Redeems an ?invite= link. Returns true only when a membership now exists, so
 // the caller knows to re-read the facility list.
 //
@@ -4473,13 +4511,16 @@ async function checkInviteToken(){
   // row means the function did not answer — fall through rather than tell
   // someone their invitation is dead on the strength of an empty response.
   if(r&&typeof r.ok!=='undefined'){
-    clearLink();settled();
-    if(r.ok)return true;
+    clearLink();
+    if(r.ok){settled();return true;}
     if(r.reason==='wrong_email'){
-      alert('This invitation was sent to '+(r.invited_email||'a different address')+', but you are signed in as '+currentUser.email+'.\n\nSign in as the invited address, or ask for an invitation to this one.');
-    }else{
-      alert('That invitation link is no longer valid — it may already have been used, or cancelled. Ask whoever invited you to send a new one.');
+      // settled() is NOT called here — offerToSwitchAccount needs the token to
+      // survive the sign-out so the invitation can be accepted on the far side.
+      await offerToSwitchAccount(r.invited_email);
+      return false;
     }
+    settled();
+    alert('That invitation link is no longer valid — it may already have been used, or cancelled. Ask whoever invited you to send a new one.');
     return false;
   }
 
@@ -4506,8 +4547,8 @@ async function checkInviteToken(){
   const invited=String(invite.email||'').trim().toLowerCase();
   const signedIn=String(currentUser.email||'').trim().toLowerCase();
   if(invited&&signedIn&&invited!==signedIn){
-    clearLink();settled();
-    alert('This invitation was sent to '+invite.email+', but you are signed in as '+currentUser.email+'.\n\nSign in as the invited address, or ask for an invitation to this one.');
+    clearLink();
+    await offerToSwitchAccount(invite.email);
     return false;
   }
   // Accepting twice would leave two membership rows for one person, and the
