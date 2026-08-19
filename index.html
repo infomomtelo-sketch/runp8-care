@@ -3242,18 +3242,41 @@ function aiErrorText(data,status){
 let aiMessages=[];
 let dashBriefingLoaded=false;
 
+// Returns {json} when every read succeeded, or {failed:[...]} naming the ones
+// that did not.
+//
+// Each read used to be taken as `res.data||[]`, with res.error dropped. A
+// residents read refused by RLS therefore reached the model as "residents: []",
+// and Tello wrote a confident briefing about a facility it had been told was
+// empty — a fabricated all-clear on the screen whose job is telling you whether
+// you would survive an inspection. The catch was worse: it returned the error
+// text itself, which was then interpolated in as FACILITY DATA.
+//
+// dob and the incident narrative are no longer sent. A compliance briefing has
+// no use for a date of birth, and "what type of incident, when" is what it
+// reasons about — the free-text description is where resident detail lives.
+// Photos already go to this service only behind two human gates; this call is
+// automatic, so it should carry as little as it can do its job with.
 async function buildFacilityContext(){
   try{
     const[resData,staffData,tasksData,incData,marData]=await Promise.all([
-      sb.from('residents').select('name,full_name,dob,admission_date,isp_review_date,lic601,lic602,isp,status').eq('facility_id',currentFacility.id),
+      sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602,isp,status').eq('facility_id',currentFacility.id),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
-      sb.from('incidents').select('incident_type,occurred_at,description').eq('facility_id',currentFacility.id).limit(10),
+      sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
       sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
     ]);
+    const failed=[];
+    const rows=(res,label)=>{if(res&&res.error){failed.push(label);return[];}return(res&&res.data)||[];};
+    const residents=rows(resData,'residents');
+    const staff=rows(staffData,'staff');
+    const compliance_tasks=rows(tasksData,'the compliance checklist');
+    const recent_incidents=rows(incData,'incidents');
+    const recent_mar=rows(marData,'the MAR');
+    if(failed.length)return{failed};
     const today=new Date().toISOString().split('T')[0];
-    return JSON.stringify({today,facility:currentFacility?.name,residents:resData.data||[],staff:staffData.data||[],compliance_tasks:tasksData.data||[],recent_incidents:incData.data||[],recent_mar:marData.data||[]},null,2);
-  }catch(e){return'Error loading facility data: '+e.message;}
+    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar},null,2)};
+  }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
 
 // The briefing is generated automatically — nobody asks for it — and it costs
@@ -3290,7 +3313,15 @@ async function loadDashboardAIBriefing(force){
   }
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
-    const context=await buildFacilityContext();
+    const ctx=await buildFacilityContext();
+    if(ctx.failed){
+      // No AI call and nothing cached. A briefing written without these would
+      // read as an all-clear, and caching that would hide it for the day.
+      el.innerHTML=`<div style="font-size:13px;color:var(--text2)">Tello did not write a briefing today — ${esc(ctx.failed.join(', '))} could not be read, and a briefing without them would look like an all-clear. `
+        +`<button onclick="loadDashboardAIBriefing(true)" style="font-size:12px;background:var(--teal-light);color:var(--teal);border:none;border-radius:20px;padding:3px 10px;cursor:pointer;font-weight:600">Try again</button></div>`;
+      return;
+    }
+    const context=ctx.json;
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
       system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
@@ -3352,7 +3383,7 @@ async function maybeShowOnboarding(){
 }
 
 async function demoFindings(){
-  let ctx; try{ ctx=JSON.parse(await buildFacilityContext()); }catch(e){ ctx={}; }
+  let ctx; try{ const built=await buildFacilityContext(); ctx=built.json?JSON.parse(built.json):{}; }catch(e){ ctx={}; }
   const today=ctx.today||new Date().toISOString().split('T')[0];
   const t0=new Date(today);
   const past=d=>d?new Date(d)<t0:false;
@@ -3431,7 +3462,16 @@ async function sendAIQuery(btn){
   if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
   aiMessages.push({role:'user',content:query});
   const thinking=addAIMessage('Checking your facility data...','assistant');
-  const facilityContext=await buildFacilityContext();
+  const ctx=await buildFacilityContext();
+  if(ctx.failed){
+    // Same reason the briefing refuses: answering a compliance question from
+    // data that could not be read produces a confident wrong answer, and here
+    // the caregiver asked directly.
+    thinking.textContent='I could not read '+ctx.failed.join(', ')+', so I am not going to answer from what is left — it would look like an all-clear. Try again in a moment.';
+    aiMessages.pop();
+    return;
+  }
+  const facilityContext=ctx.json;
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
