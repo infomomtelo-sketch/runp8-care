@@ -1794,6 +1794,7 @@ function addFacilityGuard(){
 async function refreshAccess(manual){
   if(demoMode)return;
   const was=t22Entitled;
+  const wasPlan=t22Plan;
   const ent=await resolveEntitlement();
   if(!ent.entitled){
     if(manual)alert("We haven't detected your payment yet — it can take a few seconds. Please wait a moment and try again.");
@@ -1804,9 +1805,54 @@ async function refreshAccess(manual){
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
+  // The trial countdown was left running after a successful payment, so the
+  // page said "14 days remaining" behind a modal congratulating them on
+  // subscribing.
+  const tb=document.getElementById('trial-banner');
+  if(tb&&T22_PAID.includes(ent.plan))tb.style.display='none';
   if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents(),loadComplianceDocs()]);refreshDashboard();}
   const bt=document.getElementById('tab-billing');
   if(bt&&bt.style.display!=='none')loadBilling();
+  // Checkout opens in another tab, so returning here fires visibilitychange and
+  // lands in this function. A trial account is already entitled, so the !was
+  // branch above never fires on trial -> paid, which is how nearly everyone
+  // subscribes. Compare the plan instead.
+  if(T22_PAID.includes(ent.plan)&&!T22_PAID.includes(wasPlan))offerInviteAfterSubscribing();
+}
+
+// Offered once, after a subscription is first seen. Deliberately not the invite
+// form itself — someone who has just paid should be told what happened and
+// given a way out, not dropped into an empty field.
+async function offerInviteAfterSubscribing(){
+  if(demoMode||!canTeam())return;              // only an administrator can invite
+  const fid=currentFacility&&currentFacility.id; if(!fid)return;
+  const key='title22_invite_offered_'+fid;
+  try{ if(localStorage.getItem(key))return; }catch(e){}
+  try{
+    // Nobody who already has a team needs to be told to build one. A failed
+    // read says nothing rather than nagging.
+    const[members,invites]=await Promise.all([
+      sb.from('facility_members').select('id').eq('facility_id',fid).limit(1),
+      sb.from('facility_invites').select('id').eq('facility_id',fid).eq('status','pending').limit(1),
+    ]);
+    if(members.error||invites.error)return;
+    if((members.data||[]).length||(invites.data||[]).length)return;
+  }catch(e){return;}
+  try{ localStorage.setItem(key,'1'); }catch(e){}
+  const m=document.getElementById('subscribed-modal');
+  if(m)m.classList.add('open');
+}
+
+function closeSubscribedModal(){
+  const m=document.getElementById('subscribed-modal');
+  if(m)m.classList.remove('open');
+}
+
+// Close this one before opening the next, so two overlays are never stacked.
+function inviteFromSubscribed(){
+  closeSubscribedModal();
+  switchTab('team');
+  showInviteModal();
 }
 
 // ===== DASHBOARD =====
@@ -5681,6 +5727,18 @@ function showSetNewPassword(){
 <input type="file" id="training-cert-input" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif,application/pdf" style="display:none" onchange="onTrainingCertFile(this)"/>
 <div class="scan-lightbox" id="scan-lightbox" onclick="closeScanLightbox()">
   <div class="scan-lightbox-inner"><img id="scan-lightbox-img" alt="Scanned page"/><div class="scan-highlight" id="scan-lightbox-highlight" style="display:none"></div></div>
+</div>
+
+<div class="modal-overlay" id="subscribed-modal" onclick="if(event.target===this)closeSubscribedModal()">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3>🎉 You're subscribed</h3><button class="modal-close" onclick="closeSubscribedModal()">×</button></div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:4px">Your plan is active — thank you.</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7">The next thing worth doing is bringing your caregivers in. MAR entries and incidents get logged on shift instead of you typing them up later, and each role only sees what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSubscribedModal()">Later</button>
+      <button class="btn btn-primary" onclick="inviteFromSubscribed()">Invite your team</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
