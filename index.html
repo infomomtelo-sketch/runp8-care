@@ -190,7 +190,7 @@
   .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
   .searchable-select{position:relative}
   .searchable-select input{width:100%}
-  .searchable-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--teal);border-radius:var(--radius);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+  .searchable-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--teal);border-radius:var(--radius);max-height:220px;max-height:min(220px,50dvh);overflow-y:auto;overscroll-behavior:contain;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.12)}
   .searchable-dropdown.open{display:block}
   .searchable-option{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)}
   .searchable-option:last-child{border-bottom:none}
@@ -307,22 +307,27 @@
           <div style="font-size:12px;font-weight:600;color:var(--text)" id="menu-user-email"></div>
           <div id="facility-switcher" style="margin-top:6px"></div>
         </div>
-        <button onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📊 Dashboard</button>
-        <button onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✅ Compliance</button>
-        <button onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👥 Staff</button>
-        <button onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
-        <button onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
-        <button onclick="switchTab('daily');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📝 Daily Log</button>
-        <button onclick="switchTab('training');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🎓 Training</button>
-        <button onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility</button>
-        <button onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
-        <button onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 MAR</button>
-        <button onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👤 Team</button>
-        <button onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:600" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✨ Ask Tello</button>
-        <button onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💳 Billing</button>
-        <button onclick="switchTab('audit');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🛡️ Audit Log</button>
-        <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:none;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🤝 Partners</button>
-        <button onclick="window.open('https://title-22.com/walkthrough/','_blank');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">▶️ Walkthrough</button>
+        <div data-menu-group="daily" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">On shift</div>
+        <button id="menu-dashboard" onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📊 Dashboard</button>
+        <button id="menu-mar" onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 MAR</button>
+        <button id="menu-medications" onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
+        <button id="menu-daily" onclick="switchTab('daily');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📝 Daily log</button>
+        <button id="menu-incidents" onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
+        <div data-menu-group="people" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">People</div>
+        <button id="menu-residents" onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
+        <button id="menu-staff" onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👥 Staff</button>
+        <button id="menu-training" onclick="switchTab('training');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🎓 Training</button>
+        <button id="menu-team" onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👤 Team access</button>
+        <div data-menu-group="compliance" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">Compliance</div>
+        <button id="menu-checklist" onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✅ Checklist</button>
+        <button id="menu-documents" onclick="switchTab('documents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📁 Documents</button>
+        <button id="menu-ai" onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✨ Ask Tello</button>
+        <button id="menu-audit" onclick="switchTab('audit');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🛡 Audit log</button>
+        <div data-menu-group="facility" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">Facility</div>
+        <button id="menu-facility" onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility info</button>
+        <button id="menu-billing" onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💳 Billing</button>
+        <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🤝 Partners</button>
+        <button id="menu-walkthrough" onclick="window.open('https://title-22.com/walkthrough/','_blank');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">▶️ Walkthrough</button>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
           <button onclick="addFacilityGuard();toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'">🏥 Add new facility</button>
           <button onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--red)" onmouseover="this.style.background='var(--red-light)'" onmouseout="this.style.background='none'">🚪 Log out</button>
@@ -690,6 +695,7 @@
               <option value="dementia">Dementia care (8 hr minimum)</option>
               <option value="special_care">Special care — postural, restricted, hospice (4 hr minimum)</option>
               <option value="general">General — medication, resident rights, fire safety (8 hr minimum)</option>
+              <option value="hands_on">Hands-on at the facility — counts toward the 16 hr initial, not the annual 20</option>
             </select>
             <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">The 20 annual hours have minimums inside them. Hours left unspecified still count toward the 20, but cannot satisfy a minimum.</div>
           </div>
@@ -707,6 +713,16 @@
         <div class="card" style="margin-top:16px">
           <div class="card-title">Annual hours — 20 hr in-service, with minimums inside it</div>
           <div id="training-summary" style="display:grid;gap:8px;font-size:13px"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Initial hands-on training — 16 hr, delivered by you</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">A new caregiver's 40 initial hours split 24 / 16: 24 hours of instruction from an approved vendor, and these 16 hours of supervised practice at the facility. No vendor provides them — you are the required trainer. Log each session above with <strong>Hands-on at the facility</strong> selected.</div>
+          <div id="handson-summary" style="display:grid;gap:10px;font-size:13px"></div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Suggested topics to cover</div>
+            <div id="handson-topics" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5">A starting point, not a regulated list. §87412 requires the hours and verification of hands-on skills competency in the personnel record; what a shift needs to cover is yours to define.</div>
+          </div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Training history</div>
@@ -1232,6 +1248,7 @@ async function ensureProfile(user){
   if(navPartners)navPartners.style.display=isPartnerAdmin?'flex':'none';
   const menuPartners=document.getElementById('menu-partners');
   if(menuPartners)menuPartners.style.display=isPartnerAdmin?'flex':'none';
+  hideEmptyMenuGroups();
   if(isNewProfile)await stampSignupAttribution(user);
 }
 
@@ -1701,6 +1718,29 @@ function applyRoleUI(){
   ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
+    // The dropdown entries had no ids, so this never reached them: a caregiver
+    // saw Billing, Team and Audit log in the menu, tapped one, and got told
+    // they do not have permission. Same list, same rule, both places now.
+    const item=document.getElementById('menu-'+t);
+    if(item)item.style.display=allowed.includes(t)?'flex':'none';
+  });
+  // Partners is a global permission, not a per-facility role.
+  const mp=document.getElementById('menu-partners');
+  if(mp)mp.style.display=isPartnerAdmin?'flex':'none';
+  hideEmptyMenuGroups();
+}
+
+// A heading with nothing under it is worse than no heading. Runs after the
+// items have been shown or hidden.
+function hideEmptyMenuGroups(){
+  document.querySelectorAll('#user-menu [data-menu-group]').forEach(label=>{
+    let anyVisible=false;
+    let el=label.nextElementSibling;
+    while(el&&!el.hasAttribute('data-menu-group')){
+      if(el.tagName==='BUTTON'&&el.style.display!=='none')anyVisible=true;
+      el=el.nextElementSibling;
+    }
+    label.style.display=anyVisible?'':'none';
   });
 }
 
@@ -2028,7 +2068,28 @@ function renderExpiryBanner(){
   const critical=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=in7);
   const warning=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>in7&&t.due_date<=in30);
   const banner=document.getElementById('expiry-banner');if(!banner)return;
-  if(!expired.length&&!critical.length&&!warning.length){
+
+  // The banner read complianceTasks and nothing else. Two ways that lied.
+  //
+  // A facility whose checklist has never been seeded has no tasks at all, so
+  // every filter above came back empty and it announced "All requirements are
+  // current" over a checklist showing 0 of 0. Nothing loaded is not the same
+  // as everything met.
+  //
+  // And the staff and resident records were never consulted, so a facility
+  // could have an expired TB test on the Staff tab — named, in red — while
+  // this said everything was current. evaluateCompliance() already works that
+  // out for the dashboard; the banner just was not asking.
+  const comp=evaluateCompliance();
+  const compExpired=comp.items.filter(i=>i.level==='expired');
+  const compSoon=comp.items.filter(i=>i.level==='soon');
+  const compMissing=comp.items.filter(i=>i.level==='missing');
+
+  if(!complianceTasks.length&&!comp.total){
+    banner.innerHTML=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">📋</span><div><div style="font-weight:600;color:var(--text);font-size:14px">No requirements loaded yet</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Nothing has been checked, so nothing can be current. Add staff and residents, or add a task, and this will start reporting.</div></div></div>`;
+    return;
+  }
+  if(!expired.length&&!critical.length&&!warning.length&&!compExpired.length&&!compSoon.length&&!compMissing.length){
     banner.innerHTML=`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">✅</span><div><div style="font-weight:600;color:var(--green);font-size:14px">All requirements are current</div></div></div>`;
     return;
   }
@@ -2036,6 +2097,12 @@ function renderExpiryBanner(){
   if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
   if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  // Same three bands, from the records rather than the checklist.
+  const rows=(items,dot)=>items.slice(0,8).map(i=>`<div style="background:#fff;border:1px solid ${dot};border-radius:8px;padding:6px 12px;font-size:12px"><span style="font-weight:600">${esc(i.who)}</span><span style="color:var(--text2);margin-left:6px">${esc(i.what)}</span></div>`).join('')
+    +(items.length>8?`<div style="font-size:12px;color:var(--text2);align-self:center">and ${items.length-8} more</div>`:'');
+  if(compExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${compExpired.length} expired in the records</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compExpired,'#e8a0a0')}</div></div>`;
+  if(compSoon.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${compSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compSoon,'#f5a623')}</div></div>`;
+  if(compMissing.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📋 ${compMissing.length} not on file and not recorded</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compMissing,'#e6c170')}</div></div>`;
   banner.innerHTML=html;
 }
 
@@ -2940,14 +3007,23 @@ async function seedDemoData(){
     if(re)throw re;
     stage='adding the 5 staff';
     const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
-    const{error:se}=await sb.from('staff').insert([
+    const{data:staffD,error:se}=await sb.from('staff').insert([
       S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),
       S('James Carter','lead_caregiver',dISO(-500),dISO(120),dISO(20),dISO(90)),
       S('Priya Patel','med_tech',dISO(-400),dISO(90),dISO(150),dISO(150)),
       S('Daniel Reyes','caregiver',dISO(-250),dISO(-10),dISO(180),dISO(180)),
       S('Sofia Ivanova','night_caregiver',dISO(-100),dISO(200),dISO(220),dISO(220)),
-    ]);
+    ]).select();
     if(se)throw se;
+    // Doses are administered by a caregiver, not by the account holder. The
+    // seed used to stamp currentUser.id into mar_entries.staff_id, which makes
+    // the sample read as though the owner personally gave every dose for a
+    // month — and, if that column carries a key onto public.staff rather than
+    // auth.users, is rejected outright, which would stop the seed at its
+    // largest insert. Falls back to the account id only if the staff rows came
+    // back without ids.
+    const demoStaffIds=(staffD||[]).map(x=>x&&x.id).filter(Boolean);
+    const byStaff=i=>demoStaffIds.length?demoStaffIds[i%demoStaffIds.length]:currentUser.id;
     stage='adding the medications';
     const M=(resIdx,med,dose,dir,doc)=>({facility_id:fac.id,resident_id:resD[resIdx].id,medication_name:med,dosage:dose,directions:dir,prescriber:doc,rx_number:String(1000000+Math.floor(Math.random()*899999)),pharmacy:'CVS Pharmacy',start_date:dISO(-100),refill_date:dISO(12),status:'active'});
     const{data:medD,error:me}=await sb.from('medications').insert([
@@ -2973,11 +3049,11 @@ async function seedDemoData(){
         if(day===6&&i===0)status='refused';
         if(day===3&&i===4)status='missed';
         const at=new Date(Date.now()-day*86400000);at.setHours(8,0,0,0);
-        marRows.push({facility_id:fac.id,resident_id:m.resident_id,medication_id:m.id,staff_id:currentUser.id,administered_at:at.toISOString(),scheduled_time:'8:00 AM',status,notes:status==='refused'?'Resident declined; will re-offer with breakfast. Administrator notified.':status==='missed'?'Dose found unadministered at shift change; physician notified.':null});
+        marRows.push({facility_id:fac.id,resident_id:m.resident_id,medication_id:m.id,staff_id:byStaff(day+i),administered_at:at.toISOString(),scheduled_time:'8:00 AM',status,notes:status==='refused'?'Resident declined; will re-offer with breakfast. Administrator notified.':status==='missed'?'Dose found unadministered at shift change; physician notified.':null});
       });
     }
     const prnAt=new Date(Date.now()-9*86400000);prnAt.setHours(14,30,0,0);
-    marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:currentUser.id,administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
+    marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:byStaff(1),administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
     const{error:mre}=await sb.from('mar_entries').insert(marRows);
     if(mre)throw mre;
     stage='adding the incident reports';
@@ -4346,14 +4422,39 @@ const ANNUAL_CE={
   ],
 };
 
+// Initial training for a new direct care staff member is 40 hours, and it
+// splits by who delivers it: 24 hours of instruction from an approved vendor,
+// and 16 hours hands-on at the facility. The facility is the required trainer
+// for the second half — no vendor sells it, and it cannot be a video, because
+// it is supervised practice with a resident present. That is the only training
+// this app should ever host itself, and it is what these hours record.
+const INITIAL_TRAINING={vendorHours:24,handsOnHours:16,total:40};
+
+// A starting checklist, not a regulated list. Title 22 requires the hours and
+// verification of hands-on skills competency in the personnel record (§87412);
+// what a shift actually needs to cover is the facility's to define. Adapt it.
+const HANDS_ON_TOPICS=[
+  'Transfers and mobility assistance',
+  'Personal care and activities of daily living',
+  'Assisting with self-administration of medication, observed',
+  'Emergency procedures and evacuation',
+  'Infection control in practice',
+  'Communicating with residents, including dementia',
+  'Documentation — MAR, daily log, incident reports',
+];
+
 // Hours logged per category for one staff member in the given year, plus the
 // ones filed before categories existed — those count toward the 20 but cannot
 // count toward a minimum, and the summary says so rather than guessing.
+//
+// Hands-on hours are excluded on purpose: they are initial training, counted
+// once at hire, not part of the recurring 20.
 function annualCE(staffId,year){
   const out={total:0,uncategorised:0};
   ANNUAL_CE.categories.forEach(c=>{out[c.key]=0;});
   (trainings||[]).forEach(t=>{
     if(!t||t.staff_id!==staffId)return;
+    if(t.category==='hands_on')return;
     if(!t.training_date||new Date(t.training_date).getFullYear()!==year)return;
     const h=parseFloat(t.hours)||0;
     out.total+=h;
@@ -4361,6 +4462,18 @@ function annualCE(staffId,year){
     else out.uncategorised+=h;
   });
   return out;
+}
+
+// Hands-on hours are counted across all time rather than per year — this is a
+// one-off at hire, not an annual clock.
+function handsOnHours(staffId){
+  let hours=0;const topics=[];
+  (trainings||[]).forEach(t=>{
+    if(!t||t.staff_id!==staffId||t.category!=='hands_on')return;
+    hours+=parseFloat(t.hours)||0;
+    if(t.topic)topics.push(t.topic);
+  });
+  return{hours,topics};
 }
 let trainings=[];let trainingStaff=[];
 // In-service certificates, keyed by the training entry they prove. A logged
@@ -4516,6 +4629,38 @@ async function saveTraining(){
   }
 }
 
+// Per staff member: hands-on hours logged against the 16, and which of the
+// suggested topics have been covered at least once. Topic matching is a plain
+// case-insensitive comparison of what was typed — a topic ticks only when it
+// was actually logged under that name, never inferred.
+function renderHandsOn(){
+  const el=document.getElementById('handson-summary');
+  const topicsEl=document.getElementById('handson-topics');
+  if(topicsEl){
+    const coveredAll=new Set();
+    (trainings||[]).forEach(t=>{if(t&&t.category==='hands_on'&&t.topic)coveredAll.add(String(t.topic).trim().toLowerCase());});
+    topicsEl.innerHTML=HANDS_ON_TOPICS.map(topic=>{
+      const done=coveredAll.has(topic.toLowerCase());
+      return `<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:${done?'var(--green-light)':'var(--gray-light)'};color:${done?'var(--green)':'var(--text2)'}">${done?'✓ ':''}${esc(topic)}</span>`;
+    }).join('');
+  }
+  if(!el)return;
+  if(!trainingStaff.length){el.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';return;}
+  const withHours=trainingStaff.map(s=>({s,ho:handsOnHours(s.id)})).filter(x=>x.ho.hours>0);
+  if(!withHours.length){
+    el.innerHTML='<div style="color:var(--text2)">No hands-on hours logged yet. These are the 16 hours you deliver on shift — they are separate from the annual 20 above.</div>';
+    return;
+  }
+  el.innerHTML=withHours.map(({s,ho})=>{
+    const target=INITIAL_TRAINING.handsOnHours;
+    const pct=Math.min(100,Math.round(ho.hours/target*100));
+    const done=ho.hours>=target;
+    const color=done?'var(--green)':(ho.hours>=target/2?'var(--amber)':'var(--red)');
+    return `<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:500">${esc(s.name||s.full_name||'Staff')}</span><span style="color:${color};font-weight:600">${ho.hours} / ${target} hrs${done?' ✓':''}</span></div>
+    <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div></div>`;
+  }).join('');
+}
+
 function renderTrainings(){
   const summary=document.getElementById('training-summary');
   const list=document.getElementById('training-list');
@@ -4542,6 +4687,7 @@ function renderTrainings(){
       }).join('');
     }
   }
+  renderHandsOn();
   if(!trainings.length){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   const edit=canEdit()&&!demoMode;
