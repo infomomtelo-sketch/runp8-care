@@ -480,6 +480,7 @@
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;color:var(--text2)">Facility</div>
         <strong id="sidebar-facility-name">—</strong>
         <div id="sidebar-facility-type" style="font-size:11px;color:var(--teal);font-weight:500;margin-top:3px"></div>
+        <div id="sidebar-role" style="display:none;font-size:11px;color:var(--text2);margin-top:4px"></div>
       </div>
       <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</button>
       <button class="nav-item" id="nav-checklist" onclick="switchTab('checklist')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Compliance</button>
@@ -518,6 +519,11 @@
             <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()">🧪 Load sample facility</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')">🤖 Ask Tello</button>
           </div>
+        </div>
+        <div id="role-welcome" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px" id="role-welcome-title"></div>
+          <div style="font-size:13px;color:var(--text);line-height:1.6" id="role-welcome-body"></div>
+          <div style="margin-top:14px"><button class="btn btn-outline" style="font-size:13px" onclick="dismissRoleWelcome()">Got it</button></div>
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div style="font-weight:700;font-size:15px;margin-bottom:6px">👥 You're the only one here</div>
@@ -1078,6 +1084,26 @@ const ROLE_ACCESS = {
   supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
   caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
+};
+// What each role means, in the words of the job rather than the words of the
+// permission system. Kept beside ROLE_ACCESS so the two are edited together:
+// a role whose tab list changes and whose description does not is a lie told
+// to the person relying on it.
+const ROLE_BRIEF={
+  // `joined` is written out per role rather than assembled from the label,
+  // because "as a View only" is not a sentence.
+  administrator:{label:'Administrator', joined:'as an Administrator',
+    can:'everything in this facility — residents, staff, medications, MAR, incidents, documents, the team and billing.',
+    cannot:''},
+  supervisor:{label:'Supervisor', joined:'as a Supervisor',
+    can:'add and edit residents, staff, medications, MAR, incidents, daily logs, training and documents.',
+    cannot:'You cannot see billing, or invite and remove team members. The administrator handles those.'},
+  caregiver:{label:'Caregiver', joined:'as a Caregiver',
+    can:'record medications on the MAR, write daily logs, report incidents, and file documents.',
+    cannot:'Resident and staff records, compliance settings, billing and the team list are not shown to you — the administrator keeps those.'},
+  readonly:{label:'View only', joined:'with view-only access',
+    can:'look at the dashboard, the compliance checklist, residents, incidents, daily logs, the MAR and documents.',
+    cannot:'You cannot change or add anything. This is the access given to an inspector or a consultant.'},
 };
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
 function canEdit(){ return getAccess().canEdit; }
@@ -1871,6 +1897,45 @@ function applyRoleUI(){
   const mp=document.getElementById('menu-partners');
   if(mp)mp.style.display=isPartnerAdmin?'flex':'none';
   hideEmptyMenuGroups();
+  renderRoleUI();
+}
+
+// Charise logged in and nothing told her what she was. The tabs she cannot
+// reach are simply absent, so there is no moment where the app says "this is
+// your role and here is what comes with it" — she is just looking at a
+// smaller app than the one she was told about, with no explanation.
+//
+// Two places, deliberately. A line in the sidebar that is always there, and a
+// card the first time she opens a facility that says it in full.
+function roleWelcomeKey(){return 'title22_role_seen_'+(currentFacility?.id||'')+'_'+currentUserRole;}
+function dismissRoleWelcome(){
+  try{localStorage.setItem(roleWelcomeKey(),'1');}catch(e){}
+  const el=document.getElementById('role-welcome');if(el)el.style.display='none';
+}
+function renderRoleUI(){
+  const brief=ROLE_BRIEF[currentUserRole]||ROLE_BRIEF.readonly;
+  const badge=document.getElementById('sidebar-role');
+  // The owner already knows they are the owner. Saying so is noise; saying it
+  // to everybody else is the point.
+  const isOwner=!!currentUser&&currentFacility?.user_id===currentUser.id;
+  if(badge){
+    badge.textContent=isOwner?'':'Signed in as '+brief.label;
+    badge.style.display=isOwner?'none':'block';
+  }
+  const card=document.getElementById('role-welcome');
+  if(!card)return;
+  let seen=false;
+  try{seen=!!localStorage.getItem(roleWelcomeKey());}catch(e){}
+  // Not shown while the role could not be read — role-unknown-banner already
+  // says that, and describing permissions we are not sure of is worse than
+  // saying nothing.
+  if(isOwner||seen||demoMode||t22RoleLookupFailed||!t22Entitled){card.style.display='none';return;}
+  document.getElementById('role-welcome-title').textContent=
+    'You have joined '+(currentFacility?.name||'this facility')+' '+brief.joined;
+  document.getElementById('role-welcome-body').innerHTML=
+    'You can '+esc(brief.can)+(brief.cannot?'<br/><br/>'+esc(brief.cannot):'')+
+    '<br/><br/>If you need access to something that is not here, ask the administrator of this facility to change your role — it is not something you can set yourself.';
+  card.style.display='block';
 }
 
 // A heading with nothing under it is worse than no heading. Runs after the
