@@ -684,6 +684,15 @@
             <div class="form-group"><label>Hours</label><input type="number" id="tr-hours" step="0.5" min="0" placeholder="1.0"/></div>
             <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
           </div>
+          <div class="form-group"><label>Counts toward</label>
+            <select id="tr-category">
+              <option value="">Not specified — counts toward the 20 only</option>
+              <option value="dementia">Dementia care (8 hr minimum)</option>
+              <option value="special_care">Special care — postural, restricted, hospice (4 hr minimum)</option>
+              <option value="general">General — medication, resident rights, fire safety (8 hr minimum)</option>
+            </select>
+            <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">The 20 annual hours have minimums inside them. Hours left unspecified still count toward the 20, but cannot satisfy a minimum.</div>
+          </div>
           <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
           <div class="form-group"><label>Certificate (optional)</label>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -696,7 +705,7 @@
           <button class="btn btn-primary" style="margin-top:10px" onclick="saveTraining()">Save training</button>
         </div>
         <div class="card" style="margin-top:16px">
-          <div class="card-title">Annual hours (20 hr in-service requirement)</div>
+          <div class="card-title">Annual hours — 20 hr in-service, with minimums inside it</div>
           <div id="training-summary" style="display:grid;gap:8px;font-size:13px"></div>
         </div>
         <div class="card" style="margin-top:16px">
@@ -4323,6 +4332,36 @@ async function deleteDailyLog(id){
 }
 
 // ===== TRAINING =====
+// The 20 annual hours are not interchangeable. Title 22 sets minimums inside
+// them, so twenty hours of general topics is twenty hours and still not
+// compliant — which a total-only progress bar cannot show. Kept as data rather
+// than literals so correcting an hour figure is an edit here, not a hunt
+// through the file.
+const ANNUAL_CE={
+  total:20,
+  categories:[
+    {key:'dementia',     label:'Dementia care',  min:8, hint:'behaviour, hydration, safety'},
+    {key:'special_care', label:'Special care',   min:4, hint:'postural supports, restricted conditions, hospice'},
+    {key:'general',      label:'General',        min:8, hint:'medication, resident rights, fire safety'},
+  ],
+};
+
+// Hours logged per category for one staff member in the given year, plus the
+// ones filed before categories existed — those count toward the 20 but cannot
+// count toward a minimum, and the summary says so rather than guessing.
+function annualCE(staffId,year){
+  const out={total:0,uncategorised:0};
+  ANNUAL_CE.categories.forEach(c=>{out[c.key]=0;});
+  (trainings||[]).forEach(t=>{
+    if(!t||t.staff_id!==staffId)return;
+    if(!t.training_date||new Date(t.training_date).getFullYear()!==year)return;
+    const h=parseFloat(t.hours)||0;
+    out.total+=h;
+    if(t.category&&out[t.category]!==undefined)out[t.category]+=h;
+    else out.uncategorised+=h;
+  });
+  return out;
+}
 let trainings=[];let trainingStaff=[];
 // In-service certificates, keyed by the training entry they prove. A logged
 // hour with no certificate is the same self-reported claim the document slots
@@ -4445,8 +4484,19 @@ async function saveTraining(){
     training_date:document.getElementById('tr-date').value||new Date().toISOString().slice(0,10),
     notes:document.getElementById('tr-notes').value.trim()||null
   };
+  const category=(document.getElementById('tr-category')||{}).value||'';
+  if(category)row.category=category;
   // .select().single() so the certificate has a training id to file against.
-  const{data,error}=await sb.from('staff_trainings').insert(row).select().single();
+  let{data,error}=await sb.from('staff_trainings').insert(row).select().single();
+  // category arrives with migrations/2026-08-19_staff_training_category.sql.
+  // Until that has been run the column is rejected — log the hours anyway
+  // rather than lose them, and say which minimum they could not be credited to.
+  let categoryDropped=false;
+  if(error&&category&&/category/i.test((error.message||'')+(error.details||''))){
+    const retry={...row};delete retry.category;
+    ({data,error}=await sb.from('staff_trainings').insert(retry).select().single());
+    categoryDropped=!error;
+  }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
   const cert=pendingTrainingCert;
@@ -4455,9 +4505,13 @@ async function saveTraining(){
   if(cert&&data)certFailure=await fileTrainingCert(cert,data);
 
   document.getElementById('tr-topic').value='';document.getElementById('tr-hours').value='';document.getElementById('tr-notes').value='';
+  const catSel=document.getElementById('tr-category');if(catSel)catSel.value='';
   await loadTrainings();
   if(certFailure){
     err.textContent='Training logged, but the certificate could not be filed: '+certFailure;
+    err.classList.add('show');
+  }else if(categoryDropped){
+    err.textContent='Hours logged, but they could not be credited to a minimum — run migrations/2026-08-19_staff_training_category.sql in the Supabase SQL editor.';
     err.classList.add('show');
   }
 }
@@ -4472,11 +4526,19 @@ function renderTrainings(){
     if(!trainingStaff.length){summary.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';}
     else{
       summary.innerHTML=trainingStaff.map(s=>{
-        const ytd=trainings.filter(t=>t.staff_id===s.id&&new Date(t.training_date).getFullYear()===year).reduce((a,t)=>a+(parseFloat(t.hours)||0),0);
-        const pct=Math.min(100,Math.round(ytd/20*100));
-        const color=ytd>=20?'var(--green)':(ytd>=10?'var(--amber)':'var(--red)');
+        const ce=annualCE(s.id,year);
+        const ytd=ce.total;
+        const pct=Math.min(100,Math.round(ytd/ANNUAL_CE.total*100));
+        const allMinimumsMet=ANNUAL_CE.categories.every(c=>ce[c.key]>=c.min);
+        const color=(ytd>=ANNUAL_CE.total&&allMinimumsMet)?'var(--green)':(ytd>=ANNUAL_CE.total/2?'var(--amber)':'var(--red)');
+        const chips=ANNUAL_CE.categories.map(c=>{
+          const met=ce[c.key]>=c.min;
+          return `<span title="${esc(c.hint)}" style="font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap;background:${met?'var(--green-light)':'var(--gray-light)'};color:${met?'var(--green)':'var(--text2)'}">${met?'✓':''} ${esc(c.label)} ${ce[c.key]}/${c.min}</span>`;
+        }).join('')
+        +(ce.uncategorised?`<span title="Logged before a category was recorded, or left unspecified" style="font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--amber-light);color:var(--text2)">${ce.uncategorised} hr not credited to a minimum</span>`:'');
         return `<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:500">${s.name||s.full_name}</span><span style="color:${color};font-weight:600">${ytd} / 20 hrs</span></div>
-        <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div></div>`;
+        <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips}</div></div>`;
       }).join('');
     }
   }
