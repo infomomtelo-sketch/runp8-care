@@ -2068,7 +2068,28 @@ function renderExpiryBanner(){
   const critical=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=in7);
   const warning=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>in7&&t.due_date<=in30);
   const banner=document.getElementById('expiry-banner');if(!banner)return;
-  if(!expired.length&&!critical.length&&!warning.length){
+
+  // The banner read complianceTasks and nothing else. Two ways that lied.
+  //
+  // A facility whose checklist has never been seeded has no tasks at all, so
+  // every filter above came back empty and it announced "All requirements are
+  // current" over a checklist showing 0 of 0. Nothing loaded is not the same
+  // as everything met.
+  //
+  // And the staff and resident records were never consulted, so a facility
+  // could have an expired TB test on the Staff tab — named, in red — while
+  // this said everything was current. evaluateCompliance() already works that
+  // out for the dashboard; the banner just was not asking.
+  const comp=evaluateCompliance();
+  const compExpired=comp.items.filter(i=>i.level==='expired');
+  const compSoon=comp.items.filter(i=>i.level==='soon');
+  const compMissing=comp.items.filter(i=>i.level==='missing');
+
+  if(!complianceTasks.length&&!comp.total){
+    banner.innerHTML=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">📋</span><div><div style="font-weight:600;color:var(--text);font-size:14px">No requirements loaded yet</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Nothing has been checked, so nothing can be current. Add staff and residents, or add a task, and this will start reporting.</div></div></div>`;
+    return;
+  }
+  if(!expired.length&&!critical.length&&!warning.length&&!compExpired.length&&!compSoon.length&&!compMissing.length){
     banner.innerHTML=`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">✅</span><div><div style="font-weight:600;color:var(--green);font-size:14px">All requirements are current</div></div></div>`;
     return;
   }
@@ -2076,6 +2097,12 @@ function renderExpiryBanner(){
   if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
   if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  // Same three bands, from the records rather than the checklist.
+  const rows=(items,dot)=>items.slice(0,8).map(i=>`<div style="background:#fff;border:1px solid ${dot};border-radius:8px;padding:6px 12px;font-size:12px"><span style="font-weight:600">${esc(i.who)}</span><span style="color:var(--text2);margin-left:6px">${esc(i.what)}</span></div>`).join('')
+    +(items.length>8?`<div style="font-size:12px;color:var(--text2);align-self:center">and ${items.length-8} more</div>`:'');
+  if(compExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${compExpired.length} expired in the records</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compExpired,'#e8a0a0')}</div></div>`;
+  if(compSoon.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${compSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compSoon,'#f5a623')}</div></div>`;
+  if(compMissing.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📋 ${compMissing.length} not on file and not recorded</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compMissing,'#e6c170')}</div></div>`;
   banner.innerHTML=html;
 }
 
