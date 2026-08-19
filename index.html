@@ -1024,7 +1024,10 @@ let checklistItems = [];
 let complianceTasks = [];
 let activeFilter = 'all';
 let currentIncidentId = null;
-let currentUserRole = 'administrator';
+// Fail closed. This is only assigned inside initFacility, so any path that
+// stops short of it — onboarding, an abandoned load, an invitation that did
+// not resolve — ran with administrator rights until the real role was known.
+let currentUserRole = 'readonly';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
 
 const ROLE_ACCESS = {
@@ -1557,16 +1560,24 @@ async function resolveTierLimits(){
 async function loadApp(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
-  const{data:ownedFacilities}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).order('name');
-  const{data:memberFacilities}=await sb.from('facility_members').select('facility_id, facilities(*)').eq('user_id',currentUser.id);
-  const memberFacs=(memberFacilities||[]).map(m=>m.facilities).filter(Boolean);
-  const facilityMap={};
-  [...(ownedFacilities||[]),...memberFacs].forEach(f=>{if(f&&f.id)facilityMap[f.id]=f;});
-  allFacilities=Object.values(facilityMap);
+  const readFacilities=async()=>{
+    const{data:ownedFacilities}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).order('name');
+    const{data:memberFacilities}=await sb.from('facility_members').select('facility_id, facilities(*)').eq('user_id',currentUser.id);
+    const memberFacs=(memberFacilities||[]).map(m=>m.facilities).filter(Boolean);
+    const facilityMap={};
+    [...(ownedFacilities||[]),...memberFacs].forEach(f=>{if(f&&f.id)facilityMap[f.id]=f;});
+    allFacilities=Object.values(facilityMap);
+  };
+  await readFacilities();
+  // An invitation has to be redeemed before the list decides there is nothing
+  // to show. This used to be the last line of the function, after the
+  // zero-facility exit below — and an invited person has, by definition, no
+  // facility of their own yet, so the exit fired first and the link did
+  // nothing at all. They were shown onboarding and told to create a facility.
+  if(await checkInviteToken())await readFacilities();
   if(!allFacilities.length){await resolveTierLimits();showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
-  await checkInviteToken();
 }
 
 async function initFacility(){
@@ -3980,15 +3991,54 @@ async function updateMemberRole(id,role){await sb.from('facility_members').updat
 async function removeMember(id){if(!confirm('Remove this team member?'))return;await sb.from('facility_members').delete().eq('id',id);loadTeam();}
 async function cancelInvite(id){await sb.from('facility_invites').update({status:'cancelled'}).eq('id',id);loadTeam();}
 
+// Redeems an ?invite= link. Returns true only when a membership now exists, so
+// the caller knows to re-read the facility list.
+//
+// Note what this cannot do: the browser holds the invited user's own JWT, so
+// every statement here is subject to RLS. This is the app being deliberate
+// about who it lets in; it is not the security boundary. That is the policies
+// on facility_invites and facility_members — see
+// migrations/2026-08-19_rbac_check.sql.
 async function checkInviteToken(){
   const params=new URLSearchParams(window.location.search);
   const token=params.get('invite');
-  if(!token||!currentUser)return;
-  const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').single();
-  if(!invite)return;
-  await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
+  if(!token||!currentUser)return false;
+  const clearLink=()=>window.history.replaceState({},document.title,window.location.pathname);
+  const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').maybeSingle();
+  if(!invite){
+    // Used to return in silence, which left someone who had just clicked an
+    // invitation sitting on an onboarding page with no idea why.
+    clearLink();
+    alert('That invitation link is no longer valid — it may already have been used, or cancelled. Ask whoever invited you to send a new one.');
+    return false;
+  }
+  // An invitation is addressed to one person. Without this, anyone holding the
+  // link — forwarded mail, a screenshot, a pasted message — joins the facility
+  // with the role it carries, and resident records are what is behind it.
+  const invited=String(invite.email||'').trim().toLowerCase();
+  const signedIn=String(currentUser.email||'').trim().toLowerCase();
+  if(invited&&signedIn&&invited!==signedIn){
+    clearLink();
+    alert('This invitation was sent to '+invite.email+', but you are signed in as '+currentUser.email+'.\n\nSign in as the invited address, or ask for an invitation to this one.');
+    return false;
+  }
+  // Accepting twice would leave two membership rows for one person, and the
+  // role lookup in initFacility uses maybeSingle(), which fails outright on
+  // more than one row — so a second click would drop the member to readonly
+  // and keep them there.
+  const{data:already}=await sb.from('facility_members').select('id')
+    .eq('facility_id',invite.facility_id).eq('user_id',currentUser.id).limit(1);
+  if(!already||!already.length){
+    const{error:joinErr}=await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
+    if(joinErr){
+      clearLink();
+      alert('Could not join that facility: '+joinErr.message);
+      return false;
+    }
+  }
   await sb.from('facility_invites').update({status:'accepted',accepted_at:new Date().toISOString()}).eq('id',invite.id);
-  window.history.replaceState({},document.title,window.location.pathname);
+  clearLink();
+  return true;
 }
 
 // ===== AUDIT LOG =====
