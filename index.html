@@ -1143,6 +1143,25 @@ async function handleGoogleAuth(errId){
   if(error)authMsg(errId,error.message);
 }
 
+// ignoreDuplicates means a profiles row that already exists — a signup trigger
+// on this shared project can create one before the app ever runs — is left
+// exactly as it was, and no error comes back to say the write did nothing. That
+// is the case that shows a brand-new account "your free trial has ended":
+// title22_plan and title22_trial_ends_at stay null, and readEntitlement reads a
+// null end date as an expired trial rather than as an unstamped one. So confirm
+// the stamp actually landed, and write it if it did not. Only title22_* columns
+// are touched, never the shared ones.
+async function stampTrialIfMissing(userId,trialEnds){
+  const{data,error}=await sb.from('profiles').select('title22_plan,title22_trial_ends_at').eq('id',userId).maybeSingle();
+  if(error||!data)return;
+  const patch={};
+  if(!data.title22_plan)patch.title22_plan='trial';
+  if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=trialEnds;
+  if(!Object.keys(patch).length)return;
+  const{error:pe}=await sb.from('profiles').update(patch).eq('id',userId);
+  if(pe){t22TrialActivationError=pe.message;console.error('Trial activation failed:',pe.message);}
+}
+
 async function ensureProfile(user){
   // Title22 only touches title22_* entitlement columns on profiles. The shared
   // columns (plan, stripe_subscription_id, plan_expires_at, trial_ends_at,
@@ -1150,20 +1169,34 @@ async function ensureProfile(user){
   // read or write them here.
   let isNewProfile=false;
   const trialDays=parseInt(sessionStorage.getItem('title22_ref_trial_days'),10)||14;
+  const readProfile=()=>sb.from('profiles')
+    .select('id,created_at,title22_plan,title22_trial_ends_at,title22_is_partner_admin')
+    .eq('id',user.id).maybeSingle();
   try{
-    const{data}=await sb.from('profiles').select('id,created_at,title22_plan,title22_trial_ends_at,title22_is_partner_admin').eq('id',user.id).maybeSingle();
-    isPartnerAdmin=!!(data&&data.title22_is_partner_admin);
-    if(!data){
+    // The error here used to be dropped, which made a failed read look exactly
+    // like "this account has no profile yet" — and the branch below then
+    // insert-ignores against the row that is really there. Retry once, the way
+    // resolveEntitlement does, before believing there is nothing.
+    let{data,error}=await readProfile();
+    if(error){await new Promise(r=>setTimeout(r,700));({data,error}=await readProfile());}
+    if(error){
+      t22TrialActivationError='Could not read your account ('+error.message+').';
+      console.error('Profile read failed:',error.message);
+      data=null;
+    }else if(!data){
       isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
-      const{error}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      const{error:insErr}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       // Not just console.error. If this write fails the trial is never stamped,
       // resolveEntitlement finds no plan, and the new customer is shown "your
       // trial has expired" on their first minute. Record it so the banner can
       // tell the truth instead.
-      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
-    }else if(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at){
+      if(insErr){t22TrialActivationError=insErr.message;console.error('Trial activation failed:',insErr.message);}
+      else await stampTrialIfMissing(user.id,trialEnds);
+    }
+    isPartnerAdmin=!!(data&&data.title22_is_partner_admin);
+    if(data&&(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at)){
       // Row exists (e.g. created by a DB trigger) but title22 entitlement never stamped.
       isNewProfile=!data.title22_plan;
       const patch={};
