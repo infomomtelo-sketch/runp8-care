@@ -4186,7 +4186,37 @@ async function checkInviteToken(){
   const token=params.get('invite');
   if(!token||!currentUser)return false;
   const clearLink=()=>window.history.replaceState({},document.title,window.location.pathname);
-  const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').maybeSingle();
+  // Redeemed server-side when the function is there. Doing it from the browser
+  // needs facility_invites readable and facility_members writable by someone
+  // who is not yet a member of that facility — which is exactly what row level
+  // security should be refusing. See
+  // migrations/2026-08-19_title22_redeem_invite.sql.
+  const rpc=await sb.rpc('title22_redeem_invite',{p_token:token});
+  const r=(rpc&&!rpc.error)?(Array.isArray(rpc.data)?rpc.data[0]:rpc.data):null;
+  // Only a row that actually carries a verdict is a verdict. No error and no
+  // row means the function did not answer — fall through rather than tell
+  // someone their invitation is dead on the strength of an empty response.
+  if(r&&typeof r.ok!=='undefined'){
+    clearLink();
+    if(r.ok)return true;
+    if(r.reason==='wrong_email'){
+      alert('This invitation was sent to '+(r.invited_email||'a different address')+', but you are signed in as '+currentUser.email+'.\n\nSign in as the invited address, or ask for an invitation to this one.');
+    }else{
+      alert('That invitation link is no longer valid — it may already have been used, or cancelled. Ask whoever invited you to send a new one.');
+    }
+    return false;
+  }
+
+  // Function not created yet. Fall back to doing it from here, which only works
+  // while the policies still permit a non-member to read and write those tables.
+  const{data:invite,error:readErr}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').maybeSingle();
+  if(readErr){
+    // Not the same thing as a dead link, and saying so sends people looking in
+    // the wrong place. This is the invitee being refused the read.
+    clearLink();
+    alert('Could not read that invitation ('+readErr.message+').\n\nRun migrations/2026-08-19_title22_redeem_invite.sql in the Supabase SQL editor — invitations cannot be accepted from the browser once the tables are locked down.');
+    return false;
+  }
   if(!invite){
     // Used to return in silence, which left someone who had just clicked an
     // invitation sitting on an onboarding page with no idea why.
@@ -4214,7 +4244,7 @@ async function checkInviteToken(){
     const{error:joinErr}=await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
     if(joinErr){
       clearLink();
-      alert('Could not join that facility: '+joinErr.message);
+      alert('Could not join that facility ('+joinErr.message+').\n\nRun migrations/2026-08-19_title22_redeem_invite.sql in the Supabase SQL editor — joining is done server-side there, so it works whatever the table policies are.');
       return false;
     }
   }
