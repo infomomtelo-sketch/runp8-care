@@ -113,7 +113,7 @@ begin
     t.name,
     t.commission_rate,
     count(p.id) as signup_count,
-    count(p.id) filter (where p.title22_plan is not null and p.title22_plan not in ('trial', 'free')) as paid_count,
+    count(p.id) filter (where p.title22_plan is not null and p.title22_plan not in ('trial', 'free', 'edu')) as paid_count,
     max(p.created_at) as latest_signup
   from public.title22_trainers t
   left join public.profiles p on p.referred_by = t.code

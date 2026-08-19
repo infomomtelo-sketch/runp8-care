@@ -3327,20 +3327,34 @@ let recordDocsNote='';
 let pendingSlotDocs=[];
 let slotUploadTarget=null;
 
-function clearRecordDocs(){recordDocs=[];recordDocsNote='';pendingSlotDocs=[];slotUploadTarget=null;}
+// Only the newest read may write into recordDocs. Both are shared by every
+// slot on every record, so without this a slow response can land after the
+// modal it was opened for has already been closed — and then paints one
+// person's documents into another person's form. Opening a staff member on a
+// phone, closing it, and opening "Add staff member" before the first query
+// came back showed the previous employee's certificate as "On file" against a
+// record that did not exist yet, View / Download / Share included.
+let recordDocsSeq=0;
 
+function clearRecordDocs(){recordDocs=[];recordDocsNote='';pendingSlotDocs=[];slotUploadTarget=null;recordDocsSeq++;}
+
+// Returns false when a newer read started while this one was in flight, so
+// callers know their result is stale and must not repaint from it.
 async function loadRecordDocs(kind,id){
+  const seq=++recordDocsSeq;
   recordDocs=[];recordDocsNote='';
-  if(!id||!currentFacility)return;
+  if(!id||!currentFacility)return true;   // nothing in flight to be stale
   const col=kind==='staff'?'staff_id':'resident_id';
   const{data,error}=await sb.from('documents').select('*').eq('facility_id',currentFacility.id).eq(col,id).order('uploaded_at',{ascending:false});
+  if(seq!==recordDocsSeq)return false;   // superseded — leave the newer state alone
   if(error){
     // Most likely the staff_id column from migration 2026-08-09 has not been
     // run yet. Say so rather than reporting every document as missing.
     recordDocsNote='Could not read filed documents ('+((error&&error.message)||'unknown error')+').';
-    return;
+    return true;
   }
   recordDocs=data||[];
+  return true;
 }
 
 function slotDocs(slot){return recordDocs.filter(d=>d.doc_type===slot.docType);}
@@ -3578,7 +3592,7 @@ async function deleteSlotDoc(kind,id,path){
 // once the record's documents come back, so the modal never waits on a query.
 function refreshDocSlots(kind,recordId){
   renderDocSlots(kind);
-  loadRecordDocs(kind,recordId).then(()=>renderDocSlots(kind));
+  loadRecordDocs(kind,recordId).then(current=>{if(current)renderDocSlots(kind);});
 }
 
 // ===== TEAM =====
@@ -4909,7 +4923,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
-  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -4987,7 +5001,7 @@ function showSetNewPassword(){
 <!-- Scan to fill: review gate. Nothing here writes to the database — "Fill form"
      only populates the inputs of the modal underneath, which still needs Save. -->
 <div class="modal-overlay" id="scan-modal" onclick="if(event.target===this)closeScanModal()">
-  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto">
+  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
     <div class="modal-header">
       <h3 id="scan-modal-title">Review scan</h3>
       <button class="modal-close" onclick="closeScanModal()">×</button>
@@ -5018,7 +5032,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
     <div id="inc-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
       <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — DSS REQUIREMENTS</div>
