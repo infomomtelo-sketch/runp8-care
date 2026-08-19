@@ -1077,7 +1077,7 @@ function switchTab(name){
   const selNav=document.getElementById('nav-'+name);
   if(sel)sel.style.display='block';
   if(selNav)selNav.classList.add('active');
-  if(name==='dashboard'){refreshDashboard();loadDashboardMARStats();maybeShowOnboarding();setTimeout(()=>loadDashboardAIBriefing(false),500);}
+  if(name==='dashboard'){refreshDashboard();loadComplianceDocs().then(refreshDashboard);loadDashboardMARStats();maybeShowOnboarding();setTimeout(()=>loadDashboardAIBriefing(false),500);}
   if(name==='checklist'){renderExpiryBanner();renderChecklist(activeFilter);}
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
@@ -1635,7 +1635,7 @@ async function initFacility(){
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
   }
   refreshDashboard();
-  await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);
+  await Promise.all([loadResidents(),loadStaff(),loadIncidents(),loadComplianceDocs()]);
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
@@ -1735,72 +1735,134 @@ async function refreshAccess(manual){
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';
-  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents()]);refreshDashboard();}
+  if(!was){switchTab('dashboard');refreshDashboard();await Promise.all([loadResidents(),loadStaff(),loadIncidents(),loadComplianceDocs()]);refreshDashboard();}
   const bt=document.getElementById('tab-billing');
   if(bt&&bt.style.display!=='none')loadBilling();
 }
 
 // ===== DASHBOARD =====
-// Gaps visible in the staff and resident records themselves.
+// Compliance read from the records, document first.
 //
-// The dashboard read complianceTasks and nothing else — a checklist somebody
-// ticks by hand. It never looked at the records, so a facility whose every
-// certification date was blank still reported "No urgent alerts", which is the
-// opposite of what this product exists to tell you. A blank date is not a pass:
-// getDaysUntil(null) returns null and every expiry check quietly skipped it.
+// The dashboard used to read complianceTasks and nothing else — a checklist
+// somebody ticks by hand. It never looked at staff or residents, so a facility
+// whose every certification date was blank reported "No urgent alerts". A blank
+// date was not even a gap: getDaysUntil(null) returns null and every expiry
+// check skipped it silently.
 //
-// These are still self-reported values — a Yes with no document behind it is
-// counted as a Yes here, exactly as the document slots already warn. This
-// closes the gap between the records and the dashboard, not the one between a
-// typed Yes and a filed document.
-function recordGaps(){
-  const gaps=[];
-  const dated=(who,label,value)=>{
-    if(!value){gaps.push({level:'missing',who,what:label+' has no date on file'});return;}
-    const d=getDaysUntil(value);
-    if(d===null)return;
-    const n=Math.abs(d),unit=n===1?'day':'days';
-    if(d<0)gaps.push({level:'expired',who,what:label+' expired '+n+' '+unit+' ago'});
-    else if(d<=30)gaps.push({level:'soon',who,what:label+' expires in '+n+' '+unit});
-  };
-  (window.staffList||[]).forEach(s=>{
-    if(!s||s.active===false||s.status==='inactive')return;
-    const who=s.full_name||s.name||'A staff member';
-    dated(who,'TB test',s.tb_test_due||s.tb_test_expiry);
-    dated(who,'CPR certification',s.cpr_cert_expiry);
-    dated(who,'First aid certification',s.first_aid_cert_expiry);
-    if(s.livescan_cleared!==true)gaps.push({level:'missing',who,what:'LiveScan is not recorded as cleared'});
-    if(s.mandated_reporter_completed!==true)gaps.push({level:'missing',who,what:'Mandated reporter training is not recorded as complete'});
-    if(!(s.initial_training_complete===true||s.initial_training_completed===true))gaps.push({level:'missing',who,what:'16-hour initial training is not recorded as complete'});
+// The order CLAUDE.md sets out is followed here: read the newest filed
+// document, fall back to the typed value, and mark the difference. So a
+// certificate that is on file decides the answer; a typed value with nothing
+// behind it still counts — nobody's score collapses because they have not
+// uploaded yet — but it is marked unverified and says an inspector will ask to
+// see it. An expired document, or an expired typed date, does not count.
+const COMPLIANCE_REQUIREMENTS={
+  staff:[
+    {docType:'tb_test',           label:'TB test',                    dates:['tb_test_due','tb_test_expiry']},
+    {docType:'cpr_card',          label:'CPR certification',          dates:['cpr_cert_expiry']},
+    {docType:'first_aid',         label:'First aid certification',    dates:['first_aid_cert_expiry']},
+    {docType:'livescan',          label:'LiveScan clearance',         truthy:['livescan_cleared']},
+    {docType:'mandated_reporter', label:'Mandated reporter training', truthy:['mandated_reporter_completed']},
+    {docType:'training_cert',     label:'16-hour initial training',   truthy:['initial_training_complete','initial_training_completed']},
+  ],
+  resident:[
+    {docType:'lic601', label:'LIC 601', yes:['lic601']},
+    {docType:'lic602', label:'LIC 602', yes:['lic602']},
+    {docType:'isp',    label:'ISP',     yes:['isp'], dates:['isp_review_date']},
+  ],
+};
+
+// Newest filed document per record and requirement.
+let complianceDocs={staff:{},resident:{}};
+
+async function loadComplianceDocs(){
+  complianceDocs={staff:{},resident:{}};
+  if(!currentFacility)return;
+  const{data,error}=await sb.from('documents')
+    .select('id,staff_id,resident_id,doc_type,issued_at,expires_at,uploaded_at')
+    .eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  // No documents table, or columns from a migration that has not been run:
+  // leave the index empty and every requirement falls back to its typed value,
+  // which is exactly the behaviour before any of this existed.
+  if(error||!data)return;
+  data.forEach(d=>{
+    const kind=d.staff_id?'staff':(d.resident_id?'resident':null);
+    const id=d.staff_id||d.resident_id;
+    if(!kind||!id||!d.doc_type)return;
+    const byRecord=complianceDocs[kind][id]||(complianceDocs[kind][id]={});
+    if(!byRecord[d.doc_type])byRecord[d.doc_type]=d;   // ordered newest first
   });
-  (window.residents||[]).forEach(r=>{
-    if(!r||r.status==='discharged')return;
-    const who=r.name||r.full_name||'A resident';
-    if(r.lic601!=='yes')gaps.push({level:'missing',who,what:'LIC 601 is not recorded as on file'});
-    if(r.lic602!=='yes')gaps.push({level:'missing',who,what:'LIC 602 is not recorded as on file'});
-    if(r.isp!=='yes')gaps.push({level:'missing',who,what:'ISP is not recorded as on file'});
-    else dated(who,'ISP review',r.isp_review_date);
-  });
-  const rank={expired:0,missing:1,soon:2};
-  return gaps.sort((a,b)=>rank[a.level]-rank[b.level]);
 }
 
+function evaluateCompliance(){
+  const out={items:[],met:0,total:0,verified:0,claimedOnly:0};
+  const consider=(kind,rec,who)=>{
+    (COMPLIANCE_REQUIREMENTS[kind]||[]).forEach(req=>{
+      const doc=((complianceDocs[kind]||{})[rec.id]||{})[req.docType]||null;
+      const typedDate=(req.dates||[]).map(f=>rec[f]).find(Boolean)||null;
+      const claimed=(req.truthy||req.yes)
+        ?((req.truthy||[]).some(f=>rec[f]===true)||(req.yes||[]).some(f=>String(rec[f]||'').toLowerCase()==='yes'))
+        :!!typedDate;
+      // Document first, typed value as the fallback.
+      const expiry=(doc&&doc.expires_at)||typedDate||null;
+      const days=expiry?getDaysUntil(expiry):null;
+      let level=null;
+      if(days!==null&&days<0)level='expired';
+      else if(!doc&&!claimed)level='missing';
+      else if(!doc&&claimed)level='unverified';
+      else if(days!==null&&days<=30)level='soon';
+      const met=level!=='expired'&&level!=='missing';
+      out.total++;
+      if(met)out.met++;
+      if(doc)out.verified++;
+      if(level==='unverified')out.claimedOnly++;
+      if(level){
+        const n=days===null?null:Math.abs(days),unit=n===1?'day':'days';
+        const what=level==='expired'
+            ?req.label+' expired '+n+' '+unit+' ago'+(doc?' (per the filed document)':'')
+          :level==='missing'
+            ?req.label+' is not on file and not recorded'
+          :level==='unverified'
+            ?req.label+' is recorded, but no document is attached — an inspector will ask to see it'
+            :req.label+' expires in '+n+' '+unit;
+        out.items.push({level,who,what});
+      }
+    });
+  };
+  (window.staffList||[]).forEach(s=>{
+    if(s&&s.active!==false&&s.status!=='inactive')consider('staff',s,s.full_name||s.name||'A staff member');
+  });
+  (window.residents||[]).forEach(r=>{
+    if(r&&r.status!=='discharged')consider('resident',r,r.name||r.full_name||'A resident');
+  });
+  const rank={expired:0,missing:1,unverified:2,soon:3};
+  out.items.sort((a,b)=>rank[a.level]-rank[b.level]);
+  return out;
+}
+
+function recordGaps(){return evaluateCompliance().items;}
+
 function refreshDashboard(){
-  const total=complianceTasks.length;
-  const done=complianceTasks.filter(t=>t.completed).length;
+  // The score now counts what is in the records as well as what is ticked on
+  // the checklist. It was the checklist alone, which is how a facility with
+  // every certification date blank could read 100%.
+  const comp=evaluateCompliance();
+  const total=complianceTasks.length+comp.total;
+  const done=complianceTasks.filter(t=>t.completed).length+comp.met;
   const today=new Date().toISOString().split('T')[0];
   const nextMonth=new Date();nextMonth.setMonth(nextMonth.getMonth()+1);
-  const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length;
-  const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length;
+  const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length
+    +comp.items.filter(i=>i.level==='expired').length;
+  const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length
+    +comp.items.filter(i=>i.level==='soon').length;
   const score=total>0?Math.round((done/total)*100):0;
   document.getElementById('dash-score').textContent=score+'%';
-  // The score counts checklist tasks only. Saying just "N of M complete" beside
-  // a facility with unfilled certification dates reads as an all-clear, so the
-  // count of record gaps is stated next to it rather than left to be inferred.
-  const gapCount=recordGaps().length;
+  // A green number still has to say what is behind it. Requirements met counts
+  // a typed value; how many are backed by a filed document is the separate
+  // question an inspector actually asks, so it is stated rather than implied.
   document.getElementById('dash-score-sub').textContent=
-    `${done} of ${total} checklist requirements complete`
-    +(gapCount?` · ${gapCount} record gap${gapCount===1?'':'s'} not counted here`:'');
+    `${done} of ${total} requirements met`
+    +(comp.total?` · ${comp.verified} of ${comp.total} backed by a document`:'')
+    +(comp.claimedOnly?` · ${comp.claimedOnly} recorded but unverified`:'');
   const arc=2*Math.PI*34;
   document.getElementById('score-arc').style.strokeDashoffset=arc*(1-score/100);
   document.getElementById('stat-overdue').textContent=overdue;
@@ -1811,8 +1873,8 @@ function refreshDashboard(){
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
   const overdueTasks=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today);
-  const gaps=recordGaps();
-  const dot={expired:'red',missing:'amber',soon:'amber'};
+  const gaps=comp.items;
+  const dot={expired:'red',missing:'red',unverified:'amber',soon:'amber'};
   const rows=overdueTasks.map(t=>({dot:'red',title:t.title,sub:'Overdue since '+t.due_date}))
     .concat(gaps.map(g=>({dot:dot[g.level]||'amber',title:g.who,sub:g.what})));
   document.getElementById('alert-count').textContent=rows.length;
