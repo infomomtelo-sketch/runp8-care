@@ -505,7 +505,7 @@
           <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask Tello to check it for DSS gaps.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" style="font-size:13px" onclick="window.open('https://title-22.com/walkthrough/','_blank')">▶ Watch 2-min walkthrough</button>
-            <button class="btn btn-outline" style="font-size:13px" onclick="seedDemoData()">🧪 Load sample facility</button>
+            <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()">🧪 Load sample facility</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')">🤖 Ask Tello</button>
           </div>
         </div>
@@ -717,7 +717,7 @@
         <div class="card" style="margin-top:20px" id="demo-data-card">
           <div class="card-title">Demo data</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
-          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" onclick="seedDemoData()">🧪 Load demo data</button>
+          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()">🧪 Load demo data</button>
         </div>
       </div>
 
@@ -2667,7 +2667,14 @@ async function saveFacility(){
 
 // ===== DEMO DATA SEEDING =====
 const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
+// Guards a second press while the first is still inserting. allFacilities is
+// not updated until the very end, so without this the existing-sample check
+// below still reads empty on a re-press and a second sample facility is built
+// alongside the first.
+let seedDemoRunning=false;
+
 async function seedDemoData(){
+  if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
   // One sample per account is still the rule: a second click switches to the
@@ -2681,8 +2688,13 @@ async function seedDemoData(){
     return;
   }
   if(!confirm('This creates a separate sample facility ("Sunrise Demo Home") with 8 residents, 5 staff, medications, and 30 days of MAR history. Your real facilities are not touched. Continue?'))return;
-  const btn=document.getElementById('seed-demo-btn');
-  if(btn){btn.disabled=true;btn.textContent='Loading demo data…';}
+  const btns=[...document.querySelectorAll('[data-seed-demo]')];
+  btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
+  seedDemoRunning=true;
+  // Named so a failure says which insert stopped it. "Demo data failed:
+  // <postgres error>" on its own does not say whether it was the residents,
+  // the 300 MAR rows, or the compliance tasks.
+  let stage='creating the sample facility';
   try{
     const{data:fac,error:fe}=await sb.from('facilities').insert({
       user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
@@ -2690,6 +2702,7 @@ async function seedDemoData(){
       administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
     }).select().single();
     if(fe)throw fe;
+    stage='adding the 8 residents';
     const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
     const{data:resD,error:re}=await sb.from('residents').insert([
       R('Betty Alvarez','Room 1','1938-04-12',dISO(-400),'Dementia, Hypertension','Penicillin','yes','yes','yes'),
@@ -2702,6 +2715,7 @@ async function seedDemoData(){
       R('Walter Kim','Room 8','1940-05-09',dISO(-30),'Atrial fibrillation','None known','yes','yes','yes'),
     ]).select();
     if(re)throw re;
+    stage='adding the 5 staff';
     const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
     const{error:se}=await sb.from('staff').insert([
       S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),
@@ -2711,6 +2725,7 @@ async function seedDemoData(){
       S('Sofia Ivanova','night_caregiver',dISO(-100),dISO(200),dISO(220),dISO(220)),
     ]);
     if(se)throw se;
+    stage='adding the medications';
     const M=(resIdx,med,dose,dir,doc)=>({facility_id:fac.id,resident_id:resD[resIdx].id,medication_name:med,dosage:dose,directions:dir,prescriber:doc,rx_number:String(1000000+Math.floor(Math.random()*899999)),pharmacy:'CVS Pharmacy',start_date:dISO(-100),refill_date:dISO(12),status:'active'});
     const{data:medD,error:me}=await sb.from('medications').insert([
       M(0,'Donepezil','10mg','1 tablet by mouth at bedtime','Patel'),
@@ -2725,6 +2740,7 @@ async function seedDemoData(){
       M(1,'Acetaminophen','500mg','1-2 tablets by mouth as needed for pain','Warren'),
     ]).select();
     if(me)throw me;
+    stage='writing 30 days of MAR history';
     const marRows=[];
     for(let day=30;day>=1;day--){
       medD.forEach((m,i)=>{
@@ -2741,19 +2757,26 @@ async function seedDemoData(){
     marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:currentUser.id,administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
     const{error:mre}=await sb.from('mar_entries').insert(marRows);
     if(mre)throw mre;
+    stage='adding the incident reports';
     const inc=(resIdx,type,daysAgo,desc,action,dss)=>({facility_id:fac.id,resident_id:resD[resIdx].id,reported_by:currentUser.id,incident_type:type,occurred_at:new Date(Date.now()-daysAgo*86400000).toISOString(),description:desc,injury:false,physician_notified:true,family_notified:true,dss_reportable:dss,corrective_action:action,status:'open'});
     await sb.from('incidents').insert([
       inc(2,'fall',12,'Resident found seated on floor next to bed at 06:40. No injury on assessment.','Fall mat placed; PT evaluation requested; night checks increased.',false),
       inc(5,'behavioral',20,'Resident became agitated during evening activity, raised voice at peer.','Redirected to quiet area; trigger noted; ISP update scheduled.',false),
     ]);
+    stage='building the compliance checklist';
     await seedComplianceTasks(fac.id,dISO(300));
     allFacilities.push(fac);
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
     alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
-  }catch(e){alert('Demo data failed: '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent='🧪 Load demo data';}}
+  }catch(e){
+    alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nNothing was added to your own facility.');
+  }
+  finally{
+    seedDemoRunning=false;
+    btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
+  }
 }
 
 // ===== MAR =====
