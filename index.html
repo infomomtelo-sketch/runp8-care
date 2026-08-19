@@ -1088,7 +1088,7 @@ const ROLE_ACCESS = {
   // was logged wrong. Not staff files, not facility settings, not billing or
   // the team list, and canDelete stays false: a lead corrects the record, they
   // do not remove things from it.
-  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','residents','medications','mar','incidents','daily','documents'] },
+  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','medications','mar','incidents','daily','training','documents'] },
   caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
 };
@@ -1106,7 +1106,7 @@ const ROLE_BRIEF={
     can:'add and edit residents, staff, medications, MAR, incidents, daily logs, training and documents.',
     cannot:'You cannot see billing, or invite and remove team members. The administrator handles those.'},
   in_house_caregiver:{label:'In-House Caregiver', joined:'as an In-House Caregiver',
-    can:'open resident records and print their documents, add a newly arrived medication and discontinue one that has stopped, record the MAR, and void an entry that was logged wrong.',
+    can:'open resident records and print their documents, add a newly arrived medication and discontinue one that has stopped, record the MAR, void an entry that was logged wrong, work the compliance checklist, and log your own training hours.',
     cannot:'Staff files, facility settings, billing and the team list stay with the administrator. You correct the record rather than delete from it — a voided MAR entry stays visible, struck through, with your reason beside it.'},
   caregiver:{label:'Caregiver', joined:'as a Caregiver',
     can:'record medications on the MAR, write daily logs, report incidents, and file documents.',
