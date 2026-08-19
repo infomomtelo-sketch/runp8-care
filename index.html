@@ -1672,16 +1672,51 @@ if(T22_PAID.includes(plan)){
 // someone who had just signed up that their Free Trial plan allows 0
 // facilities and they should upgrade. That was every new account, on the
 // first facility, in the first minute.
+// Someone invited onto a team is covered by that facility's plan, not by a
+// trial of their own. readEntitlement reads exactly one row — the signed-in
+// person's own profiles row — so a caregiver's account says "trial, expired"
+// and always will: nobody subscribes twice for the same facility. Without
+// this, every caregiver you invite is locked out to a billing page on day 15
+// while the facility they work in is paid for by somebody else, which makes
+// Team access pointless.
+//
+// Only asked when their own account does not already cover them, and only
+// answerable server-side — RLS will not let a caregiver read the owner's
+// profiles row, and should not. See
+// migrations/2026-08-19_title22_member_entitlement.sql.
+let t22CoveredByFacility=null;
+async function resolveMemberEntitlement(){
+  try{
+    const{data,error}=await sb.rpc('title22_member_entitlement');
+    if(error)return null;
+    const r=Array.isArray(data)?data[0]:data;
+    return(r&&r.entitled)?r:null;
+  }catch(e){return null;}
+}
+
 async function resolveTierLimits(){
   // Sandbox is entitled by construction: role is readonly and anon RLS
   // blocks writes, so this grants view access only.
-  const ent=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
+  const own=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
+  t22CoveredByFacility=null;
+  let ent=own;
+  if(!demoMode&&!own.entitled){
+    const cov=await resolveMemberEntitlement();
+    if(cov){
+      t22CoveredByFacility=cov.facility_name||'a facility you were invited to';
+      ent={entitled:true,plan:cov.plan||'starter',daysLeft:null,trialExpired:false,ok:true};
+    }
+  }
   t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
   // ent.ok was already computed and then thrown away. It is the difference
   // between "your trial ran out" and "we could not check", and those need
   // very different words in front of a customer.
   t22EntitlementVerified=ent.ok!==false&&!t22TrialActivationError;
   t22Limits=ent.entitled?(TIER_LIMITS[ent.plan]||{facilities:1,ai:false}):{facilities:0,ai:false};
+  // An inherited plan covers working in that facility. It does not fund
+  // facilities of your own — inheriting 'agency' from a team you were invited
+  // to must not hand you five facilities on somebody else's subscription.
+  if(t22CoveredByFacility)t22Limits={...t22Limits,facilities:0};
   return ent;
 }
 
@@ -1774,7 +1809,10 @@ async function initFacility(){
   }
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
-  }else if(t22Plan==='trial'){
+  }else if(t22Plan==='trial'&&!t22CoveredByFacility){
+    // Not shown on an inherited plan: the countdown belongs to the facility
+    // owner's account, this function has no access to it, and "0 days left"
+    // in front of someone whose access is fine is worse than saying nothing.
     const banner=document.getElementById('trial-banner');
     if(banner){const d=document.getElementById('trial-days-left');if(d)d.textContent=t22TrialDaysLeft;banner.style.display='flex';}
   }
@@ -4683,6 +4721,13 @@ async function loadBilling(){
 
   const el=document.getElementById('billing-plan-details');if(!el)return;
   try{
+    // Their access is the facility owner's subscription. Showing them
+    // "Facility plan · Active" would read as their own, and a Subscribe
+    // button would charge them a second time for a facility already paid for.
+    if(t22CoveredByFacility){
+      el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">👥</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">Covered by ${esc(t22CoveredByFacility)}</div><div style="font-size:14px;color:var(--text2)">You were invited onto this team — its administrator manages the subscription.</div></div><span class="badge badge-green" style="margin-left:auto">✓ Active</span></div><div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2)">There is nothing for you to pay. If you also want a facility of your own, you would subscribe separately for it.</div>`;
+      return;
+    }
     const ent=await resolveEntitlement();
     const plan=ent.plan;
     const planLabels=T22_LABEL;
