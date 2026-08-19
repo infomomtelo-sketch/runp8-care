@@ -450,6 +450,7 @@
 <div id="page-onboard" class="page">
   <div class="onboard-wrap">
     <div class="onboard-card">
+      <div id="ob-invite-waiting" style="display:none;background:var(--amber-light);color:var(--amber);font-size:13px;line-height:1.5;padding:12px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"></div>
       <div class="onboard-step">Step 1 of 1 · Setup</div>
       <h2>Tell us about your facility</h2>
       <p>This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
@@ -1328,16 +1329,11 @@ async function handleSignup(){
   }
   currentUser=data.user;
   await ensureProfile(currentUser);
-  // An invitation in hand means this person is joining someone else's
-  // facility, not starting their own. loadApp() is the only path that redeems
-  // one; going straight to onboarding stepped over it entirely, so an invited
-  // caregiver signed up, was asked to create a facility, and the invitation
-  // stayed pending forever. That is the whole of "the invitation was sent but
-  // never accepted" — the link only ever worked for someone who already had a
-  // Title22 account and used Log in.
-  if(readInviteToken()){await loadApp();return;}
-  await resolveTierLimits();
-  showPage('onboard');
+  // Always through loadApp, never straight to onboarding. loadApp is the only
+  // path that redeems an invitation, and it cannot be conditional on holding a
+  // token: the invitation may be findable by email alone. Its zero-facility
+  // exit shows the same onboarding page, so an ordinary signup is unaffected.
+  await loadApp();
 }
 
 // A caregiver whose confirmation mail never arrived has no other way in.
@@ -1738,12 +1734,23 @@ async function loadApp(){
   // facility of their own yet, so the exit fired first and the link did
   // nothing at all. They were shown onboarding and told to create a facility.
   if(await checkInviteToken())await readFacilities();
+  // The token is not allowed to be load-bearing. It lives in one browser
+  // profile's localStorage, and an invited caregiver's session very often ends
+  // up somewhere else: a private window does not share storage with the normal
+  // browser, and a confirmation email opens in whichever browser the mail app
+  // hands it to. When that happens the token is in one window and the signed-in
+  // session is in another, and the person lands on "create your facility"
+  // instead of inside the facility they were invited to.
+  //
+  // An invitation is addressed to an email. Signed in as that email is the
+  // person it was written for, link or no link.
+  else if(await acceptInviteForThisEmail())await readFacilities();
   // checkInviteToken can end the session: signing out to continue as the
   // invited address does exactly that. Everything below here assumes somebody
   // is signed in — initFacility reads currentUser.email on its second line —
   // so stop rather than initialise a facility for nobody.
   if(!currentUser)return;
-  if(!allFacilities.length){await resolveTierLimits();showPage('onboard');return;}
+  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
 }
@@ -4520,6 +4527,45 @@ async function offerToSwitchAccount(invitedEmail){
       const el=document.getElementById(id);if(el)el.value=invitedEmail;
     });
   }
+}
+
+// Redeems the pending invitation addressed to the signed-in account, with no
+// link involved. Returns true only when a membership now exists.
+//
+// Refuses an account whose email has not been confirmed, and says so rather
+// than failing silently — if addresses nobody controls could hold accounts,
+// "signed in as that email" would prove nothing, and a stranger who guessed an
+// invited address would walk into a facility's resident records. That check is
+// in the function, not here. See
+// migrations/2026-08-19_title22_accept_my_invite.sql.
+let t22InviteNeedsEmailConfirm=null;
+// Being shown "tell us about your facility" when you were invited to somebody
+// else's is the exact wrong instruction. Say what is really going on.
+function renderInviteWaiting(){
+  const el=document.getElementById('ob-invite-waiting');
+  if(!el)return;
+  if(!t22InviteNeedsEmailConfirm){el.style.display='none';return;}
+  el.innerHTML='\u2709\ufe0f <strong>You have been invited to '+esc(t22InviteNeedsEmailConfirm)+'.</strong><br/>'+
+    'Confirm your email address first — there is a link in the inbox for '+esc(currentUser?.email||'your address')+
+    '. Once you have tapped it, sign in again and you will go straight into that facility. You do not need to create one here.';
+  el.style.display='block';
+}
+async function acceptInviteForThisEmail(){
+  t22InviteNeedsEmailConfirm=null;
+  if(!currentUser||demoMode)return false;
+  try{
+    const{data,error}=await sb.rpc('title22_accept_my_invite');
+    if(error)return false;   // function not created yet — nothing lost
+    const r=Array.isArray(data)?data[0]:data;
+    if(!r||typeof r.ok==='undefined')return false;
+    if(r.ok){clearInviteToken();renderInviteNotice();return true;}
+    if(r.reason==='email_unconfirmed'){
+      // Not a dead end: they have an invitation, it is waiting, and the one
+      // thing standing in the way is a link already sitting in their inbox.
+      t22InviteNeedsEmailConfirm=r.facility_name||'a facility';
+    }
+    return false;
+  }catch(e){return false;}
 }
 
 // Redeems an ?invite= link. Returns true only when a membership now exists, so
