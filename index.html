@@ -1574,8 +1574,8 @@ async function initFacility(){
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
   complianceTasks=tasks||[];
-  residents=[];window.residents=[];
-  staffList=[];window.staffList=[];
+  residents=[];
+  staffList=[];
   incidents=[];window.incidents=[];
   marMedCache={};
   dashBriefingLoaded=false;
@@ -2030,13 +2030,18 @@ async function saveNote(){
 
 // ===== RESIDENTS =====
 let residents=[];
-window.residents=residents;
+// window.residents was a second binding that had to be kept in step by hand,
+// and deleteCurrentResident already forgot: it reassigned residents and left
+// window.residents holding the deleted person, who then still appeared in the
+// MAR resident dropdown and in the dashboard count — a deleted resident you
+// could still log a dose against. A getter onto the one array cannot drift.
+Object.defineProperty(window,'residents',{get:()=>residents,configurable:true});
 let currentResidentId=null;
 
 async function loadResidents(){
   if(!currentFacility)return;
   const{data}=await sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name');
-  residents=data||[];window.residents=residents;renderResidents();
+  residents=data||[];renderResidents();
 }
 
 function renderResidents(){
@@ -2179,7 +2184,10 @@ async function deleteCurrentResident(){
 
 // ===== STAFF =====
 let staffList=[];
-window.staffList=staffList;
+// Same divergence as residents above: deleteStaff reassigns staffList and left
+// window.staffList, which the dashboard head-count reads, holding the removed
+// person.
+Object.defineProperty(window,'staffList',{get:()=>staffList,configurable:true});
 let currentStaffId=null;
 
 const ROLE_LABELS={
@@ -2195,7 +2203,7 @@ const ROLE_OPTIONS=Object.entries(ROLE_LABELS).map(([value,label])=>({value,labe
 async function loadStaff(){
   if(!currentFacility)return;
   const{data}=await sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name');
-  staffList=data||[];window.staffList=staffList;renderStaff();
+  staffList=data||[];renderStaff();
 }
 
 function staffCertStatus(s){
@@ -2424,7 +2432,12 @@ async function loadMedications(){
 function renderMedications(){
   const list=document.getElementById('medications-list');
   const empty=document.getElementById('medications-empty');
-  if(!residents.length){list.innerHTML='';empty.style.display='block';return;}
+  if(!residents.length){
+    list.innerHTML='';
+    empty.innerHTML=noResidentsYetHTML('Medications are prescribed to a resident, so add one before prescribing.');
+    empty.style.display='block';
+    return;
+  }
   empty.style.display='none';
   list.innerHTML=residents.map(r=>{
     const nameField=r.name||r.full_name||'Unknown';
@@ -2837,7 +2850,14 @@ async function loadMAR(){
   const entries=data||[];
   const list=document.getElementById('mar-entries-list');if(!list)return;
   const note=marEmbedNote?`<div class="empty" style="text-align:left;background:var(--amber-light,#FDF3E3);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px">⚠️ Resident and medication names were looked up separately — the database could not join them (${esc(marEmbedNote)}). The doses below are complete; the names are worth spot-checking.</div>`:'';
-  if(!entries.length){list.innerHTML=note+'<div class="empty" style="margin-top:24px">No MAR entries yet. Tap + Log Medication to begin.</div>';return;}
+  if(!entries.length){
+    const anyResidents=(window.residents||residents||[]).length;
+    list.innerHTML=note+`<div class="empty" style="margin-top:24px">`+(anyResidents
+      ?'No MAR entries yet. Tap + Log Medication to begin.'
+      :noResidentsYetHTML('A MAR entry records a dose given to a resident, so there is nothing to log yet.'))
+      +`</div>`;
+    return;
+  }
   const grouped={};
   entries.forEach(e=>{
     const date=e.administered_at?new Date(e.administered_at).toISOString().split('T')[0]:'Unknown';
@@ -2893,9 +2913,30 @@ async function loadMARBriefing(){
   </div>`;
 }
 
+// Both the MAR and the Medications tab record against a resident, so with none
+// on file neither can do anything. Saying so is not enough on a phone — the
+// Residents tab is behind the menu — so offer the way there.
+function goAddResident(){
+  switchTab('residents');
+  openResidentModal(null);
+}
+
+function noResidentsYetHTML(what){
+  return `<div style="font-size:2.5rem;margin-bottom:12px">🏠</div>`
+    +`<div style="font-weight:600;margin-bottom:6px">No residents yet</div>`
+    +`<div style="margin-bottom:14px">${what}</div>`
+    +(canEdit()?`<button class="btn btn-primary" style="font-size:13px" onclick="goAddResident()">Add your first resident</button>`:'');
+}
+
 function showMAREntry(){
   const resList=window.residents||residents;
-  if(!resList.length){alert('No residents found. Add a resident first.');return;}
+  // Was a bare alert and nothing else — a dead end reached from an empty state
+  // that told you to press this very button.
+  if(!resList.length){
+    if(canEdit()&&confirm('A MAR entry records a dose given to a resident, and there are no residents on file yet.\n\nAdd one now?'))goAddResident();
+    else if(!canEdit())alert('There are no residents on file yet, so there is nothing to log against.');
+    return;
+  }
   const resSel=document.getElementById('mar-res-select');
   resSel.innerHTML='<option value="">Select Resident</option>';
   resList.forEach(r=>{
