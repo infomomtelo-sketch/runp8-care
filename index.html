@@ -329,6 +329,7 @@
         <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🤝 Partners</button>
         <button id="menu-walkthrough" onclick="window.open('https://title-22.com/walkthrough/','_blank');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">▶️ Walkthrough</button>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+          <button onclick="openAccountModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">⚙️ Account settings</button>
           <button onclick="addFacilityGuard();toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'">🏥 Add new facility</button>
           <button onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--red)" onmouseover="this.style.background='var(--red-light)'" onmouseout="this.style.background='none'">🚪 Log out</button>
         </div>
@@ -752,6 +753,11 @@
           <div class="card-title">Demo data</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
           <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()">🧪 Load demo data</button>
+        </div>
+        <div class="card" style="margin-top:20px;border-color:#e8a0a0" id="facility-danger-card">
+          <div class="card-title" style="color:var(--red)">Delete this facility</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Permanently removes this facility and everything filed under it — residents, staff, medications, MAR history, incidents, daily logs, documents and the audit log. There is no undo, and Title22 keeps no backup you can be restored from.</div>
+          <button class="btn btn-outline" style="font-size:13px;color:var(--red);border-color:var(--red-light)" onclick="openDeleteFacility()">🗑 Delete facility…</button>
         </div>
       </div>
 
@@ -1239,7 +1245,17 @@ async function ensureProfile(user){
       const patch={};
       if(!data.created_at)patch.created_at=new Date().toISOString();
       if(!data.title22_plan)patch.title22_plan='trial';
-      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date((data.created_at?new Date(data.created_at).getTime():Date.now())+trialDays*86400000).toISOString();
+      // Starts from now, not from the row's created_at. This profiles table is
+      // shared with the other apps on this Supabase project, so a person can
+      // have had a row for months before they ever opened Title22 — and dating
+      // their trial from it handed them a trial that was already part spent, or
+      // already over. A row 30 days old produced "your trial has ended" on the
+      // first screen of the first visit.
+      //
+      // This branch only runs when title22_trial_ends_at is null, which means
+      // no Title22 trial has ever been recorded for them, so today really is
+      // day one however old the row is.
+      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date(Date.now()+trialDays*86400000).toISOString();
       const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
       if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
     }
@@ -1355,13 +1371,80 @@ async function handleLogin(){
   track('login_success',{method:'password'});
 }
 
-async function handleLogout(){
-  if(demoMode){window.location.href='https://title22.app/';return;}
-  await sb.auth.signOut();
+function clearSession(){
   currentUser=null;currentFacility=null;
   document.getElementById('nav-app').style.display='none';
   document.getElementById('nav-public').style.display='flex';
   showPage('landing');
+}
+
+async function handleLogout(){
+  if(demoMode){window.location.href='https://title22.app/';return;}
+  await sb.auth.signOut();
+  clearSession();
+}
+
+// ===== ACCOUNT SETTINGS =====
+// Deliberately not a tab: every role has an account, including the readonly
+// ones whose tab list is nearly empty, so this hangs off the user menu where
+// it is reachable no matter what applyRoleUI() has hidden.
+const ACCESS_LABEL={administrator:'Administrator',supervisor:'Supervisor',caregiver:'Caregiver',readonly:'View only'};
+function openAccountModal(){
+  const menu=document.getElementById('user-menu');
+  if(menu)menu.style.display='none';
+  document.getElementById('acct-email').textContent=currentUser?.email||'—';
+  const plan=T22_LABEL[t22Plan]||t22Plan||'—';
+  document.getElementById('acct-plan').textContent=
+    (t22Plan==='trial'&&t22Entitled)?`${plan} · ${t22TrialDaysLeft} day${t22TrialDaysLeft===1?'':'s'} left`:plan;
+  const bill=document.getElementById('acct-billing-btn');
+  if(bill)bill.style.display=allowedTabs().includes('billing')?'':'none';
+  document.getElementById('acct-role').textContent=
+    (ACCESS_LABEL[currentUserRole]||currentUserRole||'—')+(currentFacility?.name?' at '+currentFacility.name:'');
+  document.getElementById('acct-pw1').value='';
+  document.getElementById('acct-pw2').value='';
+  const msg=document.getElementById('acct-msg');
+  msg.textContent='';msg.className='error-msg';
+  document.getElementById('account-modal').classList.add('open');
+}
+function closeAccountModal(){document.getElementById('account-modal').classList.remove('open');}
+function acctMsg(text,ok){
+  const msg=document.getElementById('acct-msg');
+  msg.textContent=text;
+  msg.className='error-msg show'+(ok?' is-ok':'');
+}
+async function changeAccountPassword(){
+  if(demoMode){acctMsg('The sandbox is not signed in to a real account.');return;}
+  const a=document.getElementById('acct-pw1').value;
+  const b=document.getElementById('acct-pw2').value;
+  if(a.length<8){acctMsg('Use at least 8 characters.');return;}
+  if(a!==b){acctMsg('Those two passwords do not match.');return;}
+  const btn=document.getElementById('acct-pw-btn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const{error}=await sb.auth.updateUser({password:a});
+    if(error)throw error;
+    document.getElementById('acct-pw1').value='';
+    document.getElementById('acct-pw2').value='';
+    acctMsg('Password changed. You stay signed in here; use it next time you sign in.',true);
+  }catch(e){acctMsg((e&&e.message)||'Could not change the password.');}
+  btn.disabled=false;btn.textContent='Change password';
+}
+// A caregiver who left a phone at the facility needs a way to end that
+// session without an administrator. scope:'global' revokes every refresh
+// token on the account, this browser included.
+async function signOutEverywhere(){
+  if(demoMode){acctMsg('The sandbox is not signed in to a real account.');return;}
+  if(!confirm('Sign out of Title22 everywhere, including on this device?'))return;
+  try{
+    const{error}=await sb.auth.signOut({scope:'global'});
+    if(error)throw error;
+  }catch(e){
+    // An older gotrue that does not know the option would otherwise leave the
+    // person signed in on a device they were trying to lock out.
+    try{await sb.auth.signOut();}catch(_){}
+  }
+  closeAccountModal();
+  clearSession();
 }
 
 async function handlePasswordReset(){
@@ -2947,6 +3030,12 @@ function renderFacilityInfo(){
   else if(expiry<today)badgeEl.innerHTML='<span class="badge badge-red">⚠ Expired</span>';
   else if(expiry<=in30)badgeEl.innerHTML='<span class="badge badge-amber">Renew soon</span>';
   else badgeEl.innerHTML='<span class="badge badge-green">✓ Current</span>';
+  // Deleting a facility is the owner's call, not every administrator's: an
+  // invited administrator manages the facility, they do not own its records.
+  // RLS would refuse them anyway — better to not offer the button at all than
+  // to offer it and fail.
+  const danger=document.getElementById('facility-danger-card');
+  if(danger)danger.style.display=(!demoMode&&currentUser&&f.user_id===currentUser.id)?'':'none';
 }
 function openFacilityModal(){
   const f=currentFacility||{};
@@ -2973,6 +3062,159 @@ async function saveFacility(){
   document.getElementById('sidebar-facility-name').textContent=currentFacility.name;
   renderFacilitySwitcher();
   closeFacilityModal();renderFacilityInfo();
+}
+
+// ===== DELETING A FACILITY =====
+// A facility is the root every other record hangs off, so this is not the
+// same shape of action as deleting one resident: it is irreversible, it takes
+// the audit log with it, and nothing here keeps a backup. Hence a modal that
+// counts what is about to go and makes you type the name, rather than a
+// one-line confirm() somebody taps through on a phone.
+//
+// Children are deleted explicitly, in dependency order, rather than trusting a
+// cascade nobody in this repo can see — public.documents was created outside
+// migrations/ and its constraints are not visible here.
+const FACILITY_CHILD_TABLES=[
+  {t:'documents',       one:'document',           many:'documents'},
+  {t:'staff_trainings', one:'training entry',     many:'training entries'},
+  {t:'mar_entries',     one:'MAR entry',          many:'MAR entries'},
+  {t:'incidents',       one:'incident report',    many:'incident reports'},
+  {t:'medications',     one:'medication',         many:'medications'},
+  {t:'daily_logs',      one:'daily log entry',    many:'daily log entries'},
+  {t:'compliance_tasks',one:'compliance task',    many:'compliance tasks'},
+  {t:'staff',           one:'staff member',       many:'staff members'},
+  {t:'residents',       one:'resident',           many:'residents'},
+  {t:'facility_invites',one:'pending invitation', many:'pending invitations'},
+  {t:'facility_members',one:'team member',        many:'team members'},
+  {t:'audit_log',       one:'audit log entry',    many:'audit log entries'},
+];
+// A table this project never created is nothing to report to a caregiver —
+// skip it and carry on. Every other error stops the delete.
+function isMissingTable(e){
+  const m=((e&&e.message)||'')+' '+((e&&e.details)||'');
+  return !!e&&(e.code==='42P01'||/does not exist|schema cache/i.test(m));
+}
+let deletingFacility=false;
+// The counts are read asynchronously after the modal opens. Without this the
+// results of a cancelled open could paint over a later one.
+let delFacSeq=0;
+
+async function countFacilityContents(facilityId){
+  const out={};
+  for(const c of FACILITY_CHILD_TABLES){
+    try{
+      const{count,error}=await sb.from(c.t).select('id',{count:'exact',head:true}).eq('facility_id',facilityId);
+      // null, not 0: "we could not count this" and "there are none of these"
+      // are different sentences to put in front of someone about to delete.
+      out[c.t]=error?(isMissingTable(error)?0:null):(typeof count==='number'?count:null);
+    }catch(e){out[c.t]=null;}
+  }
+  return out;
+}
+
+async function openDeleteFacility(){
+  if(!currentFacility)return;
+  if(demoMode){alert('The sandbox is read-only.');return;}
+  if(currentFacility.user_id!==currentUser?.id){alert('Only the person who created this facility can delete it.');return;}
+  const seq=++delFacSeq;
+  const fac=currentFacility;
+  const sample=isSampleFacility(fac);
+  const err=document.getElementById('delfac-error');
+  err.textContent='';err.classList.remove('show');
+  const btn=document.getElementById('delfac-btn');
+  btn.disabled=true;btn.textContent='Delete permanently';
+  const input=document.getElementById('delfac-confirm');
+  input.value='';
+  // The sample facility holds nothing real. Making someone type
+  // "Sunrise Demo Home (Sample)" to clear it is friction with nothing behind
+  // it — and clearing a duplicate sample is the common case.
+  document.getElementById('delfac-confirm-wrap').style.display=sample?'none':'';
+  document.getElementById('delfac-name-hint').textContent=fac.name||'';
+  const body=document.getElementById('delfac-body');
+  body.innerHTML='<div style="font-size:13px;color:var(--text2)">Counting what is filed under this facility…</div>';
+  document.getElementById('delete-facility-modal').classList.add('open');
+  const counts=await countFacilityContents(fac.id);
+  if(seq!==delFacSeq)return;
+  const lines=FACILITY_CHILD_TABLES.map(c=>{
+    const n=counts[c.t];
+    if(n===0)return '';
+    if(n===null)return `<li>an unknown number of ${esc(c.many)} — that table could not be read</li>`;
+    return `<li><strong>${n}</strong> ${esc(n===1?c.one:c.many)}</li>`;
+  }).filter(Boolean).join('');
+  body.innerHTML=`
+    <div style="font-size:14px;margin-bottom:12px">This deletes <strong>${esc(fac.name||'this facility')}</strong> and everything filed under it.</div>
+    ${lines?`<ul style="font-size:13px;color:var(--text);margin:0 0 14px 18px;display:grid;gap:4px">${lines}</ul>`
+           :'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">There are no records filed under it.</div>'}
+    ${sample?'<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text2)">This is the sample facility. Nothing in it is a real record, and you can load it again at any time.</div>'
+            :'<div style="background:var(--red-light);border:1px solid #e8a0a0;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--red)">There is no undo and no backup. California expects resident and staff records to be kept after a resident leaves or an employee separates — download anything you may still be asked for before you delete this. Deleting the facility does not cancel your subscription.</div>'}
+  `;
+  updateDeleteFacilityBtn();
+}
+function closeDeleteFacility(){delFacSeq++;document.getElementById('delete-facility-modal').classList.remove('open');}
+function updateDeleteFacilityBtn(){
+  const btn=document.getElementById('delfac-btn');
+  if(deletingFacility)return;
+  if(document.getElementById('delfac-confirm-wrap').style.display==='none'){btn.disabled=false;return;}
+  btn.disabled=document.getElementById('delfac-confirm').value.trim()!==String(currentFacility?.name||'').trim();
+}
+
+async function confirmDeleteFacility(){
+  if(deletingFacility)return;
+  const fac=currentFacility;
+  if(!fac)return;
+  const err=document.getElementById('delfac-error');
+  const btn=document.getElementById('delfac-btn');
+  const fail=t=>{err.textContent=t;err.classList.add('show');};
+  err.textContent='';err.classList.remove('show');
+  // Re-checked here rather than trusting the button state: the same two gates
+  // that decide whether the button is offered decide whether it acts.
+  if(demoMode||fac.user_id!==currentUser?.id){fail('Only the person who created this facility can delete it.');return;}
+  if(!isSampleFacility(fac)&&document.getElementById('delfac-confirm').value.trim()!==String(fac.name||'').trim()){
+    fail('The name does not match. Type it exactly as it appears above.');return;
+  }
+  deletingFacility=true;btn.disabled=true;btn.textContent='Deleting…';
+  try{
+    // Storage objects are not rows, and no cascade reaches them. Read the
+    // paths before the document rows go, or the files stay in the bucket with
+    // nothing left pointing at them.
+    let paths=[];
+    const{data:docs,error:docErr}=await sb.from('documents').select('storage_path').eq('facility_id',fac.id);
+    if(docErr&&!isMissingTable(docErr))throw Object.assign(docErr,{__where:'documents'});
+    paths=(docs||[]).map(d=>d&&d.storage_path).filter(Boolean);
+    for(const c of FACILITY_CHILD_TABLES){
+      const{error}=await sb.from(c.t).delete().eq('facility_id',fac.id);
+      if(error&&!isMissingTable(error))throw Object.assign(error,{__where:c.many});
+    }
+    const{error:fe}=await sb.from('facilities').delete().eq('id',fac.id);
+    if(fe)throw Object.assign(fe,{__where:'facility'});
+    // Files last. A failure here leaves objects behind in storage, which is
+    // untidy but harmless — the records they belonged to are already gone, and
+    // stopping now would leave the facility half-deleted for no gain.
+    if(paths.length){try{await sb.storage.from('facility-documents').remove(paths);}catch(e){}}
+  }catch(e){
+    deletingFacility=false;
+    btn.textContent='Delete permanently';
+    updateDeleteFacilityBtn();
+    fail('Could not delete the '+((e&&e.__where)||'facility')+': '+((e&&e.message)||'unknown error')+'. Some records may already have been removed; the facility itself is still here, so it is safe to try again.');
+    return;
+  }
+  deletingFacility=false;
+  btn.textContent='Delete permanently';
+  closeDeleteFacility();
+  const name=fac.name||'That facility';
+  allFacilities=(allFacilities||[]).filter(f=>f.id!==fac.id);
+  if(allFacilities.length){
+    currentFacility=allFacilities[0];
+    await initFacility();
+    // initFacility sends an unentitled account to billing and hides every
+    // other tab. Do not drag it back to a dashboard it is not allowed to see.
+    if(t22Entitled)switchTab('dashboard');
+  }else{
+    currentFacility=null;
+    await resolveTierLimits();
+    showPage('onboard');
+  }
+  alert('“'+name+'” and everything filed under it have been deleted.');
 }
 
 // ===== DEMO DATA SEEDING =====
@@ -4176,7 +4418,37 @@ async function checkInviteToken(){
   const token=params.get('invite');
   if(!token||!currentUser)return false;
   const clearLink=()=>window.history.replaceState({},document.title,window.location.pathname);
-  const{data:invite}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').maybeSingle();
+  // Redeemed server-side when the function is there. Doing it from the browser
+  // needs facility_invites readable and facility_members writable by someone
+  // who is not yet a member of that facility — which is exactly what row level
+  // security should be refusing. See
+  // migrations/2026-08-19_title22_redeem_invite.sql.
+  const rpc=await sb.rpc('title22_redeem_invite',{p_token:token});
+  const r=(rpc&&!rpc.error)?(Array.isArray(rpc.data)?rpc.data[0]:rpc.data):null;
+  // Only a row that actually carries a verdict is a verdict. No error and no
+  // row means the function did not answer — fall through rather than tell
+  // someone their invitation is dead on the strength of an empty response.
+  if(r&&typeof r.ok!=='undefined'){
+    clearLink();
+    if(r.ok)return true;
+    if(r.reason==='wrong_email'){
+      alert('This invitation was sent to '+(r.invited_email||'a different address')+', but you are signed in as '+currentUser.email+'.\n\nSign in as the invited address, or ask for an invitation to this one.');
+    }else{
+      alert('That invitation link is no longer valid — it may already have been used, or cancelled. Ask whoever invited you to send a new one.');
+    }
+    return false;
+  }
+
+  // Function not created yet. Fall back to doing it from here, which only works
+  // while the policies still permit a non-member to read and write those tables.
+  const{data:invite,error:readErr}=await sb.from('facility_invites').select('*').eq('token',token).eq('status','pending').maybeSingle();
+  if(readErr){
+    // Not the same thing as a dead link, and saying so sends people looking in
+    // the wrong place. This is the invitee being refused the read.
+    clearLink();
+    alert('Could not read that invitation ('+readErr.message+').\n\nRun migrations/2026-08-19_title22_redeem_invite.sql in the Supabase SQL editor — invitations cannot be accepted from the browser once the tables are locked down.');
+    return false;
+  }
   if(!invite){
     // Used to return in silence, which left someone who had just clicked an
     // invitation sitting on an onboarding page with no idea why.
@@ -4204,7 +4476,7 @@ async function checkInviteToken(){
     const{error:joinErr}=await sb.from('facility_members').insert({facility_id:invite.facility_id,user_id:currentUser.id,role:invite.role});
     if(joinErr){
       clearLink();
-      alert('Could not join that facility: '+joinErr.message);
+      alert('Could not join that facility ('+joinErr.message+').\n\nRun migrations/2026-08-19_title22_redeem_invite.sql in the Supabase SQL editor — joining is done server-side there, so it works whatever the table policies are.');
       return false;
     }
   }
@@ -5605,6 +5877,29 @@ function showSetNewPassword(){
   <div class="form-row"><div class="form-group"><label>Certificate number</label><input type="text" id="facm-admin-cert"/></div><div class="form-group"><label>Certificate expiry</label><input type="date" id="facm-admin-expiry"/></div></div>
   <div class="error-msg" id="facility-modal-error"></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeFacilityModal()">Cancel</button><button class="btn btn-primary" onclick="saveFacility()">Save changes</button></div></div>
+</div>
+
+<div class="modal-overlay" id="delete-facility-modal" onclick="if(event.target===this)closeDeleteFacility()">
+  <div class="modal" style="max-width:520px"><div class="modal-header"><h3 style="color:var(--red)">Delete facility</h3><button class="modal-close" onclick="closeDeleteFacility()">×</button></div>
+  <div id="delfac-body"></div>
+  <div class="form-group" id="delfac-confirm-wrap" style="display:none;margin-top:16px"><label>Type <strong id="delfac-name-hint"></strong> to confirm</label><input type="text" id="delfac-confirm" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="updateDeleteFacilityBtn()"/></div>
+  <div class="error-msg" id="delfac-error" style="margin-top:16px"></div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeDeleteFacility()">Cancel</button><button class="btn btn-primary" id="delfac-btn" style="background:var(--red);border-color:var(--red)" disabled onclick="confirmDeleteFacility()">Delete permanently</button></div></div>
+</div>
+
+<div class="modal-overlay" id="account-modal" onclick="if(event.target===this)closeAccountModal()">
+  <div class="modal" style="max-width:480px"><div class="modal-header"><h3>Account settings</h3><button class="modal-close" onclick="closeAccountModal()">×</button></div>
+  <div style="display:grid;gap:10px;font-size:13px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+    <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Signed in as</div><div style="font-weight:500;word-break:break-all" id="acct-email">—</div></div>
+    <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Plan</div><div style="font-weight:500;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="acct-plan">—</span><button class="btn btn-outline" style="font-size:12px;padding:3px 10px" onclick="closeAccountModal();switchTab('billing')" id="acct-billing-btn">Billing</button></div></div>
+    <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Your access</div><div style="font-weight:500" id="acct-role">—</div></div>
+  </div>
+  <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px">Password</div>
+  <div class="form-row"><div class="form-group"><label>New password</label><input type="password" id="acct-pw1" autocomplete="new-password" placeholder="At least 8 characters"/></div><div class="form-group"><label>Repeat it</label><input type="password" id="acct-pw2" autocomplete="new-password"/></div></div>
+  <div class="error-msg" id="acct-msg"></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" style="font-size:13px" id="acct-pw-btn" onclick="changeAccountPassword()">Change password</button><button class="btn btn-outline" style="font-size:13px" onclick="signOutEverywhere()">Sign out everywhere</button></div>
+  <div style="font-size:12px;color:var(--text2);margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">To close your account entirely, email <a href="mailto:hello@title-22.com?subject=Close%20my%20Title22%20account" style="color:var(--teal)">hello@title-22.com</a>. Cancelling a subscription and deleting facility records are separate steps — deleting a facility from its own page removes its records, and does not cancel billing.</div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
