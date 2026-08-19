@@ -838,7 +838,7 @@
           <div class="modal">
             <div class="modal-header"><h3>Invite Team Member</h3><button class="modal-close" onclick="closeInviteModal()">×</button></div>
             <div class="form-group"><label>Email address</label><input type="email" id="invite-email" placeholder="caregiver@email.com"/></div>
-            <div class="form-group"><label>Role</label><select id="invite-role"><option value="caregiver">Caregiver</option><option value="supervisor">Supervisor</option><option value="readonly">Read Only</option></select></div>
+            <div class="form-group"><label>Role</label><select id="invite-role"><option value="caregiver">Caregiver</option><option value="in_house_caregiver">In-House Caregiver — lead</option><option value="supervisor">Supervisor</option><option value="readonly">Read Only</option></select></div>
             <div class="modal-footer"><button class="btn btn-outline" onclick="closeInviteModal()">Cancel</button><button class="btn btn-primary" onclick="sendInvite()">Generate Invite Link</button></div>
             <div id="invite-link-result" style="display:none;margin-top:16px;padding:12px;background:var(--gray-bg);border-radius:var(--radius);">
               <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">Share this link:</div>
@@ -1082,6 +1082,13 @@ let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrela
 const ROLE_ACCESS = {
   administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
   supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
+  // The shift lead who runs the floor. Resident records and their documents,
+  // the medications list so a newly arrived prescription can be added and a
+  // stopped one discontinued, and the MAR — including voiding an entry that
+  // was logged wrong. Not staff files, not facility settings, not billing or
+  // the team list, and canDelete stays false: a lead corrects the record, they
+  // do not remove things from it.
+  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','residents','medications','mar','incidents','daily','documents'] },
   caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
 };
@@ -1098,6 +1105,9 @@ const ROLE_BRIEF={
   supervisor:{label:'Supervisor', joined:'as a Supervisor',
     can:'add and edit residents, staff, medications, MAR, incidents, daily logs, training and documents.',
     cannot:'You cannot see billing, or invite and remove team members. The administrator handles those.'},
+  in_house_caregiver:{label:'In-House Caregiver', joined:'as an In-House Caregiver',
+    can:'open resident records and print their documents, add a newly arrived medication and discontinue one that has stopped, record the MAR, and void an entry that was logged wrong.',
+    cannot:'Staff files, facility settings, billing and the team list stay with the administrator. You correct the record rather than delete from it — a voided MAR entry stays visible, struck through, with your reason beside it.'},
   caregiver:{label:'Caregiver', joined:'as a Caregiver',
     can:'record medications on the MAR, write daily logs, report incidents, and file documents.',
     cannot:'Resident and staff records, compliance settings, billing and the team list are not shown to you — the administrator keeps those.'},
@@ -1109,6 +1119,11 @@ function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly
 function canEdit(){ return getAccess().canEdit; }
 function canDelete(){ return getAccess().canDelete; }
 function canTeam(){ return getAccess().canTeam; }
+// Voiding is a correction to a legal record, not an edit. Kept to the people
+// who answer for that record: the administrator, a supervisor, and the
+// in-house caregiver who runs the medication pass. A regular caregiver who
+// logs a dose wrong asks one of them — which is also how it works on paper.
+function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'].includes(currentUserRole); }
 function allowedTabs(){
   if(!t22Entitled) return ['billing']; // entitlement gate (fail closed): unpaid/expired => billing only
   return getAccess().tabs;
@@ -1420,7 +1435,7 @@ async function handleLogout(){
 // Deliberately not a tab: every role has an account, including the readonly
 // ones whose tab list is nearly empty, so this hangs off the user menu where
 // it is reachable no matter what applyRoleUI() has hidden.
-const ACCESS_LABEL={administrator:'Administrator',supervisor:'Supervisor',caregiver:'Caregiver',readonly:'View only'};
+const ACCESS_LABEL={administrator:'Administrator',supervisor:'Supervisor',in_house_caregiver:'In-House Caregiver',caregiver:'Caregiver',readonly:'View only'};
 function openAccountModal(){
   const menu=document.getElementById('user-menu');
   if(menu)menu.style.display='none';
@@ -2239,10 +2254,13 @@ async function loadDashboardMARStats(){
   try{
     const today=new Date().toISOString().split('T')[0];
     const[entriesRes,medsRes]=await Promise.all([
-      sb.from('mar_entries').select('resident_id,status').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lte('administered_at',today+'T23:59:59'),
+      sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lte('administered_at',today+'T23:59:59'),
       sb.from('medications').select('resident_id').eq('facility_id',currentFacility.id).eq('status','active'),
     ]);
-    const entries=entriesRes.data||[];
+    // Naming voided_at in the select would 400 on a project that has not run
+    // the migration yet, and take the dashboard down with it. Filtering here
+    // costs nothing and degrades to "nothing is voided" on the old schema.
+    const entries=(entriesRes.data||[]).filter(e=>!e.voided_at);
     const medResidents=new Set((medsRes.data||[]).map(m=>m.resident_id));
     if(!medResidents.size){el.innerHTML='<div class="empty" style="padding:16px">No active medications on file</div>';return;}
     const loggedResidents=new Set(entries.filter(e=>e.status==='given').map(e=>e.resident_id));
@@ -2285,7 +2303,12 @@ async function exportDSSAudit(){
   const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
   const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${d(s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${d(s.cpr_cert_expiry)}</td><td style="${td}">${d(s.first_aid_cert_expiry)}</td><td style="${td}">${s.livescan_cleared?'✓':'✗'}</td><td style="${td}">${s.mandated_reporter_completed?'✓':'✗'}</td><td style="${td}">${(s.initial_training_complete||s.initial_training_completed)?'✓':'✗'}</td></tr>`).join('');
   const statusLabels={given:'Given',refused:'Refused',held:'Held',missed:'MISSED'};
-  const marRows=marD.map(e=>`<tr><td style="${td}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}">${esc(e.scheduled_time||'')}</td><td style="${td};${e.status!=='given'?'color:#A32D2D;font-weight:700':''}">${statusLabels[e.status]||esc(e.status)}</td><td style="${td}">${esc(e.notes||'')}</td></tr>`).join('');
+  // Voided entries are printed, not omitted. This table is the centrally
+  // stored medication record an inspector reads; a row that vanishes from it
+  // between the screen and the printout is exactly the thing the void
+  // mechanism exists to avoid. Ruled through, with the reason, same as paper.
+  const marRows=marD.map(e=>{const v=!!e.voided_at;const st=v?'text-decoration:line-through;color:#666;':'';
+    return`<tr><td style="${td}${st}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}${st}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}${st}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}${st}">${esc(e.scheduled_time||'')}</td><td style="${td};${v?'color:#666;font-weight:700':(e.status!=='given'?'color:#A32D2D;font-weight:700':'')}">${v?'VOIDED':(statusLabels[e.status]||esc(e.status))}</td><td style="${td}">${v?'<strong>Voided '+esc(new Date(e.voided_at).toLocaleString())+(e.void_reason?' — '+esc(e.void_reason):'')+'.</strong> '+esc(e.notes||''):esc(e.notes||'')}</td></tr>`;}).join('');
   const incRows=incD.map(i=>`<tr><td style="${td}">${i.occurred_at?new Date(i.occurred_at).toLocaleString():''}</td><td style="${td}">${esc(i.residents?.name||i.residents?.full_name||'')}</td><td style="${td}">${esc(i.incident_type||'')}</td><td style="${td}">${i.injury?'Yes':'No'}</td><td style="${td}">${i.dss_reportable?'YES':'No'}</td><td style="${td}">${esc(i.description||'')}</td><td style="${td}">${esc(i.corrective_action||'')}</td></tr>`).join('');
   const sec=(title,sub)=>`<h2 style="font-size:15px;margin:24px 0 2px">${title}</h2><div style="font-size:11px;color:#666;margin-bottom:8px">${sub}</div>`;
   const win=window.open('','_blank');
@@ -3575,19 +3598,49 @@ async function loadMAR(){
         const time=e.administered_at?new Date(e.administered_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
         const statusColor=e.status==='given'?'var(--green)':e.status==='refused'?'var(--amber)':'var(--red)';
         const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'⚠ Refused':e.status==='held'?'⏸ Held':'✗ Missed';
-        return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-size:14px;font-weight:600">${esc(resName)}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(medName)}${dosage?' · '+esc(dosage):''} · ${esc(e.scheduled_time||time)}</div>
-            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">💬 ${esc(e.notes)}</div>`:''}
+        // A voided entry is ruled through, not removed. It stays on the record
+        // exactly where it was, with the reason beside it, the way a corrected
+        // paper MAR reads.
+        const voided=!!e.voided_at;
+        const strike=voided?'text-decoration:line-through;opacity:.55;':'';
+        return`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="min-width:0">
+            <div style="font-size:14px;font-weight:600;${strike}">${esc(resName)}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;${strike}">${esc(medName)}${dosage?' · '+esc(dosage):''} · ${esc(e.scheduled_time||time)}</div>
+            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px;${strike}">💬 ${esc(e.notes)}</div>`:''}
+            ${voided?`<div style="font-size:11px;color:var(--red);margin-top:4px;font-weight:600">🚫 VOIDED${e.void_reason?' — '+esc(e.void_reason):''}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">Struck ${esc(new Date(e.voided_at).toLocaleString())}. The correct entry is logged separately.</div>`:''}
           </div>
-          <div style="text-align:right">
-            <div style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</div>
+          <div style="text-align:right;white-space:nowrap">
+            <div style="font-size:12px;font-weight:700;color:${voided?'var(--text2)':statusColor};${strike}">${statusLabel}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:2px">${time}</div>
+            ${(!voided&&canVoidMAR())?`<button class="btn btn-outline" style="font-size:11px;padding:3px 8px;margin-top:6px;color:var(--red);border-color:var(--red-light)" onclick="voidMAREntry('${esc(e.id)}')">Void</button>`:''}
           </div>
         </div>`;
       }).join('')}
     </div>`).join('');
+}
+
+// Never a delete, and never a rewrite of what was recorded. The row keeps its
+// resident, its medication, its time and its status; three columns are added
+// saying it was struck, by whom, and why. The correction is a new entry.
+async function voidMAREntry(id){
+  if(!canVoidMAR()){alert('Only an administrator, supervisor or in-house caregiver can void a MAR entry.');return;}
+  const reason=prompt('Why is this entry being voided?\n\nIt stays on the record, ruled through, with this reason beside it — an inspector will read it. Then log the correct entry.');
+  if(reason===null)return;
+  if(!reason.trim()){alert('A reason is required. An unexplained void is no better than deleting the entry.');return;}
+  const{error}=await sb.from('mar_entries').update({
+    voided_at:new Date().toISOString(),voided_by:currentUser.id,void_reason:reason.trim(),
+  }).eq('id',id);
+  if(error){
+    alert(/void/i.test(error.message||'')
+      ? 'Could not void this entry ('+error.message+').\n\nRun migrations/2026-08-19_title22_mar_void_and_lead_role.sql in the Supabase SQL editor — it adds the columns a void is recorded in.'
+      : 'Could not void this entry: '+error.message);
+    return;
+  }
+  loadMAR();
+  refreshDashboard();
+  loadDashboardMARStats();
 }
 
 async function loadMARBriefing(){
@@ -3595,9 +3648,10 @@ async function loadMARBriefing(){
   const resList=window.residents||residents;
   if(!resList.length){el.style.display='none';return;}
   const today=new Date().toISOString().split('T')[0];
-  const{data:todayEntries}=await sb.from('mar_entries').select('resident_id,status').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lt('administered_at',today+'T23:59:59');
-  const givenResIds=new Set((todayEntries||[]).filter(e=>e.status==='given').map(e=>e.resident_id));
-  const refusedCount=(todayEntries||[]).filter(e=>e.status==='refused').length;
+  const{data:todayRaw}=await sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lt('administered_at',today+'T23:59:59');
+  const todayEntries=(todayRaw||[]).filter(e=>!e.voided_at);
+  const givenResIds=new Set(todayEntries.filter(e=>e.status==='given').map(e=>e.resident_id));
+  const refusedCount=todayEntries.filter(e=>e.status==='refused').length;
   const missedCount=(todayEntries||[]).filter(e=>e.status==='missed').length;
   const notLoggedYet=resList.filter(r=>!givenResIds.has(r.id));
   let tips=[];
@@ -3782,7 +3836,7 @@ async function buildFacilityContext(){
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
-      sb.from('mar_entries').select('scheduled_time,status,administered_at').eq('facility_id',currentFacility.id).limit(30),
+      sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).limit(30),
     ]);
     const failed=[];
     const rows=(res,label)=>{if(res&&res.error){failed.push(label);return[];}return(res&&res.data)||[];};
@@ -3790,7 +3844,11 @@ async function buildFacilityContext(){
     const staff=rows(staffData,'staff');
     const compliance_tasks=rows(tasksData,'the compliance checklist');
     const recent_incidents=rows(incData,'incidents');
-    const recent_mar=rows(marData,'the MAR');
+    // select('*') above only so voided_at can be read without naming a column
+    // that does not exist before the migration. What actually leaves the app is
+    // still these three fields and nothing else — no resident id, no notes.
+    const recent_mar=rows(marData,'the MAR').filter(e=>!e.voided_at)
+      .map(e=>({scheduled_time:e.scheduled_time,status:e.status,administered_at:e.administered_at}));
     if(failed.length)return{failed};
     const today=new Date().toISOString().split('T')[0];
     return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar},null,2)};
@@ -4508,7 +4566,7 @@ async function loadTeam(){
   if(!membersList)return;
   const teamMembers=members||[];const pendingInvites=invites||[];
   if(!teamMembers.length){membersList.innerHTML='<div class="empty">No team members yet.</div>';}
-  else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(m.profiles?.email||'Unknown')}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${esc(m.role)}</div></div><div style="display:flex;gap:8px"><select onchange="updateMemberRole('${esc(m.id)}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${esc(m.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Remove</button></div></div>`).join('');}
+  else{membersList.innerHTML='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:10px">Active Members</div>'+teamMembers.map(m=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(m.profiles?.email||'Unknown')}</div><div style="font-size:12px;color:var(--text2)">${esc((ACCESS_LABEL[m.role])||m.role)}</div></div><div style="display:flex;gap:8px"><select onchange="updateMemberRole('${esc(m.id)}',this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px"><option value="caregiver" ${m.role==='caregiver'?'selected':''}>Caregiver</option><option value="in_house_caregiver" ${m.role==='in_house_caregiver'?'selected':''}>In-House Caregiver</option><option value="supervisor" ${m.role==='supervisor'?'selected':''}>Supervisor</option><option value="readonly" ${m.role==='readonly'?'selected':''}>Read Only</option></select><button onclick="removeMember('${esc(m.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Remove</button></div></div>`).join('');}
   if(invitesList)invitesList.innerHTML=pendingInvites.length?'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:16px 0 10px">Pending Invites</div>'+pendingInvites.map(inv=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:600">${esc(inv.email)}</div><div style="font-size:12px;color:var(--text2);text-transform:capitalize">${esc(inv.role)} · Pending</div></div><div style="display:flex;gap:8px"><button onclick="navigator.clipboard.writeText('https://title22.app/?invite='+encodeURIComponent('${esc(inv.token)}')).then(()=>alert('Copied!'))" class="btn btn-outline" style="font-size:12px;padding:4px 8px">Copy link</button><button onclick="cancelInvite('${esc(inv.id)}')" class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)">Cancel</button></div></div>`).join(''):'';
 }
 function showInviteModal(){if(!canTeam()){alert('Only the Administrator can invite team members.');return;}document.getElementById('invite-modal').classList.add('open');}
