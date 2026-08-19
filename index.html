@@ -1576,7 +1576,7 @@ async function initFacility(){
   complianceTasks=tasks||[];
   residents=[];
   staffList=[];
-  incidents=[];window.incidents=[];
+  incidents=[];
   marMedCache={};
   dashBriefingLoaded=false;
   showPage('app');
@@ -2424,6 +2424,7 @@ let medicationsByResident={};
 async function loadMedications(){
   if(!currentFacility)return;
   const{data}=await sb.from('medications').select('*').eq('facility_id',currentFacility.id).order('created_at');
+  marMedCache={};
   const meds=data||[];
   medicationsByResident={};
   meds.forEach(m=>{if(!medicationsByResident[m.resident_id])medicationsByResident[m.resident_id]=[];medicationsByResident[m.resident_id].push(m);});
@@ -2506,7 +2507,10 @@ async function deleteMedication(){
 
 // ===== INCIDENTS =====
 let incidents=[];
-window.incidents=incidents;
+// Same divergence residents and staffList had: deleteCurrentIncident
+// reassigns incidents and left window.incidents, which the dashboard count
+// reads, still holding the deleted report.
+Object.defineProperty(window,'incidents',{get:()=>incidents,configurable:true});
 let currentIncidentResidentId=null;
 
 async function loadIncidents(){
@@ -2515,7 +2519,7 @@ async function loadIncidents(){
     .select('*, residents(name, full_name)')
     .eq('facility_id',currentFacility.id)
     .order('occurred_at',{ascending:false});
-  incidents=data||[];window.incidents=incidents;renderIncidents();
+  incidents=data||[];renderIncidents();
 }
 
 function renderIncidents(){
