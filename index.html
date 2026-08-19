@@ -2,7 +2,7 @@
 <html lang="en"> 
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
 <meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
 <link rel="canonical" href="https://title22.app/"/>
@@ -60,7 +60,7 @@
   .logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center}
   .logo-icon svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2}
   .nav-actions{display:flex;gap:12px;align-items:center}
-  #user-menu{max-height:calc(100vh - 90px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #user-menu{max-height:calc(100vh - 90px);max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain}
   .btn{padding:8px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
   .btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
   .btn-outline:hover{border-color:var(--teal);color:var(--teal)}
@@ -176,9 +176,9 @@
   .progress-fill{height:100%;border-radius:3px;background:var(--teal);transition:width .3s}
   .progress-fill.warn{background:var(--amber)}
   .progress-fill.danger{background:var(--red)}
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;overscroll-behavior:contain}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto;overflow-y:auto;max-height:90vh;max-height:90dvh}
   .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
   .modal-header h3{font-size:1rem;font-weight:700}
   .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:0 4px}
@@ -4888,7 +4888,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
-  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
@@ -4933,7 +4933,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
+  <div class="modal" style="max-width:520px"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
   <div class="form-group"><label>Facility type</label><select id="facm-type"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity"/></div></div>
@@ -4946,7 +4946,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
   <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
@@ -4959,7 +4959,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
-  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -5037,7 +5037,7 @@ function showSetNewPassword(){
 <!-- Scan to fill: review gate. Nothing here writes to the database — "Fill form"
      only populates the inputs of the modal underneath, which still needs Save. -->
 <div class="modal-overlay" id="scan-modal" onclick="if(event.target===this)closeScanModal()">
-  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div class="modal" style="max-width:760px">
     <div class="modal-header">
       <h3 id="scan-modal-title">Review scan</h3>
       <button class="modal-close" onclick="closeScanModal()">×</button>
@@ -5068,7 +5068,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="incident-modal" onclick="if(event.target===this)closeIncidentModal()">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div class="modal" style="max-width:520px">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
     <div id="inc-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
       <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — DSS REQUIREMENTS</div>
