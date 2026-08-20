@@ -75,6 +75,16 @@ input:focus{border-color:var(--pine)}
 #send{flex:none;padding:0 18px;border:none;border-radius:var(--r);background:var(--pine);color:#fff;font-weight:600}
 #send[disabled]{opacity:.5;cursor:default}
 .foot{flex:none;font-size:11.5px;color:var(--ink2);text-align:center;padding:0 0 10px;line-height:1.6}
+.sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
+.sheet.open{display:flex}
+.sheet-in{background:var(--paper);width:100%;max-width:760px;border-radius:16px 16px 0 0;padding:22px 18px calc(24px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto}
+.sheet-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet-top strong{font-family:'Fraunces',Georgia,serif;font-size:19px}
+.sheet-note{font-size:13px;color:var(--ink2);line-height:1.65;margin-bottom:12px}
+.linkbtn.dark{color:var(--ink2)}
+.linkbtn.dark:hover{color:var(--ink)}
+.btn-danger{background:#8a2b2b}
+.btn-danger:hover{background:#6f2222}
 @media(max-width:520px){#gate{padding:30px 0 40px}#gate h1{font-size:28px}.turn{max-width:92%}}
 </style>
 </head>
@@ -84,6 +94,7 @@ input:focus{border-color:var(--pine)}
   <span class="mark">Tello</span>
   <span class="spacer"></span>
   <span class="chip" id="credits" style="display:none"></span>
+  <button class="linkbtn" id="mem" style="display:none" onclick="openMemory()">Memory</button>
   <button class="linkbtn" id="out" style="display:none" onclick="signOut()">Sign out</button>
 </div></div>
 
@@ -124,6 +135,19 @@ input:focus{border-color:var(--pine)}
 
 </div>
 
+<div class="sheet" id="sheet" onclick="if(event.target===this)closeMemory()">
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <strong>What Tello remembers</strong>
+      <button class="linkbtn dark" onclick="closeMemory()">Close</button>
+    </div>
+    <p class="sheet-note" id="mem-count"></p>
+    <p class="sheet-note">Everything she keeps is the conversation itself — what you said and what she said, word for word. She does not store anything she worked out about you, and nobody else can read any of it.</p>
+    <div class="msg" id="mem-msg"></div>
+    <button class="btn btn-danger" onclick="forgetAll()" id="forget-btn">Forget everything</button>
+  </div>
+</div>
+
 <script src="/vendor/supabase-js-2.110.5.min.js"></script>
 <script>
 const SUPABASE_URL='https://nwlhsshvqmbhemhxcran.supabase.co';
@@ -152,6 +176,8 @@ Be honest about what you know. Answer plainly when you know; say when you are no
 
 You do not give medical or dosage advice about a specific person — not what a reading means for them, not whether medications interact, not whether a symptom is serious. Say so warmly and without hedging, then help with what you can: how to describe it to a clinician, what to write down, who to call and how urgently. Someone asking is usually worried and short of time, so be quick and be kind. General health information, explained as general information, is fine.
 
+You remember your past conversations with this person — what is above is the real conversation, carried over from previous visits. Use it naturally: remember their name, what they told you, what they were worried about last time. Do not announce that you are remembering, and never claim to remember something that is not actually in the conversation above.
+
 Keep it short. Usually a few sentences. A list only when the answer really is a list. No preamble, no "great question", no restating the question back at them.`;
 
 let me=null, turns=[], busy=false;
@@ -168,11 +194,64 @@ async function boot(){
   render();
 }
 function render(){
-  show($('gate'),!me); show($('chat'),!!me); show($('out'),!!me);
-  if(me&&!turns.length)greet();
+  show($('gate'),!me); show($('chat'),!!me); show($('out'),!!me); show($('mem'),!!me);
+  if(me&&!turns.length)loadMemory();
 }
 function greet(){
   say("Hi, I'm Tello. Ask me anything — I'll tell you straight, and I'll tell you when I don't know.",'her');
+}
+
+/* ---------- memory ---------- */
+// What she remembers is the conversation, verbatim. Nothing here was inferred
+// or summarised by a model, so there is no way for her to hold a wrong belief
+// about someone — only something they actually said.
+//
+// If the table has not been created yet the page still works; she just starts
+// each visit fresh, and the Memory sheet says so rather than showing an error
+// nobody can act on.
+let memoryOn=true;
+
+async function loadMemory(){
+  const{data,error}=await sb.from('tello_messages')
+    .select('role,content').order('created_at',{ascending:true}).limit(400);
+  if(error){memoryOn=false;greet();return;}
+  if(!data||!data.length){greet();return;}
+  turns=data.map(r=>({role:r.role,content:r.content}));
+  data.forEach(r=>say(r.content,r.role==='user'?'me':'her'));
+  $('starters').style.display='none';
+  $('thread').scrollTop=$('thread').scrollHeight;
+}
+
+// Fire and forget. A write that fails must never cost someone their answer —
+// the reply is already on screen by the time this runs.
+function remember(role,content){
+  if(!memoryOn||!me)return;
+  sb.from('tello_messages').insert({user_id:me.id,role,content})
+    .then(({error})=>{if(error)memoryOn=false;});
+}
+
+function openMemory(){
+  const n=turns.length;
+  $('mem-count').textContent=memoryOn
+    ?(n?`She is holding ${n} message${n===1?'':'s'} from your conversations.`
+       :'She is not holding anything yet.')
+    :'Memory is not switched on for this account, so she starts fresh each visit. (The tello_messages table has not been created.)';
+  $('forget-btn').style.display=(memoryOn&&n)?'block':'none';
+  $('mem-msg').className='msg';
+  $('sheet').classList.add('open');
+}
+function closeMemory(){$('sheet').classList.remove('open');}
+
+async function forgetAll(){
+  if(!confirm('Delete everything Tello remembers? This cannot be undone.'))return;
+  $('forget-btn').disabled=true;
+  const{error}=await sb.from('tello_messages').delete().eq('user_id',me.id);
+  $('forget-btn').disabled=false;
+  if(error){
+    const m=$('mem-msg');m.textContent='Could not delete: '+error.message;m.className='msg show bad';return;
+  }
+  turns=[]; $('thread').innerHTML=''; $('starters').style.display='flex';
+  closeMemory(); greet();
 }
 async function signIn(){
   const email=$('em').value.trim(), password=$('pw').value;
@@ -196,7 +275,10 @@ async function signUp(){
 }
 async function signOut(){
   await sb.auth.signOut();
-  me=null; turns=[]; $('thread').innerHTML=''; $('credits').style.display='none';
+  // Clears the screen, not the record. Signing out is not forgetting —
+  // Forget everything, in the Memory sheet, is the only thing that deletes.
+  me=null; turns=[]; memoryOn=true; $('thread').innerHTML='';
+  $('credits').style.display='none'; $('starters').style.display='flex';
   render();
 }
 
@@ -233,6 +315,7 @@ async function ask(preset){
   $('starters').style.display='none';
   say(text,'me');
   turns.push({role:'user',content:text});
+  remember('user',text);
   busy=true; $('send').disabled=true;
   const pending=say('Thinking…','her','thinking');
   try{
@@ -240,14 +323,14 @@ async function ask(preset){
     const res=await fetch(AI_WORKER,{
       method:'POST',
       headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},
-      body:JSON.stringify({system:CHARACTER,messages:turns.slice(-10)})
+      body:JSON.stringify({system:CHARACTER,messages:contextWindow()})
     });
     const data=await res.json();
     const reply=data.content?.[0]?.text;
     if(reply){
       pending.className='turn her'; pending.textContent=reply;
       turns.push({role:'assistant',content:reply});
-      if(turns.length>20)turns=turns.slice(-20);
+      remember('assistant',reply);
       setCredits(data.remaining,data.limit);
     }else{
       pending.className='turn her err';
@@ -262,6 +345,21 @@ async function ask(preset){
   }
   busy=false; $('send').disabled=false;
   $('thread').scrollTop=$('thread').scrollHeight;
+}
+
+// Names are introduced at the beginning of a conversation and then never
+// repeated, so a plain "last N messages" window forgets them first. Keep the
+// opening as well as the recent turns, and mark the gap so she does not think
+// the two halves ran together.
+function contextWindow(){
+  const HEAD=6, TAIL=16;
+  if(turns.length<=HEAD+TAIL)return turns;
+  const skipped=turns.length-HEAD-TAIL;
+  return [
+    ...turns.slice(0,HEAD),
+    {role:'user',content:`[${skipped} earlier messages are not shown here, but they happened.]`},
+    ...turns.slice(-TAIL)
+  ];
 }
 
 // Say which thing went wrong. "Something went wrong" sends people looking in
