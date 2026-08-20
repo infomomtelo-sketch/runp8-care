@@ -3,8 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Title22 — Demo Walkthrough</title>
+<title>Title22 — Walkthrough</title>
+<meta name="description" content="A guided walkthrough of Title22, the Title 22 compliance app for California RCFEs. Real screens, no sound needed."/>
+<link rel="icon" href="/favicon.svg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -13,180 +16,238 @@
   --mono:'IBM Plex Mono',monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Public Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.65;font-size:16px}
-.wrap{max-width:760px;margin:0 auto;padding:0 22px 80px}
+body{font-family:'Public Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.65;font-size:16px;-webkit-text-size-adjust:100%}
+.wrap{max-width:940px;margin:0 auto;padding:0 22px 80px}
+a{color:var(--pine)}
 
-header{background:var(--pine-deep);color:#fff;padding:56px 0 48px;margin-bottom:48px}
+header{background:var(--pine-deep);color:#fff;padding:44px 0 36px;margin-bottom:34px}
 header .wrap{padding-bottom:0}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9fc9bc;margin-bottom:14px}
-h1{font-family:'Fraunces',serif;font-size:clamp(30px,5.5vw,44px);font-weight:700;line-height:1.12;letter-spacing:-.01em}
-header p{margin-top:16px;color:#cfe3db;max-width:52ch;font-size:15px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9fc9bc;margin-bottom:12px}
+h1{font-family:'Fraunces',serif;font-size:clamp(28px,5vw,40px);font-weight:700;line-height:1.12;letter-spacing:-.01em}
+header p{margin-top:14px;color:#cfe3db;max-width:56ch;font-size:15px}
+.silent{display:inline-flex;align-items:center;gap:7px;margin-top:16px;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:5px 13px;font-size:13px;color:#e7f2ee}
 
-.prep{background:var(--mint);border:1px solid #cfe3db;border-radius:12px;padding:22px 24px;margin-bottom:44px}
-.prep h2{font-family:'Fraunces',serif;font-size:19px;color:var(--pine-deep);margin-bottom:10px}
-.prep ul{list-style:none}
-.prep li{padding:5px 0 5px 24px;position:relative;font-size:14.5px}
-.prep li::before{content:"—";position:absolute;left:2px;color:var(--pine)}
+/* ---- player ---- */
+.stage{background:#0d1a17;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 18px 50px rgba(18,67,58,.18)}
+.stage video{display:block;width:100%;height:auto;background:#0d1a17}
+.bar{height:3px;background:rgba(255,255,255,.16)}
+.bar i{display:block;height:100%;width:0;background:#4fbf9b;transition:width .18s linear}
 
-.step{border-top:1px solid var(--line);padding:34px 0 30px}
-.step-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
-.num{font-family:var(--mono);font-size:13px;color:var(--pine);background:var(--mint);border-radius:6px;padding:3px 9px;white-space:nowrap}
-.step h2{font-family:'Fraunces',serif;font-size:23px;font-weight:600;color:var(--pine-deep)}
-.time{font-family:var(--mono);font-size:11.5px;color:var(--ink2);margin-left:auto;white-space:nowrap}
+.under{display:grid;grid-template-columns:1fr 260px;gap:26px;margin-top:22px;align-items:start}
+@media(max-width:760px){.under{grid-template-columns:1fr}}
 
-.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0 14px}
-.chip{font-family:var(--mono);font-size:12.5px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 10px;color:var(--ink)}
-.path .sep{color:var(--ink2);font-size:12px}
+.scene-no{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--pine);margin-bottom:6px}
+.scene-title{font-family:'Fraunces',serif;font-size:22px;font-weight:700;line-height:1.2;margin-bottom:14px}
+.lines p{font-size:16.5px;line-height:1.7;margin-bottom:10px;color:#98a4a0;transition:color .3s}
+.lines p.on{color:var(--ink)}
+.lines p:last-child{margin-bottom:0}
 
-.say{background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:15px}
-.say .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:5px}
-.say em{font-style:italic}
+.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
+.btn{font:inherit;font-size:14px;font-weight:600;border-radius:9px;padding:9px 16px;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+.btn:hover{border-color:var(--pine);color:var(--pine)}
+.btn.primary{background:var(--pine);border-color:var(--pine);color:#fff}
+.btn.primary:hover{background:var(--pine-deep);color:#fff}
+.btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 
-.why{font-size:14px;color:var(--ink2);margin-top:10px}
-.why strong{color:var(--ink)}
+.rail{border-left:1px solid var(--line);padding-left:18px}
+@media(max-width:760px){.rail{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:18px}}
+.rail h3{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2);margin-bottom:11px}
+.rail button{display:flex;gap:9px;width:100%;text-align:left;font:inherit;font-size:13.5px;background:none;border:none;
+  padding:7px 8px;border-radius:7px;cursor:pointer;color:var(--ink2);align-items:baseline}
+.rail button:hover{background:var(--mint);color:var(--ink)}
+.rail button.on{background:var(--mint);color:var(--pine-deep);font-weight:600}
+.rail .n{font-family:var(--mono);font-size:11px;color:var(--pine);flex-shrink:0;width:14px}
 
-.do{font-size:15px;margin:8px 0}
-.do b{color:var(--pine-deep)}
+.sep{height:1px;background:var(--line);margin:56px 0 40px}
+h2{font-family:'Fraunces',serif;font-size:26px;font-weight:700;margin-bottom:8px}
+.lede{color:var(--ink2);margin-bottom:22px;max-width:60ch;font-size:15px}
 
-.close{background:var(--pine-deep);color:#fff;border-radius:14px;padding:28px 30px;margin-top:48px}
-.close h2{font-family:'Fraunces',serif;font-size:22px;margin-bottom:12px}
-.close p{color:#cfe3db;font-size:15px;margin-bottom:10px}
-.qa{border-top:1px solid var(--line);padding:34px 0 0;margin-top:10px}
-.qa h2{font-family:'Fraunces',serif;font-size:23px;color:var(--pine-deep);margin-bottom:16px}
-.qa dt{font-weight:600;margin-top:16px;font-size:15px}
-.qa dd{margin-left:0;font-size:14.5px;color:var(--ink2);margin-top:3px}
+.cta{background:var(--mint);border:1px solid #cfe3db;border-radius:14px;padding:26px 26px;margin-top:44px}
+.cta h2{font-size:22px;margin-bottom:6px;color:var(--pine-deep)}
+.cta p{font-size:14.5px;color:var(--ink2);margin-bottom:16px;max-width:56ch}
+.cta .controls{margin-top:0}
 
-@media print{
-  header{background:#fff;color:var(--ink);padding:20px 0}
-  header p,.close p{color:var(--ink2)} .close{background:#fff;color:var(--ink);border:1px solid var(--line)}
-  .step{break-inside:avoid}
-}
+.note{font-size:13.5px;color:var(--ink2);background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin-top:26px}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "2a8582694cd940e189c47986d7068ca6"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body>
 
 <header>
   <div class="wrap">
-    <div class="eyebrow">Title22 · Demo walkthrough · ~15 minutes</div>
-    <h1>From binders to one screen: presenting Title22</h1>
-    <p>A step-by-step script for walking anyone — a fellow administrator, a licensee, an investor — through the whole app. Each step tells you where to click, what to say, and why it matters.</p>
+    <div class="eyebrow">Walkthrough</div>
+    <h1>What Title22 actually looks like</h1>
+    <p>Nine screens from the real application, in the order you would meet them. Every resident and staff member you will see is invented sample data.</p>
+    <div class="silent">🔇 No sound needed — the words are on screen</div>
   </div>
 </header>
 
 <div class="wrap">
 
-<div class="prep">
-  <h2>Before you demo — 10 minutes of prep</h2>
-  <ul>
-    <li>Use a demo account with data already in it: 2–3 residents, 2 staff members with cert dates, a few medications, one incident, some checklist items done, a Daily Log entry or two, a couple of trainings. An empty app demos badly.</li>
-    <li>Set one staff certification to expire within 30 days — the warning it triggers is a demo moment.</li>
-    <li>Open title22.app in a clean browser tab, already signed in. Never make an audience watch you log in.</li>
-    <li>Charge the phone/laptop. Have cell data as backup if the venue Wi-Fi is bad.</li>
-  </ul>
+  <div class="stage">
+    <video id="v" playsinline muted preload="auto"></video>
+    <div class="bar"><i id="prog"></i></div>
+  </div>
+
+  <div class="under">
+    <div>
+      <div class="scene-no" id="sno"></div>
+      <div class="scene-title" id="stitle"></div>
+      <div class="lines" id="lines"></div>
+      <div class="controls">
+        <button class="btn" id="prev" onclick="go(-1)">← Back</button>
+        <button class="btn primary" id="play" onclick="toggle()">Pause</button>
+        <button class="btn" id="next" onclick="go(1)">Next →</button>
+      </div>
+    </div>
+    <div class="rail">
+      <h3>Scenes</h3>
+      <div id="rail"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    These are screen recordings of the live app running on its built-in sample facility — the same one you can open yourself at
+    <a href="/?demo=1&amp;tour=1">the sandbox</a>. Nothing here is a real resident record.
+  </div>
+
+  <div class="sep"></div>
+
+  <h2>For your staff</h2>
+  <p class="lede">A shorter one to send a caregiver before their first shift. Same idea — read along, no sound.</p>
+
+  <div class="stage">
+    <video id="sv" playsinline muted preload="none" controls></video>
+  </div>
+  <div class="under">
+    <div>
+      <div class="scene-no" id="ssno"></div>
+      <div class="scene-title" id="sstitle"></div>
+      <div class="lines" id="slines"></div>
+      <div class="controls">
+        <button class="btn primary" onclick="staffStart()">▶ Play the staff walkthrough</button>
+      </div>
+    </div>
+    <div class="rail">
+      <h3>Scenes</h3>
+      <div id="srail"></div>
+    </div>
+  </div>
+
+  <div class="cta">
+    <h2>Try it rather than watch it</h2>
+    <p>The sandbox is the same application on the same sample data, and every button works. No signup, nothing saved.</p>
+    <div class="controls">
+      <a class="btn primary" href="/?demo=1&amp;tour=1">Open the sandbox</a>
+      <a class="btn" href="/">Start a 14-day free trial</a>
+    </div>
+  </div>
+
+  <footer>
+    Title22 · <a href="https://title-22.com">title-22.com</a> ·
+    <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>
+  </footer>
 </div>
 
-<div class="step">
-  <div class="step-head"><span class="num">01</span><h2>Open with the problem, not the app</h2><span class="time">1 min</span></div>
-  <div class="say"><span class="tag">Say</span>"How do you get ready for a DSS inspection today? For most facilities it's three-ring binders, sticky notes, and hoping nothing expired. Title22 puts your whole facility — staff, residents, medications, incidents, daily charting — on one screen, and it tells you what's out of compliance before the analyst finds it."</div>
-  <p class="why"><strong>Why this order:</strong> administrators buy relief from inspection anxiety, not software. Name the fear first; the app is the answer.</p>
-</div>
+<script>
+const BASE='/media/walkthrough/';
+const SCENES=[
+  {f:'01_signup.webm', t:'Signing up for the first time', l:[
+    'A licensing analyst can walk into your facility on any weekday morning, unannounced, and ask to see your records.',
+    'Title22 exists to answer one question before that happens: if they came today, what would they find?',
+    'Setup is one screen — facility type, licence number, capacity, address. The things that decide which Title 22 requirements apply to you.',
+    'No credit card. Fourteen days, and the clock starts the first time you actually open the app.']},
+  {f:'02_sample_facility.webm', t:'A facility to practise on', l:[
+    'Before you put a single real resident in, load the sample facility. Eight residents, five staff, thirty days of medication records.',
+    'It sits alongside your own — a facility you can break, empty and reload. Everything you are about to see is in it.']},
+  {f:'03_invite.webm', t:'Inviting your staff', l:[
+    'Five roles. A caregiver records the medication pass and writes incidents. An in-house caregiver — your shift lead — also handles resident records and adds new prescriptions.',
+    'A supervisor covers staff files. Read-only is what you hand an inspector.',
+    'Notice you are choosing the role. They do not pick it when they sign up — otherwise everybody would be an administrator.']},
+  {f:'04_caregiver_view.webm', t:'What your caregiver sees', l:[
+    'They accept, and they are inside your facility — not asked to create one of their own.',
+    'The first thing they see is their role and what comes with it. Their menu is genuinely shorter: no billing, no staff files, no team list.',
+    'And they are covered by your subscription — nothing for them to pay.']},
+  {f:'05_resident_documents.webm', t:'A tick box is not a document', l:[
+    'This is the part most compliance software gets wrong. Ticking "yes, we have it" is not evidence. An inspector asks to see it.',
+    'So every requirement sits next to the document that proves it. Yes with nothing attached goes amber and says so plainly.',
+    'Attach the form and it turns green — and you can view, print or share it from the same row while the analyst is standing there.']},
+  {f:'06_readiness_score.webm', t:'The readiness score, and what moves it', l:[
+    'The score is not a grade for effort. It counts requirements that are current against requirements that exist.',
+    'An expired TB test pulls it down and says whose. Tap it and you are on that person’s record — no hunting through a filing cabinet.']},
+  {f:'08_medication_pass.webm', t:'Logging the medication pass', l:[
+    'Medications are logged as you go — resident, medication, and whether it was given, refused or held.',
+    'If a dose was refused or missed, the app will not save it until you have written why.',
+    'That is not the app being difficult. It is the sentence an inspector is going to ask you for.']},
+  {f:'09_dss_export.webm', t:'The packet you hand over', l:[
+    'One button. Ninety days of facility details, the resident roster with document status, staff certifications, the full medication record, and incident reports.',
+    'Save it as a PDF, or print it and hand it across the table.']},
+  {f:'10_close.webm', t:'Genuine compliance every day', l:[
+    'Not just on inspection day.',
+    'Fourteen days free. Load the sample facility first — it takes about a minute, and nothing you do in it touches a real record.']},
+];
+const STAFF=[
+  {f:'c01_role_card_desktop.webm', t:'You have been invited', l:[
+    'Your administrator invited you, so your account is already attached to the facility. Nothing to set up and nothing to pay.',
+    'This card tells you what you can do here. Your menu is short on purpose — you will not see billing or staff files, and that is not a mistake.']},
+  {f:'c02_mar_pass_desktop.webm', t:'The MAR', l:[
+    'Pick the resident, pick the medication, say whether it was given, refused or held.',
+    'If it was refused or missed, write why — the app will not let you past without it.']},
+  {f:'c03_daily_log_desktop.webm', t:'The daily log', l:[
+    'For how someone’s day actually went.']},
+  {f:'c04_incident_desktop.webm', t:'Incidents', l:[
+    'A fall, an injury, a behaviour — filed the same shift, while you still remember it.',
+    'If something you need is not there, ask your administrator. Roles are set by them, not by you.']},
+];
 
-<div class="step">
-  <div class="step-head"><span class="num">02</span><h2>Dashboard &amp; Tello's daily briefing</h2><span class="time">2 min</span></div>
-  <div class="path"><span class="chip">Sign in</span><span class="sep">→</span><span class="chip">Dashboard</span></div>
-  <p class="do"><b>Do:</b> Let Tello's briefing load on screen. Point at it. Then point at the stat cards.</p>
-  <div class="say"><span class="tag">Say</span>"Every morning this briefing reads your actual facility data — overdue tasks, expiring certifications, recent incidents — and tells you what needs attention today. You didn't ask it anything. It's already working."</div>
-  <p class="why"><strong>Why it lands:</strong> this is the "wow" in the first 60 seconds. AI that reads <em>their</em> data beats AI that chats.</p>
-</div>
+function makePlayer(vid,list,ids){
+  const v=document.getElementById(vid);
+  let i=0, started=false;
+  const el=id=>document.getElementById(id);
+  function paint(){
+    const s=list[i];
+    el(ids.no).textContent='Scene '+(i+1)+' of '+list.length;
+    el(ids.title).textContent=s.t;
+    el(ids.lines).innerHTML=s.l.map((t,n)=>'<p data-n="'+n+'">'+t+'</p>').join('');
+    [...el(ids.rail).children].forEach((b,n)=>b.classList.toggle('on',n===i));
+    v.src=BASE+s.f;
+    v.load();
+    if(started)v.play().catch(()=>{});
+  }
+  // The clips carry no audio, so the "narration" is the line that lights up.
+  // Which line that is comes from where the clip actually is, not a guessed
+  // timing, so it stays right whatever the encode.
+  v.addEventListener('timeupdate',()=>{
+    const s=list[i]; if(!v.duration||!isFinite(v.duration))return;
+    const n=Math.min(s.l.length-1,Math.floor(v.currentTime/v.duration*s.l.length));
+    el(ids.lines).querySelectorAll('p').forEach(p=>p.classList.toggle('on',+p.dataset.n===n));
+    if(ids.prog)el(ids.prog).style.width=((i+v.currentTime/v.duration)/list.length*100)+'%';
+  });
+  v.addEventListener('ended',()=>{ if(i<list.length-1){i++;paint();} else if(ids.play){el(ids.play).textContent='Replay';} });
+  el(ids.rail).innerHTML=list.map((s,n)=>
+    '<button type="button"><span class="n">'+(n+1)+'</span><span>'+s.t+'</span></button>').join('');
+  [...el(ids.rail).children].forEach((b,n)=>b.onclick=()=>{i=n;started=true;paint();v.play().catch(()=>{});});
+  paint();
+  return {
+    go(d){ const n=i+d; if(n<0||n>=list.length)return; i=n; started=true; paint(); v.play().catch(()=>{}); },
+    toggle(){ started=true; if(v.paused){ if(v.ended)paint(); v.play().catch(()=>{}); } else v.pause(); },
+    start(){ started=true; v.play().catch(()=>{}); },
+    v,
+  };
+}
 
-<div class="step">
-  <div class="step-head"><span class="num">03</span><h2>Residents</h2><span class="time">1 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">🏠 Residents</span></div>
-  <p class="do"><b>Do:</b> Open one resident. Show the profile fields.</p>
-  <div class="say"><span class="tag">Say</span>"Every resident's record in one place — admission info, physician, emergency contacts. Everything else in the app connects back to a resident."</div>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">04</span><h2>Staff &amp; certifications</h2><span class="time">2 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">👥 Staff</span></div>
-  <p class="do"><b>Do:</b> Open the staff member whose cert expires soon. Show the expiration warning.</p>
-  <div class="say"><span class="tag">Say</span>"First aid, LiveScan, mandated reporter — with expiration dates. When something's 30 days out, the app flags it. This is the exact question an analyst asks: 'show me current certifications for everyone on shift.' Now the answer is one tap."</div>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">05</span><h2>Training tracker</h2><span class="time">1 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">🎓 Training</span></div>
-  <p class="do"><b>Do:</b> Show the annual-hours progress bars, then log a training live — it takes 15 seconds.</p>
-  <div class="say"><span class="tag">Say</span>"Every direct-care staff member needs 20 hours of in-service training a year. These bars show exactly where each person stands — green means done, red means get them scheduled. And logging a training takes seconds."</div>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">06</span><h2>Medications &amp; the MAR</h2><span class="time">2 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">💊 Medications</span><span class="sep">then</span><span class="chip">📋 MAR</span></div>
-  <p class="do"><b>Do:</b> Show a resident's medication list, then mark one dose given on the MAR.</p>
-  <div class="say"><span class="tag">Say</span>"Medication records are the single most scrutinized document in an inspection. The MAR here auto-fills from the medication list, so staff document each dose in two taps. And one deliberate design choice: Tello never suggests or comments on dosages — that stays between the physician and the pharmacy. It only helps with documentation compliance."</div>
-  <p class="why"><strong>Why say the AI limit out loud:</strong> it turns a safety constraint into a trust point. Administrators are rightly wary of AI touching clinical decisions.</p>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">07</span><h2>Daily Log — the everyday workhorse</h2><span class="time">2 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">📝 Daily Log</span></div>
-  <p class="do"><b>Do:</b> Add one entry live. Pick a resident, choose "Food intake," save it. Then switch the type dropdown to show narrative, vitals, bowel, hygiene.</p>
-  <div class="say"><span class="tag">Say</span>"This is the day-to-day charting: shift narratives, vitals, food intake, bowel movements, hygiene. The form changes based on what you're recording, so a caregiver can chart in under 30 seconds from a phone. Every entry is timestamped — this is your evidence trail."</div>
-  <p class="why"><strong>Why demo this live:</strong> speed of entry is the selling point. Charting friction is why paper logs go incomplete.</p>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">08</span><h2>Incidents with built-in DSS guidance</h2><span class="time">2 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">🚨 Incidents</span><span class="sep">→</span><span class="chip">+ Report incident</span></div>
-  <p class="do"><b>Do:</b> Open the incident form. Select "Fall" as the type, and point at the guidance tip that appears.</p>
-  <div class="say"><span class="tag">Say</span>"Watch — when I choose the incident type, the app tells me the notification requirements: physician within 24 hours, family, whether DSS reporting is required. It even pre-sets the DSS-reportable field for things like elopement or death. Nobody has to memorize §87211 at 2 a.m."</div>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">09</span><h2>Compliance checklist</h2><span class="time">1 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">✅ Compliance</span></div>
-  <p class="do"><b>Do:</b> Check one item off. Show the categories.</p>
-  <div class="say"><span class="tag">Say</span>"This is your standing inspection-readiness list, organized the way DSS actually reviews a facility. Work it down and you walk into an inspection already knowing the answer."</div>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">10</span><h2>Ask Tello: "Am I ready for DSS?"</h2><span class="time">2 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">Tello</span></div>
-  <p class="do"><b>Do:</b> Tap the "Am I ready for DSS?" suggestion. Let the answer generate on screen.</p>
-  <div class="say"><span class="tag">Say</span>"This is the question every administrator asks themselves. Tello reads your real records — certifications, incidents, checklist, MAR — and answers based on your data, not generic advice. It's like having a consultant who already read your files."</div>
-  <p class="why"><strong>Why this is the closer:</strong> it ties every module you just showed into one answer. End the tour here — it's the peak.</p>
-</div>
-
-<div class="step">
-  <div class="step-head"><span class="num">11</span><h2>Team roles &amp; pricing — mention, don't dwell</h2><span class="time">1 min</span></div>
-  <div class="path"><span class="chip">Menu</span><span class="sep">→</span><span class="chip">Team</span><span class="sep">/</span><span class="chip">Billing</span></div>
-  <div class="say"><span class="tag">Say</span>"You can invite your whole team — caregivers see only what they need for charting, supervisors see more, and you control it all. There's a free trial, plans scale with your facility, and you can manage or cancel billing yourself anytime — no phone calls."</div>
-</div>
-
-<div class="close">
-  <h2>The one-sentence close</h2>
-  <p>"Everything an analyst will ask you for — staffing, training, medications, incidents, daily care — documented as you go, in one place, with an AI that tells you what's missing. That's Title22."</p>
-  <p>Then stop talking and hand them the phone. Letting them tap around sells better than any script.</p>
-</div>
-
-<div class="qa">
-  <h2>Questions you'll get — and answers</h2>
-  <dl>
-    <dt>"Where is our data stored? Is it secure?"</dt>
-    <dd>In a dedicated cloud database with row-level security — each facility's data is isolated, and access requires an authenticated login. Role permissions control what each staff member can see.</dd>
-    <dt>"Can my caregivers mess something up?"</dt>
-    <dd>Caregivers get a limited view: dashboard, MAR, incidents, and Daily Log. They can't delete records or touch billing, staff files, or facility settings.</dd>
-    <dt>"Does Tello make care decisions?"</dt>
-    <dd>No — by design. It never comments on dosages or clinical choices. It only reads your documentation and flags compliance gaps.</dd>
-    <dt>"What does it cost?"</dt>
-    <dd>There's a free trial to start, and monthly plans after that. Show them the Billing tab rather than reciting numbers — prices are current there.</dd>
-    <dt>"What if I stop paying — do I lose my records?"</dt>
-    <dd>Your data stays in your account. You can come back, and exports can be arranged. (Honest answer today; a self-serve export button is on the roadmap.)</dd>
-  </dl>
-</div>
-
-</div>
+const main=makePlayer('v',SCENES,{no:'sno',title:'stitle',lines:'lines',rail:'rail',prog:'prog',play:'play'});
+const staff=makePlayer('sv',STAFF,{no:'ssno',title:'sstitle',lines:'slines',rail:'srail'});
+function go(d){main.go(d);}
+function toggle(){main.toggle();}
+function staffStart(){staff.start();}
+main.v.addEventListener('play',()=>document.getElementById('play').textContent='Pause');
+main.v.addEventListener('pause',()=>document.getElementById('play').textContent='Play');
+// Silent video autoplays everywhere; if a browser still refuses, the Play
+// button is right there.
+main.v.addEventListener('canplay',function once(){ main.v.removeEventListener('canplay',once); main.start(); });
+</script>
 </body>
 </html>
