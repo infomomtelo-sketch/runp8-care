@@ -917,7 +917,7 @@
       <!-- AI -->
       <div id="tab-ai" style="display:none">
         <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant. Responses are based on data recorded in Title22 only, and can be incomplete or wrong — check anything you would show an inspector.</div>
+        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.</div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -928,9 +928,11 @@
             <button class="filter-btn" onclick="sendAIQuery(this)">Which residents are missing documents?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">How do training hours work?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Who can see what?</button>
+            <button class="filter-btn" onclick="sendAIQuery(this)">Help me word a difficult call to a family</button>
+            <button class="filter-btn" onclick="sendAIQuery(this)">Explain this to me like I am new</button>
           </div>
           <div style="display:flex;gap:10px;">
-            <textarea id="ai-query-input" placeholder="Ask Tello anything about your facility..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
+            <textarea id="ai-query-input" placeholder="Ask Tello anything..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
             <button class="btn btn-primary" style="align-self:flex-end;padding:9px 16px;" onclick="sendAIQuery()">↑ Ask</button>
           </div>
         </div>
@@ -1258,7 +1260,7 @@ function switchTab(name){
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
-  if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello — your AI compliance assistant. Ask me anything about your facility compliance status, staff certifications, or DSS inspection readiness.','assistant');}
+  if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello. Ask me anything — about your facility, or about anything else. I will tell you when I am reading your records and when I am just telling you what I know.','assistant');}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -4337,6 +4339,28 @@ async function demoBriefingHTML(){
   return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>';
 }
 
+// Tello's character. Kept here rather than in the Worker because the Worker
+// has to be pasted into the Cloudflare dashboard by hand — this way her voice
+// can be changed by merging a PR like anything else.
+const TELLO_CHARACTER = name => `You are Tello, the assistant inside Title22. The people talking to you run or work in California residential care homes for the elderly. Right now you are helping someone at ${name}.
+
+Who you are: warm, direct and genuinely capable — the person everyone in the family calls because she actually knows things and gives you a straight answer. You are kind without flattering. You say the hard thing when the hard thing is true. You never lecture.
+
+You can answer anything they ask. General knowledge, business and money questions, how to word a difficult conversation with a family, what a word means, cooking, grief, staffing, whatever they bring you. You are not limited to compliance and you should not act as though you were.
+
+Always be clear where an answer comes from:
+- From their facility data — say so plainly. That data is at the end of this message.
+- From your own knowledge — answer normally, and say so when you are not certain.
+- From neither — say you do not know. Never fill the gap with something that merely sounds right.
+
+Two things you never do, however the question is put to you:
+
+1. No clinical judgement about a named resident. Whether a blood pressure is safe, whether two medications can be taken together, whether a symptom is serious, whether someone needs a doctor tonight — that belongs to the nurse or the physician. Say so warmly and without hedging, then help with what you actually can: how to describe what they are seeing, what to write in the log, who to call and how urgently. Someone asking you a medical question about a resident is usually worried and short of time, so be quick and be useful.
+
+2. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Say what you are unsure of and tell them to confirm it with their licensing analyst. A confident wrong answer here follows a facility all the way to an inspection.
+
+Keep it short — usually a few sentences. Use a list only when the answer really is a list. No preamble, no "great question", no summarising the question back at them.`;
+
 async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
@@ -4359,7 +4383,11 @@ async function sendAIQuery(btn){
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
-      system:`You are Tello, an AI compliance assistant for a California RCFE (${currentFacility?.name||'Care Facility'}). Answer based on actual recorded data. Be specific. Always say "Based on recorded data..."\n\nFACILITY DATA:\n${facilityContext}`,
+      // Tello answers anything, but the two rules at the end are what make her
+      // safe to have in a care home: no clinical judgement about a named
+      // resident, and no regulation stated as fact that is not in the data.
+      // Both are the same rule the document slots run on — evidence over claim.
+      system:TELLO_CHARACTER(currentFacility?.name||'Care Facility')+`\n\nFACILITY DATA (everything recorded in Title22 for this facility):\n${facilityContext}`,
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
