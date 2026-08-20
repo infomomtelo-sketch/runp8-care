@@ -1616,6 +1616,12 @@ async function enterDemoMode(){
     document.getElementById('nav-public').style.display='none';
     document.getElementById('nav-app').style.display='flex';
     await initFacility();
+    // ?demo=1&tour=0 opts out; otherwise the tour runs once and leaves a
+    // button behind so it can be replayed.
+    let seen=false; try{seen=!!localStorage.getItem(TOUR_SEEN);}catch(e){}
+    const wants=new URLSearchParams(location.search).get('tour');
+    if(wants!=='0'&&(wants==='1'||!seen))setTimeout(()=>startTour(0),900);
+    else{const b=document.getElementById('tour-restart');if(b)b.style.display='block';}
   }catch(e){
     demoMode=false;
     showPage('landing');
@@ -1623,6 +1629,110 @@ async function enterDemoMode(){
     document.body.style.visibility='visible';
   }
 }
+
+// ===== GUIDED TOUR OF THE DEMO SANDBOX =====
+// Only ever runs in demo mode. A real account gets on with its work; this is
+// for someone who has just arrived from the marketing site and does not yet
+// know what they are looking at.
+//
+// Nothing here blocks the app. The ring and the bubble do not take pointer
+// events, so every button underneath stays live — you can abandon the tour
+// mid-sentence and start clicking, which is the whole reason to hand someone
+// a sandbox rather than a video.
+const TOUR_STEPS=[
+  {tab:'dashboard', sel:'.score-banner',
+   title:'This is the number that matters',
+   body:'Requirements that are current, out of requirements that exist. Not a grade for effort — an inspector could ask about any of them today.'},
+  {tab:'dashboard', sel:'#dash-alerts, #expiry-banner, .stat-grid',
+   title:'And it tells you whose',
+   body:'An expired TB test is not a red number on a chart. It is a named person, and tapping it opens their record.'},
+  {tab:'residents', sel:'#residents-grid',
+   title:'Every resident, with their paperwork',
+   body:'Open anyone and scroll to Required documents. A requirement ticked "yes" with nothing attached goes amber and says so — because DSS asks for the document, not the answer.'},
+  {tab:'mar', sel:'#tab-mar .page-header',
+   title:'The medication pass',
+   body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'},
+  {tab:'documents', sel:'#tab-documents .page-header',
+   title:'One button for inspection day',
+   body:'Every filed document in one place, and a 90-day DSS packet you can print from the dashboard while the analyst is sitting there.'},
+  {tab:'dashboard', sel:'#user-menu-btn',
+   title:'Everything else is in here',
+   body:'Staff files, the compliance checklist, your team and their roles. Have a look around — this is the real app with invented residents, and nothing you press is saved.'},
+];
+let tourIdx=-1;
+const TOUR_SEEN='title22_tour_done';
+
+function tourTarget(step){
+  for(const sel of step.sel.split(',')){
+    const el=document.querySelector(sel.trim());
+    if(el&&el.offsetParent!==null&&el.getBoundingClientRect().height>4)return el;
+  }
+  return null;
+}
+function startTour(i){
+  if(!demoMode)return;
+  document.getElementById('tour-restart').style.display='none';
+  tourIdx=(typeof i==='number')?i:0;
+  renderTour();
+}
+function tourStep(d){
+  const next=tourIdx+d;
+  if(next<0)return;
+  if(next>=TOUR_STEPS.length){endTour(true);return;}
+  tourIdx=next;renderTour();
+}
+function endTour(finished){
+  tourIdx=-1;
+  document.getElementById('tour-ring').style.display='none';
+  document.getElementById('tour-bubble').style.display='none';
+  const btn=document.getElementById('tour-restart');
+  if(btn)btn.style.display='block';
+  if(finished){try{localStorage.setItem(TOUR_SEEN,'1');}catch(e){}}
+}
+function renderTour(){
+  const step=TOUR_STEPS[tourIdx];
+  if(!step)return endTour(true);
+  if(step.tab&&document.getElementById('tab-'+step.tab)?.style.display==='none')switchTab(step.tab);
+  // The tab has to paint before anything can be measured.
+  setTimeout(()=>{
+    const el=tourTarget(step);
+    // A step whose target is not on screen is skipped rather than pointing at
+    // nothing — the tab list changes with role and plan.
+    if(!el){tourStep(1);return;}
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    setTimeout(()=>placeTour(el,step),420);
+  },step.tab?260:0);
+}
+function placeTour(el,step){
+  const r=el.getBoundingClientRect(), pad=8;
+  const ring=document.getElementById('tour-ring');
+  ring.style.display='block';
+  ring.style.left=(r.left-pad)+'px'; ring.style.top=(r.top-pad)+'px';
+  ring.style.width=(r.width+pad*2)+'px'; ring.style.height=(r.height+pad*2)+'px';
+
+  document.getElementById('tour-title').textContent=step.title;
+  document.getElementById('tour-body').textContent=step.body;
+  document.getElementById('tour-count').textContent=(tourIdx+1)+' of '+TOUR_STEPS.length;
+  document.getElementById('tour-back').style.visibility=tourIdx===0?'hidden':'visible';
+  document.getElementById('tour-next').textContent=tourIdx===TOUR_STEPS.length-1?'Finish':'Next';
+
+  const b=document.getElementById('tour-bubble');
+  b.style.display='block';
+  const bw=b.offsetWidth, bh=b.offsetHeight, m=14;
+  // Below the target by default; above it when that would run off the bottom.
+  let top=r.bottom+m;
+  if(top+bh>innerHeight-10)top=Math.max(10,r.top-bh-m);
+  let left=r.left+r.width/2-bw/2;
+  left=Math.max(10,Math.min(left,innerWidth-bw-10));
+  b.style.top=top+'px'; b.style.left=left+'px';
+}
+// Reposition rather than leave the ring stranded when the page moves.
+addEventListener('resize',()=>{ if(tourIdx>=0)renderTour(); });
+addEventListener('scroll',()=>{
+  if(tourIdx<0)return;
+  const el=tourTarget(TOUR_STEPS[tourIdx]);
+  if(el)placeTour(el,TOUR_STEPS[tourIdx]);
+},{passive:true});
 
 // ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
 const T22_PAID=['starter','pro','specialist','agency'];
@@ -6182,6 +6292,32 @@ function showSetNewPassword(){
   <div class="error-msg" id="facility-modal-error"></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeFacilityModal()">Cancel</button><button class="btn btn-primary" onclick="saveFacility()">Save changes</button></div></div>
 </div>
+
+<!-- Guided tour of the demo sandbox. The spotlight ring and the bubble are
+     both pointer-events:none over the app, so every real button underneath
+     stays clickable while the tour is up — someone can stop reading and just
+     start pressing things, which is the point of a sandbox. -->
+<div id="tour-ring" style="display:none;position:fixed;border-radius:10px;pointer-events:none;z-index:3000;
+     box-shadow:0 0 0 9999px rgba(10,22,18,.55),0 0 0 3px var(--teal) inset;transition:all .35s cubic-bezier(.4,0,.2,1)"></div>
+<div id="tour-bubble" style="display:none;position:fixed;z-index:3001;max-width:340px;background:var(--white);
+     border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.28);padding:16px 18px">
+  <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+    <div style="width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;display:flex;
+                align-items:center;justify-content:center;font-size:13px;flex-shrink:0">✨</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--teal)">Tello</div>
+    <div id="tour-count" style="margin-left:auto;font-size:11px;color:var(--text2)"></div>
+  </div>
+  <div id="tour-title" style="font-weight:700;font-size:15px;margin-bottom:5px"></div>
+  <div id="tour-body" style="font-size:13px;color:var(--text2);line-height:1.55"></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:14px">
+    <button class="btn btn-outline" style="font-size:12px;padding:5px 11px" onclick="endTour()">Let me explore</button>
+    <button class="btn btn-outline" style="font-size:12px;padding:5px 11px;margin-left:auto" id="tour-back" onclick="tourStep(-1)">Back</button>
+    <button class="btn btn-primary" style="font-size:12px;padding:5px 13px" id="tour-next" onclick="tourStep(1)">Next</button>
+  </div>
+</div>
+<button id="tour-restart" onclick="startTour(0)" style="display:none;position:fixed;right:18px;bottom:18px;z-index:2500;
+        background:var(--teal);color:#fff;border:none;border-radius:24px;padding:10px 18px;font-size:13px;
+        font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(15,110,86,.35)">✨ Show me around</button>
 
 <div class="modal-overlay" id="delete-facility-modal" onclick="if(event.target===this)closeDeleteFacility()">
   <div class="modal" style="max-width:520px"><div class="modal-header"><h3 style="color:var(--red)">Delete facility</h3><button class="modal-close" onclick="closeDeleteFacility()">×</button></div>
