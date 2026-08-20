@@ -1145,6 +1145,10 @@ function allowedTabs(){
 }
 
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
+// checklist_items.frequency holds the tokens getDefaultDueDate() switches on,
+// so they cannot be prettied up in the database. Label them for display only.
+const FREQUENCY_LABELS = {daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',annual:'Annually',biennial:'Every 2 years',on_hire:'Before first shift',on_admission:'On admission'};
+function freqLabel(f){ return FREQUENCY_LABELS[f]||f||''; }
 
 // HTML-escape user-entered text before interpolating into innerHTML templates.
 // For text embedded in inline onclick handlers, JS-escape quotes first, then
@@ -2508,9 +2512,16 @@ function renderExpiryBanner(){
   const today=new Date().toISOString().split('T')[0];
   const in7=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+  // A daily or weekly requirement is always due inside the next seven days —
+  // that is what daily means. Counting them as "expiring" would leave the
+  // banner permanently amber and bury the one thing that actually matters:
+  // the TB test that runs out on Thursday. Routine cadence items are dropped
+  // from the two upcoming bands and kept in the overdue one, because a daily
+  // record that was not ticked yesterday is a real finding.
+  const routine=t=>['daily','weekly'].includes((checklistItems.find(i=>i.id===t.checklist_item_id)||{}).frequency);
   const expired=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today);
-  const critical=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=in7);
-  const warning=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>in7&&t.due_date<=in30);
+  const critical=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=in7&&!routine(t));
+  const warning=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>in7&&t.due_date<=in30&&!routine(t));
   const banner=document.getElementById('expiry-banner');if(!banner)return;
 
   // The banner read complianceTasks and nothing else. Two ways that lied.
@@ -2587,7 +2598,7 @@ function renderChecklist(filter){
       return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden${isOverdue?';border-left:3px solid var(--red)':''}">
         <div class="checklist-row" style="border:none;margin:0;border-radius:0;${t.completed?'opacity:.6':''}">
           <div class="check-toggle ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)">${t.completed?'✓':''}</div>
-          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${esc(t.title)}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${esc(item.regulation_reference)}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${esc(item.frequency)}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${esc(t.notes)}</span>`:''}</div></div>
+          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${esc(t.title)}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${esc(item.regulation_reference)}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${esc(freqLabel(item.frequency))}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${esc(t.notes)}</span>`:''}</div></div>
           <div class="checklist-meta" style="flex-direction:column;align-items:flex-end;gap:6px">
             ${statusBadge}
             <div style="display:flex;gap:6px;align-items:center">
