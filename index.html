@@ -864,6 +864,9 @@
             <button class="filter-btn" onclick="sendAIQuery(this)">Am I ready for DSS?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Who has expired certs?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Simulate DSS inspection</button>
+            <button class="filter-btn" onclick="sendAIQuery(this)">Which residents are missing documents?</button>
+            <button class="filter-btn" onclick="sendAIQuery(this)">How do training hours work?</button>
+            <button class="filter-btn" onclick="sendAIQuery(this)">Who can see what?</button>
           </div>
           <div style="display:flex;gap:10px;">
             <textarea id="ai-query-input" placeholder="Ask Tello anything about your facility..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
@@ -1128,8 +1131,15 @@ function canTeam(){ return getAccess().canTeam; }
 // in-house caregiver who runs the medication pass. A regular caregiver who
 // logs a dose wrong asks one of them — which is also how it works on paper.
 function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'].includes(currentUserRole); }
+// The sandbox is a viewing account: role is readonly and anon RLS refuses
+// every write, so this widens what can be LOOKED at, not what can be done.
+// Without it the tour cannot open Tello or Team — readonly's tab list has
+// neither — and switchTab would put a "you do not have permission" alert in
+// front of someone who is still deciding whether to sign up.
+const DEMO_TABS=['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
 function allowedTabs(){
   if(!t22Entitled) return ['billing']; // entitlement gate (fail closed): unpaid/expired => billing only
+  if(demoMode) return DEMO_TABS;
   return getAccess().tabs;
 }
 
@@ -1659,9 +1669,18 @@ const TOUR_STEPS=[
   {tab:'documents', sel:'#tab-documents .page-header',
    title:'One button for inspection day',
    body:'Every filed document in one place, and a 90-day DSS packet you can print from the dashboard while the analyst is sitting there.'},
+  {tab:'checklist', sel:'#tab-checklist .page-header, #checklist-list',
+   title:'The checklist an analyst works from',
+   body:'Title 22 requirements with dates against them. Overdue rises to the top, because that is the order the questions come in.'},
+  {tab:'team', sel:'#tab-team .page-header',
+   title:'Five roles, and you choose them',
+   body:'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions. Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
+  {tab:'ai', sel:'#tab-ai .card',
+   title:'Now ask me something',
+   body:'Try "am I ready for DSS?" or "which residents are missing documents?". I read this facility\u2019s actual records and answer from them — go on, the buttons are live.'},
   {tab:'dashboard', sel:'#user-menu-btn',
    title:'Everything else is in here',
-   body:'Staff files, the compliance checklist, your team and their roles. Have a look around — this is the real app with invented residents, and nothing you press is saved.'},
+   body:'Documents, medications, the audit log, billing. Have a look around — this is the real app with invented residents, and nothing you press is saved.'},
 ];
 let tourIdx=-1;
 const TOUR_SEEN='title22_tour_done';
@@ -4157,10 +4176,48 @@ async function demoComplianceAnswer(query){
   }else if(q.includes('today')||q.includes('need to do')){
     const todo=[...f.overdue.map(t=>(t.title||'Overdue task')+(t.due_date?' (overdue since '+t.due_date+')':'')),...f.certIssues.slice(0,3),...f.docGaps.slice(0,3)];
     body="<strong>Today's priorities</strong><br><br>"+_bul(todo,"Nothing urgent — you're inspection-ready today.");
+  }else if(q.includes('resident')||q.includes('lic 601')||q.includes('lic601')||q.includes('lic 602')||q.includes('lic602')||q.includes('isp')){
+    const nm=o=>o.full_name||o.name||'Unnamed';
+    body='<strong>Resident records — '+f.residents.length+' on the roster</strong><br><br>'+
+      (f.residents.length?f.residents.slice(0,8).map(r=>'• '+nm(r)+(r.room||r.room_number?' ('+(r.room||r.room_number)+')':'')).join('<br>')+'<br><br>':'')+
+      _bul(f.docGaps,'Every resident has LIC 601, LIC 602 and a current ISP recorded.')+
+      '<br><br>Worth knowing: a requirement recorded as "yes" with no document attached shows amber on the record. DSS asks for the document, not the answer.';
+  }else if(q.includes('medic')||q.includes('mar')||q.includes('dose')||q.includes('refus')){
+    body='<strong>Medication administration</strong><br><br>'+
+      (f.marGaps?'⚠️ '+f.marGaps+' recent entry(ies) recorded as something other than given — refused, held or missed. Each of those needs a documented reason, and the app will not save one without it.'
+                :'✅ Every recent MAR entry in the sample data is recorded as given.')+
+      '<br><br>The MAR is the centrally stored medication record an analyst reads under §87465. A wrong entry is voided rather than deleted — struck through, with the reason beside it, and the correct entry logged next to it.';
+  }else if(q.includes('staff')||q.includes('team')||q.includes('role')||q.includes('caregiver')||q.includes('who can')||q.includes('permission')){
+    const nm=o=>o.full_name||o.name||'Unnamed';
+    body='<strong>Staff — '+f.staff.length+' active</strong><br><br>'+
+      (f.staff.length?f.staff.slice(0,8).map(x=>'• '+nm(x)+(x.role?' — '+String(x.role).replace(/_/g,' '):'')).join('<br>')+'<br><br>':'')+
+      'Five access roles, and the administrator picks which one each person gets when the invitation is sent — nobody chooses their own. '+
+      'A caregiver sees the MAR, daily log, incidents and documents. An in-house caregiver adds residents, medications and the checklist. '+
+      'A supervisor adds staff files. Read-only is what you hand an inspector.';
+  }else if(q.includes('training')||q.includes('hours')||q.includes('ce')||q.includes('in-service')||q.includes('dementia')){
+    body='<strong>Training hours</strong><br><br>'+
+      'California expects 40 initial hours — 24 from an approved vendor and 16 hands-on in your facility — then 20 in-service hours a year, '+
+      'of which at least 8 are dementia care and 4 are special care.<br><br>'+
+      'Title22 tracks both clocks per person and keeps the certificate against the entry, so the hours and the proof stay together.';
+  }else if(q.includes('document')||q.includes('paperwork')||q.includes('upload')||q.includes('file')||q.includes('print')){
+    body='<strong>Documents</strong><br><br>'+
+      _bul(f.docGaps,'No missing resident documents in the sample data.')+
+      '<br><br>Every document sits next to the requirement it proves, and can be viewed, printed or shared from that same row — '+
+      'which is what you want when an analyst is standing at the desk. The 90-day DSS packet on the dashboard collects all of it in one print.';
+  }else if(q.includes('real')||q.includes('fake')||q.includes('sandbox')||q.includes('demo')||q.includes('sample')){
+    body='<strong>Yes, this is the real application</strong><br><br>'+
+      'Same code that runs a paying facility. What is not real is the data: '+f.residents.length+' invented residents and '+f.staff.length+' invented staff, '+
+      'so nothing here is anyone\u2019s medical record.<br><br>'+
+      'You can press anything. The sandbox is read-only, so nothing you do is saved — reload and it is exactly as you found it.';
+  }else if(q.includes('price')||q.includes('cost')||q.includes('plan')||q.includes('much')||q.includes('subscri')){
+    body='<strong>Plans</strong><br><br>'+
+      'Fourteen days free, no card. After that it is priced per facility, and your staff are covered by the facility\u2019s plan — '+
+      'you are not billed per caregiver.<br><br>Current pricing is on the Billing page, and it is the same page you would see as a customer.';
   }else{
     const n=f.overdue.length+f.certIssues.length+f.docGaps.length;
     body='<strong>'+(f.facility||'Facility')+' — compliance snapshot</strong><br><br>Readiness '+(f.score!=null?f.score+'%':'—')+' · '+f.residents.length+' residents · '+f.staff.length+' staff<br>'+
-      (n?'⚠️ '+n+' open item(s) across tasks, staff certs, and resident records.':'✅ No open compliance gaps in the sample data.');
+      (n?'⚠️ '+n+' open item(s) across tasks, staff certs, and resident records.':'✅ No open compliance gaps in the sample data.')+
+      '<br><br>Try asking about residents, staff certifications, the MAR, training hours, documents, or who can see what.';
   }
   return body+tag;
 }
