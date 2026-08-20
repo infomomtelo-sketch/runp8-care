@@ -2,6 +2,9 @@
 <html lang="en"> 
 <head>
 <meta charset="UTF-8"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
 <meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
@@ -53,7 +56,18 @@
     --text:#1a1a18;--text2:#5F5E5A;--border:#e0ddd6; 
     --white:#fff;--radius:10px;--radius-lg:16px;
   }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);background:var(--white);font-size:16px;line-height:1.6}
+  body{font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);background:var(--white);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;font-feature-settings:'tnum' 0}
+  /* Headings in Fraunces, the face the marketing site and the walkthrough already
+     use. Numbers anywhere are tabular so columns of dates and scores line up. */
+  h1,h2,h3,.score-number,.page-header h1{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em}
+  .stat-value,.score-number,input[type=date],td,.badge{font-variant-numeric:tabular-nums}
+  /* One icon language. Every glyph is a stroked SVG that inherits colour and
+     size from its text, which is why these replaced the emoji: an emoji is a
+     different typeface at a different weight in every operating system. */
+  .ic{width:1.08em;height:1.08em;flex:none;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .ic-lg{width:2.1rem;height:2.1rem;stroke-width:1.5;vertical-align:middle}
+  .ic-md{width:1.35rem;height:1.35rem;stroke-width:1.8;vertical-align:-.3rem}
+  .feature-icon .ic{width:1.5rem;height:1.5rem;stroke-width:1.8;vertical-align:middle}
   .page{display:none}.page.active{display:block}
   nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:0;z-index:100}
   .logo{font-size:1.2rem;font-weight:600;color:var(--teal);letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
@@ -284,6 +298,52 @@
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "2a8582694cd940e189c47986d7068ca6"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body style="visibility:hidden">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l4-5 3 3 5-7"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-pill" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="4" transform="rotate(-45 12 12)"/><path d="M8.5 8.5l7 7"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20"/><circle cx="9" cy="7" r="3.2"/><path d="M22 20v-1.5a4 4 0 0 0-3-3.87M16 4.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path d="M20 20v-1.5a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5V20"/><circle cx="12" cy="7" r="3.5"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+<symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 3h4M11 3v6.5L5.6 18a2 2 0 0 0 1.7 3h9.4a2 2 0 0 0 1.7-3L13 9.5V3"/><path d="M7.5 15h9"/></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4.5"/><circle cx="12" cy="3.2" r="1.3"/><path d="M9 13v1.5M15 13v1.5"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M18.5 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
+<symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><path d="M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="15" width="10" height="6" rx="1"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9.5 21v-6h5v6"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.3A4 4 0 0 1 12 8a4 4 0 0 1 7 2.7C19 15.6 12 20 12 20z"/></symbol>
+<symbol id="i-meal" viewBox="0 0 24 24"><path d="M6 3v8a2.5 2.5 0 0 0 5 0V3M8.5 11v10"/><path d="M17 3c-1.5 1.5-2 3.5-2 5.5S16 12 17 12s2-1 2-3.5S18.5 4.5 17 3zM17 12v9"/></symbol>
+<symbol id="i-toilet" viewBox="0 0 24 24"><path d="M6 3v8"/><path d="M4 11h13a3 3 0 0 1-3 3H9a5 5 0 0 1-5-3z"/><path d="M9 14l-1 7h6l-1-4"/></symbol>
+<symbol id="i-droplet" viewBox="0 0 24 24"><path d="M12 3s6 6.2 6 10a6 6 0 0 1-12 0c0-3.8 6-10 6-10z"/></symbol>
+<symbol id="i-clip" viewBox="0 0 24 24"><path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.8 1.8 0 0 1-2.5-2.5l7.3-7.3"/></symbol>
+<symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 8.5 12 4l10 4.5-10 4.5z"/><path d="M6 10.6V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.4"/><path d="M22 8.5V14"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6h16M9 6V4h6v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/><path d="M10 11v6M14 11v6"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 10h-15z"/><path d="M4.5 21h15"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 10l6.1-.9z"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/></symbol>
+<symbol id="i-message" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H4l2-3.2A8 8 0 1 1 21 12z"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 1.8 20.5h20.4z"/><path d="M12 9.5v5M12 17.6v.1"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16S18 14 18 9z"/><path d="M10.3 19a2 2 0 0 0 3.4 0"/></symbol>
+<symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.7 2.7L16 9.5"/></symbol>
+<symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.8 5.8 12.4 12.4"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8.5a2 2 0 0 1 2-2h2.2l1.3-2h7l1.3 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 20V8"/><path d="m7.5 12 4.5-4.5L16.5 12"/><path d="M4 4h16"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M12 15V3"/><path d="m7.5 7 4.5-4 4.5 4"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 13.7 4.7L20 15.5"/><path d="M20 20v-4.5h-4.5"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.8v14.4L19 12z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.1-2.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.8 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1.1z"/></symbol>
+<symbol id="i-exit" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16.5 14.5 12 10 7.5"/><path d="M14.5 12H3.5"/></symbol>
+<symbol id="i-plus-square" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.9 7.5 9 4.3-1.1 7.5-4.5 7.5-9V6z"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><path d="M3 6.5a2 2 0 0 1 2-2h4l1.6 2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></symbol>
+</defs></svg>
 
 <nav id="main-nav">
   <div class="logo">
@@ -308,30 +368,30 @@
           <div id="facility-switcher" style="margin-top:6px"></div>
         </div>
         <div data-menu-group="daily" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">On shift</div>
-        <button id="menu-dashboard" onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📊 Dashboard</button>
-        <button id="menu-mar" onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📋 MAR</button>
-        <button id="menu-medications" onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💊 Medications</button>
-        <button id="menu-daily" onclick="switchTab('daily');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📝 Daily log</button>
-        <button id="menu-incidents" onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🚨 Incidents</button>
+        <button id="menu-dashboard" onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-chart"/></svg> Dashboard</button>
+        <button id="menu-mar" onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-clipboard"/></svg> MAR</button>
+        <button id="menu-medications" onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-pill"/></svg> Medications</button>
+        <button id="menu-daily" onclick="switchTab('daily');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-note"/></svg> Daily log</button>
+        <button id="menu-incidents" onclick="switchTab('incidents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-alert"/></svg> Incidents</button>
         <div data-menu-group="people" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">People</div>
-        <button id="menu-residents" onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏠 Residents</button>
-        <button id="menu-staff" onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👥 Staff</button>
-        <button id="menu-training" onclick="switchTab('training');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🎓 Training</button>
-        <button id="menu-team" onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">👤 Team access</button>
+        <button id="menu-residents" onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-home"/></svg> Residents</button>
+        <button id="menu-staff" onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-users"/></svg> Staff</button>
+        <button id="menu-training" onclick="switchTab('training');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-cap"/></svg> Training</button>
+        <button id="menu-team" onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-user"/></svg> Team access</button>
         <div data-menu-group="compliance" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">Compliance</div>
-        <button id="menu-checklist" onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✅ Checklist</button>
-        <button id="menu-documents" onclick="switchTab('documents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">📁 Documents</button>
-        <button id="menu-ai" onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">✨ Ask Tello</button>
-        <button id="menu-audit" onclick="switchTab('audit');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🛡 Audit log</button>
+        <button id="menu-checklist" onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-check-circle"/></svg> Checklist</button>
+        <button id="menu-documents" onclick="switchTab('documents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-folder"/></svg> Documents</button>
+        <button id="menu-ai" onclick="switchTab('ai');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-spark"/></svg> Ask Tello</button>
+        <button id="menu-audit" onclick="switchTab('audit');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-shield"/></svg> Audit log</button>
         <div data-menu-group="facility" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">Facility</div>
-        <button id="menu-facility" onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🏢 Facility info</button>
-        <button id="menu-billing" onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">💳 Billing</button>
-        <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">🤝 Partners</button>
-        <button id="menu-walkthrough" onclick="window.open('/title22-walkthrough.html','_blank');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">▶️ Walkthrough</button>
+        <button id="menu-facility" onclick="switchTab('facility');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-home"/></svg> Facility info</button>
+        <button id="menu-billing" onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-card"/></svg> Billing</button>
+        <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-users"/></svg> Partners</button>
+        <button id="menu-walkthrough" onclick="window.open('/title22-walkthrough.html','_blank');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-play"/></svg> Walkthrough</button>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
-          <button onclick="openAccountModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'">⚙️ Account settings</button>
-          <button onclick="addFacilityGuard();toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'">🏥 Add new facility</button>
-          <button onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--red)" onmouseover="this.style.background='var(--red-light)'" onmouseout="this.style.background='none'">🚪 Log out</button>
+          <button onclick="openAccountModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-gear"/></svg> Account settings</button>
+          <button onclick="addFacilityGuard();toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-plus-square"/></svg> Add new facility</button>
+          <button onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--red)" onmouseover="this.style.background='var(--red-light)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-exit"/></svg> Log out</button>
         </div>
       </div>
     </div>
@@ -357,13 +417,13 @@
       <div class="section-sub">Built by a certified facility administrator who has lived every inspection</div>
     </div>
     <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)">📋</div><h3>Title 22 compliance checklist</h3><p>Every requirement pre-loaded and tied to the exact CCR regulation code.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--red-light)">📊</div><h3>Inspection readiness score</h3><p>Real-time score shows exactly where your facility stands before DSS arrives.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)">⏰</div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, ISP, admin cert.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)">💊</div><h3>Digital MAR</h3><p>Log every medication administration with timestamp and caregiver. No paper gaps.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)">👥</div><h3>Staff certification tracking</h3><p>CPR, First Aid, LiveScan, TB tests, mandated reporter — tracked per employee.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)">📁</div><h3>Resident records</h3><p>LIC 601, LIC 602, ISP, admission agreements — every required form tracked.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)">👥</div><h3>Your whole team, by role</h3><p>Invite caregivers to log MAR and incidents on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>Title 22 compliance checklist</h3><p>Every requirement pre-loaded and tied to the exact CCR regulation code.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--red-light)"><svg class="ic"><use href="#i-chart"/></svg></div><h3>Inspection readiness score</h3><p>Real-time score shows exactly where your facility stands before DSS arrives.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-clock"/></svg></div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, ISP, admin cert.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-pill"/></svg></div><h3>Digital MAR</h3><p>Log every medication administration with timestamp and caregiver. No paper gaps.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Staff certification tracking</h3><p>CPR, First Aid, LiveScan, TB tests, mandated reporter — tracked per employee.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Resident records</h3><p>LIC 601, LIC 602, ISP, admission agreements — every required form tracked.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log MAR and incidents on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
     </div>
   </div>
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
@@ -379,7 +439,7 @@
     <div class="auth-card">
       <h2>Welcome back</h2>
       <p>Log in to your Title22 account</p>
-      <div id="login-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left">👋 <strong>You have been invited to a facility on Title22.</strong><br/>Log in with the email address the invitation was sent to — that is how it is matched.</div>
+      <div id="login-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Log in with the email address the invitation was sent to — that is how it is matched.</div>
       <div class="error-msg" id="login-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('login-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
       <div class="auth-divider"><span>or</span></div>
@@ -402,7 +462,7 @@
     <div class="auth-card">
       <h2>Start your free trial</h2>
       <p>14 days free · No credit card required</p>
-      <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left">👋 <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
+      <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
       <div class="auth-divider"><span>or</span></div>
@@ -501,11 +561,11 @@
     </div>
     <div class="main-content">
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="font-size:13px;font-weight:500">🎉 You're on a free trial — <span id="trial-days-left">14</span> days remaining.</div>
+        <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-star"/></svg> You're on a free trial — <span id="trial-days-left">14</span> days remaining.</div>
         <button onclick="switchTab('billing')" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
       </div>
       <div id="demo-banner" style="display:none;background:linear-gradient(90deg,#BA7517,#d99a3d);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="font-size:13px;font-weight:500">🧪 You're exploring the Title22 sandbox — read-only sample data.</div>
+        <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-flask"/></svg> You're exploring the Title22 sandbox — read-only sample data.</div>
         <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 14-day free trial →</button>
       </div>
 
@@ -513,12 +573,12 @@
       <div id="tab-dashboard">
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
-          <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px">👋 New here? Let's get you started.</div>
+          <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px"><svg class="ic"><use href="#i-spark"/></svg> New here? Let's get you started.</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask Tello to check it for DSS gaps.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-primary" style="font-size:13px" onclick="window.open('https://title-22.com/walkthrough/','_blank')">▶ Watch 2-min walkthrough</button>
-            <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()">🧪 Load sample facility</button>
-            <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')">🤖 Ask Tello</button>
+            <button class="btn btn-primary" style="font-size:13px" onclick="window.open('https://title-22.com/walkthrough/','_blank')"><svg class="ic"><use href="#i-play"/></svg> Watch 2-min walkthrough</button>
+            <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load sample facility</button>
+            <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')"><svg class="ic"><use href="#i-bot"/></svg> Ask Tello</button>
           </div>
         </div>
         <div id="role-welcome" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
@@ -527,7 +587,7 @@
           <div style="margin-top:14px"><button class="btn btn-outline" style="font-size:13px" onclick="dismissRoleWelcome()">Got it</button></div>
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
-          <div style="font-weight:700;font-size:15px;margin-bottom:6px">👥 You're the only one here</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
@@ -553,7 +613,7 @@
         <div style="margin-top:20px" class="card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
         <div style="margin-top:20px" class="card" id="dash-ai-briefing-card">
           <div class="card-title">
-            <span>✨ Tello's daily briefing</span>
+            <span><svg class="ic"><use href="#i-spark"/></svg> Tello's daily briefing</span>
             <button onclick="loadDashboardAIBriefing(true)" style="font-size:11px;background:var(--teal-light);color:var(--teal);border:none;border-radius:20px;padding:4px 12px;cursor:pointer;font-weight:600">Refresh</button>
           </div>
           <div id="dash-ai-briefing" style="font-size:13px;color:var(--text2);line-height:1.8">
@@ -567,7 +627,7 @@
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('staff');setTimeout(()=>openStaffModal(),200)">+ Add staff member</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('incidents');setTimeout(()=>openIncidentModal(),200)">+ Report incident</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('checklist');setTimeout(()=>addCustomTask(),200)">+ Add checklist task</button>
-            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="exportDSSAudit()">📄 DSS Audit Export (90 days)</button>
+            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="exportDSSAudit()"><svg class="ic"><use href="#i-file"/></svg> DSS Audit Export (90 days)</button>
           </div>
         </div>
       </div>
@@ -577,7 +637,7 @@
         <div class="page-header">
           <h1>Title 22 compliance</h1>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-outline" style="font-size:13px" onclick="printChecklist()">🖨 Print report</button>
+            <button class="btn btn-outline" style="font-size:13px" onclick="printChecklist()"><svg class="ic"><use href="#i-printer"/></svg> Print report</button>
             <button class="btn btn-primary" style="font-size:13px" onclick="addCustomTask()">+ Add task</button>
           </div>
         </div>
@@ -621,7 +681,7 @@
           <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="staff-certs-expired">0</div><div style="font-size:11px;color:var(--text2)">Expired</div></div>
         </div>
         <div id="staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
-        <div id="staff-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px">👥</div><div style="font-weight:600;margin-bottom:6px">No staff added yet</div><div style="margin-bottom:20px">Add caregivers to track certifications, TB tests, CPR, and training hours</div><button class="btn btn-primary" onclick="openStaffModal()">+ Add first staff member</button></div>
+        <div id="staff-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-users"/></svg></div><div style="font-weight:600;margin-bottom:6px">No staff added yet</div><div style="margin-bottom:20px">Add caregivers to track certifications, TB tests, CPR, and training hours</div><button class="btn btn-primary" onclick="openStaffModal()">+ Add first staff member</button></div>
       </div>
 
       <!-- RESIDENTS -->
@@ -633,13 +693,13 @@
           <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></div>
         </div>
         <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
-        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px">🏠</div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
+        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
       </div>
 
       <!-- INCIDENTS -->
       <div id="tab-incidents" style="display:none">
         <div class="page-header"><h1>Incident reports</h1><button class="btn btn-primary" style="font-size:13px" onclick="openIncidentModal()">+ Report incident</button></div>
-        <div id="incidents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px">📋</div><div style="font-weight:500;margin-bottom:6px">No incidents on record</div><div style="margin-bottom:20px">Falls, medication errors, behavioral incidents go here</div><button class="btn btn-primary" onclick="openIncidentModal()">+ Report first incident</button></div>
+        <div id="incidents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-clipboard"/></svg></div><div style="font-weight:500;margin-bottom:6px">No incidents on record</div><div style="margin-bottom:20px">Falls, medication errors, behavioral incidents go here</div><button class="btn btn-primary" onclick="openIncidentModal()">+ Report first incident</button></div>
         <div id="incidents-list"></div>
       </div>
 
@@ -657,7 +717,7 @@
           </div>
           <div style="font-size:11px;color:var(--text2);margin-top:8px">Stored privately. Only your facility can view these.</div>
         </div>
-        <div id="documents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px">📄</div><div style="font-weight:500;margin-bottom:6px">No documents yet</div><div>Upload LIC forms, physician reports, certificates, and other records here.</div></div>
+        <div id="documents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-file"/></svg></div><div style="font-weight:500;margin-bottom:6px">No documents yet</div><div>Upload LIC forms, physician reports, certificates, and other records here.</div></div>
         <div id="documents-list"></div>
       </div>
 
@@ -671,11 +731,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group"><label>Date</label><input type="date" id="dl-date" onchange="refreshDailyList()"/></div>
             <div class="form-group"><label>Type</label><select id="dl-type" onchange="onDailyTypeChange()">
-              <option value="narrative">📝 Narrative</option>
-              <option value="vitals">❤️ Vitals</option>
-              <option value="food">🍽️ Food intake</option>
-              <option value="bowel">🚽 Bowel movement</option>
-              <option value="hygiene">🧼 Hygiene</option>
+              <option value="narrative">Narrative</option>
+              <option value="vitals">Vitals</option>
+              <option value="food">Food intake</option>
+              <option value="bowel">Bowel movement</option>
+              <option value="hygiene">Hygiene</option>
             </select></div>
           </div>
           <div id="dl-fields"></div>
@@ -684,7 +744,7 @@
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Entries for selected date</div>
-          <div id="daily-empty" class="empty" style="display:none;padding:24px"><div style="font-size:1.6rem;margin-bottom:8px">📝</div><div>No entries for this date yet</div></div>
+          <div id="daily-empty" class="empty" style="display:none;padding:24px"><div style="font-size:1.6rem;margin-bottom:8px"><svg class="ic ic-lg"><use href="#i-note"/></svg></div><div>No entries for this date yet</div></div>
           <div id="daily-list"></div>
         </div>
       </div>
@@ -713,7 +773,7 @@
           <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
           <div class="form-group"><label>Certificate (optional)</label>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <label class="btn btn-outline" style="font-size:13px;cursor:pointer;margin:0">📎 Choose file<input type="file" id="tr-cert-file" style="display:none" accept="image/*,application/pdf,.pdf,.doc,.docx" onchange="onTrainingCertPicked(this)"/></label>
+              <label class="btn btn-outline" style="font-size:13px;cursor:pointer;margin:0"><svg class="ic"><use href="#i-clip"/></svg> Choose file<input type="file" id="tr-cert-file" style="display:none" accept="image/*,application/pdf,.pdf,.doc,.docx" onchange="onTrainingCertPicked(this)"/></label>
               <span id="tr-cert-name" style="font-size:12px;color:var(--text2)">No certificate attached</span>
             </div>
             <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">Filed against this staff member so you can print or share it when DSS asks for proof of the hours.</div>
@@ -737,7 +797,7 @@
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Training history</div>
-          <div id="training-empty" class="empty" style="display:none;padding:24px"><div style="font-size:1.6rem;margin-bottom:8px">🎓</div><div>No trainings logged yet</div></div>
+          <div id="training-empty" class="empty" style="display:none;padding:24px"><div style="font-size:1.6rem;margin-bottom:8px"><svg class="ic ic-lg"><use href="#i-cap"/></svg></div><div>No trainings logged yet</div></div>
           <div id="training-list"></div>
         </div>
       </div>
@@ -762,26 +822,26 @@
         <div class="card" style="margin-top:20px" id="demo-data-card">
           <div class="card-title">Demo data</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
-          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()">🧪 Load demo data</button>
+          <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load demo data</button>
         </div>
         <div class="card" style="margin-top:20px;border-color:#e8a0a0" id="facility-danger-card">
           <div class="card-title" style="color:var(--red)">Delete this facility</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Permanently removes this facility and everything filed under it — residents, staff, medications, MAR history, incidents, daily logs, documents and the audit log. There is no undo, and Title22 keeps no backup you can be restored from.</div>
-          <button class="btn btn-outline" style="font-size:13px;color:var(--red);border-color:var(--red-light)" onclick="openDeleteFacility()">🗑 Delete facility…</button>
+          <button class="btn btn-outline" style="font-size:13px;color:var(--red);border-color:var(--red-light)" onclick="openDeleteFacility()"><svg class="ic"><use href="#i-trash"/></svg> Delete facility…</button>
         </div>
       </div>
 
       <!-- MEDICATIONS -->
       <div id="tab-medications" style="display:none">
         <div class="page-header"><h1>Medications</h1></div>
-        <div id="medications-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px">💊</div><div style="font-weight:600;margin-bottom:6px">No residents to manage medications for</div><div>Add residents first, then prescribe medications here</div></div>
+        <div id="medications-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-pill"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents to manage medications for</div><div>Add residents first, then prescribe medications here</div></div>
         <div id="medications-list"></div>
       </div>
 
       <!-- MAR -->
       <div id="tab-mar" style="display:none">
         <div class="page-header"><h1>Medication Administration Record</h1><button class="btn btn-primary" style="font-size:13px" onclick="showMAREntry()">+ Log Medication</button></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ MAR entries reflect what was logged in this system. Always verify administration in person.</div>
+        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> MAR entries reflect what was logged in this system. Always verify administration in person.</div>
         <div style="margin-bottom:16px;">
           <select id="mar-resident-filter" onchange="loadMAR()" style="width:100%;max-width:280px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;">
             <option value="">All Residents</option>
@@ -801,7 +861,7 @@
               <div style="color:var(--text2);margin-top:2px;font-size:11px" id="mar-med-info-prescriber"></div>
             </div>
             <div id="mar-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
-              <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — COMPLIANCE TIP</div>
+              <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8"><svg class="ic"><use href="#i-spark"/></svg> TELLO — COMPLIANCE TIP</div>
               <div id="mar-ai-tip-text"></div>
             </div>
             <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time" onchange="onMARStatusChange(document.getElementById('mar-status').value)">
@@ -831,11 +891,11 @@
              both role dropdowns and missed here, so this grid described four
              roles while the invite form offered five. -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:24px;">
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;">👑 Administrator</div><div style="font-size:13px;color:var(--text2);">Everything, including billing and the team</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;">👤 Supervisor</div><div style="font-size:13px;color:var(--text2);">Residents, staff files and records — no billing or team</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;">⭐ In-House Caregiver</div><div style="font-size:13px;color:var(--text2);">Shift lead: residents, medications, MAR and the checklist — no staff files</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;">🏠 Caregiver</div><div style="font-size:13px;color:var(--text2);">MAR, daily log, incidents and documents</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;">👁 Read Only</div><div style="font-size:13px;color:var(--text2);">For an inspector, a consultant, or family</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-crown"/></svg> Administrator</div><div style="font-size:13px;color:var(--text2);">Everything, including billing and the team</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-user"/></svg> Supervisor</div><div style="font-size:13px;color:var(--text2);">Residents, staff files and records — no billing or team</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-star"/></svg> In-House Caregiver</div><div style="font-size:13px;color:var(--text2);">Shift lead: residents, medications, MAR and the checklist — no staff files</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-home"/></svg> Caregiver</div><div style="font-size:13px;color:var(--text2);">MAR, daily log, incidents and documents</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-eye"/></svg> Read Only</div><div style="font-size:13px;color:var(--text2);">For an inspector, a consultant, or family</div></div>
         </div>
         <div id="team-members-list"></div>
         <div id="pending-invites-list"></div>
@@ -857,7 +917,7 @@
       <!-- AI -->
       <div id="tab-ai" style="display:none">
         <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;">⚠️ Tello is an AI assistant. Responses are based on data recorded in Title22 only, and can be incomplete or wrong — check anything you would show an inspector.</div>
+        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant. Responses are based on data recorded in Title22 only, and can be incomplete or wrong — check anything you would show an inspector.</div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -879,7 +939,7 @@
       <!-- AUDIT LOG -->
       <div id="tab-audit" style="display:none">
         <div class="page-header"><h1>Audit log</h1><span class="badge badge-teal">Administrator only</span></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px">🛡 Immutable record of every change to residents, medications, MAR entries, staff, and incidents. Entries are written by the database and cannot be edited or deleted.</div>
+        <div style="font-size:13px;color:var(--text2);background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px"><svg class="ic"><use href="#i-shield"/></svg> Immutable record of every change to residents, medications, MAR entries, staff, and incidents. Entries are written by the database and cannot be edited or deleted.</div>
         <div class="card">
           <div id="audit-log-list"><div class="empty">Loading...</div></div>
         </div>
@@ -929,7 +989,7 @@
       <div id="tab-billing" style="display:none">
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="font-size:24px">🔒</div>
+          <div style="font-size:24px;color:var(--text2)"><svg class="ic ic-lg"><use href="#i-lock"/></svg></div>
           <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
@@ -941,7 +1001,7 @@
           <button class="btn btn-primary" style="font-size:13px" onclick="retryEntitlement()">Try again</button>
         </div>
         <div id="tier-upsell-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="font-size:24px">⭐</div>
+          <div style="font-size:24px;color:var(--amber)"><svg class="ic ic-lg"><use href="#i-star"/></svg></div>
           <div style="flex:1"><div style="font-weight:700;color:var(--teal);font-size:15px">Upgrade required</div><div id="tier-upsell-msg" style="font-size:13px;color:var(--teal);margin-top:4px"></div></div>
         </div>
         <div id="billing-current-plan" class="card" style="margin-bottom:20px">
@@ -949,10 +1009,10 @@
           <div id="billing-plan-details"><div class="empty">Loading...</div></div>
           <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
             <button onclick="window.open('https://billing.stripe.com/p/login/3cIfZgbeq6p03ft1Fkg3600','_blank')" class="btn btn-outline" style="font-size:13px;display:flex;align-items:center;gap:8px">
-              💳 Manage subscription &amp; invoices
+              <svg class="ic"><use href="#i-card"/></svg> Manage subscription &amp; invoices
             </button>
             <div style="font-size:11px;color:var(--text2);margin-top:6px">Update payment method, download invoices, or cancel your plan</div>
-            <button onclick="refreshAccess(true)" class="btn btn-outline" style="font-size:13px;margin-top:12px;display:flex;align-items:center;gap:8px">↻ I've paid — refresh my access</button>
+            <button onclick="refreshAccess(true)" class="btn btn-outline" style="font-size:13px;margin-top:12px;display:flex;align-items:center;gap:8px"><svg class="ic"><use href="#i-refresh"/></svg> I've paid — refresh my access</button>
           </div>
         </div>
         <div class="card" style="margin-bottom:20px">
@@ -963,7 +1023,7 @@
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility ⭐</div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · Tello AI assistant</div></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility <svg class="ic"><use href="#i-star"/></svg></div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · Tello AI assistant</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -2541,23 +2601,23 @@ function renderExpiryBanner(){
   const compMissing=comp.items.filter(i=>i.level==='missing');
 
   if(!complianceTasks.length&&!comp.total){
-    banner.innerHTML=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">📋</span><div><div style="font-weight:600;color:var(--text);font-size:14px">No requirements loaded yet</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Nothing has been checked, so nothing can be current. Add staff and residents, or add a task, and this will start reporting.</div></div></div>`;
+    banner.innerHTML=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px;color:var(--amber)"><svg class="ic ic-lg"><use href="#i-clipboard"/></svg></span><div><div style="font-weight:600;color:var(--text);font-size:14px">No requirements loaded yet</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Nothing has been checked, so nothing can be current. Add staff and residents, or add a task, and this will start reporting.</div></div></div>`;
     return;
   }
   if(!expired.length&&!critical.length&&!warning.length&&!compExpired.length&&!compSoon.length&&!compMissing.length){
-    banner.innerHTML=`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px">✅</span><div><div style="font-weight:600;color:var(--green);font-size:14px">All requirements are current</div></div></div>`;
+    banner.innerHTML=`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;align-items:center;gap:12px"><span style="font-size:24px;color:var(--green)"><svg class="ic ic-lg"><use href="#i-check-circle"/></svg></span><div><div style="font-weight:600;color:var(--green);font-size:14px">All requirements are current</div></div></div>`;
     return;
   }
   let html='';
-  if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600">⚠ ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
-  if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600">🔔 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
-  if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📅 ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600">📋 ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  if(expired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px"><svg class="ic"><use href="#i-alert"/></svg> ${expired.length} item${expired.length>1?'s':''} OVERDUE</div><div style="display:flex;flex-wrap:wrap;gap:8px">${expired.map(t=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--red);font-weight:600"><svg class="ic"><use href="#i-alert"/></svg> ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">Since ${esc(t.due_date)}</span></div>`).join('')}</div></div>`;
+  if(critical.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px"><svg class="ic"><use href="#i-alert"/></svg> ${critical.length} item${critical.length>1?'s':''} expiring within 7 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${critical.map(t=>`<div style="background:#fff;border:1px solid #f5a623;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#c47d00;font-weight:600"><svg class="ic"><use href="#i-bell"/></svg> ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
+  if(warning.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px"><svg class="ic"><use href="#i-calendar"/></svg> ${warning.length} due within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${warning.map(t=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:var(--amber);font-weight:600"><svg class="ic"><use href="#i-clipboard"/></svg> ${esc(t.title)}</span><span style="color:var(--text2);margin-left:6px">${getDaysUntil(t.due_date)} days</span></div>`).join('')}</div></div>`;
   // Same three bands, from the records rather than the checklist.
   const rows=(items,dot)=>items.slice(0,8).map(i=>`<div style="background:#fff;border:1px solid ${dot};border-radius:8px;padding:6px 12px;font-size:12px"><span style="font-weight:600">${esc(i.who)}</span><span style="color:var(--text2);margin-left:6px">${esc(i.what)}</span></div>`).join('')
     +(items.length>8?`<div style="font-size:12px;color:var(--text2);align-self:center">and ${items.length-8} more</div>`:'');
-  if(compExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px">🚨 ${compExpired.length} expired in the records</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compExpired,'#e8a0a0')}</div></div>`;
-  if(compSoon.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px">⚠️ ${compSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compSoon,'#f5a623')}</div></div>`;
-  if(compMissing.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px">📋 ${compMissing.length} not on file and not recorded</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compMissing,'#e6c170')}</div></div>`;
+  if(compExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:10px"><svg class="ic"><use href="#i-alert"/></svg> ${compExpired.length} expired in the records</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compExpired,'#e8a0a0')}</div></div>`;
+  if(compSoon.length)html+=`<div style="background:#fff4e6;border:1.5px solid #f5a623;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:#c47d00;font-size:14px;margin-bottom:10px"><svg class="ic"><use href="#i-alert"/></svg> ${compSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compSoon,'#f5a623')}</div></div>`;
+  if(compMissing.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:10px"><svg class="ic"><use href="#i-clipboard"/></svg> ${compMissing.length} not on file and not recorded</div><div style="display:flex;flex-wrap:wrap;gap:8px">${rows(compMissing,'#e6c170')}</div></div>`;
   banner.innerHTML=html;
 }
 
@@ -2591,20 +2651,20 @@ function renderChecklist(filter){
       const isDueSoon=!t.completed&&t.due_date&&!isOverdue&&t.due_date<=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
       const item=checklistItems.find(i=>i.id===t.checklist_item_id)||{};
       let statusBadge='';
-      if(isOverdue)statusBadge='<span class="badge badge-red">⚠ Overdue</span>';
+      if(isOverdue)statusBadge='<span class="badge badge-red"><svg class="ic"><use href="#i-alert"/></svg> Overdue</span>';
       else if(t.completed)statusBadge='<span class="badge badge-green">✓ Complete</span>';
       else if(isDueSoon)statusBadge='<span class="badge badge-amber">Due soon</span>';
       else statusBadge='<span class="badge badge-gray">Pending</span>';
       return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden${isOverdue?';border-left:3px solid var(--red)':''}">
         <div class="checklist-row" style="border:none;margin:0;border-radius:0;${t.completed?'opacity:.6':''}">
           <div class="check-toggle ${t.completed?'done':''}" onclick="toggleTask('${t.id}',this)">${t.completed?'✓':''}</div>
-          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${esc(t.title)}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500">📋 ${esc(item.regulation_reference)}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${esc(freqLabel(item.frequency))}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px">💬 ${esc(t.notes)}</span>`:''}</div></div>
+          <div class="checklist-info"><div class="checklist-title" style="${t.completed?'text-decoration:line-through;color:var(--text2)':''}">${esc(t.title)}</div><div class="checklist-ref" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:3px">${item.regulation_reference?`<span style="color:var(--teal);font-size:11px;font-weight:500"><svg class="ic"><use href="#i-clipboard"/></svg> ${esc(item.regulation_reference)}</span>`:''}${item.frequency?`<span style="color:var(--text2);font-size:11px">${esc(freqLabel(item.frequency))}</span>`:''}${t.notes?`<span style="color:var(--text2);font-size:11px"><svg class="ic"><use href="#i-message"/></svg> ${esc(t.notes)}</span>`:''}</div></div>
           <div class="checklist-meta" style="flex-direction:column;align-items:flex-end;gap:6px">
             ${statusBadge}
             <div style="display:flex;gap:6px;align-items:center">
               <input type="date" value="${t.due_date||''}" style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text2);outline:none" onchange="updateDueDate('${t.id}',this.value)"/>
-              <button onclick="addNote('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" title="Add note">💬</button>
-              <button onclick="deleteTask('${esc(t.id)}','${esc(t.title.replace(/'/g,"\\'"))}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'">🗑</button>
+              <button onclick="addNote('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" title="Add note"><svg class="ic"><use href="#i-message"/></svg></button>
+              <button onclick="deleteTask('${esc(t.id)}','${esc(t.title.replace(/'/g,"\\'"))}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text2)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text2)'"><svg class="ic"><use href="#i-trash"/></svg></button>
             </div>
           </div>
         </div>
@@ -2868,7 +2928,7 @@ function viewResident(id){
       ${r.isp_review_date?`<div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">ISP last reviewed</div><div style="font-weight:500">${new Date(r.isp_review_date).toLocaleDateString()}</div></div>`:''}
     </div>
     ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
-    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
+    ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px"><svg class="ic"><use href="#i-alert"/></svg> ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
     <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
@@ -2939,11 +2999,11 @@ function renderStaff(){
       st.soon.forEach(c=>allSoon.push({...c,staff:s.full_name||s.name||'Staff'}));
     });
     if(!allExpired.length&&!allSoon.length){
-      banner.innerHTML=staffList.length?`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem;display:flex;align-items:center;gap:12px"><span>✅</span><div style="font-weight:600;color:var(--green)">All staff certifications are current</div></div>`:'';
+      banner.innerHTML=staffList.length?`<div style="background:var(--green-light);border:1px solid #b7d68e;border-radius:var(--radius-lg);padding:1rem;display:flex;align-items:center;gap:12px"><span><svg class="ic"><use href="#i-check-circle"/></svg></span><div style="font-weight:600;color:var(--green)">All staff certifications are current</div></div>`:'';
     }else{
       let html='';
-      if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px">🚨 ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600">⚠ ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
-      if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px">⏰ ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600">📋 ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
+      if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px"><svg class="ic"><use href="#i-alert"/></svg> ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600"><svg class="ic"><use href="#i-alert"/></svg> ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
+      if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px"><svg class="ic"><use href="#i-clock"/></svg> ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600"><svg class="ic"><use href="#i-clipboard"/></svg> ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
       banner.innerHTML=html;
     }
   }
@@ -2982,8 +3042,8 @@ function renderStaff(){
       let icon,col,text;
       if(c.noDate){icon=c.done?'✓':'✗';col=c.done?'var(--green)':'var(--red)';text=c.done?'Complete':'Missing';}
       else if(!c.date){icon='—';col='var(--text2)';text='Not set';}
-      else if(c.date<today){icon='⚠';col='var(--red)';text='Expired '+esc(c.date);}
-      else if(c.date<=in30){icon='⏰';col='var(--amber)';text='Due '+esc(c.date);}
+      else if(c.date<today){icon='<svg class="ic"><use href="#i-alert"/></svg>';col='var(--red)';text='Expired '+esc(c.date);}
+      else if(c.date<=in30){icon='<svg class="ic"><use href="#i-clock"/></svg>';col='var(--amber)';text='Due '+esc(c.date);}
       else{icon='✓';col='var(--green)';text='Valid to '+esc(c.date);}
       return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text2)">${esc(c.label)}</span><span style="color:${col};font-weight:500">${icon} ${text}</span></div>`;
     }).join('');
@@ -2996,7 +3056,7 @@ function renderStaff(){
       <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">${certHtml}</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${esc(s.id)}')">Edit</button>
-        ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${esc(s.id)}','${esc(nameField.replace(/'/g,"\\'"))}')">🗑</button>`:''}
+        ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${esc(s.id)}','${esc(nameField.replace(/'/g,"\\'"))}')"><svg class="ic"><use href="#i-trash"/></svg></button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -3152,7 +3212,7 @@ function renderMedications(){
         <div style="flex:1"><div style="font-size:14px;font-weight:600">${esc(m.medication_name)}${isDisc?' <span class="badge badge-gray">D/C</span>':''}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc([m.dosage,m.directions].filter(Boolean).join(' — '))}</div>
         <div style="font-size:11px;color:var(--text2);margin-top:4px">${m.prescriber?'Dr. '+esc(m.prescriber):''}${m.rx_number?' · Rx#'+esc(m.rx_number):''}</div>
-        ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px">⏰ Refill due ${esc(m.refill_date)}</div>`:''}</div>
+        ${refillSoon?`<div style="font-size:11px;color:var(--amber);margin-top:4px"><svg class="ic"><use href="#i-clock"/></svg> Refill due ${esc(m.refill_date)}</div>`:''}</div>
         <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;flex-shrink:0" onclick="openMedModal('${esc(r.id)}','${esc(m.id)}')">Edit</button>
       </div>`;
     }).join('');
@@ -3353,7 +3413,7 @@ function renderFacilityInfo(){
   document.getElementById('fac-view-admin-expiry').textContent=expiry?new Date(expiry).toLocaleDateString():'—';
   const badgeEl=document.getElementById('fac-view-admin-expiry-badge');
   if(!expiry)badgeEl.innerHTML='';
-  else if(expiry<today)badgeEl.innerHTML='<span class="badge badge-red">⚠ Expired</span>';
+  else if(expiry<today)badgeEl.innerHTML='<span class="badge badge-red"><svg class="ic"><use href="#i-alert"/></svg> Expired</span>';
   else if(expiry<=in30)badgeEl.innerHTML='<span class="badge badge-amber">Renew soon</span>';
   else badgeEl.innerHTML='<span class="badge badge-green">✓ Current</span>';
   // Deleting a facility is the owner's call, not every administrator's: an
@@ -3749,7 +3809,7 @@ async function loadMAR(){
   }else{marEmbedNote='';}
   const entries=data||[];
   const list=document.getElementById('mar-entries-list');if(!list)return;
-  const note=marEmbedNote?`<div class="empty" style="text-align:left;background:var(--amber-light,#FDF3E3);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px">⚠️ Resident and medication names were looked up separately — the database could not join them (${esc(marEmbedNote)}). The doses below are complete; the names are worth spot-checking.</div>`:'';
+  const note=marEmbedNote?`<div class="empty" style="text-align:left;background:var(--amber-light,#FDF3E3);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px"><svg class="ic"><use href="#i-alert"/></svg> Resident and medication names were looked up separately — the database could not join them (${esc(marEmbedNote)}). The doses below are complete; the names are worth spot-checking.</div>`:'';
   if(!entries.length){
     const anyResidents=(window.residents||residents||[]).length;
     list.innerHTML=note+`<div class="empty" style="margin-top:24px">`+(anyResidents
@@ -3775,7 +3835,7 @@ async function loadMAR(){
         const dosage=e.medications?.dosage||mf?.dosage||'';
         const time=e.administered_at?new Date(e.administered_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
         const statusColor=e.status==='given'?'var(--green)':e.status==='refused'?'var(--amber)':'var(--red)';
-        const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'⚠ Refused':e.status==='held'?'⏸ Held':'✗ Missed';
+        const statusLabel=e.status==='given'?'✓ Given':e.status==='refused'?'<svg class="ic"><use href="#i-alert"/></svg> Refused':e.status==='held'?'<svg class="ic"><use href="#i-pause"/></svg> Held':'✗ Missed';
         // A voided entry is ruled through, not removed. It stays on the record
         // exactly where it was, with the reason beside it, the way a corrected
         // paper MAR reads.
@@ -3785,8 +3845,8 @@ async function loadMAR(){
           <div style="min-width:0">
             <div style="font-size:14px;font-weight:600;${strike}">${esc(resName)}</div>
             <div style="font-size:12px;color:var(--text2);margin-top:2px;${strike}">${esc(medName)}${dosage?' · '+esc(dosage):''} · ${esc(e.scheduled_time||time)}</div>
-            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px;${strike}">💬 ${esc(e.notes)}</div>`:''}
-            ${voided?`<div style="font-size:11px;color:var(--red);margin-top:4px;font-weight:600">🚫 VOIDED${e.void_reason?' — '+esc(e.void_reason):''}</div>
+            ${e.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px;${strike}"><svg class="ic"><use href="#i-message"/></svg> ${esc(e.notes)}</div>`:''}
+            ${voided?`<div style="font-size:11px;color:var(--red);margin-top:4px;font-weight:600"><svg class="ic"><use href="#i-ban"/></svg> VOIDED${e.void_reason?' — '+esc(e.void_reason):''}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:2px">Struck ${esc(new Date(e.voided_at).toLocaleString())}. The correct entry is logged separately.</div>`:''}
           </div>
           <div style="text-align:right;white-space:nowrap">
@@ -3833,13 +3893,13 @@ async function loadMARBriefing(){
   const missedCount=(todayEntries||[]).filter(e=>e.status==='missed').length;
   const notLoggedYet=resList.filter(r=>!givenResIds.has(r.id));
   let tips=[];
-  if(notLoggedYet.length)tips.push(`📋 ${esc(notLoggedYet.map(r=>r.name||r.full_name).join(', '))} — no medications logged today yet`);
-  if(refusedCount)tips.push(`⚠️ ${refusedCount} refusal${refusedCount>1?'s':''} logged today — document reason per Title 22 §87465`);
-  if(missedCount)tips.push(`🚨 ${missedCount} missed dose${missedCount>1?'s':''} today — physician notification may be required`);
+  if(notLoggedYet.length)tips.push(`<svg class="ic"><use href="#i-clipboard"/></svg> ${esc(notLoggedYet.map(r=>r.name||r.full_name).join(', '))} — no medications logged today yet`);
+  if(refusedCount)tips.push(`<svg class="ic"><use href="#i-alert"/></svg> ${refusedCount} refusal${refusedCount>1?'s':''} logged today — document reason per Title 22 §87465`);
+  if(missedCount)tips.push(`<svg class="ic"><use href="#i-alert"/></svg> ${missedCount} missed dose${missedCount>1?'s':''} today — physician notification may be required`);
   if(!tips.length){el.style.display='none';return;}
   el.style.display='block';
   el.innerHTML=`<div style="background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:var(--radius);padding:12px 16px;color:#fff">
-    <div style="font-size:11px;font-weight:600;opacity:.8;margin-bottom:8px">✨ TELLO — MAR BRIEFING, TODAY</div>
+    <div style="font-size:11px;font-weight:600;opacity:.8;margin-bottom:8px"><svg class="ic"><use href="#i-spark"/></svg> TELLO — MAR BRIEFING, TODAY</div>
     ${tips.map(t=>`<div style="font-size:13px;margin-bottom:4px">${t}</div>`).join('')}
   </div>`;
 }
@@ -3853,7 +3913,7 @@ function goAddResident(){
 }
 
 function noResidentsYetHTML(what){
-  return `<div style="font-size:2.5rem;margin-bottom:12px">🏠</div>`
+  return `<div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div>`
     +`<div style="font-weight:600;margin-bottom:6px">No residents yet</div>`
     +`<div style="margin-bottom:14px">${what}</div>`
     +(canEdit()?`<button class="btn btn-primary" style="font-size:13px" onclick="goAddResident()">Add your first resident</button>`:'');
@@ -4078,11 +4138,11 @@ async function loadDashboardAIBriefing(force){
     const context=ctx.json;
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
-      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use ✅ for good, ⚠️ for warnings, 🚨 for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
+      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use <svg class="ic"><use href="#i-check-circle"/></svg> for good, <svg class="ic"><use href="#i-alert"/></svg> for warnings, <svg class="ic"><use href="#i-alert"/></svg> for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
-    const reply=data.content?.[0]?.text||('⚠️ '+aiErrorText(data,res.status));
+    const reply=data.content?.[0]?.text||('<svg class="ic"><use href="#i-alert"/></svg> '+aiErrorText(data,res.status));
     const html=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
     el.innerHTML=html;
     // Only a real briefing is worth keeping — caching an error would hide the
@@ -4201,21 +4261,21 @@ async function demoFindings(){
   const marGaps=mar.filter(m=>m.status&&!/given|administered|complete/i.test(m.status)).length;
   return {score,doneT,totalT,overdue,certIssues,docGaps,marGaps,residents,staff,facility:ctx.facility};
 }
-function _bul(a,ok){return a.length?a.map(x=>'• '+x).join('<br>'):('✅ '+ok);}
+function _bul(a,ok){return a.length?a.map(x=>'• '+x).join('<br>'):('<svg class="ic"><use href="#i-check-circle"/></svg> '+ok);}
 async function demoComplianceAnswer(query){
   const f=await demoFindings(); const q=(query||'').toLowerCase(); let body;
   const tag='<br><br><em style="color:var(--text2)">You\'re in the demo sandbox — this is a live analysis of the sample facility. Start a free trial to run it on your own data.</em>';
   if(q.includes('simulate')){
     body='<strong>Simulated DSS walkthrough</strong><br><br>'+
-      '📋 <strong>Staff files:</strong> '+(f.certIssues.length?f.certIssues.length+' issue(s) — '+f.certIssues[0]:'clear')+'<br>'+
-      '📁 <strong>Resident records:</strong> '+(f.docGaps.length?f.docGaps.length+' gap(s) — '+f.docGaps[0]:'clear')+'<br>'+
-      '💊 <strong>MAR:</strong> '+(f.marGaps?f.marGaps+' gap(s) in recent entries':'no recent gaps')+'<br>'+
-      '🗂 <strong>Overdue tasks:</strong> '+(f.overdue.length||'none')+'<br>'+
-      '📊 <strong>Overall readiness:</strong> '+(f.score!=null?f.score+'%':'—');
+      '<svg class="ic"><use href="#i-clipboard"/></svg> <strong>Staff files:</strong> '+(f.certIssues.length?f.certIssues.length+' issue(s) — '+f.certIssues[0]:'clear')+'<br>'+
+      '<svg class="ic"><use href="#i-folder"/></svg> <strong>Resident records:</strong> '+(f.docGaps.length?f.docGaps.length+' gap(s) — '+f.docGaps[0]:'clear')+'<br>'+
+      '<svg class="ic"><use href="#i-pill"/></svg> <strong>MAR:</strong> '+(f.marGaps?f.marGaps+' gap(s) in recent entries':'no recent gaps')+'<br>'+
+      '<svg class="ic"><use href="#i-archive"/></svg> <strong>Overdue tasks:</strong> '+(f.overdue.length||'none')+'<br>'+
+      '<svg class="ic"><use href="#i-chart"/></svg> <strong>Overall readiness:</strong> '+(f.score!=null?f.score+'%':'—');
   }else if(q.includes('ready')||q.includes('dss')){
     const gaps=[...f.overdue.map(t=>t.title||'Compliance task overdue'),...f.certIssues,...f.docGaps]; const n=gaps.length;
     body='<strong>Inspection readiness: '+(f.score!=null?f.score+'%':'—')+'</strong> ('+f.doneT+'/'+f.totalT+' requirements complete)<br><br>'+
-      (n?'🚨 <strong>'+n+' item'+(n>1?'s':'')+' an analyst would flag:</strong><br>'+gaps.slice(0,8).map(x=>'• '+x).join('<br>'):'✅ No open compliance gaps in the sample data.');
+      (n?'<svg class="ic"><use href="#i-alert"/></svg> <strong>'+n+' item'+(n>1?'s':'')+' an analyst would flag:</strong><br>'+gaps.slice(0,8).map(x=>'• '+x).join('<br>'):'<svg class="ic"><use href="#i-check-circle"/></svg> No open compliance gaps in the sample data.');
   }else if(q.includes('cert')||q.includes('expired')){
     body='<strong>Staff certification status</strong><br><br>'+_bul(f.certIssues,'All staff certifications current — CPR, First Aid, TB, LiveScan, Mandated Reporter.');
   }else if(q.includes('today')||q.includes('need to do')){
@@ -4229,8 +4289,8 @@ async function demoComplianceAnswer(query){
       '<br><br>Worth knowing: a requirement recorded as "yes" with no document attached shows amber on the record. DSS asks for the document, not the answer.';
   }else if(q.includes('medic')||q.includes('mar')||q.includes('dose')||q.includes('refus')){
     body='<strong>Medication administration</strong><br><br>'+
-      (f.marGaps?'⚠️ '+f.marGaps+' recent entry(ies) recorded as something other than given — refused, held or missed. Each of those needs a documented reason, and the app will not save one without it.'
-                :'✅ Every recent MAR entry in the sample data is recorded as given.')+
+      (f.marGaps?'<svg class="ic"><use href="#i-alert"/></svg> '+f.marGaps+' recent entry(ies) recorded as something other than given — refused, held or missed. Each of those needs a documented reason, and the app will not save one without it.'
+                :'<svg class="ic"><use href="#i-check-circle"/></svg> Every recent MAR entry in the sample data is recorded as given.')+
       '<br><br>The MAR is the centrally stored medication record an analyst reads under §87465. A wrong entry is voided rather than deleted — struck through, with the reason beside it, and the correct entry logged next to it.';
   }else if(q.includes('staff')||q.includes('team')||q.includes('role')||q.includes('caregiver')||q.includes('who can')||q.includes('permission')){
     const nm=o=>o.full_name||o.name||'Unnamed';
@@ -4261,19 +4321,19 @@ async function demoComplianceAnswer(query){
   }else{
     const n=f.overdue.length+f.certIssues.length+f.docGaps.length;
     body='<strong>'+(f.facility||'Facility')+' — compliance snapshot</strong><br><br>Readiness '+(f.score!=null?f.score+'%':'—')+' · '+f.residents.length+' residents · '+f.staff.length+' staff<br>'+
-      (n?'⚠️ '+n+' open item(s) across tasks, staff certs, and resident records.':'✅ No open compliance gaps in the sample data.')+
+      (n?'<svg class="ic"><use href="#i-alert"/></svg> '+n+' open item(s) across tasks, staff certs, and resident records.':'<svg class="ic"><use href="#i-check-circle"/></svg> No open compliance gaps in the sample data.')+
       '<br><br>Try asking about residents, staff certifications, the MAR, training hours, documents, or who can see what.';
   }
   return body+tag;
 }
 async function demoBriefingHTML(){
   const f=await demoFindings(); const items=[];
-  if(f.score!=null)items.push((f.score>=90?'✅':f.score>=70?'⚠️':'🚨')+' Inspection readiness: <strong>'+f.score+'%</strong> ('+f.doneT+'/'+f.totalT+' complete)');
-  if(f.overdue.length)items.push('🚨 '+f.overdue.length+' overdue compliance task'+(f.overdue.length>1?'s':''));
-  if(f.certIssues.length)items.push('⚠️ '+f.certIssues.length+' staff certification issue'+(f.certIssues.length>1?'s':'')+' — e.g. '+f.certIssues[0]);
-  if(f.docGaps.length)items.push('⚠️ '+f.docGaps.length+' resident document gap'+(f.docGaps.length>1?'s':'')+' — e.g. '+f.docGaps[0]);
-  if(f.marGaps)items.push('⚠️ '+f.marGaps+' MAR gap'+(f.marGaps>1?'s':'')+' in recent entries');
-  if(!items.length)items.push('✅ No urgent compliance issues in the sample data.');
+  if(f.score!=null)items.push((f.score>=90?'<svg class="ic"><use href="#i-check-circle"/></svg>':f.score>=70?'<svg class="ic"><use href="#i-alert"/></svg>':'<svg class="ic"><use href="#i-alert"/></svg>')+' Inspection readiness: <strong>'+f.score+'%</strong> ('+f.doneT+'/'+f.totalT+' complete)');
+  if(f.overdue.length)items.push('<svg class="ic"><use href="#i-alert"/></svg> '+f.overdue.length+' overdue compliance task'+(f.overdue.length>1?'s':''));
+  if(f.certIssues.length)items.push('<svg class="ic"><use href="#i-alert"/></svg> '+f.certIssues.length+' staff certification issue'+(f.certIssues.length>1?'s':'')+' — e.g. '+f.certIssues[0]);
+  if(f.docGaps.length)items.push('<svg class="ic"><use href="#i-alert"/></svg> '+f.docGaps.length+' resident document gap'+(f.docGaps.length>1?'s':'')+' — e.g. '+f.docGaps[0]);
+  if(f.marGaps)items.push('<svg class="ic"><use href="#i-alert"/></svg> '+f.marGaps+' MAR gap'+(f.marGaps>1?'s':'')+' in recent entries');
+  if(!items.length)items.push('<svg class="ic"><use href="#i-check-circle"/></svg> No urgent compliance issues in the sample data.');
   return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>';
 }
 
@@ -4303,7 +4363,7 @@ async function sendAIQuery(btn){
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
-    const reply=data.content?.[0]?.text||('⚠️ '+aiErrorText(data,res.status));
+    const reply=data.content?.[0]?.text||('<svg class="ic"><use href="#i-alert"/></svg> '+aiErrorText(data,res.status));
     thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
@@ -4362,7 +4422,7 @@ function renderDocuments(){
     const when=d.uploaded_at?new Date(d.uploaded_at).toLocaleDateString():'';
     const size=d.size_bytes?(d.size_bytes>1048576?(d.size_bytes/1048576).toFixed(1)+' MB':Math.max(1,Math.round(d.size_bytes/1024))+' KB'):'';
     return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px;display:flex;align-items:center;gap:14px">
-      <div style="font-size:22px">📄</div>
+      <div style="font-size:22px;color:var(--teal)"><svg class="ic ic-lg"><use href="#i-file"/></svg></div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px;word-break:break-word">${esc(d.title||d.file_name||'Document')}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(DOC_TYPE_LABELS[d.doc_type]||d.doc_type||'Document')}${who?' \u00b7 '+esc(who):''}${when?' \u00b7 '+when:''}${size?' \u00b7 '+size:''}${d.source==='scan'?' \u00b7 \ud83d\udcf7 scanned':''}</div>
@@ -4370,7 +4430,7 @@ function renderDocuments(){
       <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="openDoc('${esc(d.storage_path)}')">View / Print</button>
       <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="downloadDoc('${esc(d.storage_path)}','${esc(d.file_name||d.title||'document')}')" title="Download a copy">\u2b07 Download</button>
       <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="shareDoc('${esc(d.storage_path)}','${esc(d.title||d.file_name||'Document')}')" title="Share a time-limited link">\u2197 Share</button>
-      ${canFaxTier?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`:''}
+      ${canFaxTier?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon"><svg class="ic"><use href="#i-printer"/></svg> Fax · soon</button>`:''}
       ${del?`<button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteDoc('${esc(d.id)}','${esc(d.storage_path)}')">Delete</button>`:''}
     </div>`;
   }).join('');
@@ -4454,7 +4514,7 @@ async function deleteDoc(id,path){
 function requestFax(){
   // Fax is not wired to a provider yet. Honest "coming soon" that captures interest
   // via a prefilled email — no per-page cost incurred, no capability implied.
-  if(confirm('📠 Faxing documents to pharmacies, physicians, or DSS is coming soon.\n\nWant us to let you know when it is ready? Tap OK to send a quick note.')){
+  if(confirm('Faxing documents to pharmacies, physicians, or DSS is coming soon.\n\nWant us to let you know when it is ready? Tap OK to send a quick note.')){
     window.location.href='mailto:hello@title-22.com?subject='+encodeURIComponent('Fax feature interest — Title22')+'&body='+encodeURIComponent('Hi — I would use a fax feature in Title22. Please let me know when it is available.');
   }
 }
@@ -4560,14 +4620,14 @@ function renderDocSlots(kind){
       host.classList.add('is-onfile');
       const when=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString():'';
       const exp=doc.expires_at?' · expires '+new Date(doc.expires_at+'T00:00:00').toLocaleDateString():'';
-      status=`<span class="ds-ok">✅ On file</span> · ${esc(doc.title||doc.file_name||'Document')}`
-        +(when?' · added '+when:'')+exp+(doc.source==='scan'?' · 📷 scanned':'')
+      status=`<span class="ds-ok"><svg class="ic"><use href="#i-check-circle"/></svg> On file</span> · ${esc(doc.title||doc.file_name||'Document')}`
+        +(when?' · added '+when:'')+exp+(doc.source==='scan'?' · <svg class="ic"><use href="#i-camera"/></svg> scanned':'')
         +(docs.length>1?` · <span style="color:var(--text2)">${docs.length-1} earlier version${docs.length>2?'s':''}</span>`:'');
     }else if(queued.length){
-      status=`<span class="ds-warn">📎 ${esc(queued[queued.length-1].file.name)}</span> — will be filed when you save this record.`;
+      status=`<span class="ds-warn"><svg class="ic"><use href="#i-clip"/></svg> ${esc(queued[queued.length-1].file.name)}</span> — will be filed when you save this record.`;
     }else if(claimed){
       host.classList.add('is-claimed');
-      status=`<span class="ds-warn">⚠️ Marked yes, but no document is attached.</span> An inspector will ask to see it.`;
+      status=`<span class="ds-warn"><svg class="ic"><use href="#i-alert"/></svg> Marked yes, but no document is attached.</span> An inspector will ask to see it.`;
     }else{
       status=`<span class="ds-miss">No document on file.</span>`;
     }
@@ -4577,14 +4637,14 @@ function renderDocSlots(kind){
 
     const btns=[];
     if(doc){
-      btns.push(`<button type="button" onclick="openDoc('${esc(doc.storage_path)}')">👁 View / Print</button>`);
-      btns.push(`<button type="button" onclick="downloadDoc('${esc(doc.storage_path)}','${esc(doc.file_name||doc.title||'document')}')">⬇ Download</button>`);
-      btns.push(`<button type="button" onclick="shareDoc('${esc(doc.storage_path)}','${esc(doc.title||doc.file_name||'Document')}')">↗ Share</button>`);
-      if(canFaxTier)btns.push(`<button type="button" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon">📠 Fax · soon</button>`);
+      btns.push(`<button type="button" onclick="openDoc('${esc(doc.storage_path)}')"><svg class="ic"><use href="#i-eye"/></svg> View / Print</button>`);
+      btns.push(`<button type="button" onclick="downloadDoc('${esc(doc.storage_path)}','${esc(doc.file_name||doc.title||'document')}')"><svg class="ic"><use href="#i-download"/></svg> Download</button>`);
+      btns.push(`<button type="button" onclick="shareDoc('${esc(doc.storage_path)}','${esc(doc.title||doc.file_name||'Document')}')"><svg class="ic"><use href="#i-share"/></svg> Share</button>`);
+      if(canFaxTier)btns.push(`<button type="button" onclick="requestFax()" title="Fax to a pharmacy, physician, or DSS — coming soon"><svg class="ic"><use href="#i-printer"/></svg> Fax · soon</button>`);
     }
     if(edit){
-      if(slot.scan)btns.push(`<button type="button" class="${doc?'':'ds-primary'}" onclick="slotScan('${kind}','${slot.docType}')">📷 ${doc?'Replace by scan':'Scan'}</button>`);
-      btns.push(`<button type="button" class="${doc||slot.scan?'':'ds-primary'}" onclick="slotUpload('${kind}','${slot.docType}')">⬆ ${doc?'Replace':'Upload'}</button>`);
+      if(slot.scan)btns.push(`<button type="button" class="${doc?'':'ds-primary'}" onclick="slotScan('${kind}','${slot.docType}')"><svg class="ic"><use href="#i-camera"/></svg> ${doc?'Replace by scan':'Scan'}</button>`);
+      btns.push(`<button type="button" class="${doc||slot.scan?'':'ds-primary'}" onclick="slotUpload('${kind}','${slot.docType}')"><svg class="ic"><use href="#i-upload"/></svg> ${doc?'Replace':'Upload'}</button>`);
     }
     if(doc&&del)btns.push(`<button type="button" style="color:var(--red);border-color:var(--red-light)" onclick="deleteSlotDoc('${kind}','${esc(doc.id)}','${esc(doc.storage_path)}')">Remove</button>`);
     actionsEl.innerHTML=btns.join('');
@@ -5110,7 +5170,7 @@ async function loadBilling(){
     // "Facility plan · Active" would read as their own, and a Subscribe
     // button would charge them a second time for a facility already paid for.
     if(t22CoveredByFacility){
-      el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">👥</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">Covered by ${esc(t22CoveredByFacility)}</div><div style="font-size:14px;color:var(--text2)">You were invited onto this team — its administrator manages the subscription.</div></div><span class="badge badge-green" style="margin-left:auto">✓ Active</span></div><div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2)">There is nothing for you to pay. If you also want a facility of your own, you would subscribe separately for it.</div>`;
+      el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-users"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">Covered by ${esc(t22CoveredByFacility)}</div><div style="font-size:14px;color:var(--text2)">You were invited onto this team — its administrator manages the subscription.</div></div><span class="badge badge-green" style="margin-left:auto">✓ Active</span></div><div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2)">There is nothing for you to pay. If you also want a facility of your own, you would subscribe separately for it.</div>`;
       return;
     }
     const ent=await resolveEntitlement();
@@ -5120,15 +5180,15 @@ async function loadBilling(){
     let trialHtml='';
     if(plan==='trial'){
       const daysLeft=ent.daysLeft;
-      trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`⏳ <strong>${daysLeft} days remaining</strong> on your trial.`:'⚠️ <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
+      trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`<svg class="ic"><use href="#i-clock"/></svg> <strong>${daysLeft} days remaining</strong> on your trial.`:'<svg class="ic"><use href="#i-alert"/></svg> <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
     }
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px">💳</div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
 }
 
 // ===== DAILY LOG =====
 let dailyLogs=[];let dailyResidents=[];
-const DL_LABELS={narrative:'📝 Narrative',vitals:'❤️ Vitals',food:'🍽️ Food',bowel:'🚽 Bowel',hygiene:'🧼 Hygiene'};
+const DL_LABELS={narrative:'<svg class="ic"><use href="#i-note"/></svg> Narrative',vitals:'<svg class="ic"><use href="#i-heart"/></svg> Vitals',food:'<svg class="ic"><use href="#i-meal"/></svg> Food',bowel:'<svg class="ic"><use href="#i-toilet"/></svg> Bowel',hygiene:'<svg class="ic"><use href="#i-droplet"/></svg> Hygiene'};
 
 async function loadDailyLogs(){
   if(!currentFacility)return;
@@ -5343,7 +5403,7 @@ async function loadTrainingCerts(){
 function onTrainingCertPicked(input){
   pendingTrainingCert=(input.files&&input.files[0])||null;
   const label=document.getElementById('tr-cert-name');
-  if(label)label.textContent=pendingTrainingCert?('📎 '+pendingTrainingCert.name):'No certificate attached';
+  if(label)label.textContent=pendingTrainingCert?('Attached: '+pendingTrainingCert.name):'No certificate attached';
 }
 
 function clearTrainingCertPick(){
@@ -5532,15 +5592,15 @@ function renderTrainings(){
     const cert=trainingCerts[t.id];
     const certRow=cert
       ? `<div class="doc-slot-actions" style="margin-top:8px">
-          <span style="font-size:12px;color:var(--green);font-weight:600;align-self:center">✅ Certificate on file</span>
-          <button type="button" onclick="openDoc('${esc(cert.storage_path)}')">👁 View / Print</button>
-          <button type="button" onclick="downloadDoc('${esc(cert.storage_path)}','${esc(cert.file_name||cert.title||'certificate')}')">⬇ Download</button>
-          <button type="button" onclick="shareDoc('${esc(cert.storage_path)}','${esc(cert.title||'Training certificate')}')">↗ Share</button>
+          <span style="font-size:12px;color:var(--green);font-weight:600;align-self:center"><svg class="ic"><use href="#i-check-circle"/></svg> Certificate on file</span>
+          <button type="button" onclick="openDoc('${esc(cert.storage_path)}')"><svg class="ic"><use href="#i-eye"/></svg> View / Print</button>
+          <button type="button" onclick="downloadDoc('${esc(cert.storage_path)}','${esc(cert.file_name||cert.title||'certificate')}')"><svg class="ic"><use href="#i-download"/></svg> Download</button>
+          <button type="button" onclick="shareDoc('${esc(cert.storage_path)}','${esc(cert.title||'Training certificate')}')"><svg class="ic"><use href="#i-share"/></svg> Share</button>
         </div>`
       : (edit
         ? `<div class="doc-slot-actions" style="margin-top:8px">
             <span style="font-size:12px;color:var(--text2);align-self:center">No certificate on file</span>
-            <button type="button" onclick="attachTrainingCert('${esc(t.id)}')">📎 Attach certificate</button>
+            <button type="button" onclick="attachTrainingCert('${esc(t.id)}')"><svg class="ic"><use href="#i-clip"/></svg> Attach certificate</button>
           </div>`
         : '');
     return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
@@ -5946,7 +6006,7 @@ function renderScanReview(result){
     </div>
     <div class="scan-summary">
       ${scanState.isPdf
-        ? '<div class="scan-thumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;cursor:default" title="PDF document">📄</div>'
+        ? '<div class="scan-thumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;cursor:default" title="PDF document"><svg class="ic ic-lg"><use href="#i-file"/></svg></div>'
         : `<img class="scan-thumb" src="${scanState.dataUrl}" alt="The page you scanned" onclick="openScanLightbox()"/>`}
       <div style="flex:1;min-width:180px;font-size:12px;color:var(--text2);line-height:1.6">
         ${scanState.notes?esc(scanState.notes)+'<br/>':''}
@@ -6342,7 +6402,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="resident-modal" onclick="if(event.target===this)closeResidentModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')">📷 Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="res-modal-title">Add resident</h3><!-- SCAN DISABLED (resident) pending HIPAA BAA — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('resident')"><svg class="ic"><use href="#i-camera"/></svg> Scan to fill</button> --><button class="modal-close" onclick="closeResidentModal()">×</button></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="res-name" placeholder="e.g. Betty Divers"/></div>
     <div class="form-group"><label>Preferred name</label><input type="text" id="res-preferred" placeholder="e.g. Betty"/></div>
@@ -6383,7 +6443,7 @@ function showSetNewPassword(){
 <div class="modal-overlay" id="resident-detail-modal" onclick="if(event.target===this)closeResidentDetail()">
   <div class="modal" style="max-width:520px"><div class="modal-header"><h3 id="rd-name">Resident</h3><button class="modal-close" onclick="closeResidentDetail()">×</button></div>
   <div id="rd-body"></div>
-  <div class="modal-footer"><button class="btn btn-outline" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()">🗑 Delete</button><button class="btn btn-outline" onclick="closeResidentDetail()">Close</button><button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button></div></div>
+  <div class="modal-footer"><button class="btn btn-outline" style="color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteCurrentResident()"><svg class="ic"><use href="#i-trash"/></svg> Delete</button><button class="btn btn-outline" onclick="closeResidentDetail()">Close</button><button class="btn btn-primary" onclick="editCurrentResident()">Edit record</button></div></div>
 </div>
 
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
@@ -6419,7 +6479,7 @@ function showSetNewPassword(){
      border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.28);padding:16px 18px">
   <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
     <div style="width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;display:flex;
-                align-items:center;justify-content:center;font-size:13px;flex-shrink:0">✨</div>
+                align-items:center;justify-content:center;font-size:13px;flex-shrink:0"><svg class="ic"><use href="#i-spark"/></svg></div>
     <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--teal)">Tello</div>
     <div id="tour-count" style="margin-left:auto;font-size:11px;color:var(--text2)"></div>
   </div>
@@ -6433,7 +6493,7 @@ function showSetNewPassword(){
 </div>
 <button id="tour-restart" onclick="startTour(0)" style="display:none;position:fixed;right:18px;bottom:18px;z-index:2500;
         background:var(--teal);color:#fff;border:none;border-radius:24px;padding:10px 18px;font-size:13px;
-        font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(15,110,86,.35)">✨ Show me around</button>
+        font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(15,110,86,.35)"><svg class="ic"><use href="#i-spark"/></svg> Show me around</button>
 
 <div class="modal-overlay" id="delete-facility-modal" onclick="if(event.target===this)closeDeleteFacility()">
   <div class="modal" style="max-width:520px"><div class="modal-header"><h3 style="color:var(--red)">Delete facility</h3><button class="modal-close" onclick="closeDeleteFacility()">×</button></div>
@@ -6459,7 +6519,7 @@ function showSetNewPassword(){
 </div>
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
-  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')">📷 Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
+  <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')"><svg class="ic"><use href="#i-camera"/></svg> Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
   <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
@@ -6468,12 +6528,12 @@ function showSetNewPassword(){
   <div class="form-row"><div class="form-group"><label>Start date</label><input type="date" id="med-start"/></div><div class="form-group"><label>End date</label><input type="date" id="med-end"/></div></div>
   <div class="form-group"><label>Refill due date</label><input type="date" id="med-refill"/></div>
   <div class="error-msg" id="med-modal-error"></div>
-  <div class="modal-footer"><button class="btn btn-outline" id="med-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteMedication()">🗑 Delete</button><button class="btn btn-outline" onclick="closeMedModal()">Cancel</button><button class="btn btn-primary" onclick="saveMedication()">Save medication</button></div></div>
+  <div class="modal-footer"><button class="btn btn-outline" id="med-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteMedication()"><svg class="ic"><use href="#i-trash"/></svg> Delete</button><button class="btn btn-outline" onclick="closeMedModal()">Cancel</button><button class="btn btn-primary" onclick="saveMedication()">Save medication</button></div></div>
 </div>
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')">📷 Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')"><svg class="ic"><use href="#i-camera"/></svg> Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
@@ -6540,7 +6600,7 @@ function showSetNewPassword(){
     </div>
     <div class="error-msg" id="staff-modal-error"></div>
     <div class="modal-footer">
-      <button class="btn btn-outline" id="staff-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteStaffFromModal()">🗑 Delete</button>
+      <button class="btn btn-outline" id="staff-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteStaffFromModal()"><svg class="ic"><use href="#i-trash"/></svg> Delete</button>
       <button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveStaff()">Save staff member</button>
     </div>
@@ -6582,7 +6642,7 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="subscribed-modal" onclick="if(event.target===this)closeSubscribedModal()">
   <div class="modal" style="max-width:460px">
-    <div class="modal-header"><h3>🎉 You're subscribed</h3><button class="modal-close" onclick="closeSubscribedModal()">×</button></div>
+    <div class="modal-header"><h3><svg class="ic"><use href="#i-star"/></svg> You're subscribed</h3><button class="modal-close" onclick="closeSubscribedModal()">×</button></div>
     <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:4px">Your plan is active — thank you.</div>
     <div style="font-size:13px;color:var(--text2);line-height:1.7">The next thing worth doing is bringing your caregivers in. MAR entries and incidents get logged on shift instead of you typing them up later, and each role only sees what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
     <div class="modal-footer">
@@ -6596,7 +6656,7 @@ function showSetNewPassword(){
   <div class="modal" style="max-width:520px">
     <div class="modal-header"><h3 id="inc-modal-title">Report incident</h3><button class="modal-close" onclick="closeIncidentModal()">×</button></div>
     <div id="inc-ai-tip" style="display:none;background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.6">
-      <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8">✨ TELLO — DSS REQUIREMENTS</div>
+      <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8"><svg class="ic"><use href="#i-spark"/></svg> TELLO — DSS REQUIREMENTS</div>
       <div id="inc-ai-tip-text"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -6621,7 +6681,7 @@ function showSetNewPassword(){
     </div>
     <div class="error-msg" id="inc-modal-error"></div>
     <div class="modal-footer">
-      <button class="btn btn-outline" id="inc-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteIncident()">🗑 Delete</button>
+      <button class="btn btn-outline" id="inc-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteIncident()"><svg class="ic"><use href="#i-trash"/></svg> Delete</button>
       <button class="btn btn-outline" onclick="closeIncidentModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveIncident()">Save report</button>
     </div>
