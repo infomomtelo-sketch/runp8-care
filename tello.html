@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Tello</title>
+<meta name="description" content="Tello — ask her anything. A calm, straight-talking assistant."/>
+<link rel="icon" href="/favicon.svg"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --pine:#1d5c4d; --pine-deep:#12433a; --mint:#e7f2ee; --paper:#fbfaf7;
+  --ink:#1a231f; --ink2:#5d6b64; --line:#dfe5e1; --white:#fff;
+  --amber:#8a6a1f; --amber-bg:#fdf6e3; --amber-line:#e6c170;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var(--paper);color:var(--ink);
+  line-height:1.6;font-size:16px;-webkit-text-size-adjust:100%;display:flex;flex-direction:column}
+button,input,textarea{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+
+/* ---- header ---- */
+.bar{background:var(--pine-deep);color:#fff;flex:none}
+.bar-in{max-width:760px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:12px}
+.mark{font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.spacer{flex:1}
+.chip{font-size:12px;padding:4px 11px;border-radius:20px;background:rgba(255,255,255,.14);color:#cfe6de;white-space:nowrap}
+.chip.low{background:#7a2f2f;color:#ffdede}
+.linkbtn{background:none;border:none;color:#9fc9bc;font-size:13px;padding:4px}
+.linkbtn:hover{color:#fff}
+
+/* ---- shared shell ---- */
+.wrap{flex:1;display:flex;flex-direction:column;width:100%;max-width:760px;margin:0 auto;padding:0 18px;min-height:0}
+.note{background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);
+  border-radius:var(--r);padding:10px 14px;font-size:12.5px;line-height:1.6;margin:16px 0 0}
+
+/* ---- signed out ---- */
+#gate{padding:44px 0 60px;max-width:430px;margin:0 auto;width:100%}
+#gate h1{font-family:'Fraunces',Georgia,serif;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.015em;margin-bottom:12px}
+#gate .sub{color:var(--ink2);font-size:15px;margin-bottom:28px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+input[type=email],input[type=password]{width:100%;padding:11px 13px;border:1.5px solid var(--line);
+  border-radius:var(--r);background:var(--white);outline:none;margin-bottom:14px}
+input:focus{border-color:var(--pine)}
+.btn{width:100%;padding:12px;border:none;border-radius:var(--r);background:var(--pine);color:#fff;font-weight:600}
+.btn:hover{background:var(--pine-deep)}
+.btn[disabled]{opacity:.55;cursor:default}
+.btn-ghost{background:none;border:1.5px solid var(--line);color:var(--ink);margin-top:10px}
+.btn-ghost:hover{background:var(--mint)}
+.msg{font-size:13px;border-radius:var(--r);padding:10px 13px;margin-bottom:14px;display:none}
+.msg.show{display:block}
+.msg.bad{background:#fdeaea;color:#8a2b2b;border:1px solid #e8a0a0}
+.msg.good{background:var(--mint);color:var(--pine);border:1px solid #b7d68e}
+
+/* ---- chat ---- */
+#chat{flex:1;display:none;flex-direction:column;min-height:0}
+#thread{flex:1;overflow-y:auto;padding:20px 0 8px;display:flex;flex-direction:column;gap:14px}
+.turn{max-width:88%;padding:11px 14px;border-radius:14px;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.turn.me{align-self:flex-end;background:var(--pine);color:#fff;border-bottom-right-radius:4px}
+.turn.her{align-self:flex-start;background:var(--white);border:1px solid var(--line);border-bottom-left-radius:4px}
+.turn.her.thinking{color:var(--ink2);font-style:italic}
+.turn.her.err{background:#fdeaea;border-color:#e8a0a0;color:#8a2b2b;font-style:normal}
+.starters{display:flex;gap:8px;flex-wrap:wrap;padding:0 0 12px}
+.starter{font-size:13px;padding:7px 13px;border-radius:20px;border:1.5px solid var(--line);background:var(--white);color:var(--ink2)}
+.starter:hover{border-color:var(--pine);color:var(--pine)}
+.composer{flex:none;display:flex;gap:9px;padding:10px 0 calc(14px + env(safe-area-inset-bottom))}
+#say{flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);
+  outline:none;resize:none;line-height:1.5;max-height:140px}
+#say:focus{border-color:var(--pine)}
+#send{flex:none;padding:0 18px;border:none;border-radius:var(--r);background:var(--pine);color:#fff;font-weight:600}
+#send[disabled]{opacity:.5;cursor:default}
+.foot{flex:none;font-size:11.5px;color:var(--ink2);text-align:center;padding:0 0 10px;line-height:1.6}
+@media(max-width:520px){#gate{padding:30px 0 40px}#gate h1{font-size:28px}.turn{max-width:92%}}
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="bar-in">
+  <span class="mark">Tello</span>
+  <span class="spacer"></span>
+  <span class="chip" id="credits" style="display:none"></span>
+  <button class="linkbtn" id="out" style="display:none" onclick="signOut()">Sign out</button>
+</div></div>
+
+<div class="wrap">
+
+  <!-- ============ signed out ============ -->
+  <div id="gate">
+    <h1>Ask Tello anything.</h1>
+    <p class="sub">She gives you a straight answer instead of a list of options, and she tells you when she doesn't know.</p>
+
+    <div class="msg" id="gate-msg"></div>
+
+    <label for="em">Email</label>
+    <input type="email" id="em" autocomplete="email" placeholder="you@example.com"/>
+    <label for="pw">Password</label>
+    <input type="password" id="pw" autocomplete="current-password" placeholder="At least 8 characters"/>
+
+    <button class="btn" id="in-btn" onclick="signIn()">Sign in</button>
+    <button class="btn btn-ghost" id="up-btn" onclick="signUp()">Create an account</button>
+
+    <div class="note">Tello is an AI assistant and can be wrong — check anything that matters. She will not give medical or dosage advice about a specific person; that is for a nurse, doctor or pharmacist.</div>
+  </div>
+
+  <!-- ============ signed in ============ -->
+  <div id="chat">
+    <div id="thread"></div>
+    <div class="starters" id="starters">
+      <button class="starter" onclick="ask(this.textContent)">Help me word a difficult conversation</button>
+      <button class="starter" onclick="ask(this.textContent)">Explain something to me like I'm new</button>
+      <button class="starter" onclick="ask(this.textContent)">I'm stuck on a decision</button>
+    </div>
+    <div class="composer">
+      <textarea id="say" rows="1" placeholder="Ask Tello anything..." onkeydown="onKey(event)" oninput="grow(this)"></textarea>
+      <button id="send" onclick="ask()">Ask</button>
+    </div>
+    <div class="foot">Tello can be wrong — check anything that matters. No medical or dosage advice about a specific person.</div>
+  </div>
+
+</div>
+
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<script>
+const SUPABASE_URL='https://nwlhsshvqmbhemhxcran.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
+const AI_WORKER='https://title22-ai.infomomtelo.workers.dev/api/chat';
+
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{
+  auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,flowType:'implicit',storageKey:'tello-auth'}
+});
+
+// A separate storageKey from the Title22 app on purpose. Someone who signs in
+// here is here to talk, and signing in to Tello must not sign them into a
+// facility — or out of one they had open in another tab.
+
+// Her character. No facility data is fetched or sent from this page: Tello
+// standalone has no reason to see a MAR, a resident or a staff record, so she
+// is never given one. That is the whole difference from the assistant inside
+// Title22, and it is enforced by simply never asking for it.
+const CHARACTER=`You are Tello.
+
+Who you are: warm, direct and genuinely capable — the person everyone in the family calls because she actually knows things and gives a straight answer. Kind without flattering. You say the hard thing when the hard thing is true. You never lecture and you never moralise.
+
+You answer anything. General knowledge, work, money, cooking, grief, how to word a difficult conversation, what a word means, a decision someone is stuck on. Whatever they bring you.
+
+Be honest about what you know. Answer plainly when you know; say when you are not certain; say "I don't know" when you don't. Never fill a gap with something that merely sounds right — that is the one thing that would make you useless.
+
+You do not give medical or dosage advice about a specific person — not what a reading means for them, not whether medications interact, not whether a symptom is serious. Say so warmly and without hedging, then help with what you can: how to describe it to a clinician, what to write down, who to call and how urgently. Someone asking is usually worried and short of time, so be quick and be kind. General health information, explained as general information, is fine.
+
+Keep it short. Usually a few sentences. A list only when the answer really is a list. No preamble, no "great question", no restating the question back at them.`;
+
+let me=null, turns=[], busy=false;
+
+const $=id=>document.getElementById(id);
+function show(el,on){el.style.display=on?(el===$('chat')?'flex':(el===$('gate')?'block':'inline-block')):'none';}
+function gateMsg(text,ok){const m=$('gate-msg');m.textContent=text;m.className='msg show '+(ok?'good':'bad');}
+function clearGateMsg(){$('gate-msg').className='msg';}
+
+/* ---------- auth ---------- */
+async function boot(){
+  const{data:{session}}=await sb.auth.getSession();
+  me=session?.user||null;
+  render();
+}
+function render(){
+  show($('gate'),!me); show($('chat'),!!me); show($('out'),!!me);
+  if(me&&!turns.length)greet();
+}
+function greet(){
+  say("Hi, I'm Tello. Ask me anything — I'll tell you straight, and I'll tell you when I don't know.",'her');
+}
+async function signIn(){
+  const email=$('em').value.trim(), password=$('pw').value;
+  if(!email||!password){gateMsg('Enter your email and password.');return;}
+  $('in-btn').disabled=true; clearGateMsg();
+  const{data,error}=await sb.auth.signInWithPassword({email,password});
+  $('in-btn').disabled=false;
+  if(error){gateMsg(error.message);return;}
+  me=data.user; render(); refreshCredits();
+}
+async function signUp(){
+  const email=$('em').value.trim(), password=$('pw').value;
+  if(!email||!password){gateMsg('Enter an email and a password to sign up.');return;}
+  if(password.length<8){gateMsg('Use at least 8 characters.');return;}
+  $('up-btn').disabled=true; clearGateMsg();
+  const{data,error}=await sb.auth.signUp({email,password});
+  $('up-btn').disabled=false;
+  if(error){gateMsg(error.message);return;}
+  if(data.session){me=data.user;render();refreshCredits();return;}
+  gateMsg('Check your email to confirm the address, then come back and sign in.',true);
+}
+async function signOut(){
+  await sb.auth.signOut();
+  me=null; turns=[]; $('thread').innerHTML=''; $('credits').style.display='none';
+  render();
+}
+
+/* ---------- credits ---------- */
+// The Worker returns limit/remaining on every answer and deducts before the
+// model runs, so this is a display of the real number, never a local guess.
+function setCredits(remaining,limit){
+  const c=$('credits');
+  if(remaining===null||remaining===undefined){c.style.display='none';return;}
+  c.style.display='inline-block';
+  c.textContent=remaining+(limit?' of '+limit:'')+' left';
+  c.className='chip'+(remaining<=3?' low':'');
+}
+async function refreshCredits(){ /* filled in by the first answer */ }
+
+/* ---------- chat ---------- */
+function say(text,who,cls){
+  const el=document.createElement('div');
+  el.className='turn '+(who==='me'?'me':'her')+(cls?' '+cls:'');
+  el.textContent=text;
+  $('thread').appendChild(el);
+  $('thread').scrollTop=$('thread').scrollHeight;
+  return el;
+}
+function grow(t){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,140)+'px';}
+function onKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();} }
+
+async function ask(preset){
+  if(busy)return;
+  const box=$('say');
+  const text=(preset||box.value).trim();
+  if(!text)return;
+  if(!preset){box.value='';grow(box);}
+  $('starters').style.display='none';
+  say(text,'me');
+  turns.push({role:'user',content:text});
+  busy=true; $('send').disabled=true;
+  const pending=say('Thinking…','her','thinking');
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    const res=await fetch(AI_WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},
+      body:JSON.stringify({system:CHARACTER,messages:turns.slice(-10)})
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text;
+    if(reply){
+      pending.className='turn her'; pending.textContent=reply;
+      turns.push({role:'assistant',content:reply});
+      if(turns.length>20)turns=turns.slice(-20);
+      setCredits(data.remaining,data.limit);
+    }else{
+      pending.className='turn her err';
+      pending.textContent=errorText(data,res.status);
+      turns.pop();
+      if(data&&data.error==='limit_reached')setCredits(0,data.limit);
+    }
+  }catch(e){
+    pending.className='turn her err';
+    pending.textContent='Tello could not be reached. Check your connection and try again.';
+    turns.pop();
+  }
+  busy=false; $('send').disabled=false;
+  $('thread').scrollTop=$('thread').scrollHeight;
+}
+
+// Say which thing went wrong. "Something went wrong" sends people looking in
+// the wrong place, which is how hours get lost.
+function errorText(data,status){
+  if(status===401)return 'Your session has expired. Sign out and sign back in.';
+  if(data&&data.error==='limit_reached')return data.message||'You have used all your questions for this month.';
+  if(data&&data.error==='credit_system_error')return 'Tello could not check how many questions you have left. Try again in a moment.';
+  if(data&&data.error)return 'Tello could not answer that ('+(data.message||data.error)+').';
+  return 'Tello could not be reached. (HTTP '+status+')';
+}
+
+sb.auth.onAuthStateChange((_e,session)=>{ me=session?.user||null; render(); });
+boot();
+</script>
+</body>
+</html>
