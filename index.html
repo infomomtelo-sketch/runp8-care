@@ -753,6 +753,12 @@
       <div id="tab-training" style="display:none">
         <div class="page-header"><h1>Staff training</h1></div>
         <div class="card">
+          <div class="card-title">Courses</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">Read the sections, pass the test, and the hours are logged against the staff member with a certificate you can print. In-house training you can document — not continuing education from an approved vendor.</div>
+          <div class="form-group"><label>Who is taking it</label><select id="course-staff" onchange="onCourseStaffChange()"><option value="">Select who is taking it...</option></select></div>
+          <div id="course-list" style="display:grid;gap:12px"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
           <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
@@ -5476,6 +5482,288 @@ async function onTrainingCertFile(input){
   loadDocuments();
 }
 
+// ===== COURSES =====
+//
+// A course is content plus a test, and passing the test logs the hours. It is
+// deliberately the same shape as a manually logged training: same table, same
+// category, same certificate slot. A course pass is a staff_trainings row like
+// any other, so the annual summary and the DSS export needed no changes.
+//
+// Content is written here rather than generated, and carries no regulation
+// citation. It is facility training you can document, not approved vendor CE —
+// courseCredit() below is the only place that claim is made, and it says so.
+const COURSE_PASS_MARK=70;
+const COURSES=[{
+  id:'dementia-basics',
+  title:'Dementia: Causes, Symptoms and Types',
+  hours:2,
+  category:'dementia',
+  blurb:'What dementia is, the types you will actually meet, how it progresses, and what changes for the person in front of you.',
+  lessons:[
+    {title:'What dementia is — and what it is not',body:[
+      'Dementia is not one disease. It is a term for a group of symptoms caused by damage to the brain: memory loss, difficulty finding words, trouble with planning and judgement, and changes in mood or behaviour — severe enough to interfere with daily life.',
+      'It is not a normal part of ageing. Forgetting where you put your keys is ageing. Forgetting what keys are for is not.',
+      'It is not delirium, and this distinction matters more than any other thing in this course. Delirium comes on over hours or days, it comes and goes through the day, and it usually has a cause you can treat — a urinary tract infection, dehydration, pain, constipation, a new medication. A resident who is suddenly more confused, more drowsy, or more agitated than they were this morning is having a medical event. That is not the dementia progressing. Report it.',
+      'Depression in older adults can also look like dementia — slowed thinking, withdrawal, poor concentration. It is treatable. Someone who has stopped joining in is worth mentioning to your supervisor.'
+    ]},
+    {title:'The types you will meet',body:[
+      'Alzheimer’s disease is the most common, around 60 to 80 percent of cases. It usually begins with short-term memory — the same question asked again ten minutes later — and declines gradually and fairly steadily.',
+      'Vascular dementia comes from reduced blood flow to the brain, often after one or more strokes. It can progress in steps rather than smoothly: a sudden drop, then a plateau. Planning and judgement are often affected before memory is.',
+      'Lewy body dementia brings fluctuating alertness — sharp in the morning, far away by the afternoon — visual hallucinations that are real to the person, movement problems like Parkinson’s, and acting out dreams in sleep. One thing to carry with you: people with Lewy body dementia can react severely to some antipsychotic medications. A new antipsychotic order for a resident with this diagnosis is worth raising before the first dose.',
+      'Frontotemporal dementia often starts younger, and starts with personality, behaviour or language rather than memory. A person who has become uncharacteristically blunt or socially inappropriate may not be "being difficult".',
+      'Mixed dementia — more than one type at once — is common, particularly Alzheimer’s together with vascular damage.'
+    ]},
+    {title:'How it progresses',body:[
+      'Early stage: repeating questions, misplacing things, trouble with money or appointments, pulling back from things they used to enjoy. The person is often aware something is wrong, and frightened by it. Much of what looks like stubbornness here is someone covering up.',
+      'Middle stage: usually the longest, and often years. Help is needed with dressing, bathing and toileting. Sleep breaks up. Wandering starts. Family may not be recognised. Most of the behaviour changes people find hardest happen in this stage.',
+      'Late stage: full assistance with everything. The ability to walk goes, then the ability to swallow safely — which is why mealtimes become a safety issue, not just a care task. Communication is mostly non-verbal now: facial expression, sounds, how tense the body is.',
+      'Progression is not a staircase. People have better days and worse days, better hours and worse hours. A good afternoon does not mean they were putting it on in the morning.'
+    ]},
+    {title:'Behaviour is communication',body:[
+      'Behaviour that looks difficult is nearly always an unmet need, expressed by someone who has lost the words to say it plainly.',
+      'Before you respond to the behaviour, run the checklist: pain, hunger, thirst, needing the toilet, too hot, too cold, too much noise, too many people, an unfamiliar face, boredom, fear. Most of what gets written down as agitation is one of those.',
+      'Do not argue and do not correct. If a resident is waiting for her mother, telling her that her mother died forty years ago does not inform her — it makes her hear it for the first time, and grieve, again. Answer the feeling instead: "You miss her. Tell me about her."',
+      'Approach from the front, never from behind. Get to eye level. Say who you are and what you are about to do, in one short sentence. Give one instruction at a time and then wait — a person with dementia may need ten or fifteen seconds to answer, which feels like a very long time when you are busy.',
+      'If a task is going badly, stop and come back in ten minutes. The refusal is usually about the moment, not the shower.'
+    ]},
+    {title:'On your shift',body:[
+      'Routine carries people. The same order, the same time, the same face where you can manage it. A changed routine explains a lot of bad days.',
+      'Sundowning — restlessness and confusion building through the late afternoon and evening — is common. Plan for it rather than react to it: lights on before dusk, quieter surroundings, less caffeine later in the day, and the harder tasks moved to the morning.',
+      'Know which of your residents are at risk of leaving the building, and know your facility’s plan before you need it. This is a safety issue, and it moves fast.',
+      'Write what you saw, not what you concluded. "Pushed my hand away and shouted when I brought the towel, 7:10 am" is a record. "Was aggressive" is an opinion, and it follows the resident around for years.',
+      'Tell your supervisor the same shift, not the next one: a sudden change in alertness or behaviour, any fall, refusing food or drink, signs of pain, any injury however small, and any new bruise you cannot account for.'
+    ]}
+  ],
+  quiz:[
+    {q:'Dementia is best described as:',a:['A normal part of getting older','A group of symptoms caused by damage to the brain','One specific disease','A mental illness caused by stress'],correct:1,
+     why:'Dementia is an umbrella term. Several different diseases cause it, and it is not part of normal ageing.'},
+    {q:'A resident who was alert this morning is drowsy and much more confused by mid-afternoon. What should you think first?',a:['The dementia has progressed','Possible delirium from a medical cause — report it now','This is normal day-to-day variation','They are seeking attention'],correct:1,
+     why:'A sudden change over hours points to delirium — infection, dehydration, pain, medication. It is a medical event and it is often reversible if caught.'},
+    {q:'Which type of dementia is the most common?',a:['Vascular dementia','Lewy body dementia','Alzheimer’s disease','Frontotemporal dementia'],correct:2,
+     why:'Alzheimer’s accounts for roughly 60 to 80 percent of cases.'},
+    {q:'Fluctuating alertness, visual hallucinations and Parkinson-like movement problems suggest:',a:['Lewy body dementia','Vascular dementia','Frontotemporal dementia','Delirium only'],correct:0,
+     why:'That combination is characteristic of Lewy body dementia — and it is the type where some antipsychotic medications carry serious risk.'},
+    {q:'Vascular dementia is usually caused by:',a:['A vitamin deficiency','Reduced blood flow to the brain, often after strokes','Long-term stress','An infection'],correct:1,
+     why:'It follows damage to the blood supply, which is why it can progress in sudden steps rather than smoothly.'},
+    {q:'A resident keeps asking when her mother is coming. Her mother died many years ago. What is the best response?',a:['Tell her gently that her mother died','Ignore the question and change the subject quickly','Acknowledge the feeling and ask her about her mother','Tell her the mother is running late'],correct:2,
+     why:'Correcting her makes her hear the death as news, every time. Responding to the feeling meets her where she is without inventing a lie you will have to keep.'},
+    {q:'Which stage of dementia is usually the longest?',a:['Early','Middle','Late','They are all about equal'],correct:1,
+     why:'The middle stage often runs for years, and it is where most of the care and most of the behaviour changes sit.'},
+    {q:'You are helping a resident dress. The best approach is to:',a:['Approach from behind so you do not startle them','Give all the steps at once so they know the plan','Approach from the front at eye level, one instruction at a time','Work as quickly as possible to get it over with'],correct:2,
+     why:'Front, eye level, one step, then wait. Rushing and approaching from behind are the two fastest ways to turn dressing into a fight.'},
+    {q:'Sundowning refers to:',a:['Sleeping through the afternoon','Increased confusion and restlessness in the late afternoon or evening','A drop in blood pressure at night','Refusing the evening meal'],correct:1,
+     why:'It builds through the afternoon. It is far easier to plan around than to calm down once it has started.'},
+    {q:'Which of these belongs in the daily log?',a:['"Was aggressive at shower time"','"Pushed my hand away and shouted when I brought the towel, 7:10 am"','"Being difficult again"','"Refused care, as usual"'],correct:1,
+     why:'Record what you observed. A conclusion like "aggressive" is an interpretation, and it stays in the record long after the moment has passed.'}
+  ]
+}];
+
+let courseStaffId=null,courseOpen=null,courseView='intro',courseLesson=0,courseAnswers=[],courseResult=null;
+
+// A course pass is documented facility training. It is NOT approved vendor CE,
+// and the app must not imply that it is — see the note on the certificate.
+function courseCredit(c){return c.category==='dementia'?'Counts toward the 8-hour dementia minimum inside the annual 20.':'Counts toward the annual 20 hours.';}
+
+function courseStatus(courseId,staffId){
+  const c=COURSES.find(x=>x.id===courseId);
+  if(!c||!staffId)return null;
+  return (trainings||[]).find(t=>String(t.staff_id)===String(staffId)&&t.topic===c.title)||null;
+}
+
+function renderCourses(){
+  const wrap=document.getElementById('course-list');
+  if(!wrap)return;
+  const sel=document.getElementById('course-staff');
+  if(sel){
+    const cur=sel.value||courseStaffId||'';
+    sel.innerHTML='<option value="">Select who is taking it...</option>'+(trainingStaff||[]).map(s=>`<option value="${s.id}">${esc(s.name||s.full_name||'Staff')}</option>`).join('');
+    if(cur)sel.value=cur;
+    courseStaffId=sel.value||null;
+  }
+  wrap.innerHTML=COURSES.map(c=>{
+    const done=courseStatus(c.id,courseStaffId);
+    const badge=!courseStaffId
+      ?'<span style="font-size:11px;color:var(--text2)">Select a staff member</span>'
+      :done
+        ?`<span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--green-light);color:var(--green);white-space:nowrap">Completed ${esc(done.training_date||'')}</span>`
+        :'<span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gray-light);color:var(--text2);white-space:nowrap">Not started</span>';
+    return `<div style="border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="font-weight:600;font-size:14px;line-height:1.4">${esc(c.title)}</div>${badge}
+      </div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6">${esc(c.blurb)}</div>
+      <div style="font-size:11px;color:var(--text2)">${c.lessons.length} sections · ${c.hours} hour${c.hours===1?'':'s'} · ${c.quiz.length}-question test, ${COURSE_PASS_MARK}% to pass</div>
+      <div><button class="btn btn-outline" style="font-size:13px" onclick="openCourse('${c.id}')">${done?'Take it again':'Start the course'}</button></div>
+    </div>`;
+  }).join('');
+}
+
+function onCourseStaffChange(){courseStaffId=(document.getElementById('course-staff')||{}).value||null;renderCourses();}
+
+function openCourse(id){
+  const c=COURSES.find(x=>x.id===id);if(!c)return;
+  if(!courseStaffId){alert('Choose which staff member is taking the course first — the hours are logged against them.');return;}
+  courseOpen=c;courseView='intro';courseLesson=0;courseAnswers=new Array(c.quiz.length).fill(null);courseResult=null;
+  document.getElementById('course-modal').classList.add('open');
+  renderCourse();
+}
+function closeCourse(){document.getElementById('course-modal').classList.remove('open');courseOpen=null;courseResult=null;}
+
+function courseStaffName(){
+  const s=(trainingStaff||[]).find(x=>String(x.id)===String(courseStaffId));
+  return s?(s.name||s.full_name||'Staff'):'Staff';
+}
+
+function renderCourse(){
+  const c=courseOpen;if(!c)return;
+  const body=document.getElementById('course-body'),foot=document.getElementById('course-foot');
+  document.getElementById('course-title').textContent=c.title;
+  if(courseView==='intro'){
+    body.innerHTML=`<div style="font-size:13px;line-height:1.7;color:var(--text)">
+      <p style="margin:0 0 12px">${esc(c.blurb)}</p>
+      <p style="margin:0 0 12px;color:var(--text2)">${c.lessons.length} sections, then a ${c.quiz.length}-question test. You need ${COURSE_PASS_MARK}% to pass. You can retake it.</p>
+      <p style="margin:0;color:var(--text2)">Taken by <strong style="color:var(--text)">${esc(courseStaffName())}</strong>. Passing logs ${c.hours} hour${c.hours===1?'':'s'} against their record.</p></div>`;
+    foot.innerHTML=`<button class="btn btn-outline" onclick="closeCourse()">Cancel</button><button class="btn btn-primary" onclick="courseGo('lesson')">Begin</button>`;
+    return;
+  }
+  if(courseView==='lesson'){
+    const l=c.lessons[courseLesson];
+    body.innerHTML=`<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Section ${courseLesson+1} of ${c.lessons.length}</div>
+      <h4 style="margin:0 0 12px;font-size:16px">${esc(l.title)}</h4>
+      <div style="font-size:13px;line-height:1.8">${l.body.map(pp=>`<p style="margin:0 0 12px">${esc(pp)}</p>`).join('')}</div>`;
+    const last=courseLesson===c.lessons.length-1;
+    foot.innerHTML=`<button class="btn btn-outline" onclick="courseGo('back')" ${courseLesson===0?'disabled style="opacity:.5"':''}>Back</button>
+      <button class="btn btn-primary" onclick="courseGo('${last?'quiz':'next'}')">${last?'Go to the test':'Next'}</button>`;
+    return;
+  }
+  if(courseView==='quiz'){
+    body.innerHTML=c.quiz.map((q,i)=>`<div style="margin-bottom:18px">
+      <div style="font-weight:600;font-size:13px;line-height:1.5;margin-bottom:8px">${i+1}. ${esc(q.q)}</div>
+      ${q.a.map((opt,j)=>`<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:6px 0;cursor:pointer;line-height:1.5">
+        <input type="radio" name="cq${i}" ${courseAnswers[i]===j?'checked':''} onchange="courseAnswer(${i},${j})" style="margin-top:3px"/><span>${esc(opt)}</span></label>`).join('')}
+    </div>`).join('');
+    foot.innerHTML=`<button class="btn btn-outline" onclick="courseGo('review')">Back to the sections</button><button class="btn btn-primary" onclick="submitCourseQuiz()">Submit answers</button>`;
+    return;
+  }
+  if(courseView==='result'){
+    const r=courseResult;
+    body.innerHTML=`<div style="text-align:center;padding:6px 0 18px">
+        <div style="font-size:34px;font-weight:700;color:${r.passed?'var(--green)':'var(--red)'}">${r.pct}%</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px">${r.score} of ${r.total} correct · ${COURSE_PASS_MARK}% needed</div>
+        <div style="font-weight:600;margin-top:10px;color:${r.passed?'var(--green)':'var(--red)'}">${r.passed?'Passed':'Not passed — read the answers below and try again'}</div>
+      </div>
+      ${c.quiz.map((q,i)=>{
+        const ok=courseAnswers[i]===q.correct;
+        return `<div style="border-left:3px solid ${ok?'var(--green)':'var(--red)'};padding:0 0 0 12px;margin-bottom:14px">
+          <div style="font-weight:600;font-size:13px;line-height:1.5">${i+1}. ${esc(q.q)}</div>
+          <div style="font-size:12px;margin-top:4px;color:${ok?'var(--green)':'var(--red)'}">${ok?'Correct':'Your answer: '+esc(courseAnswers[i]===null?'not answered':q.a[courseAnswers[i]])}</div>
+          ${ok?'':`<div style="font-size:12px;margin-top:2px">Correct answer: ${esc(q.a[q.correct])}</div>`}
+          <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6">${esc(q.why)}</div>
+        </div>`;}).join('')}
+      <div class="error-msg" id="course-error"></div>`;
+    if(r.passed&&!r.logged){
+      foot.innerHTML=`<button class="btn btn-outline" onclick="courseGo('quiz')">Change answers</button><button class="btn btn-primary" onclick="logCoursePass()">Log ${c.hours} hour${c.hours===1?'':'s'} for ${esc(courseStaffName())}</button>`;
+    }else if(r.logged){
+      foot.innerHTML=`<button class="btn btn-outline" onclick="printCourseCertificate()">Print the certificate</button><button class="btn btn-primary" onclick="closeCourse()">Done</button>`;
+    }else{
+      foot.innerHTML=`<button class="btn btn-outline" onclick="courseGo('review')">Read it again</button><button class="btn btn-primary" onclick="courseGo('quiz')">Retake the test</button>`;
+    }
+    return;
+  }
+}
+
+function courseGo(where){
+  const c=courseOpen;if(!c)return;
+  if(where==='lesson'){courseView='lesson';courseLesson=0;}
+  else if(where==='next'&&courseLesson<c.lessons.length-1)courseLesson++;
+  else if(where==='back'&&courseLesson>0)courseLesson--;
+  else if(where==='quiz'){courseView='quiz';}
+  else if(where==='review'){courseView='lesson';courseLesson=0;}
+  const b=document.getElementById('course-body');if(b)b.scrollTop=0;
+  renderCourse();
+}
+function courseAnswer(i,j){courseAnswers[i]=j;}
+
+function submitCourseQuiz(){
+  const c=courseOpen;if(!c)return;
+  const unanswered=courseAnswers.findIndex(a=>a===null);
+  if(unanswered>=0){alert('Question '+(unanswered+1)+' has not been answered yet.');return;}
+  const score=c.quiz.reduce((n,q,i)=>n+(courseAnswers[i]===q.correct?1:0),0);
+  const pct=Math.round(score/c.quiz.length*100);
+  courseResult={score,total:c.quiz.length,pct,passed:pct>=COURSE_PASS_MARK,logged:false};
+  courseView='result';
+  const b=document.getElementById('course-body');if(b)b.scrollTop=0;
+  renderCourse();
+}
+
+// The pass is the gate; this button is the human confirming it goes on the
+// record. Same table and same category as a hand-logged entry, so the annual
+// summary counts it without knowing where it came from.
+async function logCoursePass(){
+  const c=courseOpen,r=courseResult;if(!c||!r||!r.passed)return;
+  if(!canEdit()){alert('You do not have permission to log training.');return;}
+  const row={
+    facility_id:currentFacility.id,staff_id:courseStaffId,topic:c.title,hours:c.hours,
+    training_date:new Date().toISOString().slice(0,10),
+    notes:'Title22 course — passed at '+r.pct+'%',
+    category:c.category
+  };
+  const{data,error,categoryDropped}=await insertTrainingRow(row);
+  const errEl=document.getElementById('course-error');
+  if(error){if(errEl){errEl.textContent=error.message;errEl.classList.add('show');}return;}
+  courseResult={...r,logged:true,training:data,categoryDropped};
+  await loadTrainings();
+  renderCourse();
+  // renderCourse rebuilds the body, so the error node above is stale by now.
+  const warn=categoryDropped&&document.getElementById('course-error');
+  if(warn){
+    warn.textContent='Hours logged, but they could not be credited to the dementia minimum — run migrations/2026-08-19_staff_training_category.sql in the Supabase SQL editor.';
+    warn.classList.add('show');
+  }
+}
+
+function printCourseCertificate(){
+  const c=courseOpen,r=courseResult;if(!c||!r)return;
+  const when=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const w=window.open('','_blank');if(!w)return;
+  w.document.write(`<!DOCTYPE html><html><head><title>Certificate — ${esc(c.title)}</title>
+    <style>body{font-family:Georgia,'Times New Roman',serif;padding:56px;color:#22312a}
+    .box{border:2px solid #2f5d4f;padding:44px;text-align:center}
+    .k{font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#6b7a72}
+    h1{font-size:26px;margin:16px 0 6px}h2{font-size:20px;margin:22px 0 6px}
+    .n{font-size:28px;margin:10px 0 4px}
+    .m{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4a5a52;line-height:1.7;margin-top:26px;text-align:left;border-top:1px solid #d8e0dc;padding-top:16px}</style>
+    </head><body><div class="box">
+      <div class="k">Certificate of completion</div>
+      <h1>${esc(c.title)}</h1>
+      <div class="k" style="margin-top:22px">Completed by</div>
+      <div class="n">${esc(courseStaffName())}</div>
+      <div style="font-size:14px">${esc(currentFacility&&currentFacility.name||'')}</div>
+      <h2>${c.hours} hour${c.hours===1?'':'s'} · passed at ${r.pct}%</h2>
+      <div style="font-size:14px">${esc(when)}</div>
+      <div class="m"><strong>What this is.</strong> In-house training delivered through Title22 and documented by this facility.
+      ${esc(courseCredit(c))} It is not continuing education from a CDSS-approved vendor, and it does not satisfy any requirement that names an approved vendor or an approved program.</div>
+    </div></body></html>`);
+  w.document.close();w.print();
+}
+
+// One writer for staff_trainings, used by the manual form and by a course pass.
+//
+// .select().single() so a certificate has a training id to file against, and
+// category arrives with migrations/2026-08-19_staff_training_category.sql —
+// until that has been run the column is rejected, so the hours are logged
+// anyway rather than lost, and the caller says which minimum they missed.
+async function insertTrainingRow(row){
+  let{data,error}=await sb.from('staff_trainings').insert(row).select().single();
+  let categoryDropped=false;
+  if(error&&row.category&&/category/i.test((error.message||'')+(error.details||''))){
+    const retry={...row};delete retry.category;
+    ({data,error}=await sb.from('staff_trainings').insert(retry).select().single());
+    categoryDropped=!error;
+  }
+  return{data,error,categoryDropped};
+}
+
 async function saveTraining(){
   const err=document.getElementById('tr-error');err.classList.remove('show');
   if(!canEdit()){err.textContent='You do not have permission to log training.';err.classList.add('show');return;}
@@ -5492,17 +5780,8 @@ async function saveTraining(){
   };
   const category=(document.getElementById('tr-category')||{}).value||'';
   if(category)row.category=category;
-  // .select().single() so the certificate has a training id to file against.
-  let{data,error}=await sb.from('staff_trainings').insert(row).select().single();
-  // category arrives with migrations/2026-08-19_staff_training_category.sql.
-  // Until that has been run the column is rejected — log the hours anyway
-  // rather than lose them, and say which minimum they could not be credited to.
-  let categoryDropped=false;
-  if(error&&category&&/category/i.test((error.message||'')+(error.details||''))){
-    const retry={...row};delete retry.category;
-    ({data,error}=await sb.from('staff_trainings').insert(retry).select().single());
-    categoryDropped=!error;
-  }
+  const res=await insertTrainingRow(row);
+  let{data,error,categoryDropped}=res;
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
   const cert=pendingTrainingCert;
@@ -5555,6 +5834,7 @@ function renderHandsOn(){
 }
 
 function renderTrainings(){
+  renderCourses();
   const summary=document.getElementById('training-summary');
   const list=document.getElementById('training-list');
   const empty=document.getElementById('training-empty');
@@ -6393,6 +6673,12 @@ function showSetNewPassword(){
   <div class="form-group"><label>Due date</label><input type="date" id="modal-task-due"/></div>
   <div class="form-group"><label>Notes (optional)</label><textarea id="modal-task-notes" rows="2" placeholder="Any additional context..."></textarea></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCustomTask()">Add task</button></div></div>
+</div>
+
+<div class="modal-overlay" id="course-modal" onclick="if(event.target===this)closeCourse()">
+  <div class="modal" style="max-width:640px"><div class="modal-header"><h3 id="course-title">Course</h3><button class="modal-close" onclick="closeCourse()">&times;</button></div>
+  <div id="course-body" style="max-height:60vh;overflow-y:auto"></div>
+  <div class="modal-footer" id="course-foot"></div></div>
 </div>
 
 <div class="modal-overlay" id="note-modal" onclick="if(event.target===this)closeNoteModal()">
