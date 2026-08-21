@@ -94,6 +94,7 @@ input:focus{border-color:var(--pine)}
   <span class="mark">Tello</span>
   <span class="spacer"></span>
   <span class="chip" id="credits" style="display:none"></span>
+  <button class="linkbtn" id="fresh" style="display:none" onclick="newConversation()">New</button>
   <button class="linkbtn" id="mem" style="display:none" onclick="openMemory()">Memory</button>
   <button class="linkbtn" id="out" style="display:none" onclick="signOut()">Sign out</button>
 </div></div>
@@ -194,7 +195,7 @@ async function boot(){
   render();
 }
 function render(){
-  show($('gate'),!me); show($('chat'),!!me); show($('out'),!!me); show($('mem'),!!me);
+  show($('gate'),!me); show($('chat'),!!me); show($('out'),!!me); show($('mem'),!!me); show($('fresh'),!!me);
   if(me&&!turns.length)loadMemory();
 }
 function greet(){
@@ -233,7 +234,7 @@ function remember(role,content){
 function openMemory(){
   const n=turns.length;
   $('mem-count').textContent=memoryOn
-    ?(n?`She is holding ${n} message${n===1?'':'s'} from your conversations.`
+    ?(n?`She is holding ${n} message${n===1?'':'s'} from your conversations. Starting a new conversation does not delete any of it — only the button below does.`
        :'She is not holding anything yet.')
     :'Memory is not switched on for this account, so she starts fresh each visit. (The tello_messages table has not been created.)';
   $('forget-btn').style.display=(memoryOn&&n)?'block':'none';
@@ -241,6 +242,23 @@ function openMemory(){
   $('sheet').classList.add('open');
 }
 function closeMemory(){$('sheet').classList.remove('open');}
+
+// A clean screen, not a clean slate. Starting a new conversation should not
+// cost you the one you had — Forget everything is the only thing that
+// deletes. She keeps knowing who you are; you just stop scrolling through
+// last Tuesday.
+//
+// The marker goes in so she does not answer the first question of a new
+// conversation as though it continued the last one.
+function newConversation(){
+  if(!turns.length){closeMemory();return;}
+  turns.push({role:'user',content:'[New conversation. Earlier messages still happened, but this is a fresh start — do not continue the previous topic unless I bring it up.]'});
+  remember('user','[New conversation.]');
+  $('thread').innerHTML='';
+  $('starters').style.display='flex';
+  closeMemory();
+  greet();
+}
 
 async function forgetAll(){
   if(!confirm('Delete everything Tello remembers? This cannot be undone.'))return;
