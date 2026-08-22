@@ -1,8 +1,9 @@
--- Fix: reading the MAR fails outright for anyone with two facilities.
+-- Fix: reading OR logging a MAR dose fails outright for anyone with two
+-- facilities.
 --
 -- Supabase SQL editor, project nwlhsshvqmbhemhxcran. Safe to re-run.
 --
--- mar_entries_read was written as
+-- Both policies on mar_entries were written the same way. mar_entries_read as
 --
 --   facility_id = ( select f.id from facilities f where f.user_id = auth.uid()
 --                   union
@@ -20,9 +21,19 @@
 -- de-duplicates, so owning AND being a member of the same facility is fine;
 -- it takes two distinct facilities.
 --
--- What it looked like from the app: every read of mar_entries 500s. On the MAR
--- screen loadMAR() falls back to the un-embedded read, which fails the same
--- way, and the list renders one error line. On the dashboard
+-- mar_entries_staff_only carries the identical comparison in its with_check,
+-- as the second half of
+--
+--   staff_id = auth.uid() and facility_id = ( ...same subquery... )
+--
+-- so the same account cannot log a dose either. INSERT policies keep their
+-- condition in with_check rather than qual, which is why a scan of qual alone
+-- does not find this one.
+--
+-- What it looked like from the app: every read of mar_entries 500s, and so
+-- does every insert. On the MAR screen loadMAR() falls back to the un-embedded
+-- read, which fails the same way, and the list renders one error line. Logging
+-- a dose is refused. On the dashboard
 -- buildFacilityContext() records the MAR as unreadable and Tello declines to
 -- write a briefing at all — correctly, since a briefing missing the MAR reads
 -- as an all-clear.
@@ -33,9 +44,13 @@
 -- policy written against facility_members alone would lock out the solo
 -- operator. Both halves mirror how loadApp() builds the facility list.
 --
--- alter policy replaces only the expression. The policy keeps its name, its
--- SELECT command and its `authenticated` role, so nothing else is touched and
--- no window opens where the table is unprotected.
+-- The staff_id = auth.uid() half of the insert check is left alone. It is what
+-- makes the policy staff-only — a dose is recorded against the account that
+-- gave it — and nothing here should loosen who may sign for a medication.
+--
+-- alter policy replaces only the expression. Each policy keeps its name, its
+-- command and its `authenticated` role, so nothing else is touched and no
+-- window opens where the table is unprotected.
 
 alter policy mar_entries_read on public.mar_entries
   using (
@@ -46,9 +61,19 @@ alter policy mar_entries_read on public.mar_entries
     )
   );
 
--- Verify. Expect `in (` and no `= (` in the qual below.
-select policyname, cmd, roles, qual
+alter policy mar_entries_staff_only on public.mar_entries
+  with check (
+    staff_id = auth.uid()
+    and facility_id in (
+      select f.id from public.facilities f where f.user_id = auth.uid()
+      union
+      select fm.facility_id from public.facility_members fm where fm.user_id = auth.uid()
+    )
+  );
+
+-- Verify. Expect `in (` and no `= (` in either expression below.
+select policyname, cmd, roles, qual, with_check
   from pg_policies
  where schemaname = 'public'
    and tablename = 'mar_entries'
-   and policyname = 'mar_entries_read';
+   and policyname in ('mar_entries_read','mar_entries_staff_only');
