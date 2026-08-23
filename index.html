@@ -913,7 +913,6 @@
           </div>
         </div>
       </div>
-
       <!-- VIDEO HELP MODAL -->
       <div class="modal-overlay" id="video-help-modal">
         <div class="modal" style="max-width:600px;">
@@ -1069,7 +1068,6 @@ const STRIPE_PLANS = {
   [STRIPE_SPECIALIST]:'specialist',
   [STRIPE_AGENCY]:'agency'
 };
-
 // Map page titles to instructional video files. Only pages with videos show help links.
 const VIDEO_MAP = {
   'Compliance dashboard':'media/walkthrough/06_readiness_score.webm',
@@ -1083,7 +1081,6 @@ const VIDEO_MAP = {
   'Team Access':'media/walkthrough/03_invite.webm',
   'Audit log':'media/walkthrough/09_dss_export.webm'
 };
-
 function openVideoHelp(pageTitle){
   const videoPath = VIDEO_MAP[pageTitle];
   if(!videoPath)return;
@@ -1093,7 +1090,6 @@ function openVideoHelp(pageTitle){
   modal.classList.add('open');
   track('video_help_opened',{page:pageTitle});
 }
-
 function closeVideoHelp(){
   const modal = document.getElementById('video-help-modal');
   const video = document.getElementById('help-video');
@@ -1301,25 +1297,24 @@ function switchTab(name){
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
-  if(name===’ai’){if(!document.getElementById(‘ai-chat-messages’).children.length)addAIMessage(‘Hi, I’m Tello. Ask me anything — about your facility, or about anything else. I will tell you when I am reading your records and when I am just telling you what I know.’,’assistant’);}
+  if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello. Ask me anything — about your facility, or about anything else. I will tell you when I am reading your records and when I am just telling you what I know.','assistant');}
   setupVideoHelpButtons();
-  window.scrollTo({top:0,behavior:’smooth’});
+  window.scrollTo({top:0,behavior:'smooth'});
 }
-
 function setupVideoHelpButtons(){
   // Add help buttons to page headers that have instructional videos
-  document.querySelectorAll(‘.page-header’).forEach(header=>{
-    const h1=header.querySelector(‘h1’);
+  document.querySelectorAll('.page-header').forEach(header=>{
+    const h1=header.querySelector('h1');
     if(!h1)return;
     const title=h1.textContent.trim();
     if(!VIDEO_MAP[title])return;
-    if(header.querySelector(‘[data-video-help]’))return; // already added
-    const helpBtn=document.createElement(‘button’);
-    helpBtn.className=’btn btn-ghost’;
-    helpBtn.style.padding=’4px 8px’;
-    helpBtn.style.fontSize=’12px’;
-    helpBtn.setAttribute(‘data-video-help’,’true’);
-    helpBtn.innerHTML=’<svg class="ic" style="width:1.2em;height:1.2em;margin-right:4px;vertical-align:-.15em"><use href="#i-play"/></svg>How To’;
+    if(header.querySelector('[data-video-help]'))return; // already added
+    const helpBtn=document.createElement('button');
+    helpBtn.className='btn btn-ghost';
+    helpBtn.style.padding='4px 8px';
+    helpBtn.style.fontSize='12px';
+    helpBtn.setAttribute('data-video-help','true');
+    helpBtn.innerHTML='<svg class="ic" style="width:1.2em;height:1.2em;margin-right:4px;vertical-align:-.15em"><use href="#i-play"/></svg>How To';
     helpBtn.onclick=()=>openVideoHelp(title);
     header.appendChild(helpBtn);
   });
