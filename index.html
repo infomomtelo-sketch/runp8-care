@@ -512,6 +512,19 @@
   <div class="onboard-wrap">
     <div class="onboard-card">
       <div id="ob-invite-waiting" style="display:none;background:var(--amber-light);color:var(--amber);font-size:13px;line-height:1.5;padding:12px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"></div>
+      <!-- Shown INSTEAD of the setup form to someone who was invited. Being asked
+           to build a facility when you were invited to somebody else's is the
+           exact wrong instruction, and it is how an invited caregiver ends up
+           with an empty facility of their own. -->
+      <div id="ob-invite-join" style="display:none">
+        <div class="onboard-step">You have been invited</div>
+        <h2 id="ob-invite-join-title">Join your facility</h2>
+        <p id="ob-invite-join-body"></p>
+        <div class="error-msg" id="ob-invite-join-error"></div>
+        <button class="btn btn-primary" style="width:100%;padding:11px" id="ob-invite-join-btn" onclick="retryInviteJoin()">Join now</button>
+        <button class="btn btn-outline" style="width:100%;padding:11px;margin-top:10px" onclick="createFacilityInstead()">Set up my own facility instead</button>
+      </div>
+      <div id="ob-create-form">
       <div class="onboard-step">Step 1 of 1 · Setup</div>
       <h2>Tell us about your facility</h2>
       <p>This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
@@ -529,6 +542,7 @@
       </div>
       <div class="error-msg" id="ob-error"></div>
       <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleOnboard()">Set up my facility →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2297,6 +2311,9 @@ function showTierUpsell(feature){
 // Guard the "Add new facility" action against the tier's facility cap.
 function addFacilityGuard(){
   if(ownedFacilityCount()>=t22Limits.facilities){showTierUpsell('facilities');return;}
+  // Asked for on purpose by someone already inside a facility, so the setup
+  // form is what they want — never the join panel left over from a load.
+  t22PendingInvite=null;renderInviteWaiting();
   showPage('onboard');
 }
 
@@ -3656,6 +3673,9 @@ async function confirmDeleteFacility(){
   }else{
     currentFacility=null;
     await resolveTierLimits();
+    // They deleted their last facility and are being offered setup, not a
+    // stale join panel from whenever this session started.
+    t22PendingInvite=null;renderInviteWaiting();
     showPage('onboard');
   }
   alert('“'+name+'” and everything filed under it have been deleted.');
@@ -5021,34 +5041,96 @@ async function offerToSwitchAccount(invitedEmail){
 // invited address would walk into a facility's resident records. That check is
 // in the function, not here. See
 // migrations/2026-08-19_title22_accept_my_invite.sql.
-let t22InviteNeedsEmailConfirm=null;
-// Being shown "tell us about your facility" when you were invited to somebody
-// else's is the exact wrong instruction. Say what is really going on.
+// What we know about an invitation that has not been redeemed yet, or null.
+// {facility, reason} where reason is:
+//   'email_unconfirmed' - it is waiting on a link already in their inbox
+//   'unanswered'        - they arrived on an invitation link that did not
+//                         redeem, and the database did not say why
+let t22PendingInvite=null;
+// Someone who was invited must not be shown "tell us about your facility".
+// That is the exact wrong instruction - it is how an invited caregiver ends up
+// creating an empty facility of their own and never reaching the one their
+// residents are in. So when an invitation is outstanding the setup form is
+// replaced by the join panel, not merely annotated above it.
 function renderInviteWaiting(){
-  const el=document.getElementById('ob-invite-waiting');
-  if(!el)return;
-  if(!t22InviteNeedsEmailConfirm){el.style.display='none';return;}
-  el.innerHTML='\u2709\ufe0f <strong>You have been invited to '+esc(t22InviteNeedsEmailConfirm)+'.</strong><br/>'+
-    'Confirm your email address first — there is a link in the inbox for '+esc(currentUser?.email||'your address')+
-    '. Once you have tapped it, sign in again and you will go straight into that facility. You do not need to create one here.';
-  el.style.display='block';
+  const note=document.getElementById('ob-invite-waiting');
+  const join=document.getElementById('ob-invite-join');
+  const form=document.getElementById('ob-create-form');
+  if(!note||!join||!form)return;
+  const err=document.getElementById('ob-invite-join-error');
+  if(err){err.textContent='';err.style.display='none';}
+  if(!t22PendingInvite){
+    note.style.display='none';join.style.display='none';form.style.display='';
+    return;
+  }
+  note.style.display='none';
+  form.style.display='none';
+  join.style.display='block';
+  const who=esc(currentUser?.email||'your address');
+  const where=esc(t22PendingInvite.facility||'a facility');
+  document.getElementById('ob-invite-join-title').textContent=
+    t22PendingInvite.facility?('Join '+t22PendingInvite.facility):'Join your facility';
+  const body=document.getElementById('ob-invite-join-body');
+  const btn=document.getElementById('ob-invite-join-btn');
+  if(t22PendingInvite.reason==='email_unconfirmed'){
+    body.innerHTML='You have been invited to <strong>'+where+'</strong>. Confirm your email address first — '+
+      'there is a link in the inbox for '+who+'. Once you have tapped it, come back here and join. '+
+      'You do not need to create a facility.';
+    btn.textContent='I have confirmed — join now';
+  }else{
+    body.innerHTML='You have been invited to <strong>'+where+'</strong>, so there is nothing to set up here. '+
+      'Joining adds you to that facility with the role the administrator chose. '+
+      'The invitation is matched on '+who+' — if that is not the address it was sent to, sign in as the one that was.';
+    btn.textContent='Join now';
+  }
+}
+// Someone who really does want a facility of their own is not trapped by the
+// panel above. Deliberately does not cancel the invitation - it stays pending
+// and is offered again on the next sign-in.
+function createFacilityInstead(){
+  t22PendingInvite=null;
+  renderInviteWaiting();
+}
+// Re-runs the redemption from the join panel, so confirming an email does not
+// mean hunting for the sign-in page again.
+async function retryInviteJoin(){
+  const btn=document.getElementById('ob-invite-join-btn');
+  const err=document.getElementById('ob-invite-join-error');
+  const label=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Joining...';}
+  const joined=await acceptInviteForThisEmail();
+  if(btn){btn.disabled=false;btn.textContent=label;}
+  if(joined){await loadApp();return;}
+  // Still not in. renderInviteWaiting holds the current reason, so re-render
+  // first and then say what actually stood in the way.
+  renderInviteWaiting();
+  if(err){
+    err.textContent=(t22PendingInvite&&t22PendingInvite.reason==='email_unconfirmed')
+      ?('That address is still unconfirmed. Tap the link in the inbox for '+(currentUser?.email||'your address')+', then try again.')
+      :('No invitation is waiting for '+(currentUser?.email||'this address')+'. Ask whoever invited you to send it to the address you signed in with.');
+    err.style.display='block';
+  }
 }
 async function acceptInviteForThisEmail(){
-  t22InviteNeedsEmailConfirm=null;
+  t22PendingInvite=null;
   if(!currentUser||demoMode)return false;
+  // An invitation link that got this far without redeeming still tells us this
+  // person was invited, even when the database declines to say more.
+  const invitedByLink=!!readInviteToken();
+  const unanswered=()=>{if(invitedByLink)t22PendingInvite={facility:'',reason:'unanswered'};};
   try{
     const{data,error}=await sb.rpc('title22_accept_my_invite');
-    if(error)return false;   // function not created yet — nothing lost
+    if(error){unanswered();return false;}   // function not created yet
     const r=Array.isArray(data)?data[0]:data;
-    if(!r||typeof r.ok==='undefined')return false;
+    if(!r||typeof r.ok==='undefined'){unanswered();return false;}
     if(r.ok){clearInviteToken();renderInviteNotice();return true;}
     if(r.reason==='email_unconfirmed'){
       // Not a dead end: they have an invitation, it is waiting, and the one
       // thing standing in the way is a link already sitting in their inbox.
-      t22InviteNeedsEmailConfirm=r.facility_name||'a facility';
-    }
+      t22PendingInvite={facility:r.facility_name||'',reason:'email_unconfirmed'};
+    }else unanswered();
     return false;
-  }catch(e){return false;}
+  }catch(e){unanswered();return false;}
 }
 
 // Redeems an ?invite= link. Returns true only when a membership now exists, so
