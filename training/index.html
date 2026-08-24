@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Caregiver Onboarding</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0F6E56;--teal-light:#E1F5EE;--teal-mid:#1D9E75;
+  --amber:#BA7517;--amber-light:#FAEEDA;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --green:#3B6D11;--green-light:#EAF3DE;
+  --gray:#5F5E5A;--gray-light:#F1EFE8;--gray-bg:#F8F7F4;
+  --text:#1a1a18;--text2:#5F5E5A;--border:#e0ddd6;
+  --white:#fff;--radius:10px;--radius-lg:16px;
+}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);background:var(--gray-bg);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em;color:var(--text)}
+.wrap{max-width:720px;margin:0 auto;padding:1.25rem 1rem 4rem}
+
+/* header */
+header.top{background:var(--white);border-bottom:1px solid var(--border)}
+.top-inner{max-width:720px;margin:0 auto;padding:1.1rem 1rem}
+.logo{font-size:1.1rem;font-weight:600;color:var(--teal);display:flex;align-items:center;gap:9px}
+.logo-icon{width:30px;height:30px;background:var(--teal);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:15px}
+.eyebrow{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-top:2px}
+
+/* generic pieces */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.notice{border-radius:var(--radius);padding:0.9rem 1rem;font-size:13.5px;line-height:1.6}
+.notice-amber{background:var(--amber-light);color:#5c4310}
+.notice-teal{background:var(--teal-light);color:#0a4536}
+h1.page-title{font-size:1.5rem;margin:1.1rem 0 .35rem}
+p.lede{color:var(--text2);font-size:14.5px;margin-bottom:1rem}
+.section-gap{margin-top:1.25rem}
+
+label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--text)}
+input[type=text],input[type=date]{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;background:var(--white);color:var(--text);font-family:inherit}
+input[type=text]:focus,input[type=date]:focus{outline:none;border-color:var(--teal)}
+.field-row{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:560px){.field-row{grid-template-columns:1fr 1fr}}
+
+/* progress */
+.progress-wrap{margin:1rem 0}
+.progress-label{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
+.progress-track{height:10px;border-radius:20px;background:var(--gray-light);overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal-mid),var(--teal));border-radius:20px;transition:width .25s ease;width:0%}
+
+/* lessons */
+.lesson{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden}
+.lesson[open]{border-color:var(--teal-mid)}
+.lesson summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:1rem 1.1rem;-webkit-tap-highlight-color:transparent}
+.lesson summary::-webkit-details-marker{display:none}
+.lesson-num{width:30px;height:30px;border-radius:50%;background:var(--gray-light);color:var(--text2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:'Fraunces',Georgia,serif;transition:all .15s}
+.lesson.done .lesson-num{background:var(--teal);color:#fff}
+.lesson-title{flex:1;min-width:0;font-size:15.5px;font-weight:600}
+.lesson-sub{font-size:12px;color:var(--text2);font-weight:400;margin-top:1px}
+.chevron{width:11px;height:11px;border-right:2px solid var(--text2);border-bottom:2px solid var(--text2);transform:rotate(45deg);transition:transform .2s;flex-shrink:0;margin-right:4px}
+.lesson[open] .chevron{transform:rotate(-135deg)}
+.lesson-body{padding:0 1.1rem 1.25rem;border-top:1px solid var(--border)}
+.lesson-body h4{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);margin:1.1rem 0 .4rem}
+.lesson-body p,.lesson-body li{font-size:14.5px;color:var(--text)}
+.lesson-body ul,.lesson-body ol{margin-left:1.2rem;margin-top:.3rem}
+.lesson-body li{margin-bottom:.35rem}
+.why-block{background:var(--teal-light);border-radius:var(--radius);padding:.8rem .9rem;margin-top:.3rem}
+.why-block h4{color:#0a4536;margin-top:0}
+.mark-row{display:flex;align-items:flex-start;gap:10px;margin-top:1.1rem;padding-top:1rem;border-top:1px dashed var(--border)}
+.mark-row input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--teal);margin-top:1px}
+.mark-row label{margin:0;font-weight:500;font-size:14px;cursor:pointer}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;border-radius:var(--radius);font-size:14.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-primary:hover{background:#0a5442}
+.btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
+.btn-outline:hover{border-color:var(--teal);color:var(--teal)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:1rem}
+
+/* summary sheet */
+#print-sheet{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-top:1.25rem}
+#print-sheet h2{font-size:1.2rem;margin-bottom:2px}
+.sheet-meta{font-size:13px;color:var(--text2);margin-bottom:1rem}
+.sheet-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1rem;font-size:14px;margin-bottom:1.1rem}
+.sheet-grid div span{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.sheet-list{list-style:none;margin:0;padding:0}
+.sheet-list li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px}
+.sheet-list li:last-child{border-bottom:none}
+.sheet-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+.sheet-check.on{background:var(--teal);border-color:var(--teal)}
+.sig-block{margin-top:1.5rem;display:grid;gap:1.5rem;grid-template-columns:1fr}
+@media(min-width:560px){.sig-block{grid-template-columns:1fr 1fr}}
+.sig-line{border-top:1px solid var(--text);padding-top:6px;margin-top:2.5rem;font-size:12px;color:var(--text2)}
+.fine{font-size:12px;color:var(--text2);margin-top:1.25rem;line-height:1.6}
+
+footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:var(--text2);text-align:center}
+
+@media print{
+  .hide-print{display:none!important}
+  body{background:#fff}
+  .wrap{padding:0;max-width:none}
+  #print-sheet{border:none;padding:0}
+}
+</style>
+</head>
+<body>
+
+<header class="top hide-print">
+  <div class="top-inner">
+    <div class="logo"><span class="logo-icon">T</span> Title22</div>
+    <div class="eyebrow">Caregiver Onboarding</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h1 class="page-title">Learning Title22</h1>
+  <p class="lede">Eight short lessons on how to use the app on shift — what each screen is, how to work it, and why it's built that way.</p>
+
+  <div class="notice notice-amber hide-print">
+    <strong>This is not your CDSS training.</strong> Title 22 requires its own approved curriculum for new-hire and continuing-education hours, and your facility or trainer provides that separately. This page only teaches you how to use the Title22 app itself — it does not carry continuing education credit and does not fulfill any state training requirement on its own.
+  </div>
+
+  <div class="card section-gap hide-print">
+    <label for="cg-name">Your name</label>
+    <div class="field-row">
+      <div>
+        <input type="text" id="cg-name" placeholder="e.g. Daniel Reyes" autocomplete="name"/>
+      </div>
+      <div>
+        <label for="cg-facility">Facility name</label>
+        <input type="text" id="cg-facility" placeholder="e.g. Sunrise Manor RCFE" autocomplete="off"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-wrap hide-print">
+    <div class="progress-label"><span>Progress</span><span id="progress-text">0 of 8 lessons</span></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <div class="section-gap" id="lessons"></div>
+
+  <section id="completion" class="section-gap">
+    <h1 class="page-title hide-print">Completion summary</h1>
+    <p class="lede hide-print">Print this page (or save it as a PDF) once you're done. Sign it, and hand it to your administrator to file — Title22 does not track or store training completion anywhere itself.</p>
+
+    <div class="btn-row hide-print">
+      <button class="btn btn-primary" id="btn-print" type="button">Print completion summary</button>
+      <button class="btn btn-outline" id="btn-reset" type="button">Reset progress</button>
+    </div>
+
+    <div id="print-sheet">
+      <h2>Title22 Caregiver Onboarding — Completion Summary</h2>
+      <div class="sheet-meta" id="sheet-generated"></div>
+      <div class="sheet-grid">
+        <div><span>Caregiver</span><strong id="sheet-name">—</strong></div>
+        <div><span>Facility</span><strong id="sheet-facility">—</strong></div>
+      </div>
+      <ul class="sheet-list" id="sheet-list"></ul>
+      <div class="sig-block">
+        <div class="sig-line">Caregiver signature &amp; date</div>
+        <div class="sig-line">Administrator signature &amp; date (files this record)</div>
+      </div>
+      <p class="fine">This is a paper record for your facility's own files. Completing these lessons confirms familiarity with the Title22 app only — it is not CDSS-approved training, does not carry continuing education credit, and Title22 does not verify, store, or track it anywhere in the app.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer class="hide-print">Title22 · title22.app — app orientation only, not a substitute for CDSS-approved Title 22 training.</footer>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY='t22_onboarding_progress_v1';
+
+  var LESSONS=[
+    {
+      title:'First login',
+      sub:'Invitations, not shared logins',
+      body:`
+        <h4>What the screen is</h4>
+        <p>The page you land on at title22.app before you're inside any facility — log in if you already have an account, or sign up if this is your first time. When your administrator invited you, they generated that invite for one specific email address inside Team Access.</p>
+        <h4>How to use it</h4>
+        <ol>
+        <li>Check the email your administrator invited — look for "You have been invited to a facility on Title22."</li>
+        <li>Log in (or sign up, if you don't have an account yet) using <strong>that exact email address</strong> — that's how Title22 matches you to the right facility.</li>
+        <li>You should land straight inside your facility. If you're instead asked to create a new facility of your own, stop and check with your administrator — it usually means the invite hasn't been sent yet, or you used a different email.</li>
+        <li>Never log in with a coworker's account, and never share yours, even "just for a shift."</li>
+        </ol>
+        <div class="why-block"><h4>Why it works this way</h4><p>Every save in Title22 — a medication logged, an incident reported, a document filed — is stamped with the account that made it. That's the audit trail behind every one of those records. A shared login breaks it: if two people can produce the same entry, it points at nobody, and a caregiver who documented correctly gets no credit for it. An invitation to your own work email is also what sets your role correctly from day one, rather than letting anyone pick a broader one than the job needs.</p></div>`
+    },
+    {
+      title:'Reading the dashboard',
+      sub:"What the readiness score does and doesn't mean",
+      body:`
+        <h4>What the screen is</h4>
+        <p>The first thing you see after logging in. A large percentage — the <strong>Inspection readiness score</strong> — with a line underneath it, alerts for anything overdue or expiring, and stat cards for the facility.</p>
+        <h4>How to use it</h4>
+        <ul>
+        <li>Read the small line under the score, not just the number. It looks like "18 of 22 requirements met · 12 of 22 backed by a document · 3 recorded but unverified."</li>
+        <li>Tap an alert or a name to jump straight to that resident's or staff member's record and see exactly what's missing.</li>
+        </ul>
+        <div class="why-block"><h4>Why it works this way</h4><p>The score counts a requirement as "met" whether it's backed by an actual filed document or just typed in as "yes." Those are very different things, and the "recorded but unverified" count is the app telling you the difference. A high score is not proof that paperwork exists — a document attached to the record is. That's the single most important thing to understand about this app: treat the score as a starting point for what to check, never as a finished answer.</p></div>`
+    },
+    {
+      title:'Your role and what you can see',
+      sub:'Five roles, least privilege',
+      body:`
+        <h4>What the screen is</h4>
+        <p>Team Access shows every person on the facility's account and their role. Title22 has five roles: <strong>Administrator</strong> (everything, including billing and the team), <strong>Supervisor</strong> (residents, staff, medications, incidents, documents — no billing or team), <strong>In-House Caregiver</strong> (shift lead: residents, medications, the MAR, and the checklist — not staff files), <strong>Caregiver</strong> (the medication pass, incidents, daily log, and documents), and <strong>Read Only</strong> (look, don't touch — the access given to an inspector, a consultant, or family).</p>
+        <h4>How to use it</h4>
+        <ul>
+        <li>Open Team Access to see your own role card if you're not sure which one you have, or ask your administrator.</li>
+        <li>Your role decides which tabs even show up for you. A Caregiver only sees the medication pass, incidents, the daily log, and documents — nothing else, and that's expected, not a bug.</li>
+        <li>Nobody picks their own role. The administrator sets it at the moment the invitation goes out.</li>
+        </ul>
+        <div class="why-block"><h4>Why it works this way</h4><p>This is least privilege: each role reaches exactly what the job in front of them needs, and nothing more. A caregiver on shift needs the medication pass and the incident form, not billing or the ability to remove a coworker from the team — giving broader access than the job requires only adds risk with no benefit. If a screen you expected isn't there, the fix is asking your administrator whether your role is the right one, not finding a workaround.</p></div>`
+    },
+    {
+      title:'Recording a medication (MAR)',
+      sub:'Entry, PRN reason, and why gaps get flagged',
+      body:`
+        <h4>What the screen is</h4>
+        <p>The Medication Administration Record, or MAR — where every dose given, refused, or held gets logged, at the scheduled time or as PRN ("as needed").</p>
+        <h4>How to use it</h4>
+        <ul>
+        <li>Record at the time you give (or don't give) the dose — not from memory at the end of shift.</li>
+        <li>Choose a status: <strong>Given</strong>, <strong>Refused by resident</strong>, or <strong>Held per physician order</strong>.</li>
+        <li>If the scheduled time is PRN and you mark it Given, a <strong>PRN reason</strong> field appears and is required — write the symptom or complaint that led to giving it (e.g. "c/o knee pain, 4/10").</li>
+        <li>The app will not let the entry save without that reason. If you logged something wrong, don't try to fix it yourself — ask an administrator, supervisor, or in-house caregiver to void it.</li>
+        </ul>
+        <div class="why-block"><h4>Why it works this way</h4><p>An incomplete MAR is one of the most common Title 22 citations — every dose has to be accounted for, with a documented reason for anything that isn't a plain scheduled dose given on time. The record isn't paperwork for its own sake; it's the only proof that a medication error didn't happen. And when an entry does need correcting, it's voided rather than deleted — the original stays visible, struck through, with the reason next to it, exactly like a correction on a paper chart.</p></div>`
+    },
+    {
+      title:'Logging an incident',
+      sub:'What counts, timeliness, and why it protects you too',
+      body:`
+        <h4>What the screen is</h4>
+        <p>The incident form: falls, medication errors, behavioral incidents, elopement, injury, death, or other. It records what happened, whether there was an injury, whether the physician and family were notified, whether it's DSS-reportable, and what corrective action was taken.</p>
+        <h4>How to use it</h4>
+        <ul>
+        <li>Handle the resident's immediate needs first — then log the incident as soon as you can, not the next day.</li>
+        <li>Pick the incident type and read the guidance that appears with it. Some types carry strict clocks: a fall needs an immediate resident assessment and physician notification within 24 hours if there's an injury; elopement is immediately DSS-reportable; a resident's death requires DSS notification within 1 hour.</li>
+        <li>Write what happened and what was done about it in plain language — the corrective action matters as much as the description.</li>
+        </ul>
+        <div class="why-block"><h4>Why it works this way</h4><p>Timeliness isn't a suggestion — some incident types carry hour-based reporting clocks that start the moment the incident happens, not when someone gets around to writing it up. And the record protects you too: a timely, factual account of what you saw and what you did is the best evidence that you responded correctly, especially if it's asked about weeks later by a family member or a regulator. An incident report isn't an admission that something went wrong — it's what shows that it was handled right.</p></div>`
+    },
+    {
+      title:'Resident records',
+      sub:'LIC 601, LIC 602, ISP — where the documents live',
+      body:`
+        <h4>What the screen is</h4>
+        <p>Each resident's record includes a <strong>Required documents</strong> section with three slots: LIC 601 (Identification and Emergency Information), LIC 602 (Physician's Report), and the ISP (Individual Service Plan, with a last-reviewed date). Each slot pairs a self-reported yes/no with the actual document proving it.</p>
+        <h4>How to use it</h4>
+        <ul>
+        <li>Open a resident and scroll to Required documents. Upload the file into each slot as you receive it — there's no camera-scan button here, upload only.</li>
+        <li>A slot marked "yes" with nothing attached shows amber and says an inspector will ask to see it. Attaching the document turns it green and flips the self-reported answer to yes for you.</li>
+        </ul>
+        <div class="why-block"><h4>Why it works this way</h4><p>A resident's face sheet, physician's report, and service plan are protected health information. That's why these go through upload — straight from your browser into storage — instead of the scan-to-fill camera tool used elsewhere in the app: no photo of a resident document is ever sent to a third-party AI service. And where the form says "on file," an inspector wants to see the file, not hear the answer — filing it is what makes that resident's readiness verified instead of just claimed.</p></div>`
+    },
+    {
+      title:'Staff documents',
+      sub:'TB, CPR, First Aid, LiveScan, training, and expiry alerts',
+      body:`
+        <h4>What the screen is</h4>
+        <p>Every staff record has the same document-slot pattern: TB test, CPR card, First Aid card, LiveScan clearance, Mandated Reporter training, and the 16-hour initial training certificate — each with an issue date, due date, or expiry. An expiry banner warns at 90, 30, and 7 days out.</p>
+        <h4>How to use it</h4>
+        <ul>
+        <li>Attach each certificate as you receive it. On these slots, the scan button can read a photo of the certificate and drop the date into the form for you — but it only fills the form, it never saves by itself. You still review it and press Save.</li>
+        <li>The 16-hour hands-on portion of initial training is 16 of your first 40 hours (the other 24 come from an approved outside vendor). No vendor logs those 16 — someone at the facility has to log each supervised session so the hours add up.</li>
+        </ul>
+        <div class="why-block"><h4>Why it works this way</h4><p>The expiry alerts exist so a lapse gets caught weeks ahead, not discovered on inspection day. And the same rule as resident documents applies here: a certificate marked "Yes — completed" with nothing attached shows amber. Attaching the file — not just ticking the box — is what makes the facility's "backed by a document" count, not just its raw score, reflect what's actually true.</p></div>`
+    },
+    {
+      title:'Before a DSS visit',
+      sub:'The readiness check and the audit packet',
+      body:`
+        <h4>What the screen is</h4>
+        <p>Two tools built for this exact moment: the compliance <strong>checklist</strong> (Title 22 requirements with due dates, overdue items rising to the top), and the <strong>DSS Audit Export</strong> on the dashboard — a 90-day packet, available to administrators and supervisors.</p>
+        <h4>How to use it</h4>
+        <ol>
+        <li>Open the checklist first and clear anything overdue.</li>
+        <li>Run the DSS Audit Export. It opens a printable packet in a new tab covering: facility and administrator details; the resident roster with document status; staff certifications; the full medication record for the period, including any voided entries — struck through, with the reason, never hidden; and incident reports for the period.</li>
+        <li>Save it as a PDF from the browser's print dialog.</li>
+        </ol>
+        <div class="why-block"><h4>Why it works this way</h4><p>An analyst doesn't ask "are you compliant" in the abstract — they ask for specific documents, going back a specific number of days. The packet contains exactly what Title 22 requires a facility to be able to produce, and nothing else, so a caregiver on shift when DSS arrives isn't assembling it from memory under pressure.</p></div>`
+    }
+  ];
+
+  var progress={done:{},name:'',facility:''};
+
+  function loadProgress(){
+    try{
+      var raw=sessionStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed=JSON.parse(raw);
+        if(parsed&&typeof parsed==='object'){
+          progress.done=parsed.done||{};
+          progress.name=parsed.name||'';
+          progress.facility=parsed.facility||'';
+        }
+      }
+    }catch(e){ /* sessionStorage unavailable — proceed with defaults, nothing persists */ }
+  }
+
+  function saveProgress(){
+    try{ sessionStorage.setItem(STORAGE_KEY,JSON.stringify(progress)); }catch(e){ /* storage full or blocked — page still works this session */ }
+  }
+
+  function renderLessons(){
+    var container=document.getElementById('lessons');
+    var html='';
+    LESSONS.forEach(function(lesson,i){
+      var n=i+1;
+      var isDone=!!progress.done[n];
+      html+='<details class="lesson'+(isDone?' done':'')+'" data-n="'+n+'">'
+        +'<summary>'
+        +'<span class="lesson-num">'+n+'</span>'
+        +'<span class="lesson-title">'+lesson.title+'<div class="lesson-sub">'+lesson.sub+'</div></span>'
+        +'<span class="chevron"></span>'
+        +'</summary>'
+        +'<div class="lesson-body">'
+        +lesson.body
+        +'<div class="mark-row">'
+        +'<input type="checkbox" id="check-'+n+'" data-n="'+n+'"'+(isDone?' checked':'')+'/>'
+        +'<label for="check-'+n+'">I\'ve read this lesson and understand how this screen works</label>'
+        +'</div>'
+        +'</div>'
+        +'</details>';
+    });
+    container.innerHTML=html;
+    container.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+      cb.addEventListener('change',function(){
+        var n=this.getAttribute('data-n');
+        progress.done[n]=this.checked;
+        var details=container.querySelector('details[data-n="'+n+'"]');
+        if(details)details.classList.toggle('done',this.checked);
+        saveProgress();
+        renderProgressBar();
+        renderSheet();
+      });
+    });
+  }
+
+  function renderProgressBar(){
+    var total=LESSONS.length;
+    var done=Object.keys(progress.done).filter(function(k){return progress.done[k];}).length;
+    document.getElementById('progress-text').textContent=done+' of '+total+' lessons';
+    document.getElementById('progress-fill').style.width=Math.round((done/total)*100)+'%';
+  }
+
+  function renderSheet(){
+    document.getElementById('sheet-name').textContent=progress.name||'—';
+    document.getElementById('sheet-facility').textContent=progress.facility||'—';
+    document.getElementById('sheet-generated').textContent='Generated '+new Date().toLocaleString();
+    var list=document.getElementById('sheet-list');
+    var html='';
+    LESSONS.forEach(function(lesson,i){
+      var n=i+1;
+      var on=!!progress.done[n];
+      html+='<li><span class="sheet-check'+(on?' on':'')+'">'+(on?'✓':'')+'</span>'+n+'. '+lesson.title+'</li>';
+    });
+    list.innerHTML=html;
+  }
+
+  function initFields(){
+    var nameEl=document.getElementById('cg-name');
+    var facEl=document.getElementById('cg-facility');
+    nameEl.value=progress.name;
+    facEl.value=progress.facility;
+    nameEl.addEventListener('input',function(){progress.name=this.value;saveProgress();renderSheet();});
+    facEl.addEventListener('input',function(){progress.facility=this.value;saveProgress();renderSheet();});
+  }
+
+  function initButtons(){
+    document.getElementById('btn-print').addEventListener('click',function(){
+      renderSheet();
+      window.print();
+    });
+    document.getElementById('btn-reset').addEventListener('click',function(){
+      if(!window.confirm('Reset all lesson progress and clear your name and facility on this page? This cannot be undone.'))return;
+      progress={done:{},name:'',facility:''};
+      saveProgress();
+      renderLessons();
+      renderProgressBar();
+      renderSheet();
+      document.getElementById('cg-name').value='';
+      document.getElementById('cg-facility').value='';
+    });
+  }
+
+  loadProgress();
+  renderLessons();
+  renderProgressBar();
+  renderSheet();
+  initFields();
+  initButtons();
+})();
+</script>
+</body>
+</html>
