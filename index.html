@@ -4126,6 +4126,58 @@ function aiErrorText(data,status){
   return 'Tello could not be reached. (HTTP '+status+')';
 }
 
+// Tello's replies are Markdown-ish text, and putting them on screen means
+// putting them into innerHTML. Every reply repeats caregiver-typed material
+// back — resident names, incident narratives, medication notes — so the string
+// is escaped FIRST and only a fixed set of markers is turned back into markup.
+// Never render a reply by interpolating it unescaped; a resident whose name
+// contains a tag would be running script inside the facility's dashboard.
+//
+// That constraint is also what broke the briefing: the prompt asked the model
+// for literal `<svg class="ic">…` and the renderer then escaped it, so every
+// caregiver read the markup instead of seeing the icon. Icons are requested as
+// [ok] / [warn] / [urgent] tokens now, and the markup for them is written here,
+// where it is ours. Anything else the model invents stays inert text.
+const TELLO_ICONS={
+  ok:'<span style="color:var(--green)"><svg class="ic"><use href="#i-check-circle"/></svg></span>',
+  warn:'<span style="color:var(--amber)"><svg class="ic"><use href="#i-alert"/></svg></span>',
+  urgent:'<span style="color:var(--red)"><svg class="ic"><use href="#i-alert"/></svg></span>',
+};
+function renderTelloText(text){
+  const inline=s=>s
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\[(ok|warn|urgent)\]/g,(m,k)=>TELLO_ICONS[k]);
+  const out=[];
+  let inList=false;
+  const closeList=()=>{ if(inList){out.push('</ul>');inList=false;} };
+  // esc() first: every branch below works on already-escaped text.
+  for(const raw of esc(text).split('\n')){
+    const line=raw.trim();
+    if(!line){closeList();continue;}
+    if(/^(-{3,}|\*{3,}|_{3,})$/.test(line)){
+      closeList();
+      out.push('<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
+      continue;
+    }
+    const heading=line.match(/^#{1,6}\s+(.*)$/);
+    if(heading){
+      closeList();
+      out.push('<div style="font-weight:700;color:var(--text);margin:12px 0 4px">'+inline(heading[1])+'</div>');
+      continue;
+    }
+    const bullet=line.match(/^[-*•]\s+(.*)$/);
+    if(bullet){
+      if(!inList){out.push('<ul style="margin:4px 0 4px 18px;padding:0">');inList=true;}
+      out.push('<li style="margin-bottom:3px">'+inline(bullet[1])+'</li>');
+      continue;
+    }
+    closeList();
+    out.push('<div style="margin-bottom:4px">'+inline(line)+'</div>');
+  }
+  closeList();
+  return out.join('');
+}
+
 let aiMessages=[];
 let dashBriefingLoaded=false;
 
@@ -4176,8 +4228,12 @@ async function buildFacilityContext(){
 // evaluating customer clicking around burns the whole allowance in a day
 // without ever asking a question, and then everything answers limit_reached.
 // It is a daily briefing, so cache it for the day it describes.
+// The cached value is rendered HTML, so it is only as good as the renderer that
+// produced it. `v2` retires briefings written by the one that escaped its own
+// icon markup — without it a caregiver keeps reading raw <svg> until midnight.
+// Bump this whenever renderTelloText changes what it emits.
 function briefingCacheKey(){
-  return 'title22_briefing_'+(currentFacility?.id||'none')+'_'+new Date().toISOString().slice(0,10);
+  return 'title22_briefing_v2_'+(currentFacility?.id||'none')+'_'+new Date().toISOString().slice(0,10);
 }
 function readCachedBriefing(){
   try{ return localStorage.getItem(briefingCacheKey())||null; }catch(e){ return null; }
@@ -4215,12 +4271,15 @@ async function loadDashboardAIBriefing(force){
     const context=ctx.json;
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
-      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Use <svg class="ic"><use href="#i-check-circle"/></svg> for good, <svg class="ic"><use href="#i-alert"/></svg> for warnings, <svg class="ic"><use href="#i-alert"/></svg> for urgent. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
+      // Markers, not markup. renderTelloText escapes the reply before drawing
+      // it, so any HTML asked for here would reach the caregiver as visible
+      // source — which is exactly what used to happen.
+      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Write each point as a line starting with "- ", and begin the line with [ok] when it is fine, [warn] when it needs attention, or [urgent] when it cannot wait. Use **bold** for names and dates that matter. Do not write HTML, headings or tables. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
-    const reply=data.content?.[0]?.text||('<svg class="ic"><use href="#i-alert"/></svg> '+aiErrorText(data,res.status));
-    const html=`<div style="font-size:13px;line-height:1.9;color:var(--text)">${esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+    const reply=data.content?.[0]?.text||('[warn] '+aiErrorText(data,res.status));
+    const html=`<div style="font-size:13px;line-height:1.8;color:var(--text)">${renderTelloText(reply)}</div>`;
     el.innerHTML=html;
     // Only a real briefing is worth keeping — caching an error would hide the
     // problem for the rest of the day and spend nothing to fix it.
@@ -4466,8 +4525,8 @@ async function sendAIQuery(btn){
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
-    const reply=data.content?.[0]?.text||('<svg class="ic"><use href="#i-alert"/></svg> '+aiErrorText(data,res.status));
-    thinking.textContent='';thinking.innerHTML=esc(reply).replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    const reply=data.content?.[0]?.text||('[warn] '+aiErrorText(data,res.status));
+    thinking.textContent='';thinking.innerHTML=renderTelloText(reply);
     aiMessages.push({role:'assistant',content:reply});
     if(aiMessages.length>20)aiMessages=aiMessages.slice(-20);
   }catch(e){thinking.textContent='Tello is unavailable right now. Check the AI Worker deployment.';}
