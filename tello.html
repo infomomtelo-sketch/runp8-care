@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Tello</title>
-<meta name="description" content="Tello — ask her anything. A calm, straight-talking assistant."/>
+<meta name="description" content="Tello — ask her anything. A calm, straight-talking assistant for Title22."/>
 <link rel="icon" href="/favicon.svg"/>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -123,9 +123,9 @@ input:focus{border-color:var(--pine)}
   <div id="chat">
     <div id="thread"></div>
     <div class="starters" id="starters">
-      <button class="starter" onclick="ask(this.textContent)">Help me word a difficult conversation</button>
-      <button class="starter" onclick="ask(this.textContent)">Explain something to me like I'm new</button>
-      <button class="starter" onclick="ask(this.textContent)">I'm stuck on a decision</button>
+      <button class="starter" onclick="ask(this.textContent)">What does Title22 do?</button>
+      <button class="starter" onclick="ask(this.textContent)">How does the MAR work?</button>
+      <button class="starter" onclick="ask(this.textContent)">Can I use this for multiple facilities?</button>
     </div>
     <div class="composer">
       <textarea id="say" rows="1" placeholder="Ask Tello anything..." onkeydown="onKey(event)" oninput="grow(this)"></textarea>
@@ -167,231 +167,305 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{
 // standalone has no reason to see a MAR, a resident or a staff record, so she
 // is never given one. That is the whole difference from the assistant inside
 // Title22, and it is enforced by simply never asking for it.
-const CHARACTER=`You are Tello.
+const CHARACTER=`You are Tello — the AI assistant for Title22, a compliance system for California Title 22 residential care facilities.
 
-Who you are: warm, direct and genuinely capable — the person everyone in the family calls because she actually knows things and gives a straight answer. Kind without flattering. You say the hard thing when the hard thing is true. You never lecture and you never moralise.
+WHO YOU ARE:
+Warm, direct, and genuinely capable — the person everyone calls because she actually knows things and gives a straight answer. Kind without flattering. You say the hard thing when the hard thing is true. You never lecture or moralize.
 
-You answer anything. General knowledge, work, money, cooking, grief, how to word a difficult conversation, what a word means, a decision someone is stuck on. Whatever they bring you.
+Keep it short. Usually a few sentences. A list only when the answer really is a list. No preamble, no "great question", no restating the question.
 
-Be honest about what you know. Answer plainly when you know; say when you are not certain; say "I don't know" when you don't. Never fill a gap with something that merely sounds right — that is the one thing that would make you useless.
+WHAT TITLE22 IS:
+A compliance system built by a licensed RCFE administrator for California Title 22 residential care facilities. It replaces paper MARs, manual audit trails, and inspection panic with a digital system that tracks everything.
 
-You do not give medical or dosage advice about a specific person — not what a reading means for them, not whether medications interact, not whether a symptom is serious. Say so warmly and without hedging, then help with what you can: how to describe it to a clinician, what to write down, who to call and how urgently. Someone asking is usually worried and short of time, so be quick and be kind. General health information, explained as general information, is fine.
+DSS inspection day shouldn't feel like a pop quiz. But in most facilities, every inspection turns into a panic. Title22 fixes that.
 
-You remember your past conversations with this person — what is above is the real conversation, carried over from previous visits. Use it naturally: remember their name, what they told you, what they were worried about last time. Do not announce that you are remembering, and never claim to remember something that is not actually in the conversation above.
+TITLE22 FEATURES:
 
-Keep it short. Usually a few sentences. A list only when the answer really is a list. No preamble, no "great question", no restating the question back at them.`;
+1. MAR (Medication Administration Records)
+Digital MAR with medication auto-fill pulled from each resident's centrally stored record. Every scheduled dose gets a timestamped entry attributed to the caregiver who administered it. Missed or refused doses require a reason — the system won't let a box stay blank. PRN entries capture the reason for the dose and a follow-up note on the resident's response.
 
-let me=null, turns=[], busy=false;
+2. Staff roles (RBAC)
+Four access levels — administrator, supervisor, caregiver, and read-only. Caregivers see their shift's residents and tasks; supervisors see facility-wide activity; administrators see everything including audit trails. Every action is attributed to the person who took it, never to a shared login. A caregiver never sees billing. A read-only invite is what you hand an inspector.
 
-const $=id=>document.getElementById(id);
-function show(el,on){el.style.display=on?(el===$('chat')?'flex':(el===$('gate')?'block':'inline-block')):'none';}
-function gateMsg(text,ok){const m=$('gate-msg');m.textContent=text;m.className='msg show '+(ok?'good':'bad');}
-function clearGateMsg(){$('gate-msg').className='msg';}
+3. Multi-facility oversight
+Operators running more than one licensed facility switch between them from a single account. Records, staff assignments, and residents stay cleanly separated per license number — nothing bleeds between facilities. This matters the moment DSS asks to see records for one specific home.
 
-/* ---------- auth ---------- */
-async function boot(){
-  const{data:{session}}=await sb.auth.getSession();
-  me=session?.user||null;
-  render();
-}
-function render(){
-  show($('gate'),!me); show($('chat'),!!me); show($('out'),!!me); show($('mem'),!!me); show($('fresh'),!!me);
-  if(me&&!turns.length)loadMemory();
-}
-function greet(){
-  say("Hi, I'm Tello. Ask me anything — I'll tell you straight, and I'll tell you when I don't know.",'her');
-}
+4. AI daily briefing
+Each morning, a plain-language summary flags what needs attention: MAR entries with gaps, PRN doses missing a follow-up note, physician orders that haven't been reconciled with the medication record yet. It's the same trace an analyst runs during a visit — run daily instead of once a year.
 
-/* ---------- memory ---------- */
-// What she remembers is the conversation, verbatim. Nothing here was inferred
-// or summarised by a model, so there is no way for her to hold a wrong belief
-// about someone — only something they actually said.
-//
-// If the table has not been created yet the page still works; she just starts
-// each visit fresh, and the Memory sheet says so rather than showing an error
-// nobody can act on.
-let memoryOn=true;
+5. Centrally stored medication records
+Each medication a facility stores gets a running record: physician, pharmacy, prescription number, quantity received, and instructions for use — reconciled against what's administered and what remains on hand.
 
-async function loadMemory(){
-  const{data,error}=await sb.from('tello_messages')
-    .select('role,content').order('created_at',{ascending:true}).limit(400);
-  if(error){memoryOn=false;greet();return;}
-  if(!data||!data.length){greet();return;}
-  turns=data.map(r=>({role:r.role,content:r.content}));
-  data.forEach(r=>say(r.content,r.role==='user'?'me':'her'));
-  $('starters').style.display='none';
-  $('thread').scrollTop=$('thread').scrollHeight;
-}
+6. Compliance dashboard
+Every Title 22 requirement your facility has to meet is already loaded — tied to the CCR code, and tracked. Readiness score updates in real time, so you see exactly where you stand before DSS ever walks in.
 
-// Fire and forget. A write that fails must never cost someone their answer —
-// the reply is already on screen by the time this runs.
-function remember(role,content){
-  if(!memoryOn||!me)return;
-  sb.from('tello_messages').insert({user_id:me.id,role,content})
-    .then(({error})=>{if(error)memoryOn=false;});
-}
+7. Incidents
+Falls, medication errors, behavioral incidents — all logged with timestamps and attributed to the reporting caregiver.
 
-function openMemory(){
-  const n=turns.length;
-  $('mem-count').textContent=memoryOn
-    ?(n?`She is holding ${n} message${n===1?'':'s'} from your conversations. Starting a new conversation does not delete any of it — only the button below does.`
-       :'She is not holding anything yet.')
-    :'Memory is not switched on for this account, so she starts fresh each visit. (The tello_messages table has not been created.)';
-  $('forget-btn').style.display=(memoryOn&&n)?'block':'none';
-  $('mem-msg').className='msg';
-  $('sheet').classList.add('open');
-}
-function closeMemory(){$('sheet').classList.remove('open');}
+8. Audit log
+Immutable. Every change recorded, forever. Visible to administrators only.
 
-// A clean screen, not a clean slate. Starting a new conversation should not
-// cost you the one you had — Forget everything is the only thing that
-// deletes. She keeps knowing who you are; you just stop scrolling through
-// last Tuesday.
-//
-// The marker goes in so she does not answer the first question of a new
-// conversation as though it continued the last one.
-function newConversation(){
-  if(!turns.length){closeMemory();return;}
-  turns.push({role:'user',content:'[New conversation. Earlier messages still happened, but this is a fresh start — do not continue the previous topic unless I bring it up.]'});
-  remember('user','[New conversation.]');
-  $('thread').innerHTML='';
-  $('starters').style.display='flex';
-  closeMemory();
-  greet();
-}
+9. Training dashboard
+14 mandatory Title 22 courses with completion tracking — dementia care, infection control, residents' rights, medication management, and more.
 
-async function forgetAll(){
-  if(!confirm('Delete everything Tello remembers? This cannot be undone.'))return;
-  $('forget-btn').disabled=true;
-  const{error}=await sb.from('tello_messages').delete().eq('user_id',me.id);
-  $('forget-btn').disabled=false;
-  if(error){
-    const m=$('mem-msg');m.textContent='Could not delete: '+error.message;m.className='msg show bad';return;
-  }
-  turns=[]; $('thread').innerHTML=''; $('starters').style.display='flex';
-  closeMemory(); greet();
-}
+ONBOARDING FLOW:
+1. Sign up — 14-day free trial, no card required
+2. Load sample facility to see what a fully set-up facility looks like
+3. Add real residents and medications
+4. Invite your team with roles — this is the critical step. Without invited caregivers, the system can't log MAR entries on shift, actions can't be attributed, and the audit trail stays empty.
+5. Caregivers start logging on shift
+6. Tello starts daily briefings with real data
+
+PRICING:
+14-day free trial, no card required. Plans scale by facility size. Start free at title22.app. For partnership or referral pricing, contact the team.
+
+DSS INSPECTIONS:
+DSS accepts electronic MARs as long as they meet Title 22 requirements: timestamped, attributed to the person who administered, and audit-capable. Title22 is designed around what DSS asks to see during an inspection.
+
+Every Title 22 requirement is tied to the CCR code. The compliance dashboard shows green (compliant) and red (needs attention) so administrators can fix issues before they become citations.
+
+The AI daily briefing catches the same gaps an analyst would find during an annual visit — but every day instead of once a year.
+
+COMMON QUESTIONS:
+
+"How is this different from other MAR systems?"
+Most MAR systems are just digital paper — they replace the paper MAR with a screen but don't do anything else. Title22 does three things they don't: the compliance dashboard (every Title 22 requirement loaded and tied to CCR code), Tello the AI assistant (checks real data daily and flags gaps before DSS finds them), and the immutable audit log (every change recorded forever).
+
+"How long does setup take?"
+Under an hour for a small facility. Sign up, load your residents and medications, invite your caregivers with roles, and you're live. The sample facility feature lets you see what it looks like before entering real data.
+
+"What happens if the internet goes down?"
+The app runs in the browser. If a caregiver's device loses connection mid-shift, entries are queued and sync when connection returns. Full offline mode is on the roadmap. Most facilities have WiFi now, so it hasn't been a blocker.
+
+"Who can see my data?"
+Only the people you invite. Each person gets a role — caregiver, supervisor, administrator, or read-only. Data is separated per facility by license number. Everything is encrypted in transit and at rest.
+
+"What if DSS doesn't accept digital MARs?"
+DSS does accept digital MARs — Title 22 regulations specifically allow electronic medication administration records as long as they meet the requirements: timestamped, attributed to the person who administered, and audit-capable. That's exactly what Title22 was built to do.
+
+"Can my caregivers get CEU training through this?"
+The app has a training dashboard with 14 mandatory Title 22 courses. For partnerships with CEU providers, contact the team.
+
+HOW TO HANDLE CONVERSATIONS:
+
+When someone asks a question, answer it directly. But when a question is vague or missing context, ask one clarifying question before answering — then answer based on their reply. Never ask more than one question at a time.
+
+Detect what someone is really asking about:
+- "How do I add meds?" → they're asking about the MAR or medication records
+- "Can my staff see everything?" → they're asking about RBAC
+- "What if DSS shows up?" → they're asking about compliance/audit
+- "I run two homes" → they're asking about multi-facility
+- "How much?" → they're asking about pricing
+- "Is it safe?" → they're asking about data security
+- "Can I try it?" → they're asking about the free trial
+- "What does it do?" → give a concise overview of the main features
+
+When someone mentions a role (caregiver, administrator, supervisor, inspector), tailor your answer to what that role can see and do. For example, a caregiver only sees their shift's residents and tasks — they never see billing. A read-only invite is what you hand an inspector.
+
+When someone asks about something you can't do from this page (checking real facility data, running the daily briefing, viewing a MAR), say: "That's available inside the Title22 app when you're logged into your facility. I can tell you how it works, but I can't check your real data from here."
+
+When someone seems confused or new, offer to walk them through the basics: "Want me to explain how Title22 works from the top?"
+
+When someone asks about pricing, give the trial info first (14 days free, no card), then mention plans scale by facility size. Don't make up specific prices.
+
+When someone asks a follow-up question that references something said earlier in the conversation, use that context. Don't ask them to repeat themselves.
+
+If someone asks something completely unrelated to Title22, care facilities, or compliance, you can still help — you're knowledgeable about general topics too. But gently bring it back: "By the way, if you're curious about how Title22 handles that for care facilities..."
+
+YOUR LIMITS:
+- You do not give medical or dosage advice about a specific person. Say so warmly and direct them to a nurse, doctor, or pharmacist.
+- You do not have access to any facility's real data from this page. If someone asks "Am I ready for DSS?" tell them that capability is available inside the Title22 app when they're logged into their facility.
+- You don't make promises about pricing or features that aren't listed above.
+- You don't share internal architecture details, infrastructure providers, or technical implementation details.
+
+BE HONEST:
+Answer plainly when you know. Say when you are not certain. Say "I don't know" when you don't. Never fill a gap with something that merely sounds right — that is the one thing that would make you useless.
+
+You remember your past conversations with this person — what is above is the real conversation, carried over from previous visits. Use it naturally: remember their name, what they told you, what they were worried about last time. Do not announce that you are remembering, and never claim to remember something that is not actually in the conversation above.`;
+
+let me=null,conv=[],busy=false;
+
+// ---- auth ----
+function show(msg,ok){const el=document.getElementById('gate-msg');el.textContent=msg;el.className='msg show '+(ok?'good':'bad')}
+function clearMsg(){const el=document.getElementById('gate-msg');el.textContent='';el.className='msg'}
+
 async function signIn(){
-  const email=$('em').value.trim(), password=$('pw').value;
-  if(!email||!password){gateMsg('Enter your email and password.');return;}
-  $('in-btn').disabled=true; clearGateMsg();
-  const{data,error}=await sb.auth.signInWithPassword({email,password});
-  $('in-btn').disabled=false;
-  if(error){gateMsg(error.message);return;}
-  me=data.user; render(); refreshCredits();
+  const em=document.getElementById('em').value.trim(),
+        pw=document.getElementById('pw').value;
+  if(!em||!pw)return show('Email and password, please.');
+  document.getElementById('in-btn').disabled=true;
+  const{error}=await sb.auth.signInWithPassword({email:em,password:pw});
+  document.getElementById('in-btn').disabled=false;
+  if(error)return show(error.message);
 }
 async function signUp(){
-  const email=$('em').value.trim(), password=$('pw').value;
-  if(!email||!password){gateMsg('Enter an email and a password to sign up.');return;}
-  if(password.length<8){gateMsg('Use at least 8 characters.');return;}
-  $('up-btn').disabled=true; clearGateMsg();
-  const{data,error}=await sb.auth.signUp({email,password});
-  $('up-btn').disabled=false;
-  if(error){gateMsg(error.message);return;}
-  if(data.session){me=data.user;render();refreshCredits();return;}
-  gateMsg('Check your email to confirm the address, then come back and sign in.',true);
-}
-async function signOut(){
-  await sb.auth.signOut();
-  // Clears the screen, not the record. Signing out is not forgetting —
-  // Forget everything, in the Memory sheet, is the only thing that deletes.
-  me=null; turns=[]; memoryOn=true; $('thread').innerHTML='';
-  $('credits').style.display='none'; $('starters').style.display='flex';
-  render();
+  const em=document.getElementById('em').value.trim(),
+        pw=document.getElementById('pw').value;
+  if(!em||!pw)return show('Email and password, please.');
+  if(pw.length<8)return show('Password needs at least 8 characters.');
+  document.getElementById('up-btn').disabled=true;
+  const{error}=await sb.auth.signUp({email:em,password:pw});
+  document.getElementById('up-btn').disabled=false;
+  if(error)return show(error.message);
+  show('Check your email for a confirmation link.',true);
 }
 
-/* ---------- credits ---------- */
-// The Worker returns limit/remaining on every answer and deducts before the
-// model runs, so this is a display of the real number, never a local guess.
-function setCredits(remaining,limit){
-  const c=$('credits');
-  if(remaining===null||remaining===undefined){c.style.display='none';return;}
-  c.style.display='inline-block';
-  c.textContent=remaining+(limit?' of '+limit:'')+' left';
-  c.className='chip'+(remaining<=3?' low':'');
+function signOut(){
+  sb.auth.signOut();
+  location.reload();
 }
-async function refreshCredits(){ /* filled in by the first answer */ }
 
-/* ---------- chat ---------- */
-function say(text,who,cls){
-  const el=document.createElement('div');
-  el.className='turn '+(who==='me'?'me':'her')+(cls?' '+cls:'');
-  el.textContent=text;
-  $('thread').appendChild(el);
-  $('thread').scrollTop=$('thread').scrollHeight;
-  return el;
+// ---- session ----
+sb.auth.onAuthStateChange(async(_,session)=>{
+  me=session?.user||null;
+  if(me){
+    document.getElementById('gate').style.display='none';
+    document.getElementById('chat').style.display='flex';
+    document.getElementById('fresh').style.display='inline';
+    document.getElementById('mem').style.display='inline';
+    document.getElementById('out').style.display='inline';
+    await loadConversation();
+    await loadCredits();
+  }else{
+    document.getElementById('gate').style.display='block';
+    document.getElementById('chat').style.display='none';
+    document.getElementById('fresh').style.display='none';
+    document.getElementById('mem').style.display='none';
+    document.getElementById('out').style.display='none';
+    document.getElementById('credits').style.display='none';
+  }
+});
+
+// ---- conversation ----
+async function loadConversation(){
+  const{data,error}=await sb.from('tello_messages').select('role,content,created_at').order('created_at',{ascending:true}).limit(50);
+  if(error){console.error(error);return}
+  conv=data||[];
+  renderThread();
 }
-function grow(t){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,140)+'px';}
-function onKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();} }
 
-async function ask(preset){
+function renderThread(){
+  const t=document.getElementById('thread');
+  t.innerHTML='';
+  conv.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='turn '+(m.role==='user'?'me':'her');
+    d.textContent=m.content;
+    t.appendChild(d);
+  });
+  t.scrollTop=t.scrollHeight;
+}
+
+function contextWindow(){
+  return conv.slice(-20).map(m=>({role:m.role,content:m.content}));
+}
+
+async function ask(text){
   if(busy)return;
-  const box=$('say');
-  const text=(preset||box.value).trim();
-  if(!text)return;
-  if(!preset){box.value='';grow(box);}
-  $('starters').style.display='none';
-  say(text,'me');
-  turns.push({role:'user',content:text});
-  remember('user',text);
-  busy=true; $('send').disabled=true;
-  const pending=say('Thinking…','her','thinking');
+  const input=document.getElementById('say');
+  const q=text||input.value.trim();
+  if(!q)return;
+  input.value='';
+  input.style.height='auto';
+  document.getElementById('starters').style.display='none';
+
+  conv.push({role:'user',content:q});
+  const ud=document.createElement('div');
+  ud.className='turn me';ud.textContent=q;
+  document.getElementById('thread').appendChild(ud);
+
+  const thinking=document.createElement('div');
+  thinking.className='turn her thinking';thinking.textContent='Thinking…';
+  document.getElementById('thread').appendChild(thinking);
+  document.getElementById('thread').scrollTop=document.getElementById('thread').scrollHeight;
+
+  busy=true;document.getElementById('send').disabled=true;
   try{
     const{data:{session}}=await sb.auth.getSession();
     const res=await fetch(AI_WORKER,{
       method:'POST',
-      headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
       body:JSON.stringify({system:CHARACTER,messages:contextWindow()})
     });
-    const data=await res.json();
-    const reply=data.content?.[0]?.text;
-    if(reply){
-      pending.className='turn her'; pending.textContent=reply;
-      turns.push({role:'assistant',content:reply});
-      remember('assistant',reply);
-      setCredits(data.remaining,data.limit);
-    }else{
-      pending.className='turn her err';
-      pending.textContent=errorText(data,res.status);
-      turns.pop();
-      if(data&&data.error==='limit_reached')setCredits(0,data.limit);
+    if(!res.ok){
+      const err=await res.text();
+      throw new Error(err||('HTTP '+res.status));
     }
+    const data=await res.json();
+    const reply=data.reply||data.content||'';
+    thinking.remove();
+    conv.push({role:'assistant',content:reply});
+    const hd=document.createElement('div');
+    hd.className='turn her';hd.textContent=reply;
+    document.getElementById('thread').appendChild(hd);
+    document.getElementById('thread').scrollTop=document.getElementById('thread').scrollHeight;
+    await loadCredits();
   }catch(e){
-    pending.className='turn her err';
-    pending.textContent='Tello could not be reached. Check your connection and try again.';
-    turns.pop();
+    thinking.remove();
+    const ed=document.createElement('div');
+    ed.className='turn her err';ed.textContent='Something went wrong. '+e.message;
+    document.getElementById('thread').appendChild(ed);
+  }finally{
+    busy=false;document.getElementById('send').disabled=false;
   }
-  busy=false; $('send').disabled=false;
-  $('thread').scrollTop=$('thread').scrollHeight;
 }
 
-// Names are introduced at the beginning of a conversation and then never
-// repeated, so a plain "last N messages" window forgets them first. Keep the
-// opening as well as the recent turns, and mark the gap so she does not think
-// the two halves ran together.
-function contextWindow(){
-  const HEAD=6, TAIL=16;
-  if(turns.length<=HEAD+TAIL)return turns;
-  const skipped=turns.length-HEAD-TAIL;
-  return [
-    ...turns.slice(0,HEAD),
-    {role:'user',content:`[${skipped} earlier messages are not shown here, but they happened.]`},
-    ...turns.slice(-TAIL)
-  ];
+async function newConversation(){
+  if(!confirm('Start a new conversation? This clears the current one.'))return;
+  const{error}=await sb.from('tello_messages').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  if(error){console.error(error);return}
+  conv=[];
+  renderThread();
+  document.getElementById('starters').style.display='flex';
 }
 
-// Say which thing went wrong. "Something went wrong" sends people looking in
-// the wrong place, which is how hours get lost.
-function errorText(data,status){
-  if(status===401)return 'Your session has expired. Sign out and sign back in.';
-  if(data&&data.error==='limit_reached')return data.message||'You have used all your questions for this month.';
-  if(data&&data.error==='credit_system_error')return 'Tello could not check how many questions you have left. Try again in a moment.';
-  if(data&&data.error)return 'Tello could not answer that ('+(data.message||data.error)+').';
-  return 'Tello could not be reached. (HTTP '+status+')';
+// ---- credits ----
+async function loadCredits(){
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    const res=await fetch(AI_WORKER.replace('/chat','/credits'),{
+      headers:{'Authorization':'Bearer '+session.access_token}
+    });
+    if(!res.ok)return;
+    const data=await res.json();
+    const c=document.getElementById('credits');
+    if(data.remaining!==undefined){
+      c.textContent=data.remaining+' credits';
+      c.style.display='inline';
+      c.className='chip'+(data.remaining<=5?' low':'');
+    }
+  }catch(e){console.error(e)}
 }
 
-sb.auth.onAuthStateChange((_e,session)=>{ me=session?.user||null; render(); });
-boot();
+// ---- memory ----
+function openMemory(){
+  const count=conv.length;
+  document.getElementById('mem-count').textContent=count?count+' messages in this conversation.':'No messages yet.';
+  document.getElementById('sheet').classList.add('open');
+}
+function closeMemory(){document.getElementById('sheet').classList.remove('open')}
+async function forgetAll(){
+  if(!confirm('Forget everything? This permanently deletes your entire conversation. This cannot be undone.'))return;
+  const{error}=await sb.from('tello_messages').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  if(error){
+    document.getElementById('mem-msg').textContent='Could not delete: '+error.message;
+    document.getElementById('mem-msg').className='msg show bad';
+    return;
+  }
+  conv=[];
+  renderThread();
+  document.getElementById('starters').style.display='flex';
+  closeMemory();
+}
+
+// ---- input ----
+function onKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask()}
+}
+function grow(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,140)+'px';
+}
 </script>
 </body>
 </html>
