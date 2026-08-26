@@ -24,7 +24,6 @@ body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var
 button,input,textarea{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
 
-/* ---- header ---- */
 .bar{background:var(--pine-deep);color:#fff;flex:none}
 .bar-in{max-width:760px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:12px}
 .mark{font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:20px;letter-spacing:-.01em}
@@ -34,12 +33,10 @@ button{cursor:pointer}
 .linkbtn{background:none;border:none;color:#9fc9bc;font-size:13px;padding:4px}
 .linkbtn:hover{color:#fff}
 
-/* ---- shared shell ---- */
 .wrap{flex:1;display:flex;flex-direction:column;width:100%;max-width:760px;margin:0 auto;padding:0 18px;min-height:0}
 .note{background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);
   border-radius:var(--r);padding:10px 14px;font-size:12.5px;line-height:1.6;margin:16px 0 0}
 
-/* ---- signed out ---- */
 #gate{padding:44px 0 60px;max-width:430px;margin:0 auto;width:100%}
 #gate h1{font-family:'Fraunces',Georgia,serif;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.015em;margin-bottom:12px}
 #gate .sub{color:var(--ink2);font-size:15px;margin-bottom:28px}
@@ -57,7 +54,6 @@ input:focus{border-color:var(--pine)}
 .msg.bad{background:#fdeaea;color:#8a2b2b;border:1px solid #e8a0a0}
 .msg.good{background:var(--mint);color:var(--pine);border:1px solid #b7d68e}
 
-/* ---- chat ---- */
 #chat{flex:1;display:none;flex-direction:column;min-height:0}
 #thread{flex:1;overflow-y:auto;padding:20px 0 8px;display:flex;flex-direction:column;gap:14px}
 .turn{max-width:88%;padding:11px 14px;border-radius:14px;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -101,25 +97,19 @@ input:focus{border-color:var(--pine)}
 
 <div class="wrap">
 
-  <!-- ============ signed out ============ -->
   <div id="gate">
     <h1>Ask Tello anything.</h1>
     <p class="sub">She gives you a straight answer instead of a list of options, and she tells you when she doesn't know.</p>
-
     <div class="msg" id="gate-msg"></div>
-
     <label for="em">Email</label>
     <input type="email" id="em" autocomplete="email" placeholder="you@example.com"/>
     <label for="pw">Password</label>
     <input type="password" id="pw" autocomplete="current-password" placeholder="At least 8 characters"/>
-
     <button class="btn" id="in-btn" onclick="signIn()">Sign in</button>
     <button class="btn btn-ghost" id="up-btn" onclick="signUp()">Create an account</button>
-
     <div class="note">Tello is an AI assistant and can be wrong — check anything that matters. She will not give medical or dosage advice about a specific person; that is for a nurse, doctor or pharmacist.</div>
   </div>
 
-  <!-- ============ signed in ============ -->
   <div id="chat">
     <div id="thread"></div>
     <div class="starters" id="starters">
@@ -159,14 +149,6 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{
   auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,flowType:'implicit',storageKey:'tello-auth'}
 });
 
-// A separate storageKey from the Title22 app on purpose. Someone who signs in
-// here is here to talk, and signing in to Tello must not sign them into a
-// facility — or out of one they had open in another tab.
-
-// Her character. No facility data is fetched or sent from this page: Tello
-// standalone has no reason to see a MAR, a resident or a staff record, so she
-// is never given one. That is the whole difference from the assistant inside
-// Title22, and it is enforced by simply never asking for it.
 const CHARACTER=`You are Tello — the AI assistant for Title22, a compliance system for California Title 22 residential care facilities.
 
 WHO YOU ARE:
@@ -246,6 +228,12 @@ DSS does accept digital MARs — Title 22 regulations specifically allow electro
 "Can my caregivers get CEU training through this?"
 The app has a training dashboard with 14 mandatory Title 22 courses. For partnerships with CEU providers, contact the team.
 
+"Is this HIPAA compliant?"
+Title22 is built around HIPAA requirements — encryption in transit and at rest, role-based access control, full audit trails, and per-facility data isolation. We're finalizing our formal compliance documentation with our infrastructure providers. The security architecture is already in place; the paperwork is being completed.
+
+"Is resident data secure?"
+Yes. Everything is encrypted in transit and at rest. Only invited staff can access data, and each role sees only what they need — a caregiver never sees billing, a read-only invite is what you hand an inspector. Data is separated per facility by license number. Every action is attributed to a specific person and recorded in an immutable audit log.
+
 HOW TO HANDLE CONVERSATIONS:
 
 When someone asks a question, answer it directly. But when a question is vague or missing context, ask one clarifying question before answering — then answer based on their reply. Never ask more than one question at a time.
@@ -285,9 +273,7 @@ You remember your past conversations with this person — what is above is the r
 
 let me=null,conv=[],busy=false;
 
-// ---- auth ----
 function show(msg,ok){const el=document.getElementById('gate-msg');el.textContent=msg;el.className='msg show '+(ok?'good':'bad')}
-function clearMsg(){const el=document.getElementById('gate-msg');el.textContent='';el.className='msg'}
 
 async function signIn(){
   const em=document.getElementById('em').value.trim(),
@@ -310,12 +296,8 @@ async function signUp(){
   show('Check your email for a confirmation link.',true);
 }
 
-function signOut(){
-  sb.auth.signOut();
-  location.reload();
-}
+function signOut(){sb.auth.signOut();location.reload()}
 
-// ---- session ----
 sb.auth.onAuthStateChange(async(_,session)=>{
   me=session?.user||null;
   if(me){
@@ -336,7 +318,6 @@ sb.auth.onAuthStateChange(async(_,session)=>{
   }
 });
 
-// ---- conversation ----
 async function loadConversation(){
   const{data,error}=await sb.from('tello_messages').select('role,content,created_at').order('created_at',{ascending:true}).limit(50);
   if(error){console.error(error);return}
@@ -368,17 +349,14 @@ async function ask(text){
   input.value='';
   input.style.height='auto';
   document.getElementById('starters').style.display='none';
-
   conv.push({role:'user',content:q});
   const ud=document.createElement('div');
   ud.className='turn me';ud.textContent=q;
   document.getElementById('thread').appendChild(ud);
-
   const thinking=document.createElement('div');
   thinking.className='turn her thinking';thinking.textContent='Thinking…';
   document.getElementById('thread').appendChild(thinking);
   document.getElementById('thread').scrollTop=document.getElementById('thread').scrollHeight;
-
   busy=true;document.getElementById('send').disabled=true;
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -392,7 +370,7 @@ async function ask(text){
       throw new Error(err||('HTTP '+res.status));
     }
     const data=await res.json();
-    const reply=data.reply||data.content||'';
+    const reply=data.reply||(Array.isArray(data.content)?data.content.map(b=>b.text||'').join(''):data.content)||'';
     thinking.remove();
     conv.push({role:'assistant',content:reply});
     const hd=document.createElement('div');
@@ -419,7 +397,6 @@ async function newConversation(){
   document.getElementById('starters').style.display='flex';
 }
 
-// ---- credits ----
 async function loadCredits(){
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -437,7 +414,6 @@ async function loadCredits(){
   }catch(e){console.error(e)}
 }
 
-// ---- memory ----
 function openMemory(){
   const count=conv.length;
   document.getElementById('mem-count').textContent=count?count+' messages in this conversation.':'No messages yet.';
@@ -458,7 +434,6 @@ async function forgetAll(){
   closeMemory();
 }
 
-// ---- input ----
 function onKey(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask()}
 }
