@@ -3173,8 +3173,9 @@ function openStaffModal(staffId){
   
   document.getElementById('staff-training').value=(s?.initial_training_complete===true||s?.initial_training_completed===true)?'true':'false';
   document.getElementById('staff-training-hours').value=s?.initial_training_hours||'';
-  document.getElementById('staff-modal-error').classList.remove('show');
+  document.getElementById('staff-modal-error').className='error-msg';
   document.getElementById('staff-delete-btn').style.display=currentStaffId?'inline-block':'none';
+  document.getElementById('staff-save-another-btn').style.display=currentStaffId?'none':'inline-block';
   clearRecordDocs();
   refreshDocSlots('staff',currentStaffId);
   document.getElementById('staff-modal').classList.add('open');
@@ -3191,10 +3192,11 @@ function closeStaffModal(){
 }
 function deleteStaffFromModal(){if(!currentStaffId)return;const s=staffList.find(x=>x.id===currentStaffId);closeStaffModal();deleteStaff(currentStaffId,s?.full_name||s?.name||'this staff member');}
 
-async function saveStaff(){
+async function saveStaff(andAddAnother){
   const nameVal=document.getElementById('staff-name').value.trim();
   const err=document.getElementById('staff-modal-error');
-  if(!nameVal){err.textContent='Name is required.';err.classList.add('show');return;}
+  const wasNew=!currentStaffId;
+  if(!nameVal){err.className='error-msg show';err.textContent='Name is required.';return;}
   const isActive=document.getElementById('staff-active').value==='true';
   const livescanCleared=document.getElementById('staff-livescan').value==='true';
   const mandatedDone=document.getElementById('staff-mandated').value==='true';
@@ -3232,7 +3234,7 @@ async function saveStaff(){
     const{data,error:e}=await sb.from('staff').insert(payload).select().single();
     error=e;if(!e&&data){staffList.push(data);savedId=data.id;track('record_created',{record_type:'staff',record_id:data.id});}
   }
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  if(error){err.className='error-msg show';err.textContent=error.message;return;}
 
   // Now the row has an id, so a scanned certificate — or anything attached to a
   // document slot before the record existed — has something to attach to.
@@ -3242,11 +3244,20 @@ async function saveStaff(){
   const filed=await fileScannedDocument({staffId:savedId});
   const failures=await fileSlotDocuments('staff',savedId);
   if(typeof filed==='string')failures.unshift('Scanned document: '+filed);
-  closeStaffModal();renderStaff();
+  renderStaff();
+  if(filed===true||hadQueue)await loadDocuments();
   if(failures.length){
+    closeStaffModal();
     alert('The staff member was saved, but some documents could not be filed:\n\n'+failures.join('\n')+'\n\nYou can still upload them from the Documents tab.');
-  }else if(filed===true||hadQueue){
-    await loadDocuments();
+  }else if(andAddAnother&&wasNew){
+    // Registering a roster one person at a time otherwise means leaving the
+    // modal and reopening "Add" for every name — this skips that round trip.
+    openStaffModal(null);
+    const ok=document.getElementById('staff-modal-error');
+    ok.className='error-msg show is-ok';
+    ok.textContent=nameVal+' saved. Add the next staff member, or Cancel when the roster is done.';
+  }else{
+    closeStaffModal();
   }
 }
 async function deleteStaff(id,name){
@@ -6830,6 +6841,7 @@ function showSetNewPassword(){
     <div class="modal-footer">
       <button class="btn btn-outline" id="staff-delete-btn" style="display:none;color:var(--red);border-color:var(--red-light);margin-right:auto" onclick="deleteStaffFromModal()"><svg class="ic"><use href="#i-trash"/></svg> Delete</button>
       <button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button>
+      <button class="btn btn-outline" id="staff-save-another-btn" onclick="saveStaff(true)">Save &amp; add another</button>
       <button class="btn btn-primary" onclick="saveStaff()">Save staff member</button>
     </div>
   </div>
