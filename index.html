@@ -3768,7 +3768,12 @@ async function seedDemoData(){
     ]).select();
     if(re)throw re;
     stage='adding the 5 staff';
-    const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
+    // staff.id has no column default (unlike residents.id) — an insert with no
+    // id for this table is rejected outright with a not-null violation, not
+    // silently assigned one. Every row needs an explicit id; the
+    // administrator's is overridden below to satisfy mar_entries' RLS check.
+    const newStaffId=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+    const S=(name,role,hire,tbDue,cprExp,faExp)=>({id:newStaffId(),facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
     const{data:staffD,error:se}=await sb.from('staff').insert([
       {...S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),id:currentUser.id},
       S('James Carter','lead_caregiver',dISO(-500),dISO(120),dISO(20),dISO(90)),
