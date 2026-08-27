@@ -3759,22 +3759,21 @@ async function seedDemoData(){
     stage='adding the 5 staff';
     const S=(name,role,hire,tbDue,cprExp,faExp)=>({facility_id:fac.id,full_name:name,name,role,hire_date:hire,phone:'(559) 555-0100',active:true,tb_test_date:dISO(-200),tb_test_due:tbDue,tb_test_expiry:tbDue,cpr_cert_date:dISO(-300),cpr_cert_expiry:cprExp,first_aid_cert_date:dISO(-300),first_aid_cert_expiry:faExp,livescan_cleared:true,livescan_date:dISO(-320),mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),initial_training_complete:true,initial_training_completed:true,initial_training_hours:16,status:'active'});
     const{data:staffD,error:se}=await sb.from('staff').insert([
-      S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),
+      {...S('Maria Lopez','administrator',dISO(-700),dISO(160),dISO(200),dISO(200)),id:currentUser.id},
       S('James Carter','lead_caregiver',dISO(-500),dISO(120),dISO(20),dISO(90)),
       S('Priya Patel','med_tech',dISO(-400),dISO(90),dISO(150),dISO(150)),
       S('Daniel Reyes','caregiver',dISO(-250),dISO(-10),dISO(180),dISO(180)),
       S('Sofia Ivanova','night_caregiver',dISO(-100),dISO(200),dISO(220),dISO(220)),
     ]).select();
     if(se)throw se;
-    // Doses are administered by a caregiver, not by the account holder. The
-    // seed used to stamp currentUser.id into mar_entries.staff_id, which makes
-    // the sample read as though the owner personally gave every dose for a
-    // month — and, if that column carries a key onto public.staff rather than
-    // auth.users, is rejected outright, which would stop the seed at its
-    // largest insert. Falls back to the account id only if the staff rows came
-    // back without ids.
-    const demoStaffIds=(staffD||[]).map(x=>x&&x.id).filter(Boolean);
-    const byStaff=i=>demoStaffIds.length?demoStaffIds[i%demoStaffIds.length]:currentUser.id;
+    // mar_entries.staff_id is a foreign key to staff.id (confirmed directly —
+    // migrations/2026-08-19_mar_entries_check.sql plus a follow-up query, run
+    // 2026-08-27), and the only INSERT policy on mar_entries requires
+    // staff_id = auth.uid(). No staff row anywhere links id to an auth user,
+    // so those two constraints can only both hold for a row we make hold both
+    // on purpose: the administrator row above is given id = currentUser.id.
+    // The other four staff rows keep generated ids — they exist for the Staff
+    // tab, but are not legal values for staff_id under the current policy.
     stage='adding the medications';
     const M=(resIdx,med,dose,dir,doc)=>({facility_id:fac.id,resident_id:resD[resIdx].id,medication_name:med,dosage:dose,directions:dir,prescriber:doc,rx_number:String(1000000+Math.floor(Math.random()*899999)),pharmacy:'CVS Pharmacy',start_date:dISO(-100),refill_date:dISO(12),status:'active'});
     const{data:medD,error:me}=await sb.from('medications').insert([
@@ -3800,11 +3799,11 @@ async function seedDemoData(){
         if(day===6&&i===0)status='refused';
         if(day===3&&i===4)status='missed';
         const at=new Date(Date.now()-day*86400000);at.setHours(8,0,0,0);
-        marRows.push({facility_id:fac.id,resident_id:m.resident_id,medication_id:m.id,staff_id:byStaff(day+i),administered_at:at.toISOString(),scheduled_time:'8:00 AM',status,notes:status==='refused'?'Resident declined; will re-offer with breakfast. Administrator notified.':status==='missed'?'Dose found unadministered at shift change; physician notified.':null});
+        marRows.push({facility_id:fac.id,resident_id:m.resident_id,medication_id:m.id,staff_id:currentUser.id,administered_at:at.toISOString(),scheduled_time:'8:00 AM',status,notes:status==='refused'?'Resident declined; will re-offer with breakfast. Administrator notified.':status==='missed'?'Dose found unadministered at shift change; physician notified.':null});
       });
     }
     const prnAt=new Date(Date.now()-9*86400000);prnAt.setHours(14,30,0,0);
-    marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:byStaff(1),administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
+    marRows.push({facility_id:fac.id,resident_id:medD[9].resident_id,medication_id:medD[9].id,staff_id:currentUser.id,administered_at:prnAt.toISOString(),scheduled_time:'PRN',status:'given',notes:'PRN reason: c/o knee pain 4/10 — relief reported at 30-min follow-up.'});
     const{error:mre}=await sb.from('mar_entries').insert(marRows);
     if(mre)throw mre;
     stage='adding the incident reports';
