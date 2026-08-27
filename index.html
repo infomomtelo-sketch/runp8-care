@@ -4696,13 +4696,18 @@ function requestFax(){
 // docType must be in the CHECK constraint in
 // migrations/2026-08-09b_title22_document_slot_dates.sql.
 const DOC_SLOTS={
+  // scan:false throughout — the signed BAA covers Supabase, not the Anthropic
+  // API a scan sends the photo to. Staff certs are not resident PHI, but that
+  // BAA gap blocks any photo leaving the browser for a third party, staff
+  // included, until Anthropic is covered too. Uploading goes browser ->
+  // Supabase Storage and touches no AI, so it stays available.
   staff:[
-    {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:true},
-    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:true},
-    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:true},
-    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:true},
-    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:true},
-    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:true},
+    {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:false},
+    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:false},
+    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:false},
+    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:false},
+    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:false},
+    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:false},
   ],
   // scan:false throughout — a resident face sheet is PHI and scanning sends it
   // to a third-party AI service, which we cannot do without a BAA. Uploading
@@ -4874,7 +4879,7 @@ async function uploadSlotDoc({file,docType,staffId=null,residentId=null,kind}){
 }
 
 function slotScan(kind,docType){
-  if(kind!=='staff')return;   // resident scanning is disabled pending a BAA
+  return;   // SCAN DISABLED for every kind — the signed BAA covers Supabase, not the Anthropic API a scan sends photos to. Delete this line to restore per-slot scanning once that's covered too.
   startScan('staff','camera',docType);
 }
 
@@ -6756,7 +6761,7 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><button class="scan-btn" onclick="startScan('staff')"><svg class="ic"><use href="#i-camera"/></svg> Scan to fill</button><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><!-- SCAN DISABLED (staff) — the BAA covers Supabase, not the Anthropic API this sends photos to; uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('staff')"><svg class="ic"><use href="#i-camera"/></svg> Scan to fill</button> --><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
