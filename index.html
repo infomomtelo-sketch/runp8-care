@@ -4707,11 +4707,12 @@ function requestFax(){
 // docType must be in the CHECK constraint in
 // migrations/2026-08-09b_title22_document_slot_dates.sql.
 const DOC_SLOTS={
-  // scan:false throughout — the signed BAA covers Supabase, not the Anthropic
-  // API a scan sends the photo to. Staff certs are not resident PHI, but that
-  // BAA gap blocks any photo leaving the browser for a third party, staff
-  // included, until Anthropic is covered too. Uploading goes browser ->
-  // Supabase Storage and touches no AI, so it stays available.
+  // scan:false throughout — no BAA is signed with anyone yet. Supabase's
+  // HIPAA add-on is still being negotiated (unsigned, as of 2026-08), and
+  // nothing is in motion with Anthropic, the API a scan sends the photo to.
+  // Staff certs are not resident PHI, but that gap blocks any photo leaving
+  // the browser for a third party, staff included. Uploading goes browser ->
+  // Supabase Storage and touches no AI, so it stays available regardless.
   staff:[
     {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:false},
     {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:false},
@@ -4890,7 +4891,7 @@ async function uploadSlotDoc({file,docType,staffId=null,residentId=null,kind}){
 }
 
 function slotScan(kind,docType){
-  return;   // SCAN DISABLED for every kind — the signed BAA covers Supabase, not the Anthropic API a scan sends photos to. Delete this line to restore per-slot scanning once that's covered too.
+  return;   // SCAN DISABLED for every kind — no BAA is signed with anyone yet (Supabase's HIPAA add-on is still being negotiated; nothing is in motion with Anthropic, who a scan sends photos to). Delete this line once both exist.
   startScan('staff','camera',docType);
 }
 
@@ -6772,7 +6773,7 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><!-- SCAN DISABLED (staff) — the BAA covers Supabase, not the Anthropic API this sends photos to; uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('staff')"><svg class="ic"><use href="#i-camera"/></svg> Scan to fill</button> --><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+    <div class="modal-header"><h3 id="staff-modal-title">Add staff member</h3><!-- SCAN DISABLED (staff) — no BAA is signed with anyone yet, Supabase's HIPAA add-on included; uncomment once one covers Anthropic, who this sends photos to --><!-- <button class="scan-btn" onclick="startScan('staff')"><svg class="ic"><use href="#i-camera"/></svg> Scan to fill</button> --><button class="modal-close" onclick="closeStaffModal()">×</button></div>
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Basic info</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
