@@ -189,7 +189,7 @@ const FORMS = {
 
   resident: {
     label: 'Resident face sheet',
-    docHint: 'a California RCFE resident face sheet — most often a LIC 601 Identification and Emergency Information form, an admission record, or a physician\'s report (LIC 602)',
+    docHint: 'a California RCFE resident face sheet — most often a LIC 601 Identification and Emergency Information form, an admission record, or a LIC 602A Medical Assessment (physician\'s report for RCFE)',
     fields: [
       { key: 'name', label: 'Full name', type: 'text', desc: 'The resident\'s full legal name.' },
       { key: 'preferred_name', label: 'Preferred name', type: 'text', desc: 'Nickname or preferred name, if one is given separately from the legal name.' },
@@ -199,7 +199,7 @@ const FORMS = {
       { key: 'diagnosis', label: 'Primary diagnosis', type: 'text', desc: 'Primary diagnosis or medical conditions, comma-separated if there are several. Transcribe what is written; do not interpret or expand abbreviations you are unsure of.' },
       { key: 'allergies', label: 'Allergies', type: 'text', desc: 'Known allergies, comma-separated. Use "NKA" or "None" only if the form explicitly says so.' },
       { key: 'lic601', label: 'LIC 601 on file', type: 'bool', desc: `Answer "yes" only if the scanned document IS itself a completed, signed LIC 601. Otherwise leave empty. ${YESNO_RULE}` },
-      { key: 'lic602', label: 'LIC 602 on file', type: 'bool', desc: `Answer "yes" only if the scanned document IS itself a completed, signed LIC 602 physician\'s report. Otherwise leave empty. ${YESNO_RULE}` },
+      { key: 'lic602a', label: 'LIC 602A on file', type: 'bool', desc: `Answer "yes" only if the scanned document IS itself a completed, signed LIC 602A Medical Assessment (the RCFE physician's report — not the Community Care Facilities LIC 602). Otherwise leave empty. ${YESNO_RULE}` },
       { key: 'isp', label: 'ISP on file', type: 'bool', desc: `Answer "yes" only if the scanned document IS itself a completed individual service plan (ISP) or needs-and-services plan. Otherwise leave empty. ${YESNO_RULE}` },
       { key: 'isp_review_date', label: 'ISP last reviewed', type: 'date', desc: `Date the service plan was last reviewed or updated. ${DATE_RULE}` },
     ],
