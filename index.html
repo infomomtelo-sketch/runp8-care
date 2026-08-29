@@ -533,7 +533,11 @@
         <div class="form-group"><label>License number</label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX"/></div>
         <div class="form-group"><label>Facility capacity</label><input type="number" id="ob-capacity" autocomplete="off" placeholder="6"/></div>
       </div>
-      <div class="form-group"><label>Address</label><input type="text" id="ob-address" autocomplete="street-address" placeholder="1234 Main St, Fresno, CA 93701"/></div>
+      <div class="form-group"><label>Street address</label><input type="text" id="ob-address-street" autocomplete="address-line1" placeholder="1234 Main St"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>City</label><input type="text" id="ob-address-city" autocomplete="address-level2" placeholder="Fresno"/></div>
+        <div class="form-group"><label>ZIP code</label><input type="text" id="ob-address-zip" autocomplete="postal-code" inputmode="numeric" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" placeholder="93701"/></div>
+      </div>
       <div class="form-group"><label>Administrator name</label><input type="text" id="ob-admin-name" autocomplete="name" placeholder="Jane Smith"/></div>
       <div class="form-row">
         <div class="form-group"><label>Certificate number</label><input type="text" id="ob-cert" autocomplete="off" placeholder="RCFE-XXXXXX"/></div>
@@ -1698,12 +1702,20 @@ async function handleOnboard(){
   const ownedCount=ownedFacilityCount();
   if(ownedCount>=t22Limits.facilities){err.textContent=`Your ${T22_LABEL[t22Plan]||t22Plan} plan allows ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;err.classList.add('show');return;}
   const adminCertExpiry=document.getElementById('ob-cert-expiry').value||null;
+  const addrStreet=document.getElementById('ob-address-street').value.trim();
+  const addrCity=document.getElementById('ob-address-city').value.trim();
+  const addrZip=document.getElementById('ob-address-zip').value.trim();
+  // California-only product (see CLAUDE.md), so state is fixed rather than a field to fill in.
+  // "CA" only appears once there is a city or zip to attach it to, so an empty
+  // form still saves address as null instead of the literal string "CA".
+  const cityLine=(addrCity||addrZip)?[addrCity,['CA',addrZip].filter(Boolean).join(' ')].filter(Boolean).join(', '):'';
+  const address=[addrStreet,cityLine].filter(Boolean).join(', ')||null;
   const{data,error}=await sb.from('facilities').insert({
     user_id:currentUser.id,name,
     facility_type:document.getElementById('ob-type').value,
     license_number:document.getElementById('ob-license').value||null,
     capacity:parseInt(document.getElementById('ob-capacity').value)||null,
-    address:document.getElementById('ob-address').value||null,
+    address,
     administrator_name:document.getElementById('ob-admin-name').value.trim()||null,
     administrator_cert_number:document.getElementById('ob-cert').value.trim()||null,
     administrator_cert_expiry:adminCertExpiry,
