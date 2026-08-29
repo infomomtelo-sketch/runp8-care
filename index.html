@@ -877,6 +877,7 @@
               <div style="font-weight:600;margin-bottom:4px;font-size:11px;opacity:.8"><svg class="ic"><use href="#i-spark"/></svg> TELLO — COMPLIANCE TIP</div>
               <div id="mar-ai-tip-text"></div>
             </div>
+            <div class="form-group"><label>Administered by</label><select id="mar-staff-select"><option value="">Select staff member</option></select></div>
             <div class="form-group"><label>Scheduled time</label><select id="mar-scheduled-time" onchange="onMARStatusChange(document.getElementById('mar-status').value)">
               <option value="6:00 AM">6:00 AM</option><option value="8:00 AM">8:00 AM</option>
               <option value="10:00 AM">10:00 AM</option><option value="12:00 PM">12:00 PM</option>
@@ -4020,6 +4021,12 @@ function showMAREntry(){
     else if(!canEdit())alert('There are no residents on file yet, so there is nothing to log against.');
     return;
   }
+  const activeStaff=staffList.filter(s=>s.active!==false);
+  if(!activeStaff.length){
+    if(canEdit()&&confirm('A MAR entry records which staff member gave the dose, and there is no staff on file yet.\n\nAdd one now?'))openStaffModal(null);
+    else if(!canEdit())alert('There is no staff on file yet, so there is nobody to record this dose against.');
+    return;
+  }
   const resSel=document.getElementById('mar-res-select');
   resSel.innerHTML='<option value="">Select Resident</option>';
   resList.forEach(r=>{
@@ -4030,6 +4037,13 @@ function showMAREntry(){
   document.getElementById('mar-med-select').innerHTML='<option value="">Select medication (choose resident first)</option>';
   document.getElementById('mar-med-info').style.display='none';
   document.getElementById('mar-ai-tip').style.display='none';
+  const staffSel=document.getElementById('mar-staff-select');
+  staffSel.innerHTML='<option value="">Select staff member</option>';
+  activeStaff.forEach(s=>{
+    const opt=document.createElement('option');
+    opt.value=s.id;opt.textContent=s.full_name||s.name||'Unknown';
+    staffSel.appendChild(opt);
+  });
   document.getElementById('mar-prn-reason-group').style.display='none';
   const prnInput=document.getElementById('mar-prn-reason');if(prnInput)prnInput.value='';
   document.getElementById('mar-notes').value='';
@@ -4098,7 +4112,9 @@ function closeMARModal(){document.getElementById('mar-modal').classList.remove('
 async function saveMAR(){
   const resId=document.getElementById('mar-res-select').value;
   const medId=document.getElementById('mar-med-select').value;
+  const staffId=document.getElementById('mar-staff-select').value;
   if(!resId||!medId){alert('Please select a resident and medication.');return;}
+  if(!staffId){alert('Please select which staff member administered this dose.');return;}
   const status=document.getElementById('mar-status').value;
   const scheduledTime=document.getElementById('mar-scheduled-time').value;
   let notes=document.getElementById('mar-notes').value.trim();
@@ -4113,7 +4129,7 @@ async function saveMAR(){
   }
   const{error}=await sb.from('mar_entries').insert({
     facility_id:currentFacility.id,resident_id:resId,medication_id:medId,
-    staff_id:currentUser.id,administered_at:new Date().toISOString(),
+    staff_id:staffId,administered_at:new Date().toISOString(),
     scheduled_time:scheduledTime,status,notes:notes||null,
   });
   if(error){alert('Error: '+error.message);return;}
