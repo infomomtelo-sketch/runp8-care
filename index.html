@@ -421,7 +421,7 @@
       <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-clock"/></svg></div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, ISP, admin cert.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-pill"/></svg></div><h3>Digital MAR</h3><p>Log every medication administration with timestamp and caregiver. No paper gaps.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Staff certification tracking</h3><p>CPR, First Aid, LiveScan, TB tests, mandated reporter — tracked per employee.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Resident records</h3><p>LIC 601, LIC 602, ISP, admission agreements — every required form tracked.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Resident records</h3><p>LIC 601, LIC 602A, ISP, admission agreements — every required form tracked.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log MAR and incidents on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
     </div>
   </div>
@@ -706,7 +706,7 @@
           <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></div>
         </div>
         <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
-        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
+        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
       </div>
 
       <!-- INCIDENTS -->
@@ -722,7 +722,7 @@
         <div id="doc-upload-row" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:16px;display:none">
           <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload a document</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602">LIC 602</option><option value="lic602a">LIC 602A</option><option value="physician_report">Physician report</option><option value="isp">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
+            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602a">LIC 602A — Medical Assessment</option><option value="isp">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
             <select id="doc-resident" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
             <select id="doc-staff" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a staff member</option></select>
             <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
@@ -2408,8 +2408,8 @@ const COMPLIANCE_REQUIREMENTS={
     {docType:'training_cert',     label:'16-hour initial training',   truthy:['initial_training_complete','initial_training_completed']},
   ],
   resident:[
-    {docType:'lic601', label:'LIC 601', yes:['lic601']},
-    {docType:'lic602', label:'LIC 602', yes:['lic602']},
+    {docType:'lic601', label:'LIC 601 — Identification and Emergency Information', yes:['lic601']},
+    {docType:'lic602a', label:'LIC 602A — Medical Assessment', yes:['lic602a']},
     {docType:'isp',    label:'ISP',     yes:['isp'], dates:['isp_review_date']},
   ],
 };
@@ -2605,7 +2605,7 @@ async function exportDSSAudit(){
   const d=v=>v?new Date(v).toLocaleDateString():'—';
   const th='padding:6px 8px;border:1px solid #ccc;background:#f0f0f0;font-size:11px;text-align:left';
   const td='padding:5px 8px;border:1px solid #ddd;font-size:11px';
-  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
+  const resRows=residentsD.map(r=>`<tr><td style="${td}">${esc(r.name||r.full_name||'')}</td><td style="${td}">${esc(r.room||r.room_number||'')}</td><td style="${td}">${d(r.dob)}</td><td style="${td}">${d(r.admission_date)}</td><td style="${td}">${yn(r.lic601)}</td><td style="${td}">${yn(r.lic602a)}</td><td style="${td}">${yn(r.isp)}</td><td style="${td}">${d(r.isp_review_date)}</td></tr>`).join('');
   const stRows=staffD.filter(s=>s.active===true).map(s=>`<tr><td style="${td}">${esc(s.full_name||s.name||'')}</td><td style="${td}">${esc(ROLE_LABELS[s.role]||s.role||'')}</td><td style="${td}">${d(s.hire_date)}</td><td style="${td}">${d(s.tb_test_due||s.tb_test_expiry)}</td><td style="${td}">${d(s.cpr_cert_expiry)}</td><td style="${td}">${d(s.first_aid_cert_expiry)}</td><td style="${td}">${s.livescan_cleared?'✓':'✗'}</td><td style="${td}">${s.mandated_reporter_completed?'✓':'✗'}</td><td style="${td}">${(s.initial_training_complete||s.initial_training_completed)?'✓':'✗'}</td></tr>`).join('');
   const statusLabels={given:'Given',refused:'Refused',held:'Held',missed:'MISSED'};
   // Voided entries are printed, not omitted. This table is the centrally
@@ -2623,8 +2623,8 @@ async function exportDSSAudit(){
   <div style="font-size:12px;color:#444;margin-bottom:16px">Generated ${new Date().toLocaleString()} · Period ${since.toLocaleDateString()} — ${new Date().toLocaleDateString()} · California Title 22, Div. 6, Ch. 8</div>
   <table><tr><th style="${th}">Facility</th><th style="${th}">Type</th><th style="${th}">License #</th><th style="${th}">Capacity</th><th style="${th}">Administrator</th><th style="${th}">Admin cert # / expiry</th></tr>
   <tr><td style="${td}">${esc(f.name||'')}</td><td style="${td}">${esc((f.facility_type||'').toUpperCase())}</td><td style="${td}">${esc(f.license_number||'—')}</td><td style="${td}">${esc(f.capacity||'—')}</td><td style="${td}">${esc(f.administrator_name||'—')}</td><td style="${td}">${esc(f.administrator_cert_number||'—')} / ${d(f.administrator_cert_expiry)}</td></tr></table>
-  ${sec('1. Resident roster & required documents','Maps to LIC 602A (Physician’s Report) and resident record requirements — §87506')}
-  <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>
+  ${sec('1. Resident roster & required documents','Maps to LIC 602A (Medical Assessment) and resident record requirements — §87506, §87569')}
+  <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602A</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>
   ${sec('2. Staff certifications','Personnel record requirements — §87411, §87412')}
   <table><tr><th style="${th}">Staff</th><th style="${th}">Role</th><th style="${th}">Hired</th><th style="${th}">TB due</th><th style="${th}">CPR exp</th><th style="${th}">First Aid exp</th><th style="${th}">LiveScan</th><th style="${th}">Mand. Rep.</th><th style="${th}">Initial training</th></tr>${stRows||`<tr><td style="${td}" colspan="9">No active staff on file</td></tr>`}</table>
   ${sec('3. Medication administration record — 90 days','Centrally stored medication record (LIC 622) — §87465')}
@@ -2886,7 +2886,7 @@ function renderResidents(){
   const summary=document.getElementById('res-summary');
   if(!residents.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
-  const docsOk=residents.filter(r=>r.lic601==='yes'&&r.lic602==='yes'&&r.isp==='yes').length;
+  const docsOk=residents.filter(r=>r.lic601==='yes'&&r.lic602a==='yes'&&r.isp==='yes').length;
   document.getElementById('res-count').textContent=residents.length;
   document.getElementById('res-docs-ok').textContent=docsOk;
   document.getElementById('res-docs-missing').textContent=residents.length-docsOk;
@@ -2907,7 +2907,7 @@ function renderResidents(){
         ${age?`<div style="font-size:11px;color:var(--text2);text-align:right"><div style="font-weight:600;font-size:14px;color:var(--text)">${age}</div><div>yrs</div></div>`:''}
       </div>
       ${r.diagnosis?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">${esc(r.diagnosis)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',r.lic601)}${docBadge('LIC 602',r.lic602)}${r.isp==='yes'?'<span class="badge badge-green">ISP ✓</span>':'<span class="badge badge-red">ISP ✗</span>'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${docBadge('LIC 601',r.lic601)}${docBadge('LIC 602A',r.lic602a)}${r.isp==='yes'?'<span class="badge badge-green">ISP ✓</span>':'<span class="badge badge-red">ISP ✗</span>'}</div>
       ${r.admission_date?`<div style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Admitted ${new Date(r.admission_date).toLocaleDateString()}</div>`:''}
     </div>`;
   }).join('');
@@ -2926,7 +2926,7 @@ function openResidentModal(resId){
   document.getElementById('res-diagnosis').value=r?.diagnosis||'';
   document.getElementById('res-allergies').value=r?.allergies||'';
   document.getElementById('res-lic601').value=r?.lic601||'no';
-  document.getElementById('res-lic602').value=r?.lic602||'no';
+  document.getElementById('res-lic602a').value=r?.lic602a||'no';
   document.getElementById('res-isp').value=r?.isp||'no';
   document.getElementById('res-isp-date').value=r?.isp_review_date||'';
   document.getElementById('res-modal-error').classList.remove('show');
@@ -2958,7 +2958,7 @@ async function saveResident(){
     diagnosis:document.getElementById('res-diagnosis').value.trim()||null,
     allergies:document.getElementById('res-allergies').value.trim()||null,
     lic601:document.getElementById('res-lic601').value,
-    lic602:document.getElementById('res-lic602').value,
+    lic602a:document.getElementById('res-lic602a').value,
     isp:document.getElementById('res-isp').value,
     isp_review_date:document.getElementById('res-isp-date').value||null,
     status:'active'
@@ -3003,7 +3003,7 @@ function viewResident(id){
     </div>
     ${r.diagnosis?`<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">PRIMARY DIAGNOSIS</div><div style="font-size:13px">${esc(r.diagnosis)}</div></div>`:''}
     ${r.allergies?`<div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px"><div style="font-size:11px;color:var(--red);font-weight:600;margin-bottom:4px"><svg class="ic"><use href="#i-alert"/></svg> ALLERGIES</div><div style="font-size:13px;color:var(--red)">${esc(r.allergies)}</div></div>`:''}
-    <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602',r.lic602)}${badge('ISP',r.isp)}</div></div>
+    <div><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase">Required documents</div><div style="display:flex;gap:8px;flex-wrap:wrap">${badge('LIC 601',r.lic601)}${badge('LIC 602A',r.lic602a)}${badge('ISP',r.isp)}</div></div>
   </div>`;
   document.getElementById('resident-detail-modal').classList.add('open');
 }
@@ -3755,7 +3755,7 @@ async function seedDemoData(){
       fac=data;
     }
     stage='adding the 8 residents';
-    const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
+    const R=(name,room,dob,adm,dx,allergies,l1,l2,isp)=>({facility_id:fac.id,name,full_name:name,room,room_number:room,dob,date_of_birth:dob,admission_date:adm,diagnosis:dx,allergies,lic601:l1,lic602a:l2,isp,isp_review_date:isp==='yes'?dISO(-40):null,status:'active'});
     const{data:resD,error:re}=await sb.from('residents').insert([
       R('Betty Alvarez','Room 1','1938-04-12',dISO(-400),'Dementia, Hypertension','Penicillin','yes','yes','yes'),
       R('Harold Chen','Room 2','1941-09-03',dISO(-350),'Type 2 Diabetes','None known','yes','yes','yes'),
@@ -4214,7 +4214,7 @@ let dashBriefingLoaded=false;
 async function buildFacilityContext(){
   try{
     const[resData,staffData,tasksData,incData,marData]=await Promise.all([
-      sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602,isp,status').eq('facility_id',currentFacility.id),
+      sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602a,isp,status').eq('facility_id',currentFacility.id),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
@@ -4404,8 +4404,8 @@ async function demoFindings(){
   });
   const docGaps=[];
   residents.forEach(r=>{ const w=nm(r);
-    if(!r.lic601)docGaps.push(w+' — missing LIC 601 (admission agreement)');
-    if(!r.lic602)docGaps.push(w+" — missing LIC 602 (physician's report)");
+    if(!r.lic601)docGaps.push(w+' — missing LIC 601 (Identification and Emergency Information)');
+    if(!r.lic602a)docGaps.push(w+" — missing LIC 602A (Medical Assessment — physician's report for RCFE)");
     if(!r.isp)docGaps.push(w+' — no ISP on file');
     else if(past(r.isp_review_date))docGaps.push(w+' — ISP review overdue ('+r.isp_review_date+')');
   });
@@ -4432,11 +4432,11 @@ async function demoComplianceAnswer(query){
   }else if(q.includes('today')||q.includes('need to do')){
     const todo=[...f.overdue.map(t=>(t.title||'Overdue task')+(t.due_date?' (overdue since '+t.due_date+')':'')),...f.certIssues.slice(0,3),...f.docGaps.slice(0,3)];
     body="<strong>Today's priorities</strong><br><br>"+_bul(todo,"Nothing urgent — you're inspection-ready today.");
-  }else if(q.includes('resident')||q.includes('lic 601')||q.includes('lic601')||q.includes('lic 602')||q.includes('lic602')||q.includes('isp')){
+  }else if(q.includes('resident')||q.includes('lic 601')||q.includes('lic601')||q.includes('lic 602a')||q.includes('lic602a')||q.includes('lic 602')||q.includes('lic602')||q.includes('isp')){
     const nm=o=>o.full_name||o.name||'Unnamed';
     body='<strong>Resident records — '+f.residents.length+' on the roster</strong><br><br>'+
       (f.residents.length?f.residents.slice(0,8).map(r=>'• '+nm(r)+(r.room||r.room_number?' ('+(r.room||r.room_number)+')':'')).join('<br>')+'<br><br>':'')+
-      _bul(f.docGaps,'Every resident has LIC 601, LIC 602 and a current ISP recorded.')+
+      _bul(f.docGaps,'Every resident has LIC 601, LIC 602A and a current ISP recorded.')+
       '<br><br>Worth knowing: a requirement recorded as "yes" with no document attached shows amber on the record. DSS asks for the document, not the answer.';
   }else if(q.includes('medic')||q.includes('mar')||q.includes('dose')||q.includes('refus')){
     body='<strong>Medication administration</strong><br><br>'+
@@ -4555,7 +4555,7 @@ function addAIMessage(text,role){
 }
 
 // ===== DOCUMENTS =====
-const DOC_TYPE_LABELS={lic601:'LIC 601',lic602:'LIC 602',lic602a:'LIC 602A',physician_report:'Physician report',cert:'Certificate',isp:'ISP',tb_test:'TB test / clearance',cpr_card:'CPR card',first_aid:'First Aid card',livescan:'LiveScan clearance',training_cert:'16-hour initial training',mandated_reporter:'Mandated Reporter training',inservice_cert:'In-service training certificate',other:'Other'};
+const DOC_TYPE_LABELS={lic601:'LIC 601 — Identification and Emergency Information',lic602a:'LIC 602A — Medical Assessment',cert:'Certificate',isp:'ISP',tb_test:'TB test / clearance',cpr_card:'CPR card',first_aid:'First Aid card',livescan:'LiveScan clearance',training_cert:'16-hour initial training',mandated_reporter:'Mandated Reporter training',inservice_cert:'In-service training certificate',other:'Other'};
 let facilityDocs=[];
 async function loadDocuments(){
   if(!currentFacility)return;
@@ -4731,7 +4731,7 @@ const DOC_SLOTS={
   // goes browser -> Supabase Storage and touches no AI, so it stays available.
   resident:[
     {docType:'lic601', selectEl:'res-lic601', yes:'yes', scan:false},
-    {docType:'lic602', selectEl:'res-lic602', yes:'yes', scan:false},
+    {docType:'lic602a', selectEl:'res-lic602a', yes:'yes', scan:false},
     {docType:'isp',    selectEl:'res-isp',    yes:'yes', issuedEl:'res-isp-date', scan:false},
   ],
 };
@@ -5904,7 +5904,7 @@ const SCAN_FIELD_MAP={
     diagnosis:{el:'res-diagnosis'},
     allergies:{el:'res-allergies'},
     lic601:{el:'res-lic601',kind:'bool-yesno'},
-    lic602:{el:'res-lic602',kind:'bool-yesno'},
+    lic602a:{el:'res-lic602a',kind:'bool-yesno'},
     isp:{el:'res-isp',kind:'bool-yesno'},
     isp_review_date:{el:'res-isp-date'},
   }},
@@ -6666,11 +6666,11 @@ function showSetNewPassword(){
       <div class="doc-slot-self"><label for="res-lic601">Self-reported</label><select id="res-lic601" onchange="renderDocSlots('resident')"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
     </div>
 
-    <div class="doc-slot" id="docslot-lic602">
-      <div class="doc-slot-title">LIC 602 — Physician's Report</div>
+    <div class="doc-slot" id="docslot-lic602a">
+      <div class="doc-slot-title">LIC 602A — Medical Assessment (Physician's Report for RCFE)</div>
       <div class="doc-slot-status" data-slot-status></div>
       <div class="doc-slot-actions" data-slot-actions></div>
-      <div class="doc-slot-self"><label for="res-lic602">Self-reported</label><select id="res-lic602" onchange="renderDocSlots('resident')"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
+      <div class="doc-slot-self"><label for="res-lic602a">Self-reported</label><select id="res-lic602a" onchange="renderDocSlots('resident')"><option value="no">No — missing</option><option value="yes">Yes — on file</option></select></div>
     </div>
 
     <div class="doc-slot" id="docslot-isp">
