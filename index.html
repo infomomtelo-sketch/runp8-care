@@ -104,6 +104,12 @@
   .form-group label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)}
   .form-group input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;transition:border .15s;background:var(--white);color:var(--text)}
   .form-group input:focus{border-color:var(--teal)}
+  .pw-field{position:relative}
+  .form-group .pw-field input,.modal .form-group .pw-field input{padding-right:38px}
+  .pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);padding:6px;line-height:0;border-radius:var(--radius)}
+  .pw-toggle:hover{color:var(--text)}
+  .pw-toggle.active{color:var(--teal)}
+  .pw-toggle svg{width:18px;height:18px}
   .auth-switch{text-align:center;margin-top:20px;font-size:14px;color:var(--text2)}
   .auth-switch a{color:var(--teal);cursor:pointer;text-decoration:underline}
   .error-msg{background:var(--red-light);color:var(--red);font-size:13px;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;display:none}
@@ -444,7 +450,7 @@
       <div class="auth-divider"><span>or</span></div>
       <form onsubmit="return false;">
         <div class="form-group"><label>Email address</label><input type="email" id="login-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
-        <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••"/></div>
+        <div class="form-group"><label>Password</label><div class="pw-field"><input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••"/><button type="button" class="pw-toggle" onclick="togglePasswordField('login-password',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleLogin()">Log in</button>
       </form>
       <div class="auth-switch" id="login-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('login')">Send it again</a></div>
@@ -467,7 +473,7 @@
       <div class="auth-divider"><span>or</span></div>
       <form onsubmit="return false;">
         <div class="form-group"><label>Email address</label><input type="email" id="signup-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
-        <div class="form-group"><label>Password</label><input type="password" id="signup-password" autocomplete="new-password" placeholder="Create a password"/></div>
+        <div class="form-group"><label>Password</label><div class="pw-field"><input type="password" id="signup-password" autocomplete="new-password" placeholder="Create a password"/><button type="button" class="pw-toggle" onclick="togglePasswordField('signup-password',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
       </form>
       <div class="auth-switch" id="signup-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('signup')">Send it again</a></div>
@@ -497,8 +503,8 @@
         <p>Enter your new password below.</p>
         <div class="error-msg" id="reset-newpass-error"></div>
         <form onsubmit="return false;">
-          <div class="form-group"><label>New password</label><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/></div>
-          <div class="form-group"><label>Confirm new password</label><input type="password" id="reset-newpass-confirm" autocomplete="new-password" placeholder="Type it again"/></div>
+          <div class="form-group"><label>New password</label><div class="pw-field"><input type="password" id="reset-newpass-input" autocomplete="new-password" placeholder="New password (min 6 characters)"/><button type="button" class="pw-toggle" onclick="togglePasswordField('reset-newpass-input',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
+          <div class="form-group"><label>Confirm new password</label><div class="pw-field"><input type="password" id="reset-newpass-confirm" autocomplete="new-password" placeholder="Type it again"/><button type="button" class="pw-toggle" onclick="togglePasswordField('reset-newpass-confirm',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
           <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
         </form>
       </div>
@@ -967,7 +973,7 @@
       <!-- AUDIT LOG -->
       <div id="tab-audit" style="display:none">
         <div class="page-header"><h1>Audit log</h1><span class="badge badge-teal">Administrator only</span></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px"><svg class="ic"><use href="#i-shield"/></svg> Immutable record of every change to residents, medications, MAR entries, staff, and incidents. Entries are written by the database and cannot be edited or deleted.</div>
+        <div style="font-size:13px;color:var(--text2);background:var(--teal-light);border:1px solid #a8dcc8;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px"><svg class="ic"><use href="#i-shield"/></svg> Append-only record of every change to residents, medications, MAR entries, staff, and incidents. Entries are written by the database and cannot be edited or deleted.</div>
         <div class="card">
           <div id="audit-log-list"><div class="empty">Loading...</div></div>
         </div>
@@ -1271,6 +1277,16 @@ function freqLabel(f){ return FREQUENCY_LABELS[f]||f||''; }
 // For text embedded in inline onclick handlers, JS-escape quotes first, then
 // esc() the result: esc(x.replace(/'/g,"\\'")).
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// Toggle a password field between masked and plain text, and flip the eye button's state.
+function togglePasswordField(id,btn){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const show=el.type==='password';
+  el.type=show?'text':'password';
+  btn.classList.toggle('active',show);
+  btn.setAttribute('aria-label',show?'Hide password':'Show password');
+}
 
 // ===== NAVIGATION =====
 function showPage(name){
@@ -6782,7 +6798,7 @@ function showSetNewPassword(){
     <div><div style="color:var(--text2);font-size:11px;margin-bottom:2px">Your access</div><div style="font-weight:500" id="acct-role">—</div></div>
   </div>
   <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px">Password</div>
-  <div class="form-row"><div class="form-group"><label>New password</label><input type="password" id="acct-pw1" autocomplete="new-password" placeholder="At least 8 characters"/></div><div class="form-group"><label>Repeat it</label><input type="password" id="acct-pw2" autocomplete="new-password"/></div></div>
+  <div class="form-row"><div class="form-group"><label>New password</label><div class="pw-field"><input type="password" id="acct-pw1" autocomplete="new-password" placeholder="At least 8 characters"/><button type="button" class="pw-toggle" onclick="togglePasswordField('acct-pw1',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div><div class="form-group"><label>Repeat it</label><div class="pw-field"><input type="password" id="acct-pw2" autocomplete="new-password"/><button type="button" class="pw-toggle" onclick="togglePasswordField('acct-pw2',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div></div>
   <div class="error-msg" id="acct-msg"></div>
   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" style="font-size:13px" id="acct-pw-btn" onclick="changeAccountPassword()">Change password</button><button class="btn btn-outline" style="font-size:13px" onclick="signOutEverywhere()">Sign out everywhere</button></div>
   <div style="font-size:12px;color:var(--text2);margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">To close your account entirely, email <a href="mailto:hello@title-22.com?subject=Close%20my%20Title22%20account" style="color:var(--teal)">hello@title-22.com</a>. Cancelling a subscription and deleting facility records are separate steps — deleting a facility from its own page removes its records, and does not cancel billing.</div>
