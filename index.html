@@ -192,7 +192,7 @@
   .progress-fill.danger{background:var(--red)}
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;overscroll-behavior:contain}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto;overflow-y:auto;max-height:90vh;max-height:90dvh}
+  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:90vh;max-height:90dvh}
   .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
   .modal-header h3{font-size:1rem;font-weight:700}
   .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:0 4px}
@@ -1943,7 +1943,7 @@ addEventListener('scroll',()=>{
 const T22_PAID=['starter','pro','specialist','agency'];
 // Display labels only — the underlying plan keys and Stripe price IDs are
 // unchanged (renaming Stripe products would orphan live subscriptions).
-const T22_LABEL={trial:'Free Trial',edu:'Classroom',starter:'Starter',pro:'Facility',specialist:'Multi-Facility',agency:'Agency'};
+const T22_LABEL={trial:'Free Trial',edu:'Classroom',starter:'Starter',pro:'Pro',specialist:'Multi-Facility',agency:'Agency'};
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:5,        ai:true},
@@ -2285,7 +2285,7 @@ function hideEmptyMenuGroups(){
 // Dim the AI nav when the current tier doesn't include it (kept visible for upsell).
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
-  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title=t22Limits.ai?'':'Multi-Facility & Agency feature';}
+  if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title='';}
 }
 
 // Re-check the account after a failed read, without making anyone reload.
@@ -2310,9 +2310,7 @@ async function retryEntitlement(){
 
 // Show an upgrade prompt for a tier-locked feature and route to billing.
 function showTierUpsell(feature){
-  const msg=feature==='ai'
-    ?'Tello, the AI compliance assistant, is available on Multi-Facility and Agency plans. Upgrade to unlock it.'
-    :`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
+  const msg=`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
   const banner=document.getElementById('tier-upsell-banner');
   const m=document.getElementById('tier-upsell-msg');
   if(m)m.textContent=msg;
