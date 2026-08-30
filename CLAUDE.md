@@ -1,175 +1,48 @@
-# Title22 (runp8-care)
+# runp8-care — working rules
 
-Compliance software for California RCFEs — residential care facilities for the elderly.
-Live at **title22.app**. Real facilities keep real resident records here; a caregiver
-in a real inspection is the person on the other end of every change.
+Single-file vanilla JS/HTML SPA (index.html, ~487KB)
+serving title22.app. Not React. Pages shown via
+showPage()/switchTab(), global onclick handlers.
+Marketing site is a separate repo (title-22-site).
 
-Read this before touching anything. Most of it is the result of something going wrong.
+## Verify before reporting
+Re-read files from the committed branch state after
+committing, not from your working copy, before claiming
+an edit landed.
 
----
+## AI is on every tier (settled Aug 1 2026)
+TIER_LIMITS has ai:true on all tiers including trial.
+Any copy saying AI is a paid-tier feature is stale and
+wrong. Known stale strings still present:
+  ~line 2288  nav tooltip "Multi-Facility & Agency feature"
+  ~line 2314  showTierUpsell "Tello ... available on
+              Multi-Facility and Agency plans"
 
-## Shape of the project
+## Tiers
+Three purchasable: Starter $49 (1 facility), Pro $79 (up
+to 5), Agency $249 (unlimited). Specialist/$149 is
+archived — it survives only as a legacy label for
+existing subscribers. Do not surface it as an offer.
+Marketing sells the $79 tier as "Pro"; the app's
+T22_LABEL renders it "Facility" — these disagree and need
+one name.
 
-| | |
-|---|---|
-| Frontend | **One file**: `index.html`. ~4000 lines, inline `<style>` and `<script>`, no build step, no framework. Deploys to Cloudflare Pages on push to `main`. |
-| Data | Supabase (Postgres + Auth + Storage). Client talks to it directly via `sb` (supabase-js, vendored in `/vendor`). |
-| Workers | `workers/*/index.js` — Cloudflare Workers holding anything that needs a secret. |
-| Migrations | `migrations/*.sql`, applied **by hand** in the Supabase SQL editor. Nothing runs them automatically. |
+## PHI line — do not cross
+Resident documents (LIC 601, LIC 602A, ISP) are PHI and
+are UPLOAD ONLY. No photo-scan of resident or medication
+documents to the Anthropic API — no HIPAA BAA is
+confirmed. Staff records (TB, Live Scan, certs) are
+employment records, not PHI, and may use scan.
+The AI never suggests, corrects, or comments on clinical
+dosage information, on any plan.
 
-Because the frontend is a single script, **a duplicate top-level `function` name silently
-overrides the earlier one and a duplicate `const` is a SyntaxError that breaks the whole
-app**. Before committing a large addition:
+## Claims wording
+Audit log is "append-only" — never "immutable" or
+"tamper-evident". No absolute compliance claims; we don't
+guarantee compliance or inspection outcomes.
 
-```sh
-python3 -c "import re;s=open('index.html').read();open('/tmp/m.js','w').write(re.findall(r'<script>(.*?)</script>',s,re.S)[-1])"
-node --check /tmp/m.js
-grep -oE '^(async )?function [a-zA-Z0-9_]+' /tmp/m.js | sed 's/.*function //' | sort | uniq -d
-```
-
----
-
-## Traps that have already cost real time
-
-### Workers do NOT deploy from GitHub
-
-Merging a PR that changes `workers/**` changes **nothing** in production. Each Worker
-runs code pasted into the Cloudflare dashboard. After merging, the file has to be
-re-pasted by hand and deployed. Say so explicitly every time, or the user will merge and
-reasonably assume it shipped.
-
-### The extract Worker is named `mission-control`
-
-Cloudflare auto-generated that name at creation, and **Workers cannot be renamed**. The
-source lives in `workers/title22-extract/`, but `wrangler.toml` says
-`name = "mission-control"` and must keep saying it — `wrangler deploy` targets whatever
-is named there, so "fixing" it to match the directory creates a second, empty Worker and
-orphans the live one.
-
-Public URL: `https://mission-control.infomomtelo.workers.dev/` — a GET returns a health
-check reporting which bindings are set (booleans only, never values).
-
-### `SUPABASE_SERVICE_KEY`, not `SUPABASE_SERVICE_ROLE_KEY`
-
-The Workers read the shorter name; `.env.example` documents the value under the longer
-one. Getting this wrong makes every request 401 with nothing in the logs to explain it.
-
-### A health check must be able to fail
-
-The original returned `{"status":"ok"}` before reading a single secret, so it passed
-while the Worker was misconfigured — and sent everyone hunting in the wrong place for
-hours. Any check you add must actually exercise what it claims to verify.
-
-### Structured outputs have a grammar size limit
-
-`output_config.format` compiles the JSON schema into a grammar with a hard ceiling.
-Declaring one named property per field, each holding a nested object, blew it at 16
-fields — **every scan failed before the model ever saw the image**, with
-`The compiled grammar is too large`. The schema is now a list of uniform entries with
-`key` as an enum, so the entry shape is declared once. Keep it that way; put field
-descriptions in the system prompt, where they cost the grammar nothing.
-
-### `public.documents` was created outside this repo
-
-It is not in `migrations/`, so its RLS policies and constraints aren't visible here.
-Assume facility-scoped policies (the client-side upload path implies it), but verify in
-Supabase before relying on it.
-
-Because of that, code writing to `documents` cannot assume a column exists. `insertDocumentRow()`
-retries once without `issued_at` / `expires_at` if they are rejected, and rewrites the error
-to name the migration that adds whatever else is missing. Deliberately **not** retried:
-`training_id`. A certificate filed with no link to its training entry looks like a
-successful attach and then never appears, which is worse than a clear failure.
-
----
-
-## Rules that are not negotiable
-
-**Nothing AI-extracted saves itself.** Scan to fill puts values into a form and stops.
-The existing Save button, and the audit-log triggers behind it, remain the only path to
-the database. Two deliberate human gates between a photo and a compliance record. Do not
-add a shortcut past them.
-
-**Low-confidence reads and overwrites are unticked by default.** A caregiver has to
-accept them on purpose.
-
-**`workers/title22-extract/index.js` and `SCAN_FIELD_MAP` in `index.html` are one
-contract.** Same field keys, and every `el` in the map must be a real input id. A key
-with no mapping has nowhere to go. Check both sides when adding a field.
-
-**Resident scanning is disabled pending a HIPAA BAA.** Face sheets are PHI. The button
-is commented out with a marker; re-enabling is deleting two comment wrappers. Do not
-re-enable it without the user confirming a BAA exists.
-
-**Never claim the app is secure or HIPAA-compliant in UI copy.** Photos are sent to a
-third-party AI service, and photos taken on a phone stay in the camera roll. Say what
-actually happens.
-
----
-
-## The most important open problem
-
-**Compliance status is self-reported, and the score counts it.**
-
-`residents.lic601 / lic602 / isp` and `staff.livescan_cleared /
-mandated_reporter_completed / initial_training_complete` are yes/no values a human types.
-Expiry tracking (`cpr_cert_expiry`, `tb_test_due`, `first_aid_cert_expiry`,
-`isp_review_date`) is likewise typed. Nothing checks them against a document.
-
-**A facility can mark everything Yes, score 100% green, and have nothing on file.** In a
-product whose entire purpose is telling you whether you'd survive an inspection, this is
-the most serious thing in the codebase.
-
-Agreed direction: derive from filed documents, keep the typed value, and show anything
-unverified rather than silently overwriting.
-
-**Done so far — document slots.** Every "on file?" control now sits inside a slot
-(`DOC_SLOTS` in `index.html`, rendered by `renderDocSlots`) that pairs the requirement
-with the document proving it: scan or upload to attach, view / print / download / share to
-produce it in an inspection. The typed value is still saved — nothing regressed, the score
-still works — but it is now the secondary line, and **a Yes with no document attached
-renders amber and says an inspector will ask to see it**. Filing a document flips the
-typed control to Yes; evidence beats claim, and Save is still the only writer.
-
-Slots exist on staff (TB, CPR, First Aid, LiveScan, Mandated Reporter, 16-hour training),
-on residents (LIC 601, LIC 602, ISP — upload only, no scan, pending the BAA), and on each
-Training history entry (certificate linked by `documents.training_id`). Documents carry
-`issued_at` / `expires_at` read off the form they were filed from.
-
-**Still open:** badges, the compliance score and the expiry alerts all still read the typed
-column. They should read the newest filed document, fall back to the typed value, and mark
-the difference — the data to do it now exists.
-
----
-
-## Working with this user
-
-- **They work from a phone.** They have no local clone, no Node, no `wrangler`. Anything
-  requiring a terminal on their machine will not happen — use the Cloudflare and Supabase
-  dashboards, and the GitHub web UI.
-- **Do not push without being asked.** `main` auto-deploys to the live site.
-- **Their messages are often truncated mid-sentence.** If one cuts off, say so and ask,
-  rather than guessing at the ending.
-- **Give one action at a time.** Multi-line command blocks get pasted whole, which breaks
-  anything that prompts for input.
-- **Say plainly when something is a hypothesis.** Several hours went into a latency theory
-  that was wrong; the actual error was in a screenshot the whole time. Ask for the error
-  text early.
-
----
-
-## Verifying without access
-
-This container cannot reach `title22.app` or `*.workers.dev` — the egress proxy 403s both.
-Do not conclude a Worker is down from a failed curl here; it proves nothing.
-
-What does work: serve the repo locally and drive it in Chromium.
-
-```sh
-npx --yes http-server -p 8099 -s . &     # file:// breaks absolute /vendor paths
-# then Playwright at http://127.0.0.1:8099/index.html
-```
-
-Stubbing `window.fetch` and `sb` makes the scan and save paths fully testable offline.
-This is how the "cancelled scan attaches its document to the next record saved" bug was
-caught before it shipped — worth doing for anything touching shared state.
+## Known open bugs
+- Mobile Safari: add/edit modals won't scroll. No
+  -webkit-overflow-scrolling in the file.
+- No password show/hide toggle on auth fields.
+- trial tier grants facilities:5, same as the $79 tier.
