@@ -422,13 +422,13 @@
       <div class="section-sub">Built with requirements guided by a certified California RCFE administrator</div>
     </div>
     <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>Title 22 compliance checklist</h3><p>Every requirement pre-loaded and tied to the exact CCR regulation code.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>Title 22 compliance checklist</h3><p>The Title 22 requirements we track, pre-loaded — each with its CCR reference where that reference is confirmed.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--red-light)"><svg class="ic"><use href="#i-chart"/></svg></div><h3>Inspection readiness score</h3><p>Real-time score shows exactly where your facility stands before DSS arrives.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-clock"/></svg></div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, ISP, admin cert.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-pill"/></svg></div><h3>Digital MAR</h3><p>Log every medication administration with timestamp and caregiver. No paper gaps.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Staff certification tracking</h3><p>CPR, First Aid, LiveScan, TB tests, mandated reporter — tracked per employee.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Resident records</h3><p>LIC 601, LIC 602A, ISP, admission agreements — every required form tracked.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log MAR and incidents on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log MAR and incidents on shift. Each role sees only what it needs, and read-only lets someone review records without changing them.</p></div>
     </div>
   </div>
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
@@ -611,7 +611,7 @@
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and read-only lets someone review records without changing them.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="dismissTeamPrompt()">Not now</button>
@@ -1839,7 +1839,7 @@ const TOUR_STEPS=[
    body:'Title 22 requirements with dates against them. Overdue rises to the top, because that is the order the questions come in.'},
   {tab:'team', sel:'#tab-team .page-header',
    title:'Five roles, and you choose them',
-   body:'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions. Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
+   body:'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions. Read-only can see records but change nothing. Nobody picks their own — the administrator sets it when the invitation goes out.'},
   {tab:'ai', sel:'#tab-ai .card',
    title:'Now ask me something',
    body:'Try "am I ready for DSS?" or "which residents are missing documents?". I read this facility\u2019s actual records and answer from them.'},
@@ -4491,7 +4491,7 @@ async function demoComplianceAnswer(query){
       (f.staff.length?f.staff.slice(0,8).map(x=>'• '+nm(x)+(x.role?' — '+String(x.role).replace(/_/g,' '):'')).join('<br>')+'<br><br>':'')+
       'Five access roles, and the administrator picks which one each person gets when the invitation is sent — nobody chooses their own. '+
       'A caregiver sees the MAR, daily log, incidents and documents. An in-house caregiver adds residents, medications and the checklist. '+
-      'A supervisor adds staff files. Read-only is what you hand an inspector.';
+      'A supervisor adds staff files. Read-only can see records but change nothing.';
   }else if(q.includes('training')||q.includes('hours')||q.includes('ce')||q.includes('in-service')||q.includes('dementia')){
     body='<strong>Training hours</strong><br><br>'+
       'California expects 40 initial hours — 24 from an approved vendor and 16 hands-on in your facility — then 20 in-service hours a year, '+
@@ -6932,7 +6932,7 @@ function showSetNewPassword(){
   <div class="modal" style="max-width:460px">
     <div class="modal-header"><h3><svg class="ic"><use href="#i-star"/></svg> You're subscribed</h3><button class="modal-close" onclick="closeSubscribedModal()">×</button></div>
     <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:4px">Your plan is active — thank you.</div>
-    <div style="font-size:13px;color:var(--text2);line-height:1.7">The next thing worth doing is bringing your caregivers in. MAR entries and incidents get logged on shift instead of you typing them up later, and each role only sees what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7">The next thing worth doing is bringing your caregivers in. MAR entries and incidents get logged on shift instead of you typing them up later, and each role only sees what it needs — a caregiver never sees billing, and read-only lets someone review records without changing them.</div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeSubscribedModal()">Later</button>
       <button class="btn btn-primary" onclick="inviteFromSubscribed()">Invite your team</button>
