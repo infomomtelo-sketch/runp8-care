@@ -1,4 +1,7 @@
 /trainers.html          https://title-22.com/for-trainers/  301
+# Not a typo in this file: it catches a mistyped /legal.html and sends it to
+# the CURRENT terms rather than to /legal, which is the superseded five-tab
+# legal centre. Leave it pointing at /terms.
 /legal.htmi             /terms                               301
 /privacy.html           /privacy                             308
 /terms.html             /terms                               308
