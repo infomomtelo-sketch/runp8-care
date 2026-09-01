@@ -30,7 +30,7 @@ function displayName(user, fallbackName) {
 function normalizePlan(plan) {
   const labels = {
     starter: 'Starter',
-    pro: 'Facility',
+    pro: 'Pro',
     specialist: 'Multi-Facility',
     agency: 'Agency',
     edu: 'Education',

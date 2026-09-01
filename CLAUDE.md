@@ -13,19 +13,25 @@ an edit landed.
 ## AI is on every tier (settled Aug 1 2026)
 TIER_LIMITS has ai:true on all tiers including trial.
 Any copy saying AI is a paid-tier feature is stale and
-wrong. Known stale strings still present:
-  ~line 2288  nav tooltip "Multi-Facility & Agency feature"
-  ~line 2314  showTierUpsell "Tello ... available on
-              Multi-Facility and Agency plans"
+wrong. The two strings that used to say so (the nav
+tooltip and the showTierUpsell message) are gone; grep
+before adding any new plan-gated wording around Tello.
 
 ## Tiers
 Three purchasable: Starter $49 (1 facility), Pro $79 (up
 to 5), Agency $249 (unlimited). Specialist/$149 is
 archived — it survives only as a legacy label for
 existing subscribers. Do not surface it as an offer.
-Marketing sells the $79 tier as "Pro"; the app's
-T22_LABEL renders it "Facility" — these disagree and need
-one name.
+The $79 tier is "Pro" everywhere: T22_LABEL, the billing
+tab's upgrade card, plan names in customer email
+(workers/title22-email), legal.html, and title-22.com.
+It was briefly "Facility" in the app — don't reintroduce
+that. Stripe plan keys are unchanged (`pro`,
+`specialist`); renaming Stripe products would orphan live
+subscriptions.
+Prices are written out in three places that must move
+together: the upgrade card in index.html, the billing
+section of legal.html, and title-22.com/pricing.
 
 ## PHI line — do not cross
 Resident documents (LIC 601, LIC 602A, ISP) are PHI and
@@ -42,7 +48,8 @@ Audit log is "append-only" — never "immutable" or
 guarantee compliance or inspection outcomes.
 
 ## Known open bugs
-- Mobile Safari: add/edit modals won't scroll. No
-  -webkit-overflow-scrolling in the file.
-- No password show/hide toggle on auth fields.
-- trial tier grants facilities:5, same as the $79 tier.
+None tracked here right now. The three that were listed
+are fixed in main: .modal sets
+-webkit-overflow-scrolling:touch, auth and account fields
+use togglePasswordField(), and trial grants
+facilities:2.
