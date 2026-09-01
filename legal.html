@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Title22 — Legal</title>
+<title>Title22 — Legal (superseded)</title>
+<meta name="robots" content="noindex, follow"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -29,6 +30,8 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2
 .legal-section{display:none}
 .legal-section.active{display:block}
 
+.superseded-note{background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:2rem;font-size:14px;line-height:1.6;color:var(--text)}
+.superseded-note a{color:var(--teal);font-weight:600}
 .legal-header{margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
 .legal-header h1{font-size:1.6rem;font-weight:700;margin-bottom:6px}
 .legal-header p{color:var(--text2);font-size:14px}
@@ -78,6 +81,14 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
 </div>
 
 <div class="page-wrap">
+
+  <div class="superseded-note">
+    <strong>This is an earlier version, kept for reference.</strong>
+    The documents that govern your use of Title22 are the current
+    <a href="/terms.html">Terms of Service</a> and
+    <a href="/privacy.html">Privacy Policy</a> (effective July 10, 2026).
+    Where this page and those documents differ, those documents apply.
+  </div>
 
   <!-- ===== PRIVACY POLICY ===== -->
   <div id="section-privacy" class="legal-section active">
@@ -458,7 +469,7 @@ footer{text-align:center;padding:2rem;font-size:13px;color:var(--text2);border-t
 </div>
 
 <footer>
-  © 2025 Title22 · RunP8 LLC · Fresno, CA ·
+  © 2026 Title22 · RunP8 LLC · Fresno, CA ·
   <a href="#" onclick="showSection('privacy',document.querySelector('.tab'))" style="color:var(--teal)">Privacy</a> ·
   <a href="#" onclick="showSection('terms',document.querySelectorAll('.tab')[1])" style="color:var(--teal)">Terms</a> ·
   <a href="mailto:legal@title22.app" style="color:var(--teal)">legal@title22.app</a>

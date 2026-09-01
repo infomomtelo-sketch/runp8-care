@@ -13,10 +13,9 @@ an edit landed.
 ## AI is on every tier (settled Aug 1 2026)
 TIER_LIMITS has ai:true on all tiers including trial.
 Any copy saying AI is a paid-tier feature is stale and
-wrong. Known stale strings still present:
-  ~line 2288  nav tooltip "Multi-Facility & Agency feature"
-  ~line 2314  showTierUpsell "Tello ... available on
-              Multi-Facility and Agency plans"
+wrong. The two strings that used to say so (the nav
+tooltip and the showTierUpsell message) are gone — grep
+before adding any new plan-gated wording around Tello.
 
 ## Tiers
 Three purchasable: Starter $49 (1 facility), Pro $79 (up
@@ -42,7 +41,14 @@ Audit log is "append-only" — never "immutable" or
 guarantee compliance or inspection outcomes.
 
 ## Known open bugs
-- Mobile Safari: add/edit modals won't scroll. No
-  -webkit-overflow-scrolling in the file.
-- No password show/hide toggle on auth fields.
-- trial tier grants facilities:5, same as the $79 tier.
+None tracked here right now. The three that were listed
+are fixed in main: .modal sets
+-webkit-overflow-scrolling:touch, auth and account fields
+use togglePasswordField(), and trial grants facilities:2.
+
+## legal.html is superseded
+title22.app/legal.html is an older five-tab legal centre
+that duplicates terms.html and privacy.html. It is
+unlinked, noindexed, and carries a banner pointing at the
+current documents. Do not update it as if it were live —
+whether it should exist at all is still open.

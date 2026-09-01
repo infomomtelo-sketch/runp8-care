@@ -2,5 +2,4 @@ User-agent: *
 Allow: /$
 Allow: /privacy
 Allow: /terms
-Allow: /legal
 Disallow: /
