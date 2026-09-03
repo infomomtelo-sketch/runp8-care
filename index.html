@@ -6227,26 +6227,36 @@ function renderLessonTake(){
   const el=lessonsEl();
   if(!el)return;
   const l=lessonById(lessonOpenId);
+  // A view-only account is what you hand an inspector or a consultant, and
+  // its promise is that it cannot add anything. Submitting an attempt would
+  // write a row, so the reading and the questions are shown and the answering
+  // is not. The correct answers stay hidden either way.
+  const viewOnly=!canEdit();
   let questions;
   if(!lessonQuestions.length){
     questions='<div class="empty">There are no questions on this lesson yet.</div>';
   }else{
     questions=lessonQuestions.map((q,i)=>{
       const choices=lessonChoices(q).map((c,ci)=>
-        `<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;margin-top:8px;cursor:pointer"><input type="radio" name="la-q-${i}" value="${ci}" style="width:auto;flex-shrink:0;margin-top:3px"/><span>${esc(c)}</span></label>`
+        viewOnly
+          ?`<div style="font-size:14px;margin-top:8px;color:var(--text2)">${esc(c)}</div>`
+          :`<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;margin-top:8px;cursor:pointer"><input type="radio" name="la-q-${i}" value="${ci}" style="width:auto;flex-shrink:0;margin-top:3px"/><span>${esc(c)}</span></label>`
       ).join('');
       return `<div class="card" style="margin-bottom:8px">
         <div style="font-weight:600">${i+1}. ${esc(q.prompt||'')}</div>
         ${choices||'<div style="font-size:13px;color:var(--text2);margin-top:4px">This question has no choices.</div>'}
       </div>`;
     }).join('')+
-    `<button class="btn btn-primary" style="font-size:13px;margin-top:8px" onclick="submitLessonAttempt()">Submit answers</button>`;
+    (viewOnly
+      ?`<div style="font-size:13px;color:var(--text2);margin-top:12px">This is a view-only account. You can read the lesson and the questions, but you cannot submit answers.</div>`
+      :`<button class="btn btn-primary" style="font-size:13px;margin-top:8px" onclick="submitLessonAttempt()">Submit answers</button>`);
   }
   el.innerHTML=lessonBackBtn()+renderLessonReading(l)+questions;
 }
 
 async function submitLessonAttempt(){
   if(!lessonQuestions.length)return;
+  if(!canEdit()){alert('This is a view-only account. You can read the lesson, but you cannot submit answers.');return;}
   const answers=lessonQuestions.map((q,i)=>{
     const picked=document.querySelector('input[name="la-q-'+i+'"]:checked');
     return picked?parseInt(picked.value,10):null;
