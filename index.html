@@ -610,10 +610,10 @@
           <div style="margin-top:14px"><button class="btn btn-outline" style="font-size:13px" onclick="dismissRoleWelcome()">Got it</button></div>
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
-          <div style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+          <div id="team-prompt-title" style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
+          <div id="team-prompt-body" style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
+            <button id="team-prompt-cta" class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="dismissTeamPrompt()">Not now</button>
           </div>
         </div>
@@ -2302,6 +2302,16 @@ function hideEmptyMenuGroups(){
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
   if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title='';}
+  // Classroom accounts invite students, not caregivers. Left alone on every
+  // other plan.
+  if(t22Plan==='edu'){
+    const t=document.getElementById('team-prompt-title');
+    const b=document.getElementById('team-prompt-body');
+    const c=document.getElementById('team-prompt-cta');
+    if(t)t.innerHTML='<svg class="ic"><use href="#i-users"/></svg> Bring your class in';
+    if(b)b.textContent='Invite your students so each one logs MAR entries and incidents under their own name. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
+    if(c)c.textContent='Invite your students';
+  }
 }
 
 // Re-check the account after a failed read, without making anyone reload.
