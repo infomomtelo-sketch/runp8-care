@@ -383,6 +383,7 @@
         <button id="menu-residents" onclick="switchTab('residents');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-home"/></svg> Residents</button>
         <button id="menu-staff" onclick="switchTab('staff');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-users"/></svg> Staff</button>
         <button id="menu-training" onclick="switchTab('training');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-cap"/></svg> Training</button>
+        <button id="menu-lessons" onclick="switchTab('lessons');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-file"/></svg> Lessons</button>
         <button id="menu-team" onclick="switchTab('team');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-user"/></svg> Team access</button>
         <div data-menu-group="compliance" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">Compliance</div>
         <button id="menu-checklist" onclick="switchTab('checklist');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-check-circle"/></svg> Checklist</button>
@@ -576,6 +577,7 @@
       <button class="nav-item" id="nav-medications" onclick="switchTab('medications')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>Medications</button>
       <button class="nav-item" id="nav-mar" onclick="switchTab('mar')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>MAR</button>
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
+      <button class="nav-item" id="nav-lessons" onclick="switchTab('lessons')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Lessons</button>
       <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Tello</button>
       <button class="nav-item" id="nav-billing" onclick="switchTab('billing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Billing</button>
       <button class="nav-item" id="nav-audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
@@ -610,10 +612,10 @@
           <div style="margin-top:14px"><button class="btn btn-outline" style="font-size:13px" onclick="dismissRoleWelcome()">Got it</button></div>
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
-          <div style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+          <div id="team-prompt-title" style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
+          <div id="team-prompt-body" style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
+            <button id="team-prompt-cta" class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="dismissTeamPrompt()">Not now</button>
           </div>
         </div>
@@ -937,6 +939,41 @@
           </div>
         </div>
       </div>
+      <!-- LESSONS -->
+      <div id="tab-lessons" style="display:none">
+        <div class="page-header"><h1>Lessons</h1><button class="btn btn-primary" id="lesson-new-btn" style="font-size:13px;display:none" onclick="showLessonModal()">+ New Lesson</button></div>
+        <!-- Said plainly and up front, because the rest of this app is the
+             compliance record and this is not part of it. -->
+        <div style="font-size:13px;color:var(--text2);background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px">Reading and knowledge checks written by your trainer, for practice in class. Answers are not a training record and are not part of the compliance file.</div>
+        <div id="lessons-view"><div class="empty">Loading...</div></div>
+
+        <div class="modal-overlay" id="lesson-modal">
+          <div class="modal">
+            <div class="modal-header"><h3 id="lesson-modal-title">New Lesson</h3><button class="modal-close" onclick="closeLessonModal()">&times;</button></div>
+            <div class="form-group"><label>Title</label><input type="text" id="lesson-title" placeholder="What this lesson covers"/></div>
+            <div class="form-group"><label>Reading</label><textarea id="lesson-body" rows="10" placeholder="The reading itself. You write it — Title22 does not supply lesson content." style="resize:vertical"></textarea></div>
+            <div class="form-group"><label>Sort order</label><input type="number" id="lesson-sort" value="0"/></div>
+            <div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="lesson-active" checked style="width:auto"/> Show this lesson to students</label></div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="closeLessonModal()">Cancel</button><button class="btn btn-primary" onclick="saveLesson()">Save</button></div>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="lesson-question-modal">
+          <div class="modal">
+            <div class="modal-header"><h3 id="lesson-question-modal-title">New Question</h3><button class="modal-close" onclick="closeQuestionModal()">&times;</button></div>
+            <div class="form-group"><label>Question</label><textarea id="lq-prompt" rows="3" placeholder="What are you asking?" style="resize:vertical"></textarea></div>
+            <div class="form-group">
+              <label>Choices &mdash; fill in two to four, and mark the correct one</label>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="radio" name="lq-correct" id="lq-correct-0" value="0" style="width:auto;flex-shrink:0" aria-label="Choice 1 is correct"/><input type="text" id="lq-choice-0" placeholder="Choice 1"/></div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="radio" name="lq-correct" id="lq-correct-1" value="1" style="width:auto;flex-shrink:0" aria-label="Choice 2 is correct"/><input type="text" id="lq-choice-1" placeholder="Choice 2"/></div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="radio" name="lq-correct" id="lq-correct-2" value="2" style="width:auto;flex-shrink:0" aria-label="Choice 3 is correct"/><input type="text" id="lq-choice-2" placeholder="Choice 3 (optional)"/></div>
+              <div style="display:flex;align-items:center;gap:10px"><input type="radio" name="lq-correct" id="lq-correct-3" value="3" style="width:auto;flex-shrink:0" aria-label="Choice 4 is correct"/><input type="text" id="lq-choice-3" placeholder="Choice 4 (optional)"/></div>
+            </div>
+            <div class="form-group"><label>Sort order</label><input type="number" id="lq-sort" value="0"/></div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="closeQuestionModal()">Cancel</button><button class="btn btn-primary" onclick="saveQuestion()">Save</button></div>
+          </div>
+        </div>
+      </div>
       <!-- VIDEO HELP MODAL -->
       <div class="modal-overlay" id="video-help-modal">
         <div class="modal" style="max-width:600px;">
@@ -1211,17 +1248,17 @@ let currentUserRole = 'readonly';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'] },
-  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','ai','documents'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'] },
+  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','lessons','ai','documents'] },
   // The shift lead who runs the floor. Resident records and their documents,
   // the medications list so a newly arrived prescription can be added and a
   // stopped one discontinued, and the MAR — including voiding an entry that
   // was logged wrong. Not staff files, not facility settings, not billing or
   // the team list, and canDelete stays false: a lead corrects the record, they
   // do not remove things from it.
-  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','medications','mar','incidents','daily','training','documents'] },
-  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','documents'] },
-  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','documents'] },
+  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','medications','mar','incidents','daily','training','lessons','documents'] },
+  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','lessons','documents'] },
+  readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','lessons','documents'] },
 };
 // What each role means, in the words of the job rather than the words of the
 // permission system. Kept beside ROLE_ACCESS so the two are edited together:
@@ -1306,7 +1343,7 @@ function switchTab(name){
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','partners','documents'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -1328,6 +1365,7 @@ function switchTab(name){
   if(name==='medications')loadMedications();
   if(name==='mar')loadMAR();
   if(name==='team')loadTeam();
+  if(name==='lessons')loadLessons();
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
@@ -2230,7 +2268,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','billing','audit','documents'].forEach(t=>{
+  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
     // The dropdown entries had no ids, so this never reached them: a caregiver
@@ -2302,6 +2340,16 @@ function hideEmptyMenuGroups(){
 function applyTierUI(){
   const navAi=document.getElementById('nav-ai');
   if(navAi){navAi.style.opacity=t22Limits.ai?'':'0.5';navAi.title='';}
+  // Classroom accounts invite students, not caregivers. Left alone on every
+  // other plan.
+  if(t22Plan==='edu'){
+    const t=document.getElementById('team-prompt-title');
+    const b=document.getElementById('team-prompt-body');
+    const c=document.getElementById('team-prompt-cta');
+    if(t)t.innerHTML='<svg class="ic"><use href="#i-users"/></svg> Bring your class in';
+    if(b)b.textContent='Invite your students so each one logs MAR entries and incidents under their own name. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
+    if(c)c.textContent='Invite your students';
+  }
 }
 
 // Re-check the account after a failed read, without making anyone reload.
@@ -4778,6 +4826,23 @@ const DOC_SLOTS={
   ],
 };
 
+// An optional formUrl on a slot puts a "See the blank form" link on it, so
+// someone learning the paperwork can look at the real thing. Link only, and
+// deliberately: CDSS revises these forms, so a copy we downloaded, hosted or
+// cached would sooner or later be teaching the wrong version. No iframe
+// either — CDSS may refuse to be framed.
+//
+// Nothing is filled in below yet, and that is the point of this note. CDSS
+// mostly serves forms from
+//   https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC<number>.pdf
+// but some use a suffix or a different filename, so a URL nobody has opened
+// is a guess, and a guess here shows a student a 404 or the wrong form.
+// Confirmed to resolve so far: LIC 603A and LIC 604 — neither of which has a
+// slot in this app. LIC 601 and LIC 602A are the two slots that want a link;
+// open the candidate URL, and if it is the right form, add formUrl to that
+// slot above. If it 404s, leave the slot without a link.
+const DOC_SLOT_FORM_CAPTION='Opens the current form on the CDSS site.';
+
 // Documents belonging to the record currently open in a modal. Loaded fresh on
 // open rather than filtered out of facilityDocs, which is only populated when
 // the Documents tab has been visited.
@@ -4858,6 +4923,9 @@ function renderDocSlots(kind){
     }
     if(recordDocsNote)status+=`<div class="doc-slot-hint">${esc(recordDocsNote)}</div>`;
     if(!recordId&&!queued.length&&edit)status+=`<div class="doc-slot-hint">You can attach it now — it is filed as soon as you save this record.</div>`;
+    // Shown whether or not a document is on file: the point is to see what the
+    // blank form looks like, which is just as useful once yours is filed.
+    if(slot.formUrl)status+=`<div class="doc-slot-hint"><a href="${esc(slot.formUrl)}" target="_blank" rel="noopener" style="color:var(--teal);font-weight:600">See the blank form</a><br/>${esc(DOC_SLOT_FORM_CAPTION)}</div>`;
     statusEl.innerHTML=status;
 
     const btns=[];
@@ -5905,6 +5973,357 @@ async function deleteTraining(id){
   if(!confirm('Delete this training record?'))return;
   await sb.from('staff_trainings').delete().eq('id',id);
   await loadTrainings();
+}
+
+// ===== LESSONS =====
+// Trainer-authored reading and knowledge checks, used for practice and
+// participation in class.
+//
+// Deliberately not part of the compliance record. Nothing here writes to
+// staff_trainings — a quiz result is a quiz result, never a training record an
+// inspector would read — and there is no pass mark, no hours and no
+// certificate, because certification comes from the state exam and not from an
+// app. Every word of every lesson is written by the trainer; Title22 supplies
+// no content.
+//
+// The trainer is the facility owner; everyone else in the facility is a
+// student. RLS enforces that split server-side, so the checks below choose a
+// view rather than grant anything.
+
+let lessonsRows=[];
+let lessonQuestions=[];
+let lessonOpenId=null;
+let lessonEditId=null;
+let lessonQuestionEditId=null;
+
+function isFacilityOwner(){return !!currentUser&&currentFacility?.user_id===currentUser.id;}
+function lessonById(id){return lessonsRows.find(l=>l.id===id)||null;}
+// choices is jsonb. Anything that is not an array is a row we cannot render,
+// so treat it as no choices rather than throwing halfway down a list.
+function lessonChoices(q){return Array.isArray(q&&q.choices)?q.choices:[];}
+function lessonsEl(){return document.getElementById('lessons-view');}
+function lessonBackBtn(){return '<button class="btn btn-outline" style="font-size:13px;margin-bottom:16px" onclick="loadLessons()">&larr; All lessons</button>';}
+
+async function loadLessons(){
+  const el=lessonsEl();
+  if(!el)return;
+  lessonOpenId=null;
+  const newBtn=document.getElementById('lesson-new-btn');
+  if(newBtn)newBtn.style.display=isFacilityOwner()?'':'none';
+  if(!currentFacility){el.innerHTML='<div class="empty">No facility selected.</div>';return;}
+  el.innerHTML='<div class="empty">Loading...</div>';
+  let q=sb.from('title22_lessons').select('*').eq('facility_id',currentFacility.id);
+  // A hidden lesson is the trainer's draft. They see it, students do not.
+  if(!isFacilityOwner())q=q.eq('active',true);
+  const{data,error}=await q.order('sort_order',{ascending:true}).order('created_at',{ascending:true});
+  if(error){el.innerHTML='<div class="empty">Could not load lessons: '+esc(error.message)+'</div>';return;}
+  lessonsRows=data||[];
+  renderLessonsList();
+}
+
+function renderLessonsList(){
+  const el=lessonsEl();
+  if(!el)return;
+  const owner=isFacilityOwner();
+  if(!lessonsRows.length){
+    el.innerHTML='<div class="empty">'+(owner
+      ?'No lessons yet. The reading and the questions are both yours to write.'
+      :'Your trainer has not posted a lesson yet.')+'</div>';
+    return;
+  }
+  el.innerHTML=lessonsRows.map(l=>{
+    const body=(l.body||'').trim();
+    const preview=body?esc(body.slice(0,160))+(body.length>160?'&hellip;':''):'<span style="color:var(--text2)">No reading written yet.</span>';
+    const hidden=l.active?'':' <span class="badge badge-gray">Hidden from students</span>';
+    const actions=owner
+      ?`<button class="btn btn-outline" style="font-size:12px;padding:4px 8px" onclick="showLessonModal('${esc(l.id)}')">Edit</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 8px" onclick="openLessonQuestions('${esc(l.id)}')">Questions</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 8px" onclick="openLessonResults('${esc(l.id)}')">Results</button>`
+      :`<button class="btn btn-primary" style="font-size:12px;padding:4px 8px" onclick="openLessonTake('${esc(l.id)}')">Open</button>`;
+    return `<div class="card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:600">${esc(l.title||'Untitled lesson')}${hidden}</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:4px">${preview}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${actions}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ----- trainer: writing a lesson -----
+
+function showLessonModal(id){
+  if(!isFacilityOwner()){alert('Only the trainer who owns this facility can write lessons.');return;}
+  lessonEditId=id||null;
+  const l=id?lessonById(id):null;
+  const nextSort=lessonsRows.length?Math.max(...lessonsRows.map(x=>x.sort_order||0))+1:0;
+  document.getElementById('lesson-modal-title').textContent=l?'Edit Lesson':'New Lesson';
+  document.getElementById('lesson-title').value=l?(l.title||''):'';
+  document.getElementById('lesson-body').value=l?(l.body||''):'';
+  document.getElementById('lesson-sort').value=l?(l.sort_order??0):nextSort;
+  document.getElementById('lesson-active').checked=l?!!l.active:true;
+  document.getElementById('lesson-modal').classList.add('open');
+}
+function closeLessonModal(){
+  document.getElementById('lesson-modal').classList.remove('open');
+  lessonEditId=null;
+}
+async function saveLesson(){
+  if(!isFacilityOwner()){alert('Only the trainer who owns this facility can write lessons.');return;}
+  const title=document.getElementById('lesson-title').value.trim();
+  if(!title){alert('Give the lesson a title.');return;}
+  const payload={
+    title,
+    body:document.getElementById('lesson-body').value,
+    sort_order:parseInt(document.getElementById('lesson-sort').value,10)||0,
+    active:document.getElementById('lesson-active').checked
+  };
+  let error;
+  if(lessonEditId){
+    ({error}=await sb.from('title22_lessons').update(payload).eq('id',lessonEditId));
+  }else{
+    ({error}=await sb.from('title22_lessons').insert({...payload,facility_id:currentFacility.id,created_by:currentUser.id}));
+  }
+  if(error){alert('Error: '+error.message);return;}
+  closeLessonModal();
+  await loadLessons();
+}
+
+// ----- trainer: the questions on a lesson -----
+
+async function openLessonQuestions(id){
+  if(!isFacilityOwner()){alert('Only the trainer who owns this facility can edit questions.');return;}
+  lessonOpenId=id;
+  const el=lessonsEl();
+  if(el)el.innerHTML='<div class="empty">Loading...</div>';
+  await refreshLessonQuestions();
+}
+async function refreshLessonQuestions(){
+  const{data,error}=await sb.from('title22_lesson_questions').select('*').eq('lesson_id',lessonOpenId).order('sort_order',{ascending:true});
+  if(error){const el=lessonsEl();if(el)el.innerHTML=lessonBackBtn()+'<div class="empty">Could not load the questions: '+esc(error.message)+'</div>';return;}
+  lessonQuestions=data||[];
+  renderLessonQuestions();
+}
+function renderLessonQuestions(){
+  const el=lessonsEl();
+  if(!el)return;
+  const l=lessonById(lessonOpenId);
+  const rows=lessonQuestions.length?lessonQuestions.map(q=>{
+    const choices=lessonChoices(q).map((c,i)=>
+      `<div style="font-size:13px;color:${i===q.correct_index?'var(--green)':'var(--text2)'};margin-top:2px">${i===q.correct_index?'&#10003; ':'&nbsp;&nbsp;&nbsp;'}${esc(c)}</div>`
+    ).join('');
+    return `<div class="card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:600">${esc(q.prompt||'')}</div>
+          ${choices||'<div style="font-size:13px;color:var(--text2);margin-top:2px">No choices on this question.</div>'}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" style="font-size:12px;padding:4px 8px" onclick="showQuestionModal('${esc(q.id)}')">Edit</button>
+          <button class="btn btn-outline" style="font-size:12px;padding:4px 8px;color:var(--red);border-color:var(--red-light)" onclick="deleteQuestion('${esc(q.id)}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty">No questions on this lesson yet.</div>';
+  el.innerHTML=lessonBackBtn()+
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="font-size:18px;margin:0">${esc(l?l.title:'Lesson')} &mdash; questions</h2>
+      <button class="btn btn-primary" style="font-size:13px" onclick="showQuestionModal()">+ New Question</button>
+    </div>`+rows;
+}
+
+function showQuestionModal(id){
+  if(!isFacilityOwner()){alert('Only the trainer who owns this facility can edit questions.');return;}
+  lessonQuestionEditId=id||null;
+  const q=id?lessonQuestions.find(x=>x.id===id):null;
+  const choices=q?lessonChoices(q):[];
+  const nextSort=lessonQuestions.length?Math.max(...lessonQuestions.map(x=>x.sort_order||0))+1:0;
+  document.getElementById('lesson-question-modal-title').textContent=q?'Edit Question':'New Question';
+  document.getElementById('lq-prompt').value=q?(q.prompt||''):'';
+  for(let i=0;i<4;i++){
+    document.getElementById('lq-choice-'+i).value=choices[i]!==undefined?String(choices[i]):'';
+    document.getElementById('lq-correct-'+i).checked=!!q&&q.correct_index===i;
+  }
+  document.getElementById('lq-sort').value=q?(q.sort_order??0):nextSort;
+  document.getElementById('lesson-question-modal').classList.add('open');
+}
+function closeQuestionModal(){
+  document.getElementById('lesson-question-modal').classList.remove('open');
+  lessonQuestionEditId=null;
+}
+async function saveQuestion(){
+  if(!isFacilityOwner()){alert('Only the trainer who owns this facility can edit questions.');return;}
+  const qPrompt=document.getElementById('lq-prompt').value.trim();
+  if(!qPrompt){alert('Write the question.');return;}
+  const typed=[0,1,2,3].map(i=>document.getElementById('lq-choice-'+i).value.trim());
+  const marked=document.querySelector('input[name="lq-correct"]:checked');
+  const markedIdx=marked?parseInt(marked.value,10):-1;
+  // Blank rows are dropped, so the stored indexes have to be renumbered
+  // against what is actually kept — otherwise marking choice 4 while choice 3
+  // is empty would save the wrong answer as correct.
+  const choices=[];
+  let correct=-1;
+  typed.forEach((c,i)=>{ if(c){ if(i===markedIdx)correct=choices.length; choices.push(c); } });
+  if(choices.length<2){alert('A question needs at least two choices.');return;}
+  if(correct<0){alert('Mark which choice is the correct one.');return;}
+  const payload={prompt:qPrompt,choices,correct_index:correct,sort_order:parseInt(document.getElementById('lq-sort').value,10)||0};
+  let error;
+  if(lessonQuestionEditId){
+    ({error}=await sb.from('title22_lesson_questions').update(payload).eq('id',lessonQuestionEditId));
+  }else{
+    ({error}=await sb.from('title22_lesson_questions').insert({...payload,lesson_id:lessonOpenId}));
+  }
+  if(error){alert('Error: '+error.message);return;}
+  closeQuestionModal();
+  await refreshLessonQuestions();
+}
+async function deleteQuestion(id){
+  if(!confirm('Delete this question? Attempts already submitted keep the answers students gave.'))return;
+  const{error}=await sb.from('title22_lesson_questions').delete().eq('id',id);
+  if(error){alert('Error: '+error.message);return;}
+  await refreshLessonQuestions();
+}
+
+// ----- trainer: who took part -----
+
+// Attempts store a user_id and nothing else about the person, and the table
+// has no foreign key PostgREST could embed a profile through. Build the
+// address book separately from the facility's own members.
+async function lessonMemberEmails(){
+  const map={};
+  if(currentUser&&currentUser.id)map[currentUser.id]=currentUser.email||'';
+  const{data}=await sb.from('facility_members').select('user_id, profiles(email)').eq('facility_id',currentFacility.id);
+  (data||[]).forEach(m=>{ if(m.user_id&&m.profiles&&m.profiles.email)map[m.user_id]=m.profiles.email; });
+  return map;
+}
+
+async function openLessonResults(id){
+  if(!isFacilityOwner()){alert('Only the trainer who owns this facility can see results.');return;}
+  lessonOpenId=id;
+  const el=lessonsEl();
+  if(!el)return;
+  el.innerHTML='<div class="empty">Loading...</div>';
+  const emails=await lessonMemberEmails();
+  const{data,error}=await sb.from('title22_lesson_attempts').select('*').eq('lesson_id',id).order('submitted_at',{ascending:false});
+  if(error){el.innerHTML=lessonBackBtn()+'<div class="empty">Could not load results: '+esc(error.message)+'</div>';return;}
+  const l=lessonById(id);
+  const attempts=data||[];
+  // Newest first, and a retake is its own row — nothing is collapsed into a
+  // "best" or "latest" score, because participation is the point.
+  const rows=attempts.length?attempts.map(a=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <div style="font-weight:600">${esc(emails[a.user_id]||'Unknown')}</div>
+        <div style="font-size:12px;color:var(--text2)">${a.submitted_at?esc(new Date(a.submitted_at).toLocaleString()):'&mdash;'}</div>
+      </div>
+      <div style="font-size:13px;font-weight:600">${a.score} of ${a.total}</div>
+    </div>`).join(''):'<div class="empty">Nobody has answered this lesson yet.</div>';
+  el.innerHTML=lessonBackBtn()+
+    `<h2 style="font-size:18px;margin:0 0 4px">${esc(l?l.title:'Lesson')} &mdash; results</h2>
+     <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Every submission, most recent first. A retake is a separate row. These are practice answers, not a training record.</div>`+rows;
+}
+
+// ----- student: reading and answering -----
+
+async function openLessonTake(id){
+  lessonOpenId=id;
+  const el=lessonsEl();
+  if(!el)return;
+  el.innerHTML='<div class="empty">Loading...</div>';
+  const{data,error}=await sb.from('title22_lesson_questions').select('*').eq('lesson_id',id).order('sort_order',{ascending:true});
+  if(error){el.innerHTML=lessonBackBtn()+'<div class="empty">Could not open this lesson: '+esc(error.message)+'</div>';return;}
+  lessonQuestions=data||[];
+  renderLessonTake();
+}
+
+function renderLessonReading(l){
+  const body=(l&&l.body)?l.body:'';
+  return `<h2 style="font-size:18px;margin:0 0 12px">${esc(l?l.title:'Lesson')}</h2>
+    <div class="card" style="margin-bottom:16px"><div style="font-size:14px;line-height:1.7;white-space:pre-wrap">${body?esc(body):'<span style="color:var(--text2)">This lesson has no reading yet.</span>'}</div></div>`;
+}
+
+function renderLessonTake(){
+  const el=lessonsEl();
+  if(!el)return;
+  const l=lessonById(lessonOpenId);
+  // A view-only account is what you hand an inspector or a consultant, and
+  // its promise is that it cannot add anything. Submitting an attempt would
+  // write a row, so the reading and the questions are shown and the answering
+  // is not. The correct answers stay hidden either way.
+  const viewOnly=!canEdit();
+  let questions;
+  if(!lessonQuestions.length){
+    questions='<div class="empty">There are no questions on this lesson yet.</div>';
+  }else{
+    questions=lessonQuestions.map((q,i)=>{
+      const choices=lessonChoices(q).map((c,ci)=>
+        viewOnly
+          ?`<div style="font-size:14px;margin-top:8px;color:var(--text2)">${esc(c)}</div>`
+          :`<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;margin-top:8px;cursor:pointer"><input type="radio" name="la-q-${i}" value="${ci}" style="width:auto;flex-shrink:0;margin-top:3px"/><span>${esc(c)}</span></label>`
+      ).join('');
+      return `<div class="card" style="margin-bottom:8px">
+        <div style="font-weight:600">${i+1}. ${esc(q.prompt||'')}</div>
+        ${choices||'<div style="font-size:13px;color:var(--text2);margin-top:4px">This question has no choices.</div>'}
+      </div>`;
+    }).join('')+
+    (viewOnly
+      ?`<div style="font-size:13px;color:var(--text2);margin-top:12px">This is a view-only account. You can read the lesson and the questions, but you cannot submit answers.</div>`
+      :`<button class="btn btn-primary" style="font-size:13px;margin-top:8px" onclick="submitLessonAttempt()">Submit answers</button>`);
+  }
+  el.innerHTML=lessonBackBtn()+renderLessonReading(l)+questions;
+}
+
+async function submitLessonAttempt(){
+  if(!lessonQuestions.length)return;
+  if(!canEdit()){alert('This is a view-only account. You can read the lesson, but you cannot submit answers.');return;}
+  const answers=lessonQuestions.map((q,i)=>{
+    const picked=document.querySelector('input[name="la-q-'+i+'"]:checked');
+    return picked?parseInt(picked.value,10):null;
+  });
+  const blank=answers.filter(a=>a===null).length;
+  if(blank){alert('Answer every question first — '+blank+' still blank.');return;}
+  const total=lessonQuestions.length;
+  const score=lessonQuestions.reduce((n,q,i)=>n+(answers[i]===q.correct_index?1:0),0);
+  // Always an insert. A retake is a new row; an earlier attempt is never
+  // rewritten.
+  const{error}=await sb.from('title22_lesson_attempts').insert({
+    lesson_id:lessonOpenId,
+    facility_id:currentFacility.id,
+    user_id:currentUser.id,
+    answers,
+    score,
+    total
+  });
+  if(error){alert('Could not save your answers: '+error.message);return;}
+  renderLessonFeedback(answers,score,total);
+}
+
+function renderLessonFeedback(answers,score,total){
+  const el=lessonsEl();
+  if(!el)return;
+  const l=lessonById(lessonOpenId);
+  const rows=lessonQuestions.map((q,i)=>{
+    const choices=lessonChoices(q);
+    const mine=answers[i];
+    const right=mine===q.correct_index;
+    const mineText=choices[mine]!==undefined?esc(String(choices[mine])):'&mdash;';
+    const correctText=choices[q.correct_index]!==undefined?esc(String(choices[q.correct_index])):'&mdash;';
+    return `<div class="card" style="margin-bottom:8px">
+      <div style="font-weight:600">${i+1}. ${esc(q.prompt||'')}</div>
+      <div style="font-size:13px;margin-top:6px;color:${right?'var(--green)':'var(--red)'}">${right?'&#10003;':'&#10007;'} You answered: ${mineText}</div>
+      ${right?'':`<div style="font-size:13px;margin-top:2px;color:var(--green)">Correct answer: ${correctText}</div>`}
+    </div>`;
+  }).join('');
+  el.innerHTML=lessonBackBtn()+
+    `<h2 style="font-size:18px;margin:0 0 4px">${esc(l?l.title:'Lesson')}</h2>
+     <div style="font-size:15px;font-weight:600;margin-bottom:4px">You got ${score} of ${total}.</div>
+     <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Practice for class. This is not a training record, and you can answer it again as many times as you like.</div>`+
+    rows+
+    `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary" style="font-size:13px" onclick="openLessonTake('${esc(lessonOpenId)}')">Answer it again</button>
+      <button class="btn btn-outline" style="font-size:13px" onclick="loadLessons()">All lessons</button>
+    </div>`;
 }
 
 // ===== SCAN TO FILL =====
