@@ -4826,6 +4826,23 @@ const DOC_SLOTS={
   ],
 };
 
+// An optional formUrl on a slot puts a "See the blank form" link on it, so
+// someone learning the paperwork can look at the real thing. Link only, and
+// deliberately: CDSS revises these forms, so a copy we downloaded, hosted or
+// cached would sooner or later be teaching the wrong version. No iframe
+// either — CDSS may refuse to be framed.
+//
+// Nothing is filled in below yet, and that is the point of this note. CDSS
+// mostly serves forms from
+//   https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC<number>.pdf
+// but some use a suffix or a different filename, so a URL nobody has opened
+// is a guess, and a guess here shows a student a 404 or the wrong form.
+// Confirmed to resolve so far: LIC 603A and LIC 604 — neither of which has a
+// slot in this app. LIC 601 and LIC 602A are the two slots that want a link;
+// open the candidate URL, and if it is the right form, add formUrl to that
+// slot above. If it 404s, leave the slot without a link.
+const DOC_SLOT_FORM_CAPTION='Opens the current form on the CDSS site.';
+
 // Documents belonging to the record currently open in a modal. Loaded fresh on
 // open rather than filtered out of facilityDocs, which is only populated when
 // the Documents tab has been visited.
@@ -4906,6 +4923,9 @@ function renderDocSlots(kind){
     }
     if(recordDocsNote)status+=`<div class="doc-slot-hint">${esc(recordDocsNote)}</div>`;
     if(!recordId&&!queued.length&&edit)status+=`<div class="doc-slot-hint">You can attach it now — it is filed as soon as you save this record.</div>`;
+    // Shown whether or not a document is on file: the point is to see what the
+    // blank form looks like, which is just as useful once yours is filed.
+    if(slot.formUrl)status+=`<div class="doc-slot-hint"><a href="${esc(slot.formUrl)}" target="_blank" rel="noopener" style="color:var(--teal);font-weight:600">See the blank form</a><br/>${esc(DOC_SLOT_FORM_CAPTION)}</div>`;
     statusEl.innerHTML=status;
 
     const btns=[];
