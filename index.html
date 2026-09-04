@@ -2001,7 +2001,7 @@ const T22_LABEL={trial:'Free Trial',edu:'Classroom',starter:'Starter',pro:'Pro',
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:2,        ai:true},
-  edu:        {facilities:1,        ai:true},
+  edu:        {facilities:Infinity, ai:true},
   starter:    {facilities:1,        ai:true},
   pro:        {facilities:5,        ai:true},
   specialist: {facilities:5,        ai:true},
@@ -2011,9 +2011,11 @@ const TIER_LIMITS={
 // facilities a plan pays for. Both the empty-state card and the trainer
 // classroom instructions send people to it as the first thing they do, so
 // counting it against the tier cap made "Load sample facility" open the
-// billing page instead — on every 1-facility plan, which is edu and starter.
-// edu is the plan the classroom flow tells trainers to sign up for, so the
-// documented path upsold the people it was written for.
+// billing page instead — on any 1-facility plan, which is now starter alone.
+// It hit edu too, back when the classroom plan was capped at one facility:
+// the flow that tells trainers to sign up for edu upsold the people it was
+// written for. edu is uncapped now, but the exemption stands on its own —
+// the sample is never a facility a plan pays for.
 const SAMPLE_FACILITY_NAME='Sunrise Demo Home (Sample)';
 function isSampleFacility(f){return !!f&&f.name===SAMPLE_FACILITY_NAME;}
 
