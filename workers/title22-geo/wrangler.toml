@@ -1,0 +1,12 @@
+name = "title22-geo"
+main = "index.js"
+compatibility_date = "2026-09-05"
+
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   GEOAPIFY_API_KEY       — Geoapify key for the address autocomplete API
+#   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY   — Supabase service_role key used to verify the
+#                             caller's JWT before spending a lookup
+#
+# Public route (configured in the Cloudflare dashboard, not here):
+#   https://title22-geo.infomomtelo.workers.dev/api/address

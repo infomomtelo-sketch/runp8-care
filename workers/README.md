@@ -1,6 +1,6 @@
 # Cloudflare Workers — source of truth status
 
-Four Workers back Title22 in production, plus the dashboard-only `stripe-webhook`.
+Five Workers back Title22 in production, plus the dashboard-only `stripe-webhook`.
 
 `title22-ai`'s deployed source **is now committed** (`title22-ai/index.js`,
 pulled 2026-08-03 via the Cloudflare API — see below to re-pull after any
@@ -166,3 +166,28 @@ sheet as read-only — it has nowhere to go.
 - Health check returns binding booleans and fails closed when
   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY`, or `EMAIL_FROM`
   is missing.
+
+## title22-geo
+
+- Route: `https://title22-geo.infomomtelo.workers.dev/api/address`
+- **Not deployed yet.** The source was written in this repo; it still needs
+  `wrangler deploy` from `workers/title22-geo/` and a `GEOAPIFY_API_KEY`
+  secret before the address fields in `index.html` do anything. Until then
+  the frontend degrades to a plain text input, which is the intended
+  fallback — nothing errors and nothing blocks a save.
+- Backs address autocomplete on the facility address fields
+  (`facm-address`, `ob-address-street`). Geoapify was chosen over Google
+  Places on cost: 3,000 autocomplete requests/day free with commercial use
+  allowed, against Google's per-request billing on abandoned sessions.
+- Holds `GEOAPIFY_API_KEY` as a Worker secret. `index.html` has no build
+  step, so a key placed in the page would simply be public — that, and
+  nothing else, is why this Worker exists.
+- Verifies the caller's Supabase JWT with `SUPABASE_URL` +
+  `SUPABASE_SERVICE_KEY` before spending a lookup, so the free tier cannot be
+  drained by anyone who finds the URL.
+- Returns California street addresses only; the product is California-only
+  and onboarding fixes the state rather than asking for it.
+- Carries no PHI. It is sent a partial street address and nothing else, and
+  it must never be pointed at resident, medication or staff data.
+- Health check (`GET` with no `q`) returns binding booleans and fails closed
+  when a secret is missing.

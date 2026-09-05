@@ -218,6 +218,9 @@
   .searchable-option-meta{font-size:11px;color:var(--text2);margin-top:2px}
   .searchable-option-custom{padding:8px 12px;font-size:13px;cursor:pointer;background:var(--gray-bg);color:var(--teal);font-weight:500;border-top:1px solid var(--border)}
   .searchable-option-custom:hover{background:var(--teal-light)}
+  /* Typeahead borrows the searchable-select dropdown wholesale; it only needs
+     to stay left-aligned inside the centred onboarding card. */
+  .ta-dropdown{text-align:left}
   .searchable-group-label{padding:6px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);background:var(--gray-bg);position:sticky;top:0}
   .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--white);font-size:15px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--text)}
   .btn-google:hover{border-color:var(--teal);background:var(--gray-bg)}
@@ -540,12 +543,12 @@
         <div class="form-group"><label>License number</label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX"/></div>
         <div class="form-group"><label>Facility capacity</label><input type="number" id="ob-capacity" autocomplete="off" placeholder="6"/></div>
       </div>
-      <div class="form-group"><label>Street address</label><input type="text" id="ob-address-street" autocomplete="address-line1" placeholder="1234 Main St"/></div>
+      <div class="form-group"><label>Street address</label><input type="text" id="ob-address-street" autocomplete="off" placeholder="1234 Main St"/></div>
       <div class="form-row">
-        <div class="form-group"><label>City</label><input type="text" id="ob-address-city" autocomplete="address-level2" placeholder="Fresno"/></div>
+        <div class="form-group"><label>City</label><input type="text" id="ob-address-city" autocomplete="off" placeholder="Fresno"/></div>
         <div class="form-group"><label>ZIP code</label><input type="text" id="ob-address-zip" autocomplete="postal-code" inputmode="numeric" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" placeholder="93701"/></div>
       </div>
-      <div class="form-group"><label>Administrator name</label><input type="text" id="ob-admin-name" autocomplete="name" placeholder="Jane Smith"/></div>
+      <div class="form-group"><label>Administrator name</label><input type="text" id="ob-admin-name" autocomplete="off" placeholder="Jane Smith"/></div>
       <div class="form-row">
         <div class="form-group"><label>Certificate number</label><input type="text" id="ob-cert" autocomplete="off" placeholder="RCFE-XXXXXX"/></div>
         <div class="form-group"><label>Certificate expiry</label><input type="date" id="ob-cert-expiry" autocomplete="off"/></div>
@@ -780,7 +783,7 @@
         <div class="card">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
-          <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
+          <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" autocomplete="off" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group"><label>Hours</label><input type="number" id="tr-hours" step="0.5" min="0" placeholder="1.0"/></div>
             <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
@@ -903,7 +906,7 @@
               <option value="held">Held per physician order</option>
               <option value="missed">Missed</option>
             </select></div>
-            <div id="mar-prn-reason-group" style="display:none" class="form-group"><label>PRN reason <span style="color:var(--red)">*</span></label><input type="text" id="mar-prn-reason" placeholder="Required: reason PRN was given"/></div>
+            <div id="mar-prn-reason-group" style="display:none" class="form-group"><label>PRN reason <span style="color:var(--red)">*</span></label><input type="text" id="mar-prn-reason" autocomplete="off" placeholder="Required: reason PRN was given"/></div>
             <div class="form-group"><label>Notes (optional)</label><input type="text" id="mar-notes" placeholder="Optional"/></div>
             <div class="modal-footer"><button class="btn btn-outline" onclick="closeMARModal()">Cancel</button><button class="btn btn-primary" onclick="saveMAR()">Save MAR Entry</button></div>
           </div>
@@ -1121,6 +1124,10 @@ const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 // creation and Workers can't be renamed). The source lives in
 // workers/title22-extract/ — see that worker's wrangler.toml before deploying.
 const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extract';
+// Address autocomplete proxy. Holds the Geoapify key as a Worker secret —
+// this page has no build step, so a key put here would simply be public.
+// Source lives in workers/title22-geo/.
+const GEO_WORKER = 'https://title22-geo.infomomtelo.workers.dev/api/address';
 
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
@@ -7089,6 +7096,376 @@ function showSetNewPassword(){
     document.body.style.visibility='visible';
   }
 })();
+
+// ===== TYPEAHEAD =====
+// Type the first letters of a value that repeats across a facility's records
+// and pick it instead of typing the whole thing. This is only a way of
+// putting text into an input: selecting a suggestion sets input.value and
+// fires the same 'input' event a keystroke would, and nothing here touches a
+// save path, a validation rule, or a modal's open/close behaviour. Ignore the
+// dropdown and type by hand and every form behaves exactly as it did before.
+//
+// Two suggestion sources, both chosen so this raises no new PHI question:
+//   1. TA_SEEDS below — bundled with the page, sent nowhere.
+//   2. Values this facility has already saved, read back through the same RLS
+//      that guards every other read. Nothing leaves Supabase.
+// There is no AI, OCR or document scanning anywhere in this feature and none
+// may be added to it. A field needing richer suggestions than those two can
+// give gets none until that has been discussed.
+//
+// NUMBERS ARE NEVER SUGGESTED. taSafe() drops any candidate containing a
+// digit, from either source, and the fields carrying a quantity that has to
+// be right are not registered here at all — see the note above TA_FIELDS.
+
+// Seed lists are starting points, not taxonomies: enough that a new facility
+// gets useful suggestions on day one, after which its own entries carry the
+// weight. Keep every entry digit-free — taSafe() drops it otherwise, so a
+// digit in a seed is a silently dead entry ("type II", not "type 2").
+const TA_SEEDS = {
+  condition: ['Alzheimer’s disease','Anxiety','Arthritis','Asthma','Atrial fibrillation','Bipolar disorder','COPD','Cataracts','Chronic kidney disease','Congestive heart failure','Coronary artery disease','Dementia','Depression','Diabetes mellitus, type II','Epilepsy','GERD','Glaucoma','Hearing loss','High cholesterol','Hypertension','Hypothyroidism','Incontinence','Macular degeneration','Osteoarthritis','Osteoporosis','Parkinson’s disease','Peripheral neuropathy','Schizophrenia','Sleep apnea','Stroke (CVA)','Vascular dementia'],
+  allergy: ['Amoxicillin','Aspirin','Bee stings','Codeine','Dust mites','Eggs','Ibuprofen','Iodine','Latex','Milk / dairy','Morphine','NSAIDs','No known allergies','Peanuts','Penicillin','Pollen','Seasonal allergies','Shellfish','Soy','Sulfa drugs','Tree nuts','Wheat / gluten'],
+  medication: ['Acetaminophen','Albuterol','Amlodipine','Aspirin','Atorvastatin','Carvedilol','Donepezil','Escitalopram','Finasteride','Furosemide','Gabapentin','Hydrochlorothiazide','Ibuprofen','Insulin glargine','Latanoprost','Levothyroxine','Lisinopril','Losartan','Memantine','Metformin','Metoprolol','Mirtazapine','Omeprazole','Ondansetron','Oxybutynin','Pantoprazole','Prednisone','Quetiapine','Rosuvastatin','Sertraline','Simvastatin','Tamsulosin','Trazodone','Vitamin D','Warfarin'],
+  pharmacy: ['CVS Pharmacy','Costco Pharmacy','Kaiser Permanente Pharmacy','Longs Drugs','Omnicare','PharMerica','Raley’s Pharmacy','Rite Aid','Safeway Pharmacy','Save Mart Pharmacy','Vons Pharmacy','Walgreens','Walmart Pharmacy'],
+  training: ['Abuse reporting','Assistance with self-administration of medication','CPR and First Aid','Dementia care','Disaster and emergency preparedness','Fall prevention','Food handling and nutrition','Infection control','Medication management','Personal care and hygiene assistance','Postural supports and restraints','Psychosocial needs','Resident admission and assessment','Resident rights','Safety and supervision','Universal precautions'],
+  city: ['Anaheim','Bakersfield','Chico','Clovis','Concord','Elk Grove','Fremont','Fresno','Hanford','Irvine','Kingsburg','Long Beach','Los Angeles','Madera','Merced','Modesto','Oakland','Oxnard','Porterville','Reedley','Riverside','Sacramento','Salinas','San Bernardino','San Diego','San Francisco','San Jose','Santa Ana','Selma','Stockton','Tulare','Turlock','Visalia'],
+  prn: ['Agitation','Anxiety','Constipation','Cough','Diarrhea','Fever','Headache','Heartburn','Indigestion','Insomnia','Itching','Muscle spasm','Nausea','Pain','Shortness of breath','Vomiting'],
+  corrective: ['Care plan updated','Family notified','Fall mat placed at bedside','First aid administered','Incident reported to DSS','Physician notified','Resident assessed for injury','Resident repositioned and monitored','Room checked for hazards','Staff re-trained on procedure','Vital signs taken and monitored'],
+};
+
+// One entry per input that gets suggestions. Adding one is a decision about
+// the value in that field, not about the form it sits on:
+//   seed   — key into TA_SEEDS, omitted where no sensible bundled list exists
+//            (a facility's prescribers and administrators are its own).
+//   table/column — where past values are read from, scoped to this facility.
+//            Omitted where the value has no column of its own: city is folded
+//            into facilities.address, and a PRN reason is folded into a MAR
+//            note, so the seed list does the work there.
+//   scope  — 'facility' (default) filters on facility_id; 'own' is for the
+//            facilities table itself, which has no such column and is already
+//            scoped by RLS to the facilities this user can see.
+//   multi  — the field holds a comma-separated list, so match and replace the
+//            segment being typed rather than the whole value.
+//
+// NOT registered, and not to be registered without revisiting the rule above:
+// med-dosage and med-directions (both carry a dosage amount), res-room,
+// staff-training-hours, tr-hours, facm-capacity/ob-capacity, staff-phone,
+// med-rx, facm-license/ob-license, facm-admin-cert/ob-cert and
+// ob-address-zip. Names of people and facilities are left alone because they
+// do not repeat, and role/type/status are already <select>s.
+const TA_FIELDS = {
+  'res-diagnosis':   { seed:'condition',  table:'residents',       column:'diagnosis',          multi:true },
+  'res-allergies':   { seed:'allergy',    table:'residents',       column:'allergies',          multi:true },
+  'med-name':        { seed:'medication', table:'medications',     column:'medication_name' },
+  'med-pharmacy':    { seed:'pharmacy',   table:'medications',     column:'pharmacy' },
+  'med-prescriber':  {                    table:'medications',     column:'prescriber' },
+  'tr-topic':        { seed:'training',   table:'staff_trainings', column:'topic' },
+  'inc-corrective':  { seed:'corrective', table:'incidents',       column:'corrective_action',  multi:true },
+  'mar-prn-reason':  { seed:'prn' },
+  'ob-address-city': { seed:'city' },
+  'facm-admin-name': {                    table:'facilities',      column:'administrator_name', scope:'own' },
+  'ob-admin-name':   {                    table:'facilities',      column:'administrator_name', scope:'own' },
+  // Street address is the one field whose suggestions cannot come from a word
+  // list or from past entries — see taAddressLookup below.
+  'facm-address':      { address:'single' },
+  'ob-address-street': { address:'parts' },
+};
+
+// THE GUARD. Every candidate from every word-list source passes through here,
+// so there is one place to look to confirm a number can never be suggested. A
+// digit anywhere disqualifies the value — that costs a legitimate suggestion
+// now and then ("type 2 diabetes" typed by hand won't be offered back), which
+// is the cheaper mistake by a wide margin.
+//
+// Address lookup does not use this and must not: a house number says which
+// building the user picked off a list they can read, not how much of
+// something to give someone. See taAddressLookup.
+function taSafe(v){
+  const s=String(v==null?'':v).trim();
+  return s.length>1&&s.length<=120&&!/\d/.test(s);
+}
+
+const taHistory=new Map();     // cache key -> {at, values}
+const TA_HISTORY_TTL=120000;   // re-read a couple of minutes later so values
+                               // saved since the modal last opened show up,
+                               // without a query per keystroke
+let taActive=null;             // {input, box, options, index}
+let taFilling=false;           // set while we write a chosen value, so the
+                               // 'input' event that write fires does not come
+                               // straight back and reopen the dropdown
+let taSeq=0;                   // only the newest word-list pass may render
+let taAddressSeq=0;            // ditto for address lookups
+let taAddressTimer=null;
+
+function taCacheKey(cfg){
+  return (cfg.scope==='own'?'own':(currentFacility?currentFacility.id:'none'))+'|'+cfg.table+'|'+cfg.column;
+}
+
+// Reads back what this facility has already entered in this field. Supabase
+// has no DISTINCT, so this takes a capped slice and dedupes here — the point
+// is a handful of suggestions, not a complete set.
+async function taLoadHistory(cfg){
+  if(!cfg.table||!cfg.column)return[];
+  const key=taCacheKey(cfg);
+  const hit=taHistory.get(key);
+  if(hit&&(Date.now()-hit.at)<TA_HISTORY_TTL)return hit.values;
+  let values=[];
+  try{
+    let q=sb.from(cfg.table).select(cfg.column).not(cfg.column,'is',null).limit(400);
+    if(cfg.scope!=='own'){
+      if(!currentFacility||!currentFacility.id)return[];
+      q=q.eq('facility_id',currentFacility.id);
+    }
+    const{data,error}=await q;
+    if(error)throw error;
+    const seen=new Set();
+    for(const row of (data||[])){
+      const raw=row[cfg.column];
+      if(raw==null)continue;
+      // A comma-separated field stores "Dementia, Hypertension"; the useful
+      // suggestions are the terms, not the pair someone once typed together.
+      const parts=cfg.multi?String(raw).split(','):[String(raw)];
+      for(const p of parts){
+        const v=p.trim();
+        if(!taSafe(v))continue;
+        const k=v.toLowerCase();
+        if(seen.has(k))continue;
+        seen.add(k);values.push(v);
+      }
+    }
+  }catch(e){
+    // Suggestions are a convenience. A column this deployment does not have,
+    // or a read RLS declines, must never stop someone filling the form.
+    values=[];
+  }
+  taHistory.set(key,{at:Date.now(),values});
+  return values;
+}
+
+// The text the dropdown matches on. For a comma-separated field that is only
+// the segment after the last comma, so "Dementia, hyp" matches "Hypertension"
+// and replaces just the "hyp".
+function taSegment(input,cfg){
+  const value=input.value||'';
+  if(!cfg.multi)return{text:value,start:0};
+  const cut=value.lastIndexOf(',');
+  return cut<0?{text:value,start:0}:{text:value.slice(cut+1),start:cut+1};
+}
+
+// Prefix matches first, then anything merely containing the query — typing
+// "de" puts "Dementia" and "Depression" above "Vascular dementia".
+function taRank(values,query){
+  const q=query.trim().toLowerCase();
+  const seen=new Set();
+  const starts=[],contains=[];
+  for(const v of values){
+    const k=v.toLowerCase();
+    if(seen.has(k))continue;
+    seen.add(k);
+    if(!q){starts.push(v);continue;}
+    const at=k.indexOf(q);
+    if(at===0)starts.push(v);
+    else if(at>0)contains.push(v);
+  }
+  const out=starts.concat(contains);
+  // A dropdown telling you what you have already typed in full is noise.
+  if(out.length===1&&out[0].toLowerCase()===q)return[];
+  return out.slice(0,8);
+}
+
+function taBox(input){
+  if(input.__taBox)return input.__taBox;
+  const parent=input.parentNode;
+  if(getComputedStyle(parent).position==='static')parent.style.position='relative';
+  const box=document.createElement('div');
+  box.className='searchable-dropdown ta-dropdown';
+  box.setAttribute('role','listbox');
+  // mousedown, not click: the input blurs before a click completes, and the
+  // blur handling would close the box out from under the pointer.
+  box.addEventListener('mousedown',function(e){
+    const opt=e.target.closest('[data-ta-index]');
+    if(!opt)return;
+    e.preventDefault();
+    taApply(input,Number(opt.getAttribute('data-ta-index')));
+  });
+  parent.appendChild(box);
+  input.__taBox=box;
+  return box;
+}
+
+function taClose(){
+  if(!taActive)return;
+  taActive.box.classList.remove('open');
+  taActive.box.innerHTML='';
+  taActive=null;
+}
+
+function taRender(input,options){
+  const box=taBox(input);
+  if(!options.length){
+    box.classList.remove('open');box.innerHTML='';
+    if(taActive&&taActive.input===input)taActive=null;
+    return;
+  }
+  box.innerHTML=options.map((o,i)=>
+    '<div class="searchable-option" role="option" data-ta-index="'+i+'">'+esc(o.label)+'</div>'
+  ).join('');
+  box.classList.add('open');
+  taActive={input,box,options,index:-1};
+}
+
+function taHighlight(step){
+  if(!taActive)return;
+  const{box,options}=taActive;
+  let i=taActive.index+step;
+  if(i<0)i=options.length-1;
+  if(i>=options.length)i=0;
+  taActive.index=i;
+  Array.from(box.children).forEach((el,n)=>el.classList.toggle('highlighted',n===i));
+  const el=box.children[i];
+  if(el&&el.scrollIntoView)el.scrollIntoView({block:'nearest'});
+}
+
+// Puts the chosen text in the field the way typing would: set the value, put
+// the caret where a typist's would be, and fire 'input' so anything listening
+// hears the same event it hears from a keystroke. Nothing else is written.
+function taFill(input,value){
+  input.value=value;
+  try{input.setSelectionRange(value.length,value.length);}catch(e){}
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
+function taApply(input,index){
+  if(!taActive||taActive.input!==input)return;
+  const choice=taActive.options[index];
+  if(!choice)return;
+  const cfg=TA_FIELDS[input.id]||{};
+  taFilling=true;
+  try{
+    taClose();
+    if(cfg.address){
+      taApplyAddress(input,cfg,choice);
+    }else{
+      const seg=taSegment(input,cfg);
+      // A comma-separated field keeps everything before the segment being
+      // typed. No separator is appended: the value left in the field is
+      // exactly what a typist would have produced, so the save path sees
+      // nothing new — the user types the next comma themselves.
+      const value=cfg.multi
+        ?input.value.slice(0,seg.start).replace(/\s*$/,seg.start?' ':'')+choice.value
+        :choice.value;
+      taFill(input,value);
+    }
+    if(document.activeElement!==input)input.focus();
+  }finally{taFilling=false;}
+}
+
+// Fills the address field(s) from the address the user picked off the list.
+// Deliberately leaves ob-address-zip alone: it is a purely numeric field, and
+// this feature writes nothing into those. The house number inside the street
+// line stays, because it identifies the building that was selected.
+function taApplyAddress(input,cfg,choice){
+  if(cfg.address==='parts'){
+    taFill(input,choice.line1||choice.label);
+    const city=document.getElementById('ob-address-city');
+    if(city&&choice.city)taFill(city,choice.city);
+    return;
+  }
+  // facilities.address is one composed string, and title22-geo formats the
+  // label the same way handleOnboard composes it, so a facility edited here
+  // reads the same as one created at onboarding.
+  taFill(input,choice.label);
+}
+
+// The only part of this feature that leaves the browser. It reaches
+// title22-geo, which holds the Geoapify key and returns California street
+// addresses. Nothing about a resident, a medication or a staff member is in
+// the request, and no AI or OCR service is involved.
+async function taAddressLookup(input,cfg,query){
+  if(!GEO_WORKER){taRender(input,[]);return;}
+  const seq=++taAddressSeq;
+  let session=null;
+  try{({data:{session}}=await sb.auth.getSession());}catch(e){}
+  if(!session||!session.access_token){taRender(input,[]);return;}
+  try{
+    const res=await fetch(GEO_WORKER+'?q='+encodeURIComponent(query),{
+      headers:{'Authorization':'Bearer '+session.access_token}
+    });
+    if(seq!==taAddressSeq)return;                 // a later keystroke won
+    if(!res.ok){taRender(input,[]);return;}
+    const data=await res.json().catch(()=>({}));
+    if(seq!==taAddressSeq||document.activeElement!==input)return;
+    taRender(input,(data.suggestions||[]).map(s=>({
+      label:s.label,value:s.label,line1:s.line1,city:s.city
+    })));
+  }catch(e){
+    // Offline, worker down, key unset: the field is a plain text input again.
+    if(seq===taAddressSeq)taRender(input,[]);
+  }
+}
+
+async function taSuggest(input){
+  const cfg=TA_FIELDS[input.id];
+  if(!cfg)return;
+  const seq=++taSeq;
+  if(cfg.address){
+    const q=(input.value||'').trim();
+    clearTimeout(taAddressTimer);
+    // Under three characters there is nothing to match on, and every request
+    // spends part of a daily quota.
+    if(q.length<3){taAddressSeq++;taRender(input,[]);return;}
+    taAddressTimer=setTimeout(()=>taAddressLookup(input,cfg,q),250);
+    return;
+  }
+  const seg=taSegment(input,cfg);
+  const q=seg.text.trim();
+  const seeds=(cfg.seed&&TA_SEEDS[cfg.seed])?TA_SEEDS[cfg.seed].filter(taSafe):[];
+  // On a field whose suggestions are all the facility's own, wait for a
+  // letter before showing anything rather than dumping the list on focus.
+  if(!q&&!seeds.length){taRender(input,[]);return;}
+  const history=await taLoadHistory(cfg);
+  if(seq!==taSeq||document.activeElement!==input)return;
+  taRender(input,taRank(seeds.concat(history),q).map(v=>({label:v,value:v})));
+}
+
+// Delegated from document rather than wired per input: the modals these
+// fields live in are parsed after this script runs, and some are re-rendered,
+// so there is no one moment at which they could all be found.
+document.addEventListener('focusin',function(e){
+  if(taFilling)return;
+  const t=e.target;
+  if(taActive&&taActive.input!==t)taClose();
+  if(!t||!t.id||!TA_FIELDS[t.id])return;
+  taSuggest(t);
+});
+document.addEventListener('input',function(e){
+  if(taFilling)return;
+  const t=e.target;
+  if(!t||!t.id||!TA_FIELDS[t.id])return;
+  taSuggest(t);
+});
+document.addEventListener('keydown',function(e){
+  if(!taActive||e.target!==taActive.input)return;
+  if(e.key==='ArrowDown'){e.preventDefault();taHighlight(1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();taHighlight(-1);}
+  else if(e.key==='Enter'){
+    // Only swallow Enter while a suggestion is highlighted, so Enter on a
+    // field someone is typing into behaves as it always has.
+    if(taActive.index>=0){e.preventDefault();taApply(taActive.input,taActive.index);}
+  }
+  else if(e.key==='Escape'){e.preventDefault();taClose();}
+  else if(e.key==='Tab'){taClose();}
+});
+document.addEventListener('focusout',function(e){
+  const t=e.target;
+  // Delayed, and only if focus really left: tabbing straight into another
+  // typeahead field must not close the dropdown that field just opened.
+  setTimeout(function(){
+    if(taActive&&taActive.input===t&&document.activeElement!==t)taClose();
+  },120);
+});
+document.addEventListener('click',function(e){
+  if(taActive&&!taActive.box.contains(e.target)&&e.target!==taActive.input)taClose();
+});
 </script>
 
 <!-- MODALS -->
@@ -7115,8 +7492,8 @@ function showSetNewPassword(){
     <div class="form-group"><label>Room / bed</label><input type="text" id="res-room" placeholder="e.g. Room 1"/></div>
     <div class="form-group"><label>Date of birth</label><input type="date" id="res-dob"/></div>
     <div class="form-group"><label>Admission date</label><input type="date" id="res-admission"/></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" placeholder="e.g. Dementia, Hypertension"/></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" placeholder="e.g. Penicillin"/></div>
+    <div class="form-group" style="grid-column:1/-1"><label>Primary diagnosis</label><input type="text" id="res-diagnosis" autocomplete="off" placeholder="e.g. Dementia, Hypertension"/></div>
+    <div class="form-group" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" autocomplete="off" placeholder="e.g. Penicillin"/></div>
     <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Required documents</div>
     <div style="grid-column:1/-1;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:2px">DSS asks for the document, not the answer. Attach each one here so you can view, print or share it during an inspection.</div>
 
@@ -7157,9 +7534,9 @@ function showSetNewPassword(){
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
   <div class="form-group"><label>Facility type</label><select id="facm-type"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity"/></div></div>
-  <div class="form-group"><label>Address</label><input type="text" id="facm-address"/></div>
+  <div class="form-group"><label>Address</label><input type="text" id="facm-address" autocomplete="off"/></div>
   <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Administrator</div>
-  <div class="form-group"><label>Administrator name</label><input type="text" id="facm-admin-name"/></div>
+  <div class="form-group"><label>Administrator name</label><input type="text" id="facm-admin-name" autocomplete="off"/></div>
   <div class="form-row"><div class="form-group"><label>Certificate number</label><input type="text" id="facm-admin-cert"/></div><div class="form-group"><label>Certificate expiry</label><input type="date" id="facm-admin-expiry"/></div></div>
   <div class="error-msg" id="facility-modal-error"></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeFacilityModal()">Cancel</button><button class="btn btn-primary" onclick="saveFacility()">Save changes</button></div></div>
@@ -7226,11 +7603,11 @@ function showSetNewPassword(){
 
 <div class="modal-overlay" id="med-modal" onclick="if(event.target===this)closeMedModal()">
   <div class="modal" style="max-width:500px"><div class="modal-header"><h3 id="med-modal-title">Add medication</h3><!-- SCAN DISABLED (medication) pending HIPAA BAA — medication labels carry resident names (PHI) — uncomment to restore --><!-- <button class="scan-btn" onclick="startScan('medication')"><svg class="ic"><use href="#i-camera"/></svg> Scan label</button> --><button class="modal-close" onclick="closeMedModal()">×</button></div>
-  <div class="form-group"><label>Medication name</label><input type="text" id="med-name" placeholder="e.g. Metoprolol"/></div>
+  <div class="form-group"><label>Medication name</label><input type="text" id="med-name" autocomplete="off" placeholder="e.g. Metoprolol"/></div>
   <div class="form-row"><div class="form-group"><label>Dosage</label><input type="text" id="med-dosage" placeholder="e.g. 25mg"/></div><div class="form-group"><label>Status</label><select id="med-status"><option value="active">Active</option><option value="discontinued">Discontinued</option></select></div></div>
   <div class="form-group"><label>Directions</label><input type="text" id="med-directions" placeholder="e.g. 1 tablet by mouth twice daily"/></div>
-  <div class="form-row"><div class="form-group"><label>Prescriber</label><input type="text" id="med-prescriber" placeholder="e.g. Dr. Patel"/></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
-  <div class="form-group"><label>Pharmacy</label><input type="text" id="med-pharmacy" placeholder="e.g. CVS Pharmacy"/></div>
+  <div class="form-row"><div class="form-group"><label>Prescriber</label><input type="text" id="med-prescriber" autocomplete="off" placeholder="e.g. Dr. Patel"/></div><div class="form-group"><label>Rx number</label><input type="text" id="med-rx" placeholder="e.g. 1234567"/></div></div>
+  <div class="form-group"><label>Pharmacy</label><input type="text" id="med-pharmacy" autocomplete="off" placeholder="e.g. CVS Pharmacy"/></div>
   <div class="form-row"><div class="form-group"><label>Start date</label><input type="date" id="med-start"/></div><div class="form-group"><label>End date</label><input type="date" id="med-end"/></div></div>
   <div class="form-group"><label>Refill due date</label><input type="date" id="med-refill"/></div>
   <div class="error-msg" id="med-modal-error"></div>
@@ -7384,7 +7761,7 @@ function showSetNewPassword(){
       <div class="form-group" id="inc-physician-time-group" style="display:none"><label>Physician notified at</label><input type="time" id="inc-physician-time"/></div>
       <div class="form-group"><label>Family notified?</label><select id="inc-family" onchange="document.getElementById('inc-family-time-group').style.display=this.value==='yes'?'block':'none'"><option value="no">No</option><option value="yes">Yes</option></select></div>
       <div class="form-group" id="inc-family-time-group" style="display:none"><label>Family notified at</label><input type="time" id="inc-family-time"/></div>
-      <div class="form-group" style="grid-column:1/-1"><label>Corrective action taken</label><textarea id="inc-corrective" rows="2" placeholder="e.g. Resident assessed, physician notified, fall mat placed..."></textarea></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Corrective action taken</label><textarea id="inc-corrective" rows="2" autocomplete="off" placeholder="e.g. Resident assessed, physician notified, fall mat placed..."></textarea></div>
     </div>
     <div class="error-msg" id="inc-modal-error"></div>
     <div class="modal-footer">

@@ -36,6 +36,18 @@ employment records, not PHI, and may use scan.
 The AI never suggests, corrects, or comments on clinical
 dosage information, on any plan.
 
+## Typeahead suggestions
+Form autocomplete draws on two sources only: the
+bundled TA_SEEDS lists and values this facility has
+already saved (read under existing RLS). Never AI, OCR
+or any scan. taSafe() drops any candidate containing a
+digit, and dosage, directions, room, hours, capacity,
+phone, licence, Rx and ZIP fields are not registered at
+all — a number is always typed by hand. Address lookup
+(title22-geo -> Geoapify) is the one exception to the
+digit rule and is limited to the facility address
+fields.
+
 ## Claims wording
 Audit log is "append-only" — never "immutable" or
 "tamper-evident". No absolute compliance claims; we don't
