@@ -1089,7 +1089,7 @@
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px;color:var(--text2)"><svg class="ic ic-lg"><use href="#i-lock"/></svg></div>
-          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
+          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Join the waitlist below and we'll email you when plans open.</div></div>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email support@title22.app.</div></div>
@@ -1115,19 +1115,20 @@
           </div>
         </div>
         <div class="card" style="margin-bottom:20px">
-          <div class="card-title">Upgrade your plan</div>
+          <div class="card-title">Plans</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Checkout is not open yet. Join the waitlist for the plan you want and we'll email you when it opens.</div>
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="joinWaitlist('starter')" data-waitlist="starter" class="btn btn-outline" style="font-size:13px">Join the waitlist</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
               <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility <svg class="ic"><use href="#i-star"/></svg></div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="joinWaitlist('pro')" data-waitlist="pro" class="btn btn-primary" style="font-size:13px">Join the waitlist</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_AGENCY)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="joinWaitlist('agency')" data-waitlist="agency" class="btn btn-outline" style="font-size:13px">Join the waitlist</button></div>
             </div>
           </div>
         </div>
@@ -1199,6 +1200,59 @@ function openStripe(url){
     if(currentUser?.email)link.searchParams.set('prefilled_email',currentUser.email);
     window.open(link.toString(),'_blank');
   }catch(e){window.open(url,'_blank');}
+}
+
+// Self-serve checkout is paused: the three plan buttons on Billing join a
+// waitlist instead of opening Stripe. openStripe and the STRIPE_* links are
+// left exactly as they were, so selling again is a matter of restoring those
+// onclick handlers. The billing-portal button is untouched — people already
+// paying still need it.
+const WAITLIST_LABEL = {starter:'Starter', pro:'Facility', agency:'Agency'};
+
+function waitlistJoined(plan){
+  try{ return localStorage.getItem('title22_waitlist_'+plan)==='1'; }catch(e){ return false; }
+}
+
+// The plan cards are static HTML, so re-mark them on every loadBilling instead
+// of asking the same person to join a list they are already on.
+function markWaitlistButtons(){
+  document.querySelectorAll('[data-waitlist]').forEach(b=>{
+    if(!waitlistJoined(b.dataset.waitlist))return;
+    b.textContent='On the waitlist \u2713';
+    b.disabled=true;
+    b.style.opacity='0.6';
+    b.style.cursor='default';
+  });
+}
+
+function joinWaitlist(plan){
+  // track() writes the same events row every other funnel event uses. It is
+  // fire-and-forget and skipped when signed out or in demo, so the button
+  // never waits on the network and an analytics outage can't break it.
+  track('waitlist_joined',{plan:plan||null});
+  const label=WAITLIST_LABEL[plan]||plan||'this plan';
+  const title=document.getElementById('waitlist-title');
+  const body=document.getElementById('waitlist-body');
+  if(demoMode||!currentUser){
+    // Nothing was recorded — RLS blocks writes from the sandbox — so don't
+    // tell a demo visitor they are on a list they are not on.
+    if(title)title.textContent=demoMode?'Not saved in the demo':'Sign in first';
+    if(body)body.innerHTML=demoMode
+      ?`This is the demo sandbox, so nothing here is saved. Start a free trial and join the ${esc(label)} waitlist from your own account.`
+      :`Sign in and we'll put your account on the ${esc(label)} waitlist.`;
+  }else{
+    try{ localStorage.setItem('title22_waitlist_'+plan,'1'); }catch(e){}
+    markWaitlistButtons();
+    if(title)title.textContent="You're on the waitlist";
+    if(body)body.innerHTML=`You're on the list for <strong>${esc(label)}</strong>. We'll email ${esc(currentUser.email||'the address on your account')} when it opens. Nothing is charged, and your access doesn't change while you wait.`;
+  }
+  const m=document.getElementById('waitlist-modal');
+  if(m)m.classList.add('open');
+}
+
+function closeWaitlistModal(){
+  const m=document.getElementById('waitlist-modal');
+  if(m)m.classList.remove('open');
 }
 
 // flowType is pinned to 'implicit' on purpose — do not "upgrade" it to 'pkce'.
@@ -5699,7 +5753,7 @@ async function grantClassroomAccount(){
 
 // ===== BILLING =====
 async function loadBilling(){
-
+  markWaitlistButtons();
   const el=document.getElementById('billing-plan-details');if(!el)return;
   try{
     // Their access is the facility owner's subscription. Showing them
@@ -5716,7 +5770,7 @@ async function loadBilling(){
     let trialHtml='';
     if(plan==='trial'){
       const daysLeft=ent.daysLeft;
-      trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`<svg class="ic"><use href="#i-clock"/></svg> <strong>${daysLeft} days remaining</strong> on your trial.`:'<svg class="ic"><use href="#i-alert"/></svg> <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
+      trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`<svg class="ic"><use href="#i-clock"/></svg> <strong>${daysLeft} days remaining</strong> on your trial.`:'<svg class="ic"><use href="#i-alert"/></svg> <strong>Trial expired.</strong> Join the waitlist below and we\'ll email you when plans open.'}</div>`;
     }
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
@@ -7907,6 +7961,16 @@ document.addEventListener('click',function(e){
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeSubscribedModal()">Later</button>
       <button class="btn btn-primary" onclick="inviteFromSubscribed()">Invite your team</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="waitlist-modal" onclick="if(event.target===this)closeWaitlistModal()">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3><svg class="ic"><use href="#i-star"/></svg> <span id="waitlist-title">You're on the waitlist</span></h3><button class="modal-close" onclick="closeWaitlistModal()">×</button></div>
+    <div id="waitlist-body" style="font-size:13px;color:var(--text2);line-height:1.7"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeWaitlistModal()">Done</button>
     </div>
   </div>
 </div>
