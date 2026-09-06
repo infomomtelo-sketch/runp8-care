@@ -1,0 +1,8 @@
+# Playwright screenshots from verification runs. These get written to the
+# working directory when a test is run from the repo root; they are throwaway
+# evidence, not project files.
+*.png
+!apple-touch-icon.png
+!favicon-32.png
+!icon-192.png
+!icon-512.png
