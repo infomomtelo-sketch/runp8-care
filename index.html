@@ -221,6 +221,12 @@
   /* Typeahead borrows the searchable-select dropdown wholesale; it only needs
      to stay left-aligned inside the centred onboarding card. */
   .ta-dropdown{text-align:left}
+  /* A count in the summary bar doubles as the filter for what it counts —
+     clicking "Docs missing" shows those residents rather than making someone
+     scan the grid for red badges. */
+  .stat-filter{background:none;border:1.5px solid transparent;border-radius:var(--radius);padding:6px 12px;font:inherit;color:inherit;cursor:pointer;text-align:center;transition:background .15s,border-color .15s}
+  .stat-filter:hover{background:var(--gray-bg)}
+  .stat-filter[aria-pressed="true"]{background:var(--teal-light);border-color:var(--teal)}
   .searchable-group-label{padding:6px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);background:var(--gray-bg);position:sticky;top:0}
   .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--white);font-size:15px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--text)}
   .btn-google:hover{border-color:var(--teal);background:var(--gray-bg)}
@@ -716,9 +722,9 @@
       <div id="tab-residents" style="display:none">
         <div class="page-header"><h1>Residents</h1><button class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button></div>
         <div id="res-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
-          <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div><div style="font-size:11px;color:var(--text2)">Residents</div></div>
-          <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div><div style="font-size:11px;color:var(--text2)">Docs complete</div></div>
-          <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></div>
+          <button type="button" class="stat-filter" id="res-filter-all" aria-pressed="true" onclick="setResidentFilter('all')"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div><div style="font-size:11px;color:var(--text2)">Residents</div></button>
+          <button type="button" class="stat-filter" id="res-filter-complete" aria-pressed="false" onclick="setResidentFilter('complete')"><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div><div style="font-size:11px;color:var(--text2)">Docs complete</div></button>
+          <button type="button" class="stat-filter" id="res-filter-missing" aria-pressed="false" onclick="setResidentFilter('missing')"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></button>
         </div>
         <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
         <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
@@ -2962,22 +2968,53 @@ async function loadResidents(){
   residents=data||[];renderResidents();
 }
 
+// A record saved before its documents were attached is only useful if it can
+// be found again. The three counts in the summary bar are the filter: the
+// number and the way to see what it counts are the same control.
+function residentDocsComplete(r){
+  return r.lic601==='yes'&&r.lic602a==='yes'&&r.isp==='yes';
+}
+let residentDocFilter='all';   // 'all' | 'complete' | 'missing'
+function setResidentFilter(f){
+  // Clicking the filter already applied clears it, so the same tap that
+  // narrowed the list widens it again.
+  residentDocFilter=(f!=='all'&&residentDocFilter===f)?'all':f;
+  renderResidents();
+}
+
 function renderResidents(){
   const grid=document.getElementById('residents-grid');
   const empty=document.getElementById('residents-empty');
   const summary=document.getElementById('res-summary');
   if(!residents.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
-  const docsOk=residents.filter(r=>r.lic601==='yes'&&r.lic602a==='yes'&&r.isp==='yes').length;
+  const docsOk=residents.filter(residentDocsComplete).length;
+  // The counts stay the totals for the whole facility even while a filter is
+  // applied — they are the control, so a filtered count would erase the thing
+  // the operator is trying to read.
   document.getElementById('res-count').textContent=residents.length;
   document.getElementById('res-docs-ok').textContent=docsOk;
   document.getElementById('res-docs-missing').textContent=residents.length-docsOk;
+  ['all','complete','missing'].forEach(f=>{
+    const b=document.getElementById('res-filter-'+f);
+    if(b)b.setAttribute('aria-pressed',String(residentDocFilter===f));
+  });
+  const shown=residentDocFilter==='all'
+    ?residents
+    :residents.filter(r=>residentDocsComplete(r)===(residentDocFilter==='complete'));
+  if(!shown.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1;padding:32px 16px">
+      <div style="font-weight:600;margin-bottom:6px">${residentDocFilter==='missing'?'Every resident has all three documents on file':'No resident has all three documents on file yet'}</div>
+      <button class="btn btn-outline" style="margin-top:12px" onclick="setResidentFilter('all')">Show all residents</button>
+    </div>`;
+    return;
+  }
   const docBadge=(label,val)=>{
     if(val==='yes')return`<span class="badge badge-green">${label} ✓</span>`;
     return`<span class="badge badge-red">${label} ✗</span>`;
   };
   const colors=['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
-  grid.innerHTML=residents.map(r=>{
+  grid.innerHTML=shown.map(r=>{
     const nameField=r.name||r.full_name||'Unknown';
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
