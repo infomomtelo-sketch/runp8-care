@@ -541,6 +541,21 @@
   </div>
 </div>
 
+<!-- WELCOME (where Stripe sends someone after checkout) -->
+<div id="page-welcome" class="page">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2 id="welcome-title">Setting up your account…</h2>
+      <p id="welcome-body">One moment — we're confirming your payment with Stripe.</p>
+      <div id="welcome-spinner" style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:13px;margin:14px 0">
+        <div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div>
+        <span id="welcome-status">Processing payment…</span>
+      </div>
+      <div id="welcome-actions" style="display:none;margin-top:16px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ONBOARDING -->
 <div id="page-onboard" class="page">
   <div class="onboard-wrap">
@@ -2328,7 +2343,107 @@ function showPricing(){
 
 function t22Route(){
   const h=location.hash||'';
+  let hasEmailParam=false;
+  try{hasEmailParam=!!new URLSearchParams(location.search).get('email');}catch(e){}
+  if(h.includes('welcome')||location.pathname.includes('welcome')||hasEmailParam){handleWelcome();return;}
   if(h.startsWith('#pricing'))showPricing();
+}
+
+// ===== WELCOME (post-checkout) =====
+// Where Stripe's redirect lands. The webhook that flips users.paid can arrive
+// before or after the browser does, so this polls rather than assuming, and
+// gives up out loud after 30 seconds instead of spinning forever.
+//
+// The address: ?email=, then #welcome?email=, then the one stashed before
+// checkout, then the signed-in session. Stripe substitutes no
+// {CUSTOMER_EMAIL} placeholder on a Payment Link redirect, so a literal one
+// counts as absent rather than as an email.
+function welcomeEmail(){
+  let email='';
+  try{email=new URLSearchParams(location.search).get('email')||'';}catch(e){}
+  if(!email){
+    try{
+      const h=location.hash||'';
+      const q=h.indexOf('?');
+      if(q>-1)email=new URLSearchParams(h.slice(q+1)).get('email')||'';
+    }catch(e){}
+  }
+  if(email.indexOf('{')>-1)email='';
+  if(!email){try{email=localStorage.getItem(CHECKOUT_EMAIL_KEY)||'';}catch(e){}}
+  if(!email&&currentUser?.email)email=currentUser.email;
+  return email.trim().toLowerCase();
+}
+
+// true / false / null, and null is not false: "we could not check" and "not
+// paid yet" need different words in front of someone who has just been charged.
+async function welcomeIsPaid(email){
+  try{
+    const{data,error}=await sb.from('users').select('paid').eq('email',email).maybeSingle();
+    if(error)return null;
+    return !!data?.paid;
+  }catch(e){return null;}
+}
+
+let welcomeTimer=null;
+function welcomeRender(title,body,status,actionsHTML){
+  const t=document.getElementById('welcome-title');if(t)t.textContent=title;
+  const b=document.getElementById('welcome-body');if(b)b.textContent=body;
+  const sp=document.getElementById('welcome-spinner');
+  const st=document.getElementById('welcome-status');
+  if(status){if(st)st.textContent=status;if(sp)sp.style.display='flex';}
+  else if(sp)sp.style.display='none';
+  const a=document.getElementById('welcome-actions');
+  if(a){a.innerHTML=actionsHTML||'';a.style.display=actionsHTML?'block':'none';}
+}
+
+async function handleWelcome(){
+  const email=welcomeEmail();
+  if(!email){location.hash='#pricing';showPricing();return;}
+  clearTimeout(welcomeTimer);
+  showPage('welcome');
+  document.body.style.visibility='visible';
+  welcomeRender('Setting up your account…','One moment — we\'re confirming your payment with Stripe.','Processing payment…','');
+  const deadline=Date.now()+30000;
+  const tick=async()=>{
+    const paid=await welcomeIsPaid(email);
+    if(paid===true){
+      try{localStorage.removeItem(CHECKOUT_EMAIL_KEY);}catch(e){}
+      welcomeRender("You're in.",'Your plan is active for '+email+'.','',
+        '<button class="btn btn-primary" style="width:100%;padding:11px" onclick="welcomeContinue()">Go to Dashboard</button>');
+      return;
+    }
+    if(Date.now()<deadline){welcomeTimer=setTimeout(tick,3000);return;}
+    // Out of time. Say which of the two things happened, because the fix is
+    // different: we could not reach the account record at all, or Stripe has
+    // not told us about the payment yet.
+    welcomeRender(
+      paid===null?'We could not check your account':'Still processing',
+      paid===null
+        ?'Your payment may well have gone through — we just could not read your account back. Open the app and check Billing, or email support@title22.app.'
+        :'Stripe has not confirmed the payment to us yet. This usually clears within a minute or two. Nothing was charged twice.',
+      '',
+      '<button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleWelcome()">Check again</button>'+
+      '<button class="btn btn-outline" style="width:100%;padding:11px;margin-top:8px" onclick="welcomeContinue()">Open Title22</button>');
+  };
+  tick();
+}
+
+// "Go to Dashboard" for whoever is actually here: signed in with a facility,
+// signed in without one (they have not onboarded yet), or signed out.
+async function welcomeContinue(){
+  clearTimeout(welcomeTimer);
+  if(location.hash)location.hash='';
+  if(!currentUser){
+    const navPublic=document.getElementById('nav-public');
+    if(navPublic)navPublic.style.display='flex';
+    showPage('login');
+    return;
+  }
+  // Their tier comes from the entitlement, not from users.paid — re-read it
+  // so a plan bought a minute ago is the one they land on.
+  try{await refreshAccess();}catch(e){}
+  if(currentFacility)switchTab('dashboard');
+  else showPage('onboard');
 }
 
 window.addEventListener('hashchange',t22Route);
@@ -7486,6 +7601,8 @@ function showSetNewPassword(){
   }finally{
     clearTimeout(forceVisible);
     document.body.style.visibility='visible';
+    // Last, so it can see whether anyone is signed in.
+    t22Route();
   }
 })();
 
