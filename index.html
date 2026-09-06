@@ -4367,7 +4367,11 @@ async function buildFacilityContext(){
       .map(e=>({scheduled_time:e.scheduled_time,status:e.status,administered_at:e.administered_at}));
     if(failed.length)return{failed};
     const today=new Date().toISOString().split('T')[0];
-    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar},null,2)};
+    // The same wording the form shows, so "how do I get a TB clearance on
+    // file?" is answered from verified text rather than from whatever the
+    // model believes about California licensing.
+    const document_guidance=Object.values(DOC_SLOT_HOWTO).map(g=>({document:g.label,how_to_obtain:g.text}));
+    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance},null,2)};
   }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
 
@@ -4642,6 +4646,8 @@ Two things you never do, however the question is put to you:
 
 2. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Say what you are unsure of and tell them to confirm it with their licensing analyst. A confident wrong answer here follows a facility all the way to an inspection.
 
+When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those: name what you do not know and send them to their licensing analyst for it. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
+
 Keep it short — usually a few sentences. Use a list only when the answer really is a list. No preamble, no "great question", no summarising the question back at them.`;
 
 async function sendAIQuery(btn){
@@ -4887,6 +4893,40 @@ const DOC_SLOTS={
 // slot above. If it 404s, leave the slot without a link.
 const DOC_SLOT_FORM_CAPTION='Opens the current form on the CDSS site.';
 
+// What each document is and where it comes from, shown on a slot that has
+// nothing on file yet and handed to Tello so she can answer the same question
+// out loud. One object, so the form and the assistant can never drift apart.
+//
+// Read the wording before adding to it. Every line here says what the paper IS
+// and who issues it. Not one says what the regulation requires, how often it
+// falls due, how long it stays valid, or what an inspector will accept —
+// because none of that can be verified from inside this app, it varies by
+// facility, and a confident wrong answer follows a facility all the way to an
+// inspection. That is the same reason the checklist citations are left null
+// and Tello refuses to state a requirement as fact. Keep new entries
+// descriptive; send anything regulatory to the licensing analyst instead.
+const DOC_SLOT_HOWTO={
+  tb_test:{label:'TB test / clearance',
+    text:'The signed result from whoever read the test — a clinic, physician or pharmacy. Ask them for a copy, then upload it here and set the test date.'},
+  cpr_card:{label:'CPR card',
+    text:'The card issued when the course is completed. Ask the staff member for a copy of theirs — most people photograph it — then upload it here.'},
+  first_aid:{label:'First Aid card',
+    text:'The card issued when the course is completed, often alongside CPR in the same class. Upload a copy here.'},
+  livescan:{label:'LiveScan clearance',
+    text:'The clearance that comes back after the staff member is fingerprinted at a Live Scan location. Upload it here when it arrives and set the cleared date.'},
+  mandated_reporter:{label:'Mandated Reporter training',
+    text:'The certificate the training provider issues at completion. Upload it here and set the completion date.'},
+  training_cert:{label:'Initial training certificate',
+    text:'The certificate or transcript from whoever delivered the training. Upload it here, and log the hours on the Training tab.'},
+  lic601:{label:'LIC 601 — Identification and Emergency Information',
+    text:'A CDSS form the facility fills in with the resident and their emergency contacts. Complete it, then upload the signed copy here.'},
+  lic602a:{label:'LIC 602A — Medical Assessment',
+    text:'A CDSS form the resident’s physician completes after examining them. Send it to the physician, then upload the signed copy when it comes back.'},
+  isp:{label:'ISP — Individual Service Plan',
+    text:'The plan your facility writes for this resident and updates as their needs change. Upload the current version here and set the last-reviewed date.'},
+};
+const DOC_SLOT_HOWTO_CAPTION='Requirements change — confirm what yours are with your licensing analyst.';
+
 // Documents belonging to the record currently open in a modal. Loaded fresh on
 // open rather than filtered out of facilityDocs, which is only populated when
 // the Documents tab has been visited.
@@ -4967,6 +5007,10 @@ function renderDocSlots(kind){
     }
     if(recordDocsNote)status+=`<div class="doc-slot-hint">${esc(recordDocsNote)}</div>`;
     if(!recordId&&!queued.length&&edit)status+=`<div class="doc-slot-hint">You can attach it now — it is filed as soon as you save this record.</div>`;
+    // Only while the slot is empty. Once the document is filed, telling someone
+    // how to obtain it is just noise above the buttons they actually want.
+    const howTo=(!doc&&!queued.length)?DOC_SLOT_HOWTO[slot.docType]:null;
+    if(howTo)status+=`<div class="doc-slot-hint"><strong>How to get this:</strong> ${esc(howTo.text)}<br/>${esc(DOC_SLOT_HOWTO_CAPTION)}</div>`;
     // Shown whether or not a document is on file: the point is to see what the
     // blank form looks like, which is just as useful once yours is filed.
     if(slot.formUrl)status+=`<div class="doc-slot-hint"><a href="${esc(slot.formUrl)}" target="_blank" rel="noopener" style="color:var(--teal);font-weight:600">See the blank form</a><br/>${esc(DOC_SLOT_FORM_CAPTION)}</div>`;
