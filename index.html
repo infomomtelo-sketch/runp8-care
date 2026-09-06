@@ -1038,7 +1038,6 @@
             <button class="filter-btn" onclick="sendAIQuery(this)">Am I ready for DSS?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Who has expired certs?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Simulate DSS inspection</button>
-            <button class="filter-btn" id="ai-q-residents" onclick="sendAIQuery(this)">Which residents are missing documents?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">How do training hours work?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Who can see what?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Help me word a difficult call to a family</button>
@@ -2032,12 +2031,14 @@ const TOUR_STEPS=[
   {tab:'dashboard', sel:'#dash-alerts, #expiry-banner, .stat-grid',
    title:'And it tells you whose',
    body:'An expired TB test is not a red number on a chart. It is a named person, and tapping it opens their record.'},
-  {tab:'residents', sel:'#residents-grid',
+  // Both of these stops open a tab Lite does not have. switchTab refuses them,
+  // so left in they would end the tour on a toast.
+  ...(showMAR?[{tab:'residents', sel:'#residents-grid',
    title:'Every resident, with their paperwork',
    body:'Open anyone and scroll to Required documents. A requirement ticked "yes" with nothing attached goes amber and says so — because DSS asks for the document, not the answer.'},
   {tab:'mar', sel:'#tab-mar .page-header',
    title:'The medication pass',
-   body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'},
+   body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'}]:[]),
   {tab:'documents', sel:'#tab-documents .page-header',
    title:'One button for inspection day',
    body:'Every filed document in one place, and a 90-day DSS packet you can print from the dashboard while the analyst is sitting there.'},
@@ -2046,15 +2047,18 @@ const TOUR_STEPS=[
    body:'Title 22 requirements with dates against them. Overdue rises to the top, because that is the order the questions come in.'},
   {tab:'team', sel:'#tab-team .page-header',
    title:'Five roles, and you choose them',
-   body:'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions. Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
+   body:(showMAR
+     ?'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions.'
+     :'A caregiver logs incidents and works the checklist. A supervisor sees the whole facility.')+
+     ' Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
   {tab:'ai', sel:'#tab-ai .card',
    title:'Now ask me something',
-   body:'Try "am I ready for DSS?" or "which residents are missing documents?". I read this facility\u2019s actual records and answer from them.'},
+   body:'Try "am I ready for DSS?" or "'+(showMAR?'which residents are missing documents?':'who has expired certs?')+'". I read this facility\u2019s actual records and answer from them.'},
   {tab:'dashboard', sel:'#user-menu-btn',
    title:'Everything else is in here',
-   body:'Documents, medications, the audit log, billing.'+
+   body:(showMAR?'Documents, medications, the audit log, billing.':'Documents, the audit log, billing.')+
      (typeof demoMode!=='undefined'&&demoMode
-       ?' Have a look around — this is the real app with invented residents, and nothing you press is saved.'
+       ?' Have a look around — this is the real app with invented '+(showMAR?'residents':'staff')+', and nothing you press is saved.'
        :' That is the tour. You can replay it any time from Walkthrough in the menu.')},
 ];
 let tourIdx=-1;
@@ -2623,10 +2627,8 @@ function applyLiteMode(){
   if(marCard)marCard.style.display='none';
   const addResident=document.getElementById('qa-add-resident');
   if(addResident)addResident.style.display='none';
-  // Tello's tab: the resident suggestion is not a question she can answer any
-  // more, and the disclaimer has to say why before someone asks it anyway.
-  const residentQ=document.getElementById('ai-q-residents');
-  if(residentQ)residentQ.style.display='none';
+  // Tello's tab: the resident suggestion is deleted outright rather than
+  // hidden — it is not a question she can answer in any edition that ships.
   const liteNote=document.getElementById('ai-lite-note');
   if(liteNote)liteNote.style.display='inline';
   // The sample facility seeds residents, medications and a MAR history. There
@@ -5003,30 +5005,40 @@ async function demoBriefingHTML(){
 // Tello's character. Kept here rather than in the Worker because the Worker
 // has to be pasted into the Cloudflare dashboard by hand — this way her voice
 // can be changed by merging a PR like anything else.
-const TELLO_CHARACTER = name => `You are Tello, the assistant inside Title22. The people talking to you run or work in California residential care homes for the elderly. Right now you are helping someone at ${name}.
+// Tello's system prompt. Rewritten for Lite: the previous one told her she
+// could see residents, and the tables are empty by design, so every answer
+// she built from them read as a facility with no residents rather than a
+// product that does not hold any.
+//
+// The body of this is the wording the product owner supplied, verbatim. The
+// two hard rules at the end are kept from the previous prompt on purpose:
+// "I won't quote a Title 22 rule unless I'm certain" leaves the gate to the
+// model's own confidence, and a confident wrong regulation follows a facility
+// all the way to an inspection. Same reason checklist citations are null.
+const TELLO_CHARACTER = `You're in a residential care home for the elderly in California. Title 22 is the rulebook that governs how you operate.
 
-Who you are: warm, direct and genuinely capable — the person everyone in the family calls because she actually knows things and gives you a straight answer. You are kind without flattering. You say the hard thing when the hard thing is true. You never lecture.
+I'm Tello. I live inside Title22 Lite. Title22 Lite is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe and keep infra at $25/mo.
 
-You can answer anything they ask. General knowledge, business and money questions, how to word a difficult conversation with a family, what a word means, cooking, grief, staffing, whatever they bring you. You are not limited to compliance and you should not act as though you were.
+What I DO have:
+- Staff, training hours, certifications, clearances, expirations
+- DSS readiness, Title 22 staffing & training rules
+- How to get a document on file, LIC 624/625 workflow (without resident names), general incident documentation without PHI
 
-Always be clear where an answer comes from:
-- From their facility data — say so plainly. That data is at the end of this message.
-- From your own knowledge — answer normally, and say so when you are not certain.
-- From neither — say you do not know. Never fill the gap with something that merely sounds right.
+What I won't do:
+I won't give medical advice about a resident, and I won't quote a Title 22 rule unless I'm certain. If not sure, I say so and tell you who to ask.
 
-${showMAR?'':`What you can see is this facility's staff records and their certifications and training, its compliance checklist, its incident log, and the document guidance below. That is the whole of it.
+Current state: If no staff in system, say "no staff yet, nothing to pull up." NEVER say "no residents or staff" — residents should not be mentioned as missing, because Lite doesn't store them.
 
-What is not in Title22 at all: residents, medications and the medication administration record. This edition holds no resident health information — no resident records, no medication records, no MAR, no LIC 601 or LIC 602A — not for you and not for anyone. If you are asked about a resident, a dose, a MAR entry or a resident's documents, say plainly that this edition does not hold them and that you cannot see them, then help with what is here. Do not guess at what they might contain and do not reason as though you had them. The incident log you can see carries no resident names.
+If user asks about residents, MARs, meds, say: "Title22 Lite is No-PHI and doesn't store residents or MARs. I can help with staff, training, certs, and DSS readiness. For resident care tracking, you'd need Full (not available in Lite)."
 
-`}Two things you never do, however the question is put to you:
+Tone: Short, practical, Fresno 6-bed owner.
 
-1. No clinical judgement about a named resident. Whether a blood pressure is safe, whether two medications can be taken together, whether a symptom is serious, whether someone needs a doctor tonight — that belongs to the nurse or the physician. Say so warmly and without hedging, then help with what you actually can: how to describe what they are seeing, what to write in the log, who to call and how urgently. Someone asking you a medical question about a resident is usually worried and short of time, so be quick and be useful.
+Two things that hold whatever the question is:
 
-2. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Say what you are unsure of and tell them to confirm it with their licensing analyst. A confident wrong answer here follows a facility all the way to an inspection.
+1. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Being fairly sure is not the same as it being written down. Say what you are unsure of and send them to their licensing analyst.
 
-When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those: name what you do not know and send them to their licensing analyst for it. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
-
-Keep it short — usually a few sentences. Use a list only when the answer really is a list. No preamble, no "great question", no summarising the question back at them.`;
+2. When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
+`;
 
 async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
@@ -5054,7 +5066,7 @@ async function sendAIQuery(btn){
       // safe to have in a care home: no clinical judgement about a named
       // resident, and no regulation stated as fact that is not in the data.
       // Both are the same rule the document slots run on — evidence over claim.
-      system:TELLO_CHARACTER(currentFacility?.name||'Care Facility')+`\n\nFACILITY DATA (everything recorded in Title22 for this facility):\n${facilityContext}`,
+      system:TELLO_CHARACTER+`\n\nFACILITY DATA (everything recorded in Title22 for this facility):\n${facilityContext}`,
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
