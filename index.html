@@ -221,6 +221,12 @@
   /* Typeahead borrows the searchable-select dropdown wholesale; it only needs
      to stay left-aligned inside the centred onboarding card. */
   .ta-dropdown{text-align:left}
+  /* A count in the summary bar doubles as the filter for what it counts —
+     clicking "Docs missing" shows those residents rather than making someone
+     scan the grid for red badges. */
+  .stat-filter{background:none;border:1.5px solid transparent;border-radius:var(--radius);padding:6px 12px;font:inherit;color:inherit;cursor:pointer;text-align:center;transition:background .15s,border-color .15s}
+  .stat-filter:hover{background:var(--gray-bg)}
+  .stat-filter[aria-pressed="true"]{background:var(--teal-light);border-color:var(--teal)}
   .searchable-group-label{padding:6px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);background:var(--gray-bg);position:sticky;top:0}
   .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--white);font-size:15px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--text)}
   .btn-google:hover{border-color:var(--teal);background:var(--gray-bg)}
@@ -272,6 +278,14 @@
   .doc-slot-self label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin:0!important}
   .doc-slot-self select,.doc-slot-self input{flex:1;min-width:130px;padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--white);color:var(--text)}
   .doc-slot-hint{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5}
+  /* A grey 11px line reads as small print, and small print is not felt as
+     help. The how-to gets a panel of its own so someone stuck on a missing
+     document can see there is an answer without hunting for it. The caution
+     underneath stays on every one of these — it just stops competing with
+     the help for the same weight. */
+  .doc-slot-howto{margin-top:8px;background:var(--teal-light);border-left:3px solid var(--teal);border-radius:0 var(--radius) var(--radius) 0;padding:9px 12px;font-size:12.5px;color:var(--text);line-height:1.55}
+  .doc-slot-howto b{color:var(--teal);font-weight:600}
+  .doc-slot-howto .ds-caution{display:block;margin-top:5px;font-size:11px;color:var(--text2);line-height:1.45}
 
   /* ===== SCAN TO FILL ===== */
   .scan-btn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;margin-right:10px;padding:5px 12px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -716,9 +730,9 @@
       <div id="tab-residents" style="display:none">
         <div class="page-header"><h1>Residents</h1><button class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button></div>
         <div id="res-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
-          <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div><div style="font-size:11px;color:var(--text2)">Residents</div></div>
-          <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div><div style="font-size:11px;color:var(--text2)">Docs complete</div></div>
-          <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></div>
+          <button type="button" class="stat-filter" id="res-filter-all" aria-pressed="true" onclick="setResidentFilter('all')"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div><div style="font-size:11px;color:var(--text2)">Residents</div></button>
+          <button type="button" class="stat-filter" id="res-filter-complete" aria-pressed="false" onclick="setResidentFilter('complete')"><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div><div style="font-size:11px;color:var(--text2)">Docs complete</div></button>
+          <button type="button" class="stat-filter" id="res-filter-missing" aria-pressed="false" onclick="setResidentFilter('missing')"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></button>
         </div>
         <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
         <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
@@ -2962,22 +2976,53 @@ async function loadResidents(){
   residents=data||[];renderResidents();
 }
 
+// A record saved before its documents were attached is only useful if it can
+// be found again. The three counts in the summary bar are the filter: the
+// number and the way to see what it counts are the same control.
+function residentDocsComplete(r){
+  return r.lic601==='yes'&&r.lic602a==='yes'&&r.isp==='yes';
+}
+let residentDocFilter='all';   // 'all' | 'complete' | 'missing'
+function setResidentFilter(f){
+  // Clicking the filter already applied clears it, so the same tap that
+  // narrowed the list widens it again.
+  residentDocFilter=(f!=='all'&&residentDocFilter===f)?'all':f;
+  renderResidents();
+}
+
 function renderResidents(){
   const grid=document.getElementById('residents-grid');
   const empty=document.getElementById('residents-empty');
   const summary=document.getElementById('res-summary');
   if(!residents.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
   grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
-  const docsOk=residents.filter(r=>r.lic601==='yes'&&r.lic602a==='yes'&&r.isp==='yes').length;
+  const docsOk=residents.filter(residentDocsComplete).length;
+  // The counts stay the totals for the whole facility even while a filter is
+  // applied — they are the control, so a filtered count would erase the thing
+  // the operator is trying to read.
   document.getElementById('res-count').textContent=residents.length;
   document.getElementById('res-docs-ok').textContent=docsOk;
   document.getElementById('res-docs-missing').textContent=residents.length-docsOk;
+  ['all','complete','missing'].forEach(f=>{
+    const b=document.getElementById('res-filter-'+f);
+    if(b)b.setAttribute('aria-pressed',String(residentDocFilter===f));
+  });
+  const shown=residentDocFilter==='all'
+    ?residents
+    :residents.filter(r=>residentDocsComplete(r)===(residentDocFilter==='complete'));
+  if(!shown.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1;padding:32px 16px">
+      <div style="font-weight:600;margin-bottom:6px">${residentDocFilter==='missing'?'Every resident has all three documents on file':'No resident has all three documents on file yet'}</div>
+      <button class="btn btn-outline" style="margin-top:12px" onclick="setResidentFilter('all')">Show all residents</button>
+    </div>`;
+    return;
+  }
   const docBadge=(label,val)=>{
     if(val==='yes')return`<span class="badge badge-green">${label} ✓</span>`;
     return`<span class="badge badge-red">${label} ✗</span>`;
   };
   const colors=['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
-  grid.innerHTML=residents.map(r=>{
+  grid.innerHTML=shown.map(r=>{
     const nameField=r.name||r.full_name||'Unknown';
     const age=r.dob?Math.floor((new Date()-new Date(r.dob))/(365.25*24*60*60*1000)):null;
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
@@ -4330,7 +4375,11 @@ async function buildFacilityContext(){
       .map(e=>({scheduled_time:e.scheduled_time,status:e.status,administered_at:e.administered_at}));
     if(failed.length)return{failed};
     const today=new Date().toISOString().split('T')[0];
-    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar},null,2)};
+    // The same wording the form shows, so "how do I get a TB clearance on
+    // file?" is answered from verified text rather than from whatever the
+    // model believes about California licensing.
+    const document_guidance=Object.values(DOC_SLOT_HOWTO).map(g=>({document:g.label,how_to_obtain:g.text}));
+    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance},null,2)};
   }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
 
@@ -4605,6 +4654,8 @@ Two things you never do, however the question is put to you:
 
 2. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Say what you are unsure of and tell them to confirm it with their licensing analyst. A confident wrong answer here follows a facility all the way to an inspection.
 
+When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those: name what you do not know and send them to their licensing analyst for it. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
+
 Keep it short — usually a few sentences. Use a list only when the answer really is a list. No preamble, no "great question", no summarising the question back at them.`;
 
 async function sendAIQuery(btn){
@@ -4850,6 +4901,40 @@ const DOC_SLOTS={
 // slot above. If it 404s, leave the slot without a link.
 const DOC_SLOT_FORM_CAPTION='Opens the current form on the CDSS site.';
 
+// What each document is and where it comes from, shown on a slot that has
+// nothing on file yet and handed to Tello so she can answer the same question
+// out loud. One object, so the form and the assistant can never drift apart.
+//
+// Read the wording before adding to it. Every line here says what the paper IS
+// and who issues it. Not one says what the regulation requires, how often it
+// falls due, how long it stays valid, or what an inspector will accept —
+// because none of that can be verified from inside this app, it varies by
+// facility, and a confident wrong answer follows a facility all the way to an
+// inspection. That is the same reason the checklist citations are left null
+// and Tello refuses to state a requirement as fact. Keep new entries
+// descriptive; send anything regulatory to the licensing analyst instead.
+const DOC_SLOT_HOWTO={
+  tb_test:{label:'TB test / clearance',
+    text:'The signed result from whoever read the test — a clinic, physician or pharmacy. Ask them for a copy, then upload it here and set the test date.'},
+  cpr_card:{label:'CPR card',
+    text:'The card issued when the course is completed. Ask the staff member for a copy of theirs — most people photograph it — then upload it here.'},
+  first_aid:{label:'First Aid card',
+    text:'The card issued when the course is completed, often alongside CPR in the same class. Upload a copy here.'},
+  livescan:{label:'LiveScan clearance',
+    text:'The clearance that comes back after the staff member is fingerprinted at a Live Scan location. Upload it here when it arrives and set the cleared date.'},
+  mandated_reporter:{label:'Mandated Reporter training',
+    text:'The certificate the training provider issues at completion. Upload it here and set the completion date.'},
+  training_cert:{label:'Initial training certificate',
+    text:'The certificate or transcript from whoever delivered the training. Upload it here, and log the hours on the Training tab.'},
+  lic601:{label:'LIC 601 — Identification and Emergency Information',
+    text:'A CDSS form the facility fills in with the resident and their emergency contacts. Complete it, then upload the signed copy here.'},
+  lic602a:{label:'LIC 602A — Medical Assessment',
+    text:'A CDSS form the resident’s physician completes after examining them. Send it to the physician, then upload the signed copy when it comes back.'},
+  isp:{label:'ISP — Individual Service Plan',
+    text:'The plan your facility writes for this resident and updates as their needs change. Upload the current version here and set the last-reviewed date.'},
+};
+const DOC_SLOT_HOWTO_CAPTION='Requirements change — confirm what yours are with your licensing analyst.';
+
 // Documents belonging to the record currently open in a modal. Loaded fresh on
 // open rather than filtered out of facilityDocs, which is only populated when
 // the Documents tab has been visited.
@@ -4930,6 +5015,10 @@ function renderDocSlots(kind){
     }
     if(recordDocsNote)status+=`<div class="doc-slot-hint">${esc(recordDocsNote)}</div>`;
     if(!recordId&&!queued.length&&edit)status+=`<div class="doc-slot-hint">You can attach it now — it is filed as soon as you save this record.</div>`;
+    // Only while the slot is empty. Once the document is filed, telling someone
+    // how to obtain it is just noise above the buttons they actually want.
+    const howTo=(!doc&&!queued.length)?DOC_SLOT_HOWTO[slot.docType]:null;
+    if(howTo)status+=`<div class="doc-slot-howto"><b>How to get this</b><br/>${esc(howTo.text)}<span class="ds-caution">${esc(DOC_SLOT_HOWTO_CAPTION)}</span></div>`;
     // Shown whether or not a document is on file: the point is to see what the
     // blank form looks like, which is just as useful once yours is filed.
     if(slot.formUrl)status+=`<div class="doc-slot-hint"><a href="${esc(slot.formUrl)}" target="_blank" rel="noopener" style="color:var(--teal);font-weight:600">See the blank form</a><br/>${esc(DOC_SLOT_FORM_CAPTION)}</div>`;

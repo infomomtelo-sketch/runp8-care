@@ -36,6 +36,17 @@ employment records, not PHI, and may use scan.
 The AI never suggests, corrects, or comments on clinical
 dosage information, on any plan.
 
+## "How to complete this" guidance
+DOC_SLOT_HOWTO is the one source: the doc slots render
+it on an empty slot, and buildFacilityContext sends the
+same text to Tello as document_guidance so she answers
+from it instead of inventing. Entries say what the
+document IS and who issues it — never how often it is
+due, how long it stays valid, or what an inspector
+accepts. Same reason checklist citations are null and
+Tello may not state a requirement as fact. Anything
+regulatory goes to the licensing analyst.
+
 ## Typeahead suggestions
 Form autocomplete draws on two sources only: the
 bundled TA_SEEDS lists and values this facility has
