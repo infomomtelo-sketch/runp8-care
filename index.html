@@ -624,6 +624,7 @@
 
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
+        <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 Lite — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px"><svg class="ic"><use href="#i-spark"/></svg> New here? Let's get you started.</div>
@@ -663,7 +664,7 @@
         </div>
         <div style="margin-top:20px" class="card"><div class="card-title">Compliance by category</div><div id="category-breakdown"></div></div>
         <div style="margin-top:20px" class="card"><div class="card-title">Facility snapshot</div><div id="facility-snapshot"><div class="empty">Loading...</div></div></div>
-        <div style="margin-top:20px" class="card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
+        <div style="margin-top:20px" class="card" id="dash-mar-card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
         <div style="margin-top:20px" class="card" id="dash-ai-briefing-card">
           <div class="card-title">
             <span><svg class="ic"><use href="#i-spark"/></svg> Tello's daily briefing</span>
@@ -676,7 +677,7 @@
         <div style="margin-top:20px" class="card">
           <div class="card-title">Quick actions</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
-            <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('residents');setTimeout(()=>openResidentModal(),200)">+ Add resident</button>
+            <button id="qa-add-resident" class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('residents');setTimeout(()=>openResidentModal(),200)">+ Add resident</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('staff');setTimeout(()=>openStaffModal(),200)">+ Add staff member</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('incidents');setTimeout(()=>openIncidentModal(),200)">+ Report incident</button>
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="switchTab('checklist');setTimeout(()=>addCustomTask(),200)">+ Add checklist task</button>
@@ -1154,6 +1155,28 @@ const EXTRACT_WORKER = 'https://mission-control.infomomtelo.workers.dev/api/extr
 // Source lives in workers/title22-geo/.
 const GEO_WORKER = 'https://title22-geo.infomomtelo.workers.dev/api/address';
 
+// ===== TITLE22 LITE =====
+// Lite is facility and staff compliance only. Resident records, medications,
+// the MAR and LIC 602A are out of the product — that is what takes the BAA
+// off the table, so the switch cannot be cosmetic: it hides the navigation
+// AND refuses the network calls.
+//
+// Flip showMAR back to true and every one of those paths returns; nothing is
+// deleted from this file. Deleting the DATA is a separate, deliberate step —
+// migrations/2026-09-06_title22_lite_drop_phi.sql.
+const showMAR = false;
+
+// PostgREST tables holding resident health information, blocked in the
+// Supabase client's own fetch rather than at each call site, so a query added
+// later cannot reach them by forgetting a check. Named for what this schema
+// actually calls them: the pivot note's resident_meds is `medications`,
+// resident_profiles is `residents`, and there is no lic_602a table at all —
+// LIC 602A is a column on residents plus an uploaded file in `documents`.
+const T22_PHI_TABLES = ['mar_entries','medications','residents','daily_logs'];
+// Tabs that exist only to work with those tables.
+const T22_PHI_TABS = ['mar','medications','residents','daily'];
+const T22_LITE_BLOCKED_MSG = 'MAR removed in Lite — facility compliance only';
+
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
   [STRIPE_STARTER]:'starter',
@@ -1210,8 +1233,56 @@ function openStripe(url){
 // once already made the ?code= boot path unreachable — supabase-js only
 // treats ?code= as a callback when a verifier exists, so index.html's handler
 // sat behind a condition the library could never satisfy.
+// One line of feedback, bottom of the screen. There was no toast in this app
+// before Lite; this is deliberately the smallest one that works — one node,
+// one timer, no queue.
+let t22ToastTimer=null;
+function t22Toast(msg){
+  let el=document.getElementById('t22-toast');
+  if(!el){
+    el=document.createElement('div');
+    el.id='t22-toast';
+    el.setAttribute('role','status');
+    el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);'+
+      'background:#16312b;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;'+
+      'line-height:1.4;max-width:min(92vw,420px);text-align:center;z-index:9999;'+
+      'box-shadow:0 6px 20px rgba(0,0,0,.25);display:none';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.style.display='block';
+  clearTimeout(t22ToastTimer);
+  t22ToastTimer=setTimeout(()=>{el.style.display='none';},4000);
+}
+
+// Supabase's fetch, wrapped. In Lite a request for a PHI table never leaves
+// the browser: a read answers with an empty set, so a dashboard that still
+// asks renders "none" instead of an error banner, and a write is refused with
+// the message above. Everything else is passed straight through, untouched.
+function t22Fetch(input,init){
+  try{
+    if(!showMAR){
+      const url=typeof input==='string'?input:(input&&input.url)||'';
+      const m=new URL(url,window.location.origin).pathname.match(/\/rest\/v1\/([^/?]+)/);
+      if(m&&T22_PHI_TABLES.includes(m[1])){
+        const method=String((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
+        if(method==='GET'||method==='HEAD'){
+          return Promise.resolve(new Response(method==='HEAD'?null:'[]',
+            {status:200,headers:{'Content-Type':'application/json','Content-Range':'*/0'}}));
+        }
+        t22Toast(T22_LITE_BLOCKED_MSG);
+        return Promise.resolve(new Response(
+          JSON.stringify({message:T22_LITE_BLOCKED_MSG,code:'T22_LITE',details:null,hint:null}),
+          {status:403,headers:{'Content-Type':'application/json'}}));
+      }
+    }
+  }catch(e){/* a guard that throws must not take the request with it */}
+  return fetch(input,init);
+}
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,flowType:'implicit'}
+  auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,flowType:'implicit'},
+  global:{fetch:t22Fetch}
 });
 
 // Lightweight usage analytics — writes a row into public.events. Fire and
@@ -1332,8 +1403,11 @@ function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'
 const DEMO_TABS=['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
 function allowedTabs(){
   if(!t22Entitled) return ['billing']; // entitlement gate (fail closed): unpaid/expired => billing only
-  if(demoMode) return DEMO_TABS;
-  return getAccess().tabs;
+  // Lite subtracts from every role at once, so no role list has to be edited
+  // and none of them drifts out of step with the others.
+  const lite=t=>showMAR||!T22_PHI_TABS.includes(t);
+  if(demoMode) return DEMO_TABS.filter(lite);
+  return getAccess().tabs.filter(lite);
 }
 
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
@@ -1365,6 +1439,10 @@ function showPage(name){
 }
 
 function switchTab(name){
+  // Ahead of the permission check: this is not a role problem, and "you do not
+  // have permission" would send an administrator looking for a setting that
+  // no longer exists.
+  if(!showMAR&&T22_PHI_TABS.includes(name)){t22Toast(T22_LITE_BLOCKED_MSG);return;}
   if(name==='ai'&&t22Entitled&&!t22Limits.ai){showTierUpsell('ai');return;}
   // 'partners' is a global app-owner permission (title22_is_partner_admin),
   // not a per-facility role — gated separately from allowedTabs().
@@ -2312,8 +2390,31 @@ function applyRoleUI(){
   // Partners is a global permission, not a per-facility role.
   const mp=document.getElementById('menu-partners');
   if(mp)mp.style.display=isPartnerAdmin?'flex':'none';
+  applyLiteMode();
   hideEmptyMenuGroups();
   renderRoleUI();
+}
+
+// Every way into the removed sections, closed. Runs at the end of applyRoleUI
+// because that pass sets the same display properties from the role lists and
+// would otherwise put the sidebar entries back.
+function applyLiteMode(){
+  const banner=document.getElementById('lite-banner');
+  if(banner)banner.style.display=showMAR?'none':'block';
+  if(showMAR)return;
+  T22_PHI_TABS.forEach(t=>{
+    const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
+    const item=document.getElementById('menu-'+t);if(item)item.style.display='none';
+    const tab=document.getElementById('tab-'+t);if(tab)tab.style.display='none';
+  });
+  const marCard=document.getElementById('dash-mar-card');
+  if(marCard)marCard.style.display='none';
+  const addResident=document.getElementById('qa-add-resident');
+  if(addResident)addResident.style.display='none';
+  // The sample facility seeds residents, medications and a MAR history. There
+  // is no Lite version of it, so the button is not offered rather than left to
+  // fail half way through.
+  document.querySelectorAll('[data-seed-demo]').forEach(b=>{b.style.display='none';});
 }
 
 // Charise logged in and nothing told her what she was. The tabs she cannot
@@ -2650,7 +2751,7 @@ function refreshDashboard(){
     const sc=(window.staffList||[]).length;
     const ic=(window.incidents||[]).length;
     snap.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
-      <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('residents')"><div style="font-size:1.8rem;font-weight:700;color:var(--teal)">${rc}</div><div style="font-size:12px;color:var(--text2)">Residents</div></div>
+      ${showMAR?`<div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('residents')"><div style="font-size:1.8rem;font-weight:700;color:var(--teal)">${rc}</div><div style="font-size:12px;color:var(--text2)">Residents</div></div>`:''}
       <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('staff')"><div style="font-size:1.8rem;font-weight:700;color:var(--teal)">${sc}</div><div style="font-size:12px;color:var(--text2)">Staff</div></div>
       <div style="text-align:center;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer" onclick="switchTab('incidents')"><div style="font-size:1.8rem;font-weight:700;color:${ic>0?'var(--amber)':'var(--teal)'}">${ic}</div><div style="font-size:12px;color:var(--text2)">Incidents</div></div>
     </div>`;
@@ -2662,6 +2763,7 @@ function refreshDashboard(){
 // with active medications (there is no per-dose schedule table to compare
 // against).
 async function loadDashboardMARStats(){
+  if(!showMAR){const c=document.getElementById('dash-mar-card');if(c)c.style.display='none';return;}
   const el=document.getElementById('dash-mar-stats');if(!el||!currentFacility)return;
   try{
     const today=new Date().toISOString().split('T')[0];
@@ -2700,11 +2802,16 @@ async function exportDSSAudit(){
   if(!currentFacility)return;
   const since=new Date(Date.now()-90*86400000);
   const sinceISO=since.toISOString();
+  // In Lite the resident and MAR sections are not empty, they are absent —
+  // and the incident rows are read without the resident embed, so no resident
+  // name can reach the printout.
   const[resR,stR,marR,incR]=await Promise.all([
-    sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'),
+    showMAR?sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'):Promise.resolve({data:[]}),
     sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name'),
-    sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'),
-    sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
+    showMAR?sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'):Promise.resolve({data:[]}),
+    showMAR
+      ?sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at')
+      :sb.from('incidents').select('*').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
   ]);
   const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[];
   const f=currentFacility;
@@ -2722,7 +2829,18 @@ async function exportDSSAudit(){
   const marRows=marD.map(e=>{const v=!!e.voided_at;const st=v?'text-decoration:line-through;color:#666;':'';
     return`<tr><td style="${td}${st}">${e.administered_at?new Date(e.administered_at).toLocaleString():''}</td><td style="${td}${st}">${esc(e.residents?.name||e.residents?.full_name||'')}</td><td style="${td}${st}">${esc(e.medications?.medication_name||'')}${e.medications?.dosage?' · '+esc(e.medications.dosage):''}</td><td style="${td}${st}">${esc(e.scheduled_time||'')}</td><td style="${td};${v?'color:#666;font-weight:700':(e.status!=='given'?'color:#A32D2D;font-weight:700':'')}">${v?'VOIDED':(statusLabels[e.status]||esc(e.status))}</td><td style="${td}">${v?'<strong>Voided '+esc(new Date(e.voided_at).toLocaleString())+(e.void_reason?' — '+esc(e.void_reason):'')+'.</strong> '+esc(e.notes||''):esc(e.notes||'')}</td></tr>`;}).join('');
   const incRows=incD.map(i=>`<tr><td style="${td}">${i.occurred_at?new Date(i.occurred_at).toLocaleString():''}</td><td style="${td}">${esc(i.residents?.name||i.residents?.full_name||'')}</td><td style="${td}">${esc(i.incident_type||'')}</td><td style="${td}">${i.injury?'Yes':'No'}</td><td style="${td}">${i.dss_reportable?'YES':'No'}</td><td style="${td}">${esc(i.description||'')}</td><td style="${td}">${esc(i.corrective_action||'')}</td></tr>`).join('');
-  const sec=(title,sub)=>`<h2 style="font-size:15px;margin:24px 0 2px">${title}</h2><div style="font-size:11px;color:#666;margin-bottom:8px">${sub}</div>`;
+  // Numbered as they are printed. Lite drops two of them, and "1, 2, 4" in
+  // front of an inspector invites the question of what section 3 was.
+  let secNo=0;
+  const sec=(title,sub)=>`<h2 style="font-size:15px;margin:24px 0 2px">${++secNo}. ${title}</h2><div style="font-size:11px;color:#666;margin-bottom:8px">${sub}</div>`;
+  const residentSection=showMAR?`${sec('Resident roster &amp; required documents','Maps to LIC 602A (Medical Assessment) and resident record requirements — §87506, §87569')}
+  <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602A</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>`:'';
+  const staffSection=`${sec('Staff certifications','Personnel record requirements — §87411, §87412')}
+  <table><tr><th style="${th}">Staff</th><th style="${th}">Role</th><th style="${th}">Hired</th><th style="${th}">TB due</th><th style="${th}">CPR exp</th><th style="${th}">First Aid exp</th><th style="${th}">LiveScan</th><th style="${th}">Mand. Rep.</th><th style="${th}">Initial training</th></tr>${stRows||`<tr><td style="${td}" colspan="9">No active staff on file</td></tr>`}</table>`;
+  const marSection=showMAR?`${sec('Medication administration record — 90 days','Centrally stored medication record (LIC 622) — §87465')}
+  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Medication</th><th style="${th}">Scheduled</th><th style="${th}">Status</th><th style="${th}">Notes</th></tr>${marRows||`<tr><td style="${td}" colspan="6">No MAR entries in period</td></tr>`}</table>`:'';
+  const incidentSection=`${sec('Incident reports — 90 days','Reporting requirements — §87211')}
+  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Type</th><th style="${th}">Injury</th><th style="${th}">DSS reportable</th><th style="${th}">Description</th><th style="${th}">Corrective action</th></tr>${incRows||`<tr><td style="${td}" colspan="7">No incidents in period</td></tr>`}</table>`;
   const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><title>DSS Audit Packet — ${esc(f.name)}</title>
   <style>body{font-family:Arial,sans-serif;padding:24px;color:#1a1a18}table{width:100%;border-collapse:collapse;margin-bottom:8px}h1{font-size:20px;margin-bottom:4px}@media print{h2{page-break-after:avoid}}</style></head><body>
@@ -2730,14 +2848,10 @@ async function exportDSSAudit(){
   <div style="font-size:12px;color:#444;margin-bottom:16px">Generated ${new Date().toLocaleString()} · Period ${since.toLocaleDateString()} — ${new Date().toLocaleDateString()} · California Title 22, Div. 6, Ch. 8</div>
   <table><tr><th style="${th}">Facility</th><th style="${th}">Type</th><th style="${th}">License #</th><th style="${th}">Capacity</th><th style="${th}">Administrator</th><th style="${th}">Admin cert # / expiry</th></tr>
   <tr><td style="${td}">${esc(f.name||'')}</td><td style="${td}">${esc((f.facility_type||'').toUpperCase())}</td><td style="${td}">${esc(f.license_number||'—')}</td><td style="${td}">${esc(f.capacity||'—')}</td><td style="${td}">${esc(f.administrator_name||'—')}</td><td style="${td}">${esc(f.administrator_cert_number||'—')} / ${d(f.administrator_cert_expiry)}</td></tr></table>
-  ${sec('1. Resident roster & required documents','Maps to LIC 602A (Medical Assessment) and resident record requirements — §87506, §87569')}
-  <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602A</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>
-  ${sec('2. Staff certifications','Personnel record requirements — §87411, §87412')}
-  <table><tr><th style="${th}">Staff</th><th style="${th}">Role</th><th style="${th}">Hired</th><th style="${th}">TB due</th><th style="${th}">CPR exp</th><th style="${th}">First Aid exp</th><th style="${th}">LiveScan</th><th style="${th}">Mand. Rep.</th><th style="${th}">Initial training</th></tr>${stRows||`<tr><td style="${td}" colspan="9">No active staff on file</td></tr>`}</table>
-  ${sec('3. Medication administration record — 90 days','Centrally stored medication record (LIC 622) — §87465')}
-  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Medication</th><th style="${th}">Scheduled</th><th style="${th}">Status</th><th style="${th}">Notes</th></tr>${marRows||`<tr><td style="${td}" colspan="6">No MAR entries in period</td></tr>`}</table>
-  ${sec('4. Incident reports — 90 days','Reporting requirements — §87211')}
-  <table><tr><th style="${th}">Date/time</th><th style="${th}">Resident</th><th style="${th}">Type</th><th style="${th}">Injury</th><th style="${th}">DSS reportable</th><th style="${th}">Description</th><th style="${th}">Corrective action</th></tr>${incRows||`<tr><td style="${td}" colspan="7">No incidents in period</td></tr>`}</table>
+  ${residentSection}
+  ${staffSection}
+  ${marSection}
+  ${incidentSection}
   <div style="font-size:10px;color:#888;margin-top:20px">Generated by Title22 (title22.app). Records reflect data entered in the system; verify against source documents.</div>
   </body></html>`);
   win.document.close();win.print();
@@ -2982,7 +3096,7 @@ Object.defineProperty(window,'residents',{get:()=>residents,configurable:true});
 let currentResidentId=null;
 
 async function loadResidents(){
-  if(!currentFacility)return;
+  if(!showMAR||!currentFacility)return;
   const{data}=await sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name');
   residents=data||[];renderResidents();
 }
@@ -3408,7 +3522,7 @@ async function deleteStaff(id,name){
 // ===== MEDICATIONS =====
 let medicationsByResident={};
 async function loadMedications(){
-  if(!currentFacility)return;
+  if(!showMAR||!currentFacility)return;
   const{data}=await sb.from('medications').select('*').eq('facility_id',currentFacility.id).order('created_at');
   marMedCache={};
   const meds=data||[];
@@ -3839,6 +3953,9 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 let seedDemoRunning=false;
 
 async function seedDemoData(){
+  // The sample facility is resident-shaped: residents, medications, a MAR
+  // history. Rewriting it for Lite is a product decision, not a switch.
+  if(!showMAR){t22Toast(T22_LITE_BLOCKED_MSG);return;}
   if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
@@ -4743,6 +4860,10 @@ async function loadDocuments(){
     ({data,error}=await sb.from('documents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}));
   }
   facilityDocs=error?[]:(data||[]);
+  // Lite holds no resident records, so a file attached to one — a LIC 601,
+  // 602A or ISP scan uploaded before the pivot — is not listed. The rows
+  // themselves go with migrations/2026-09-06_title22_lite_drop_phi.sql.
+  if(!showMAR)facilityDocs=facilityDocs.filter(d=>!d.resident_id);
   renderDocuments();
 }
 function renderDocuments(){
@@ -5727,7 +5848,7 @@ let dailyLogs=[];let dailyResidents=[];
 const DL_LABELS={narrative:'<svg class="ic"><use href="#i-note"/></svg> Narrative',vitals:'<svg class="ic"><use href="#i-heart"/></svg> Vitals',food:'<svg class="ic"><use href="#i-meal"/></svg> Food',bowel:'<svg class="ic"><use href="#i-toilet"/></svg> Bowel',hygiene:'<svg class="ic"><use href="#i-droplet"/></svg> Hygiene'};
 
 async function loadDailyLogs(){
-  if(!currentFacility)return;
+  if(!showMAR||!currentFacility)return;
   const dEl=document.getElementById('dl-date');
   if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
   const{data:res}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');
