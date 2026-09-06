@@ -273,6 +273,14 @@
   .doc-slot-dates{margin-top:4px;font-size:12px;color:var(--text);font-weight:500}
   .doc-slot-dates .ds-soon-date{color:var(--amber);font-weight:600}
   .doc-slot-dates .ds-miss-date{color:var(--red);font-weight:600}
+  .admission-pack{border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;background:var(--gray-bg)}
+  .admission-pack h4{margin:0 0 2px;font-size:12px;font-weight:600;color:var(--text)}
+  .admission-pack .ap-sub{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:8px}
+  .admission-pack ul{margin:0;padding:0;list-style:none;display:grid;gap:5px}
+  .admission-pack li{font-size:12px;line-height:1.45}
+  .admission-pack a{color:var(--teal);font-weight:600;text-decoration:none}
+  .admission-pack a:hover{text-decoration:underline}
+  .admission-pack .ap-note{color:var(--text2);font-weight:400}
   .doc-slot-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .doc-slot-actions button{padding:5px 10px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
   .doc-slot-actions button:hover{border-color:var(--teal);color:var(--teal)}
@@ -3061,6 +3069,7 @@ function openResidentModal(resId){
   document.getElementById('res-isp-date').value=r?.isp_review_date||'';
   document.getElementById('res-modal-error').classList.remove('show');
   clearRecordDocs();
+  renderAdmissionForms();
   refreshDocSlots('resident',currentResidentId);
   document.getElementById('resident-modal').classList.add('open');
 }
@@ -4938,6 +4947,54 @@ const DOC_SLOT_HOWTO={
     text:'The plan your facility writes for this resident and updates as their needs change. Upload the current version here and set the last-reviewed date.'},
 };
 const DOC_SLOT_HOWTO_CAPTION='Requirements change — confirm what yours are with your licensing analyst.';
+
+// The blank forms an admission needs, to print and fill in by hand.
+//
+// This is a print list and nothing more. Title22 does not capture what goes on
+// these pages, does not require them back, and does not score a resident on
+// them — the operator prints, writes on paper, and uploads a copy afterwards
+// only if they want one kept here. Uploading stays optional and already has
+// two routes: the slots below, and the Documents tab, which takes any file
+// against any resident.
+//
+// Every url below is a link to the live CDSS copy, never a file we host: CDSS
+// revises these, and a cached copy would sooner or later hand someone the
+// wrong version. Note the paths — LIC601.PDF, lic602a.pdf, LIC603A.pdf,
+// LIC613C-2.pdf and a LIC625 that is not under /cdssweb/ at all. The casing
+// and the shape both vary, so none of these can be derived from another; each
+// one is added only after somebody opened it and saw the right form.
+const ADMISSION_FORMS=[
+  {code:'LIC 601',   name:'Identification and Emergency Information',
+   url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC601.PDF'},
+  {code:'LIC 602A',  name:'Medical Assessment — the physician completes this one',
+   url:'https://www.cdss.ca.gov/cdssweb/entres/forms/english/lic602a.pdf'},
+  {code:'LIC 603A',  name:'Resident Appraisal',
+   url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC603A.pdf'},
+  {code:'LIC 604A',  name:'Admission Agreement',
+   url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC604A.PDF',
+   note:'a template you adapt for your facility'},
+  {code:'LIC 613C',  name:'Personal Rights',
+   url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC613C-2.pdf',
+   note:'privately operated RCFE'},
+  {code:'LIC 625',   name:'Appraisal / Needs and Services Plan',
+   url:'https://www.cdss.ca.gov/Portals/9/Additional-Resources/Forms-and-Brochures/2020/I-L/LIC625.pdf?ver=2024-10-28-160201-770'},
+  {code:'ISP',       name:'Individual Service Plan',
+   note:'no CDSS form — your facility writes this one'},
+];
+
+function renderAdmissionForms(){
+  const host=document.getElementById('admission-pack');
+  if(!host)return;
+  host.innerHTML='<h4>Blank forms for an admission</h4>'
+    +'<div class="ap-sub">Open one to print it, fill it in by hand, and keep the paper. Upload a copy below only if you want it stored here too.</div>'
+    +'<ul>'+ADMISSION_FORMS.map(f=>{
+      const label=esc(f.code)+' — '+esc(f.name);
+      const note=f.note?` <span class="ap-note">(${esc(f.note)})</span>`:'';
+      return '<li>'+(f.url
+        ?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${label}</a>`
+        :`<span>${label}</span>`)+note+'</li>';
+    }).join('')+'</ul>';
+}
 
 // Documents belonging to the record currently open in a modal. Loaded fresh on
 // open rather than filtered out of facilityDocs, which is only populated when
@@ -7613,6 +7670,7 @@ document.addEventListener('click',function(e){
     <div class="form-group" style="grid-column:1/-1"><label>Allergies</label><input type="text" id="res-allergies" autocomplete="off" placeholder="e.g. Penicillin"/></div>
     <div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 0;padding-top:14px;border-top:1px solid var(--border)">Required documents</div>
     <div style="grid-column:1/-1;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:2px">DSS asks for the document, not the answer. Attach each one here so you can view, print or share it during an inspection.</div>
+    <div class="admission-pack" id="admission-pack" style="grid-column:1/-1"></div>
 
     <div class="doc-slot" id="docslot-lic601">
       <div class="doc-slot-title">LIC 601 — Identification and Emergency Information</div>

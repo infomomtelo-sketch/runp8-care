@@ -36,6 +36,18 @@ employment records, not PHI, and may use scan.
 The AI never suggests, corrects, or comments on clinical
 dosage information, on any plan.
 
+## Admission forms are print-only
+ADMISSION_FORMS lists the blank CDSS forms an
+admission needs, in the resident modal. Print list only:
+the app captures nothing off these pages, requires none
+of them back, and scores no resident on them. Uploading
+stays optional (the slots, or the Documents tab). Links
+always point at the live CDSS copy, never a hosted one.
+Never derive a form URL — the paths vary in case and in
+shape (LIC601.PDF, lic602a.pdf, LIC613C-2.pdf, and a
+LIC625 outside /cdssweb/ entirely). Add one only after
+someone opened it and saw the right form.
+
 ## "How to complete this" guidance
 DOC_SLOT_HOWTO is the one source: the doc slots render
 it on an empty slot, and buildFacilityContext sends the
