@@ -270,6 +270,9 @@
   .doc-slot-status .ds-ok{color:var(--green);font-weight:600}
   .doc-slot-status .ds-warn{color:var(--amber);font-weight:600}
   .doc-slot-status .ds-miss{color:var(--text2);font-weight:600}
+  .doc-slot-dates{margin-top:4px;font-size:12px;color:var(--text);font-weight:500}
+  .doc-slot-dates .ds-soon-date{color:var(--amber);font-weight:600}
+  .doc-slot-dates .ds-miss-date{color:var(--red);font-weight:600}
   .doc-slot-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .doc-slot-actions button{padding:5px 10px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
   .doc-slot-actions button:hover{border-color:var(--teal);color:var(--teal)}
@@ -4867,11 +4870,11 @@ const DOC_SLOTS={
   // the browser for a third party, staff included. Uploading goes browser ->
   // Supabase Storage and touches no AI, so it stays available regardless.
   staff:[
-    {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:false},
-    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:false},
-    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:false},
-    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:false},
-    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:false},
+    {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:false, issuedLabel:'Tested'},
+    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:false, issuedLabel:'Certified'},
+    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:false, issuedLabel:'Certified'},
+    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:false, issuedLabel:'Cleared'},
+    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:false, issuedLabel:'Completed'},
     {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:false},
   ],
   // scan:false throughout — a resident face sheet is PHI and scanning sends it
@@ -4880,7 +4883,7 @@ const DOC_SLOTS={
   resident:[
     {docType:'lic601', selectEl:'res-lic601', yes:'yes', scan:false},
     {docType:'lic602a', selectEl:'res-lic602a', yes:'yes', scan:false},
-    {docType:'isp',    selectEl:'res-isp',    yes:'yes', issuedEl:'res-isp-date', scan:false},
+    {docType:'isp',    selectEl:'res-isp',    yes:'yes', issuedEl:'res-isp-date', scan:false, issuedLabel:'Reviewed'},
   ],
 };
 
@@ -5001,10 +5004,14 @@ function renderDocSlots(kind){
     if(doc){
       host.classList.add('is-onfile');
       const when=doc.uploaded_at?new Date(doc.uploaded_at).toLocaleDateString():'';
-      const exp=doc.expires_at?' · expires '+new Date(doc.expires_at+'T00:00:00').toLocaleDateString():'';
       status=`<span class="ds-ok"><svg class="ic"><use href="#i-check-circle"/></svg> On file</span> · ${esc(doc.title||doc.file_name||'Document')}`
-        +(when?' · added '+when:'')+exp+(doc.source==='scan'?' · <svg class="ic"><use href="#i-camera"/></svg> scanned':'')
+        +(when?' · added '+when:'')+(doc.source==='scan'?' · <svg class="ic"><use href="#i-camera"/></svg> scanned':'')
         +(docs.length>1?` · <span style="color:var(--text2)">${docs.length-1} earlier version${docs.length>2?'s':''}</span>`:'');
+      // The dates that belong to the document rather than to the upload. "added"
+      // above is when the file reached us; these are what the paper itself says,
+      // which is the pair someone is actually checking.
+      const dates=slotDocDateLine(slot,doc);
+      if(dates)status+=dates;
     }else if(queued.length){
       status=`<span class="ds-warn"><svg class="ic"><use href="#i-clip"/></svg> ${esc(queued[queued.length-1].file.name)}</span> — will be filed when you save this record.`;
     }else if(claimed){
@@ -5044,6 +5051,26 @@ function renderDocSlots(kind){
 // form the caregiver is looking at, so a CPR card filed while "Expires on" says
 // 2027-03-01 carries that date with it. This is what lets expiry warnings
 // eventually cite a document instead of a typed field.
+// The start and expiry printed on a filed document, drawn from the columns the
+// upload captured. Whether the expiry has passed is arithmetic on a date
+// somebody entered, not a judgement about the facility — it says this document
+// expired on this date, never that the facility is out of compliance.
+function slotDocDateLine(slot,doc){
+  const fmt=d=>new Date(d+'T00:00:00').toLocaleDateString();
+  const parts=[];
+  if(doc.issued_at)parts.push(`${esc(slot.issuedLabel||'Dated')} ${fmt(doc.issued_at)}`);
+  if(doc.expires_at){
+    const today=new Date();today.setHours(0,0,0,0);
+    const exp=new Date(doc.expires_at+'T00:00:00');
+    const days=Math.round((exp-today)/86400000);
+    const cls=days<0?'ds-miss-date':(days<=30?'ds-soon-date':'');
+    const tail=days<0?' — expired':(days<=30?` — ${days===0?'today':days===1?'in 1 day':'in '+days+' days'}`:'');
+    parts.push(`<span class="${cls}">Expires ${fmt(doc.expires_at)}${tail}</span>`);
+  }
+  if(!parts.length)return'';
+  return `<div class="doc-slot-dates">${parts.join(' · ')}</div>`;
+}
+
 function slotDocDates(kind,docType){
   const slot=(DOC_SLOTS[kind]||[]).find(s=>s.docType===docType);
   const read=id=>{const el=id?document.getElementById(id):null;return(el&&el.value)||null;};
