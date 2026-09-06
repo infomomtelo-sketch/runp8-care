@@ -2285,7 +2285,55 @@ async function resolveTierLimits(){
   return ent;
 }
 
+// Wrapped rather than called from each of the eight places that load the
+// app: loadAppInner has three exits of its own, and a gate that a new exit
+// can skip is not a gate.
 async function loadApp(){
+  await loadAppInner();
+  await enforcePaidGate();
+}
+
+// ===== PAID GATE =====
+// Sits on top of the entitlement the app already resolves. `users.paid` is
+// what the Stripe webhook writes; this only decides where someone lands.
+//
+// Deliberately fails open in two directions, because both failures cost more
+// than they save: a trial that is still running is access (nobody pays on day
+// one), and a users table that cannot be read — not migrated yet, offline,
+// RLS refusing — leaves the app's own entitlement gate in charge rather than
+// locking out paying customers over an outage.
+async function enforcePaidGate(){
+  if(!currentUser||demoMode)return;
+  const isPublic=location.hash.includes('pricing')||location.hash.includes('welcome')||location.pathname.includes('welcome');
+  if(isPublic)return;
+  // Still in trial, or working inside a facility somebody else pays for.
+  if(t22Entitled||t22CoveredByFacility)return;
+  let paid=false;
+  try{
+    const{data,error}=await sb.from('users').select('paid').eq('email',(currentUser.email||'').toLowerCase()).maybeSingle();
+    if(error)return;
+    paid=!!data?.paid;
+  }catch(e){return;}
+  if(paid)return;
+  if(location.hash!=='#pricing')location.hash='#pricing';
+  showPricing();
+}
+
+// The app is driven by showPage/switchTab, not by the URL. These two hashes
+// exist because Stripe has to be able to send someone back to a fixed address.
+function showPricing(){
+  if(!currentUser){showPage('landing');return;}
+  switchTab('billing');
+}
+
+function t22Route(){
+  const h=location.hash||'';
+  if(h.startsWith('#pricing'))showPricing();
+}
+
+window.addEventListener('hashchange',t22Route);
+
+async function loadAppInner(){
   document.getElementById('nav-public').style.display='none';
   document.getElementById('nav-app').style.display='flex';
   const readFacilities=async()=>{
