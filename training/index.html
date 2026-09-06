@@ -250,16 +250,16 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
     },
     {
       title:'Resident records',
-      sub:'LIC 601, LIC 602, ISP — where the documents live',
+      sub:'LIC 601, LIC 602A, ISP — where the documents live',
       body:`
         <h4>What the screen is</h4>
-        <p>Each resident's record includes a <strong>Required documents</strong> section with three slots: LIC 601 (Identification and Emergency Information), LIC 602 (Physician's Report), and the ISP (Individual Service Plan, with a last-reviewed date). Each slot pairs a self-reported yes/no with the actual document proving it.</p>
+        <p>Each resident's record includes a <strong>Required documents</strong> section with three slots: LIC 601 (Identification and Emergency Information), LIC 602A (Medical Assessment — the physician's report for an RCFE), and the ISP (Individual Service Plan, with a last-reviewed date). Each slot pairs a self-reported yes/no with the actual document proving it.</p>
         <h4>How to use it</h4>
         <ul>
         <li>Open a resident and scroll to Required documents. Upload the file into each slot as you receive it — there's no camera-scan button here, upload only.</li>
         <li>A slot marked "yes" with nothing attached shows amber and says an inspector will ask to see it. Attaching the document turns it green and flips the self-reported answer to yes for you.</li>
         </ul>
-        <div class="why-block"><h4>Why it works this way</h4><p>A resident's face sheet, physician's report, and service plan are protected health information. That's why these go through upload — straight from your browser into storage — instead of the scan-to-fill camera tool used elsewhere in the app: no photo of a resident document is ever sent to a third-party AI service. And where the form says "on file," an inspector wants to see the file, not hear the answer — filing it is what makes that resident's readiness verified instead of just claimed.</p></div>`
+        <div class="why-block"><h4>Why it works this way</h4><p>A resident's face sheet, physician's report, and service plan are protected health information. That's why these go through upload — straight from your browser into storage: no photo of a resident document is ever sent to a third-party AI service. Camera scanning is switched off across the whole app while no HIPAA business associate agreement is in place, so upload is the only route anywhere. And where the form says "on file," an inspector wants to see the file, not hear the answer — filing it is what makes that resident's readiness verified instead of just claimed.</p></div>`
     },
     {
       title:'Staff documents',
@@ -269,7 +269,7 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
         <p>Every staff record has the same document-slot pattern: TB test, CPR card, First Aid card, LiveScan clearance, Mandated Reporter training, and the 16-hour initial training certificate — each with an issue date, due date, or expiry. An expiry banner warns at 90, 30, and 7 days out.</p>
         <h4>How to use it</h4>
         <ul>
-        <li>Attach each certificate as you receive it. On these slots, the scan button can read a photo of the certificate and drop the date into the form for you — but it only fills the form, it never saves by itself. You still review it and press Save.</li>
+        <li>Attach each certificate as you receive it, and set the dates from the certificate itself. Upload is the only route here too — camera scanning is switched off across the app for now. Once the file is on the slot it shows those dates back to you, with an expiry that has already passed in red and one inside thirty days counting down in amber.</li>
         <li>The 16-hour hands-on portion of initial training is 16 of your first 40 hours (the other 24 come from an approved outside vendor). No vendor logs those 16 — someone at the facility has to log each supervised session so the hours add up.</li>
         </ul>
         <div class="why-block"><h4>Why it works this way</h4><p>The expiry alerts exist so a lapse gets caught weeks ahead, not discovered on inspection day. And the same rule as resident documents applies here: a certificate marked "Yes — completed" with nothing attached shows amber. Attaching the file — not just ticking the box — is what makes the facility's "backed by a document" count, not just its raw score, reflect what's actually true.</p></div>`
