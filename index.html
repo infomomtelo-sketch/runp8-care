@@ -1090,7 +1090,8 @@
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px;color:var(--text2)"><svg class="ic ic-lg"><use href="#i-lock"/></svg></div>
-          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your free trial has expired</div><div style="font-size:13px;color:var(--red);margin-top:4px">Subscribe below to restore full access to Title22.</div></div>
+          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your trial expired — subscribe to continue</div><div style="font-size:13px;color:var(--red);margin-top:4px">Pick up where you left off. Your facility, staff and documents are all still here.</div></div>
+          <button id="trial-expired-buy" class="btn btn-primary" style="font-size:13px" onclick="openStripe('lite')">Subscribe — Lite $29/mo</button>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email support@title22.app.</div></div>
@@ -1119,16 +1120,16 @@
           <div class="card-title">Upgrade your plan</div>
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Starter</div><div style="font-size:13px;color:var(--text2)">1 facility · MAR, residents, staff · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$49<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_STARTER)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div><div style="font-weight:700;font-size:15px">Lite</div><div style="font-size:13px;color:var(--text2)">1 facility · facility &amp; staff compliance · Tello AI assistant</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$29<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button id="buy-lite" onclick="openStripe('lite')" class="btn btn-outline" style="font-size:13px">Subscribe — Lite $29/mo</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Facility <svg class="ic"><use href="#i-star"/></svg></div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button onclick="openStripe(STRIPE_PRO)" class="btn btn-primary" style="font-size:13px">Subscribe</button></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Multi-Home <svg class="ic"><use href="#i-star"/></svg></div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · facility &amp; staff compliance · Tello AI assistant</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button id="buy-multi" onclick="openStripe('multi')" class="btn btn-primary" style="font-size:13px">Subscribe — Multi-Home $79/mo</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button onclick="openStripe(STRIPE_AGENCY)" class="btn btn-outline" style="font-size:13px">Subscribe</button></div>
+              <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · facility &amp; staff compliance · Tello AI assistant</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$249<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button id="buy-agency" onclick="window.location.href='mailto:support@title22.app?subject=Agency%20plan'" class="btn btn-outline" style="font-size:13px">Contact Sales</button></div>
             </div>
           </div>
         </div>
@@ -1145,6 +1146,23 @@ const STRIPE_STARTER    = 'https://buy.stripe.com/00w6oGdmy28K2bpes6g360f';
 const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
+// Lite pricing. Multi-Home is the existing $79 link, unchanged — same price,
+// new name. Lite is $29 and there is no $29 payment link yet: STRIPE_STARTER
+// charges $49, so pointing the $29 button at it would bill everyone the old
+// price. Create the $29/mo recurring Payment Link in Stripe and paste it
+// here; until then the button says so instead of charging.
+const STRIPE_LITE       = '';
+const STRIPE_MULTI      = STRIPE_PRO;
+// Paste this into each Payment Link's "After payment" setting in the Stripe
+// dashboard (Don't show confirmation page -> Redirect to):
+//     https://title22.app#welcome
+// Hardcoded to the live host on purpose — see SELF_HOST.md. Note what Stripe
+// will and will not do here: a Payment Link ignores query parameters it does
+// not know, and the only placeholder it substitutes on redirect is
+// {CHECKOUT_SESSION_ID} — there is no {CUSTOMER_EMAIL}. So the welcome page
+// does not depend on the address coming back in the URL; openStripe stashes
+// it before leaving and handleWelcome reads that (or the signed-in session).
+const CHECKOUT_EMAIL_KEY = 'title22_checkout_email';
 const AI_WORKER = 'https://title22-ai.infomomtelo.workers.dev/api/chat';
 // Deployed script is named `mission-control` (Cloudflare auto-named it at
 // creation and Workers can't be renamed). The source lives in
@@ -1184,6 +1202,18 @@ const STRIPE_PLANS = {
   [STRIPE_SPECIALIST]:'specialist',
   [STRIPE_AGENCY]:'agency'
 };
+// Plan key -> checkout link. openStripe takes the key ('lite', 'multi') so
+// the buttons name a plan rather than a URL, and the plan reaches Stripe's
+// metadata through the link itself (set metadata plan=lite / plan=multi on
+// each Payment Link in the dashboard — a link cannot carry it in the query
+// string, and this app has no server to create Checkout Sessions).
+const T22_PLAN_LINKS = {
+  lite:STRIPE_LITE,
+  multi:STRIPE_MULTI,
+  starter:STRIPE_STARTER,
+  pro:STRIPE_PRO,
+  agency:STRIPE_AGENCY
+};
 // Map page titles to instructional video files. Only pages with videos show help links.
 const VIDEO_MAP = {
   'Compliance dashboard':'media/walkthrough/06_readiness_score.webm',
@@ -1214,8 +1244,22 @@ function closeVideoHelp(){
   video.src = '';
 }
 
-function openStripe(url){
-  track('checkout_started',{plan:STRIPE_PLANS[url]||null});
+// Takes a plan key ('lite', 'multi', 'agency'); a full URL still works, so
+// any older caller keeps behaving as it did.
+function openStripe(plan){
+  const url=T22_PLAN_LINKS[plan]||(String(plan||'').startsWith('http')?plan:'');
+  const planName=T22_PLAN_LINKS[plan]?plan:(STRIPE_PLANS[plan]||null);
+  if(!url){
+    // Better than opening the wrong price. A Lite button with no $29 link
+    // behind it says so rather than charging $49.
+    t22Toast('Checkout for this plan is not set up yet — email support@title22.app and we will take it from there.');
+    track('checkout_unavailable',{plan:planName});
+    return;
+  }
+  track('checkout_started',{plan:planName});
+  // Stripe cannot hand the address back on redirect, so remember who is
+  // buying. handleWelcome() reads this when the checkout returns.
+  try{ if(currentUser?.email)localStorage.setItem(CHECKOUT_EMAIL_KEY,currentUser.email.toLowerCase()); }catch(e){}
   try{
     const link=new URL(url);
     if(currentUser?.id)link.searchParams.set('client_reference_id',currentUser.id);
@@ -2104,14 +2148,19 @@ addEventListener('scroll',()=>{
 },{passive:true});
 
 // ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
-const T22_PAID=['starter','pro','specialist','agency'];
+const T22_PAID=['lite','multi','starter','pro','specialist','agency'];
 // Display labels only — the underlying plan keys and Stripe price IDs are
 // unchanged (renaming Stripe products would orphan live subscriptions).
-const T22_LABEL={trial:'Free Trial',edu:'Classroom',starter:'Starter',pro:'Pro',specialist:'Multi-Facility',agency:'Agency'};
+const T22_LABEL={trial:'Free Trial',edu:'Classroom',lite:'Lite',multi:'Multi-Home',starter:'Starter',pro:'Pro',specialist:'Multi-Facility',agency:'Agency'};
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:2,        ai:true},
   edu:        {facilities:1,        ai:true},
+  // Lite plan keys. Without these a subscriber whose Stripe metadata says
+  // plan=lite falls through to the {facilities:1, ai:false} default and loses
+  // Tello — and AI is on every tier.
+  lite:       {facilities:1,        ai:true},
+  multi:      {facilities:5,        ai:true},
   starter:    {facilities:1,        ai:true},
   pro:        {facilities:5,        ai:true},
   specialist: {facilities:5,        ai:true},
@@ -5833,11 +5882,11 @@ async function loadBilling(){
     const ent=await resolveEntitlement();
     const plan=ent.plan;
     const planLabels=T22_LABEL;
-    const planPrices={trial:'$0',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
+    const planPrices={trial:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'$249/mo'};
     let trialHtml='';
     if(plan==='trial'){
       const daysLeft=ent.daysLeft;
-      trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`<svg class="ic"><use href="#i-clock"/></svg> <strong>${daysLeft} days remaining</strong> on your trial.`:'<svg class="ic"><use href="#i-alert"/></svg> <strong>Trial expired.</strong> Subscribe to restore access.'}</div>`;
+      trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`<svg class="ic"><use href="#i-clock"/></svg> <strong>${daysLeft} days remaining</strong> on your trial.`:'<svg class="ic"><use href="#i-alert"/></svg> <strong>Trial expired.</strong> Subscribe to continue.'}</div>`;
     }
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
