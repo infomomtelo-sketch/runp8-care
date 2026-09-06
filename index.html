@@ -4881,8 +4881,8 @@ const DOC_SLOTS={
   // to a third-party AI service, which we cannot do without a BAA. Uploading
   // goes browser -> Supabase Storage and touches no AI, so it stays available.
   resident:[
-    {docType:'lic601', selectEl:'res-lic601', yes:'yes', scan:false},
-    {docType:'lic602a', selectEl:'res-lic602a', yes:'yes', scan:false},
+    {docType:'lic601', selectEl:'res-lic601', yes:'yes', scan:false, formUrl:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC601.PDF'},
+    {docType:'lic602a', selectEl:'res-lic602a', yes:'yes', scan:false, formUrl:'https://www.cdss.ca.gov/cdssweb/entres/forms/english/lic602a.pdf'},
     {docType:'isp',    selectEl:'res-isp',    yes:'yes', issuedEl:'res-isp-date', scan:false, issuedLabel:'Reviewed'},
   ],
 };
@@ -4893,15 +4893,16 @@ const DOC_SLOTS={
 // cached would sooner or later be teaching the wrong version. No iframe
 // either — CDSS may refuse to be framed.
 //
-// Nothing is filled in below yet, and that is the point of this note. CDSS
-// mostly serves forms from
+// CDSS mostly serves forms from
 //   https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC<number>.pdf
-// but some use a suffix or a different filename, so a URL nobody has opened
-// is a guess, and a guess here shows a student a 404 or the wrong form.
-// Confirmed to resolve so far: LIC 603A and LIC 604 — neither of which has a
-// slot in this app. LIC 601 and LIC 602A are the two slots that want a link;
-// open the candidate URL, and if it is the right form, add formUrl to that
-// slot above. If it 404s, leave the slot without a link.
+// but some use a suffix, a different filename, or different casing, so a URL
+// nobody has opened is a guess, and a guess here shows a caregiver a 404 or
+// the wrong form. Never add one from the pattern alone.
+// LIC 601 and LIC 602A were opened and confirmed by the operator, and carry
+// links above — note the casing differs between the two, which is exactly why
+// they cannot be derived. LIC 603A and LIC 604 were confirmed to resolve
+// earlier but have no slot in this app. Any further slot gets a link only
+// after someone opens the candidate URL and sees the right form.
 const DOC_SLOT_FORM_CAPTION='Opens the current form on the CDSS site.';
 
 // What each document is and where it comes from, shown on a slot that has
