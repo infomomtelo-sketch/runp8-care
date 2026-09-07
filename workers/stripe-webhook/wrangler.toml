@@ -26,7 +26,7 @@ compatibility_date = "2026-09-07"
 #   customer.subscription.updated
 #   customer.subscription.deleted
 #
-# Before any of it works: PRICE_PLANS in index.js needs the $29 Lite price ID.
-# Without it a Lite payment is refused with 422 and shows in the delivery log,
-# which is the loud version of the bug that let a paid customer sit on "Free
-# Trial" for a day.
+# PRICE_PLANS in index.js now carries the $29 Lite price
+# (price_1UCIAiAH9qPFLg89ln6eHAVa). Any price still not in that map is refused
+# with 422 and shows in the delivery log — the loud version of the bug that let
+# a paid customer sit on "Free Trial" for a day.

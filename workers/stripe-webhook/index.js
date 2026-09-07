@@ -16,8 +16,7 @@
 // specialist, agency) and writes profiles.title22_*. The $29 Lite price is not
 // in that map. So a Lite payment arrived, the webhook could not name a plan,
 // and nothing was written — the customer stayed on "Free Trial" while their
-// card was charged. PRICE_PLANS below is the fix, and PRICE_LITE has to be
-// filled in before it works.
+// card was charged. PRICE_PLANS below is the fix.
 //
 // No npm dependencies, matching the other Workers here: the Stripe signature
 // is verified with Web Crypto directly rather than pulling in the SDK, because
@@ -28,9 +27,7 @@
 // reported and ignored rather than silently dropped, which is the bug this
 // file exists to fix.
 const PRICE_PLANS = {
-  // TODO: paste the $29 Lite price ID (Stripe -> Product -> Pricing; it is the
-  // price_... behind buy.stripe.com/4gMcN41DQfZA5nBgAeg360l, NOT the link id).
-  // '': 'lite',
+  'price_1UCIAiAH9qPFLg89ln6eHAVa': 'lite',       // $29, the price this map was missing
   'price_1TkIKtAH9qPFLg89SEmENr5J': 'starter',
   'price_1TkILaAH9qPFLg8923rgvHHb': 'pro',        // $79, sold as Multi-Home
   'price_1TkIMaAH9qPFLg89SPFZH0aG': 'specialist', // archived, legacy subs only

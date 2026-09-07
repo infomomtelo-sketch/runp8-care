@@ -133,15 +133,18 @@ sheet as read-only — it has nowhere to go.
 - **The deployed source is still dashboard-only.** `stripe-webhook/index.js`
   in this repo is a replacement written from what is documented here, NOT a
   copy of what is running. Pull the live script and diff it before deploying.
-- **The $29 Lite price is not in the deployed price map.** That is why a Lite
+- **The $29 Lite price is not in the DEPLOYED price map.** That is why a Lite
   payment on 2026-09-06 charged the card and left the customer on "Free
   Trial": the webhook could not name a plan for the price, so it wrote
-  nothing. `PRICE_PLANS` in the committed file needs that price ID filled in.
+  nothing. The committed replacement carries it —
+  `price_1UCIAiAH9qPFLg89ln6eHAVa` → `lite` — but that only takes effect once
+  the Worker is actually deployed.
 - It writes `profiles.title22_*`. `public.subscriptions` was never written by
   it, which is why the two stores disagree — one row there still says
   `active` on a period that ended six weeks ago. The committed replacement
   keeps both current.
 - Maps live price IDs → `title22_plan`:
+  - `price_1UCIAiAH9qPFLg89ln6eHAVa` → lite ($29) — in the committed file only
   - `price_1TkIKtAH9qPFLg89SEmENr5J` → starter
   - `price_1TkILaAH9qPFLg8923rgvHHb` → pro ($79)
   - `price_1TkIMaAH9qPFLg89SPFZH0aG` → specialist ($149)
