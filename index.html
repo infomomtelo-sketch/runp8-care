@@ -438,7 +438,7 @@
    <div class="hero" style="padding-bottom:0">
     <div class="hero-badge">Built for RCFE &amp; CBRC · California Title 22 · Fresno, CA</div>
     <h1>Run a facility <span>DSS is proud to inspect</span></h1>
-    <p>Genuine compliance every day — not just inspection day. Title22 keeps your staff certified, your resident records current, and your medications documented so when DSS arrives, the work speaks for itself.</p>
+    <p>Genuine compliance every day — not just inspection day. Title22 Lite keeps your staff certified, your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
       <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Start 14-day free trial</button>
       <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
@@ -453,11 +453,11 @@
     <div class="features-grid">
       <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>Title 22 compliance checklist</h3><p>Every requirement pre-loaded and tied to the exact CCR regulation code.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--red-light)"><svg class="ic"><use href="#i-chart"/></svg></div><h3>Inspection readiness score</h3><p>Real-time score shows exactly where your facility stands before DSS arrives.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-clock"/></svg></div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, ISP, admin cert.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-pill"/></svg></div><h3>Digital MAR</h3><p>Log every medication administration with timestamp and caregiver. No paper gaps.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-clock"/></svg></div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, First Aid, TB, LiveScan, admin cert.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>40-hour training tracking</h3><p>The initial 40 hours tracked per caregiver, with the continuing hours after it. See who is short before an analyst does.</p></div>
       <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Staff certification tracking</h3><p>CPR, First Aid, LiveScan, TB tests, mandated reporter — tracked per employee.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Resident records</h3><p>LIC 601, LIC 602A, ISP, admission agreements — every required form tracked.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log MAR and incidents on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Non-PHI document vault</h3><p>Licences, policies, TB clearances, certificates — each attached to the person or facility it belongs to. Resident documents are not accepted, by design.</p></div>
+      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log incidents and work the checklist on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
     </div>
   </div>
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
@@ -5160,7 +5160,7 @@ async function demoBriefingHTML(){
 // all the way to an inspection. Same reason checklist citations are null.
 const TELLO_CHARACTER = `You're in a residential care home for the elderly in California. Title 22 is the rulebook that governs how you operate.
 
-I'm Tello. I live inside Title22 Lite. Title22 Lite is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe and keep infra at $25/mo.
+I'm Tello. I live inside Title22 Lite. Title22 Lite is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe — there is no resident health information here to leak, and no business associate agreement to sign.
 
 What I DO have:
 - Staff, training hours, certifications, clearances, expirations
