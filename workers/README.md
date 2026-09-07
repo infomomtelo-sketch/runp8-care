@@ -130,6 +130,17 @@ sheet as read-only — it has nowhere to go.
 ## stripe-webhook
 
 - Stripe destination: `memorable-wonder`.
+- **The deployed source is still dashboard-only.** `stripe-webhook/index.js`
+  in this repo is a replacement written from what is documented here, NOT a
+  copy of what is running. Pull the live script and diff it before deploying.
+- **The $29 Lite price is not in the deployed price map.** That is why a Lite
+  payment on 2026-09-06 charged the card and left the customer on "Free
+  Trial": the webhook could not name a plan for the price, so it wrote
+  nothing. `PRICE_PLANS` in the committed file needs that price ID filled in.
+- It writes `profiles.title22_*`. `public.subscriptions` was never written by
+  it, which is why the two stores disagree — one row there still says
+  `active` on a period that ended six weeks ago. The committed replacement
+  keeps both current.
 - Maps live price IDs → `title22_plan`:
   - `price_1TkIKtAH9qPFLg89SEmENr5J` → starter
   - `price_1TkILaAH9qPFLg8923rgvHHb` → pro ($79)

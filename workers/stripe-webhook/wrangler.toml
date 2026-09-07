@@ -1,0 +1,32 @@
+name = "stripe-webhook"
+main = "index.js"
+compatibility_date = "2026-09-07"
+
+# NOT the source of what is deployed. A stripe-webhook Worker has been running
+# since before this file existed, deployed from the Cloudflare dashboard, and
+# its source was never committed. Pull it and diff before deploying this:
+#
+#   curl -s "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/workers/scripts/stripe-webhook" \
+#     -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+#
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   STRIPE_WEBHOOK_SECRET  — whsec_... for the `memorable-wonder` destination.
+#                            Each endpoint has its own; a signature check
+#                            against the wrong one fails every request.
+#   STRIPE_SECRET_KEY      — sk_live_..., used only to read a customer's email
+#                            when a subscription event does not carry one.
+#   SUPABASE_URL           — https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY   — service_role key. Bypasses RLS, which is what lets
+#                            this write profiles and subscriptions for a user
+#                            who is not the caller.
+#
+# Stripe dashboard, on the `memorable-wonder` destination, these events:
+#   checkout.session.completed
+#   customer.subscription.created
+#   customer.subscription.updated
+#   customer.subscription.deleted
+#
+# Before any of it works: PRICE_PLANS in index.js needs the $29 Lite price ID.
+# Without it a Lite payment is refused with 422 and shows in the delivery log,
+# which is the loud version of the bug that let a paid customer sit on "Free
+# Trial" for a day.

@@ -2247,16 +2247,23 @@ async function readSubscription(){
       .order('current_period_end',{ascending:false,nullsFirst:false})
       .limit(10);
     if(error||!data||!data.length)return null;
-    // An unset period end is an open-ended sub, not an expired one — but it
-    // ranks below any row that carries a real date.
+    // A row must carry a period end that is still in the future. An unset one
+    // used to count as "open-ended, entitled" — which is what put Pro on an
+    // account that had never been on Pro.
+    //
+    // The reason is that nothing maintains this table. The Stripe webhook
+    // writes profiles.title22_*, not here (workers/README.md), so these rows
+    // are frozen at whatever wrote them: one of them still says 'active' on a
+    // period that ended six weeks ago. A null date here means unverifiable,
+    // not forever, and profiles — which the webhook does keep current —
+    // decides instead.
     const live=data.filter(r=>{
-      if(!r.current_period_end)return true;
+      if(!r.current_period_end)return false;
       const ends=new Date(r.current_period_end).getTime();
       return Number.isFinite(ends)&&Date.now()<ends;
     });
     if(!live.length)return null;
-    const dated=live.find(r=>r.current_period_end);
-    return (dated||live[0]).plan||null;
+    return live[0].plan||null;
   }catch(e){return null;}
 }
 
