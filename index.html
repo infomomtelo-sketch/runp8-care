@@ -2232,22 +2232,31 @@ async function resolveEntitlement(){
 // decides, exactly as it did before. Only losing BOTH locks anyone out.
 async function readSubscription(){
   try{
+    // Two things this query has to get right, both learned the hard way:
+    //
+    // 1. status is filtered HERE, not after. Taking the newest row and then
+    //    checking it meant one cancelled row at the top hid an active one
+    //    underneath it, and the account read as unpaid.
+    // 2. nullsFirst:false. Postgres sorts NULLs FIRST on a DESC order, so a
+    //    leftover row with no period end — a hand-inserted test row, say —
+    //    outranked the real subscription and became the plan on the badge.
     const{data,error}=await sb.from('subscriptions')
       .select('plan,status,current_period_end')
       .eq('user_id',currentUser.id)
-      .order('current_period_end',{ascending:false})
-      .limit(1);
+      .eq('status','active')
+      .order('current_period_end',{ascending:false,nullsFirst:false})
+      .limit(10);
     if(error||!data||!data.length)return null;
-    const row=data[0];
-    // 'active' only, per the billing rule. 'trialing' and 'past_due' are
-    // deliberately not access — widen this line if that changes.
-    if(String(row.status||'').toLowerCase()!=='active')return null;
-    // No period end stamped is an open-ended active sub, not an expired one.
-    if(row.current_period_end){
-      const ends=new Date(row.current_period_end).getTime();
-      if(!Number.isFinite(ends)||Date.now()>=ends)return null;
-    }
-    return row.plan||null;
+    // An unset period end is an open-ended sub, not an expired one — but it
+    // ranks below any row that carries a real date.
+    const live=data.filter(r=>{
+      if(!r.current_period_end)return true;
+      const ends=new Date(r.current_period_end).getTime();
+      return Number.isFinite(ends)&&Date.now()<ends;
+    });
+    if(!live.length)return null;
+    const dated=live.find(r=>r.current_period_end);
+    return (dated||live[0]).plan||null;
   }catch(e){return null;}
 }
 
