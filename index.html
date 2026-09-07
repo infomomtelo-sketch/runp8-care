@@ -2218,10 +2218,45 @@ async function resolveEntitlement(){
   return await readEntitlement();
 }
 
+// A paid subscription lives in public.subscriptions, written by Stripe —
+// user_id, plan, status, current_period_end. profiles.title22_plan is the
+// older store and still carries the trial, the edu tier, and every subscriber
+// who predates that table.
+//
+// This is checked FIRST and it is why a paid account used to read as "Free
+// Trial": the money landed in subscriptions and the app was only ever looking
+// at profiles, so "I've paid — refresh my access" had nothing to find.
+//
+// A failure here is NOT fail-closed. The read is additive: if the table is
+// missing, unreachable, or refused by RLS, the profiles read below still
+// decides, exactly as it did before. Only losing BOTH locks anyone out.
+async function readSubscription(){
+  try{
+    const{data,error}=await sb.from('subscriptions')
+      .select('plan,status,current_period_end')
+      .eq('user_id',currentUser.id)
+      .order('current_period_end',{ascending:false})
+      .limit(1);
+    if(error||!data||!data.length)return null;
+    const row=data[0];
+    // 'active' only, per the billing rule. 'trialing' and 'past_due' are
+    // deliberately not access — widen this line if that changes.
+    if(String(row.status||'').toLowerCase()!=='active')return null;
+    // No period end stamped is an open-ended active sub, not an expired one.
+    if(row.current_period_end){
+      const ends=new Date(row.current_period_end).getTime();
+      if(!Number.isFinite(ends)||Date.now()>=ends)return null;
+    }
+    return row.plan||null;
+  }catch(e){return null;}
+}
+
 async function readEntitlement(){
   // Single source of truth for access. Fail CLOSED: any read error or missing
   // row => NOT entitled. Never falls through to full access on failure.
   try{
+    const subPlan=await readSubscription();
+    if(subPlan)return{plan:subPlan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     const{data,error}=await sb.from('profiles')
       .select('title22_plan,title22_trial_ends_at,title22_subscription_id,title22_plan_expires_at')
       .eq('id',currentUser.id).maybeSingle();
