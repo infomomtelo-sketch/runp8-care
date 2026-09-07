@@ -1030,7 +1030,7 @@
       <!-- AI -->
       <div id="tab-ai" style="display:none">
         <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
-        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.</div>
+        <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.<span id="ai-lite-note" style="display:none"> This edition holds no resident, medication or MAR records, so she cannot see them.</span></div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -1038,7 +1038,6 @@
             <button class="filter-btn" onclick="sendAIQuery(this)">Am I ready for DSS?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Who has expired certs?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Simulate DSS inspection</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Which residents are missing documents?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">How do training hours work?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Who can see what?</button>
             <button class="filter-btn" onclick="sendAIQuery(this)">Help me word a difficult call to a family</button>
@@ -2032,12 +2031,14 @@ const TOUR_STEPS=[
   {tab:'dashboard', sel:'#dash-alerts, #expiry-banner, .stat-grid',
    title:'And it tells you whose',
    body:'An expired TB test is not a red number on a chart. It is a named person, and tapping it opens their record.'},
-  {tab:'residents', sel:'#residents-grid',
+  // Both of these stops open a tab Lite does not have. switchTab refuses them,
+  // so left in they would end the tour on a toast.
+  ...(showMAR?[{tab:'residents', sel:'#residents-grid',
    title:'Every resident, with their paperwork',
    body:'Open anyone and scroll to Required documents. A requirement ticked "yes" with nothing attached goes amber and says so — because DSS asks for the document, not the answer.'},
   {tab:'mar', sel:'#tab-mar .page-header',
    title:'The medication pass',
-   body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'},
+   body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'}]:[]),
   {tab:'documents', sel:'#tab-documents .page-header',
    title:'One button for inspection day',
    body:'Every filed document in one place, and a 90-day DSS packet you can print from the dashboard while the analyst is sitting there.'},
@@ -2046,15 +2047,18 @@ const TOUR_STEPS=[
    body:'Title 22 requirements with dates against them. Overdue rises to the top, because that is the order the questions come in.'},
   {tab:'team', sel:'#tab-team .page-header',
    title:'Five roles, and you choose them',
-   body:'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions. Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
+   body:(showMAR
+     ?'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions.'
+     :'A caregiver logs incidents and works the checklist. A supervisor sees the whole facility.')+
+     ' Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
   {tab:'ai', sel:'#tab-ai .card',
    title:'Now ask me something',
-   body:'Try "am I ready for DSS?" or "which residents are missing documents?". I read this facility\u2019s actual records and answer from them.'},
+   body:'Try "am I ready for DSS?" or "'+(showMAR?'which residents are missing documents?':'who has expired certs?')+'". I read this facility\u2019s actual records and answer from them.'},
   {tab:'dashboard', sel:'#user-menu-btn',
    title:'Everything else is in here',
-   body:'Documents, medications, the audit log, billing.'+
+   body:(showMAR?'Documents, medications, the audit log, billing.':'Documents, the audit log, billing.')+
      (typeof demoMode!=='undefined'&&demoMode
-       ?' Have a look around — this is the real app with invented residents, and nothing you press is saved.'
+       ?' Have a look around — this is the real app with invented '+(showMAR?'residents':'staff')+', and nothing you press is saved.'
        :' That is the tour. You can replay it any time from Walkthrough in the menu.')},
 ];
 let tourIdx=-1;
@@ -2214,10 +2218,45 @@ async function resolveEntitlement(){
   return await readEntitlement();
 }
 
+// A paid subscription lives in public.subscriptions, written by Stripe —
+// user_id, plan, status, current_period_end. profiles.title22_plan is the
+// older store and still carries the trial, the edu tier, and every subscriber
+// who predates that table.
+//
+// This is checked FIRST and it is why a paid account used to read as "Free
+// Trial": the money landed in subscriptions and the app was only ever looking
+// at profiles, so "I've paid — refresh my access" had nothing to find.
+//
+// A failure here is NOT fail-closed. The read is additive: if the table is
+// missing, unreachable, or refused by RLS, the profiles read below still
+// decides, exactly as it did before. Only losing BOTH locks anyone out.
+async function readSubscription(){
+  try{
+    const{data,error}=await sb.from('subscriptions')
+      .select('plan,status,current_period_end')
+      .eq('user_id',currentUser.id)
+      .order('current_period_end',{ascending:false})
+      .limit(1);
+    if(error||!data||!data.length)return null;
+    const row=data[0];
+    // 'active' only, per the billing rule. 'trialing' and 'past_due' are
+    // deliberately not access — widen this line if that changes.
+    if(String(row.status||'').toLowerCase()!=='active')return null;
+    // No period end stamped is an open-ended active sub, not an expired one.
+    if(row.current_period_end){
+      const ends=new Date(row.current_period_end).getTime();
+      if(!Number.isFinite(ends)||Date.now()>=ends)return null;
+    }
+    return row.plan||null;
+  }catch(e){return null;}
+}
+
 async function readEntitlement(){
   // Single source of truth for access. Fail CLOSED: any read error or missing
   // row => NOT entitled. Never falls through to full access on failure.
   try{
+    const subPlan=await readSubscription();
+    if(subPlan)return{plan:subPlan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     const{data,error}=await sb.from('profiles')
       .select('title22_plan,title22_trial_ends_at,title22_subscription_id,title22_plan_expires_at')
       .eq('id',currentUser.id).maybeSingle();
@@ -2623,10 +2662,10 @@ function applyLiteMode(){
   if(marCard)marCard.style.display='none';
   const addResident=document.getElementById('qa-add-resident');
   if(addResident)addResident.style.display='none';
-  // The sample facility seeds residents, medications and a MAR history. There
-  // is no Lite version of it, so the button is not offered rather than left to
-  // fail half way through.
-  document.querySelectorAll('[data-seed-demo]').forEach(b=>{b.style.display='none';});
+  // Tello's tab: the resident suggestion is deleted outright rather than
+  // hidden — it is not a question she can answer in any edition that ships.
+  const liteNote=document.getElementById('ai-lite-note');
+  if(liteNote)liteNote.style.display='inline';
 }
 
 // Charise logged in and nothing told her what she was. The tabs she cannot
@@ -4165,9 +4204,10 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 let seedDemoRunning=false;
 
 async function seedDemoData(){
-  // The sample facility is resident-shaped: residents, medications, a MAR
-  // history. Rewriting it for Lite is a product decision, not a switch.
-  if(!showMAR){t22Toast(T22_LITE_BLOCKED_MSG);return;}
+  // Two sample facilities, one button. The resident-shaped one below is what
+  // the full product loads; Lite has its own, further down, because a class
+  // cannot be taught on records the product does not hold.
+  if(!showMAR)return seedLiteDemoData();
   if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
@@ -4303,6 +4343,117 @@ async function seedDemoData(){
     await initFacility();
     switchTab('dashboard');
     alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
+  }catch(e){
+    alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
+  }
+  finally{
+    seedDemoRunning=false;
+    btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
+  }
+}
+
+// ===== SAMPLE FACILITY (LITE) =====
+// The teaching facility for Lite. Same promise as the full one — one click
+// and the dashboard opens amber, so a class has something to fix in the first
+// minute — built entirely out of what Lite holds: staff, their certifications
+// and clearances, the 40-hour training, incidents without PHI, and the
+// checklist. No residents, no medications, no MAR.
+//
+// Every gap below is deliberate and is a real citation an analyst writes:
+// an overdue TB test, a CPR card three weeks out, an expired First Aid, a
+// LiveScan that was never cleared, mandated reporter training missing, and
+// two people short of their 40 hours.
+async function seedLiteDemoData(){
+  if(seedDemoRunning)return;
+  if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
+  // Completeness is judged on the compliance checklist — the last bulk insert
+  // — not on the facility row, so a run that died half way can be retried
+  // instead of switching someone into an empty sample.
+  let reuse=null;
+  if(existing){
+    const{data:seeded}=await sb.from('compliance_tasks').select('id').eq('facility_id',existing.id).limit(1);
+    if(seeded&&seeded.length){
+      currentFacility=existing;
+      await initFacility();
+      switchTab('dashboard');
+      alert('You already have a sample facility — switching to it now. Your own facilities are untouched.');
+      return;
+    }
+    reuse=existing;
+  }
+  if(!confirm((reuse
+      ?'A previous attempt at the sample facility did not finish. This clears out what it left behind and loads it again'
+      :'This creates a separate sample facility ("Sunrise Demo Home")')
+    +' with 5 staff, expiring certifications, unfinished 40-hour training and two incidents to document. No resident data — Lite holds none. Your real facilities are not touched. Continue?'))return;
+  const btns=[...document.querySelectorAll('[data-seed-demo]')];
+  btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
+  seedDemoRunning=true;
+  let stage=reuse?'clearing out the unfinished attempt':'creating the sample facility';
+  try{
+    let fac=reuse;
+    if(reuse){
+      // Only the tables Lite writes. A delete against residents, medications
+      // or mar_entries is refused by the client guard and would throw here.
+      for(const t of ['incidents','staff','compliance_tasks']){
+        const{error:de}=await sb.from(t).delete().eq('facility_id',reuse.id);
+        if(de)throw de;
+      }
+      stage='creating the sample facility';
+    }else{
+      const{data,error:fe}=await sb.from('facilities').insert({
+        user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
+        license_number:'197000000',capacity:6,address:'123 Sample Lane, Fresno, CA 93701',
+        administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
+      }).select().single();
+      if(fe)throw fe;
+      fac=data;
+    }
+    stage='adding the 5 staff';
+    // staff.id has no column default — every row needs an explicit id. The
+    // administrator's is set to currentUser.id, as in the full seeder, so any
+    // policy that ties a row back to auth.uid() is satisfied.
+    const newStaffId=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+    const S=(name,role,hire,o)=>Object.assign({
+      id:newStaffId(),facility_id:fac.id,full_name:name,name,role,hire_date:hire,
+      phone:'(559) 555-0100',active:true,status:'active',
+      tb_test_date:dISO(-200),tb_test_due:dISO(160),tb_test_expiry:dISO(160),
+      cpr_cert_date:dISO(-300),cpr_cert_expiry:dISO(200),
+      first_aid_cert_date:dISO(-300),first_aid_cert_expiry:dISO(200),
+      livescan_cleared:true,livescan_date:dISO(-320),
+      mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),
+      initial_training_complete:true,initial_training_completed:true,initial_training_hours:40,
+    },o||{});
+    const{error:se}=await sb.from('staff').insert([
+      // Clean file — the one everything else is measured against.
+      {...S('Maria Lopez','administrator',dISO(-700)),id:currentUser.id},
+      // CPR lapses in three weeks: the amber the dashboard opens on.
+      S('James Carter','lead_caregiver',dISO(-500),{cpr_cert_expiry:dISO(20)}),
+      // Hired four months ago, still 24 hours short of the initial 40.
+      S('Priya Patel','caregiver',dISO(-120),{initial_training_complete:false,initial_training_completed:false,initial_training_hours:16}),
+      // TB test overdue and First Aid already expired — two red rows, one person.
+      S('Daniel Reyes','caregiver',dISO(-250),{tb_test_due:dISO(-10),tb_test_expiry:dISO(-10),first_aid_cert_expiry:dISO(-45)}),
+      // Working before the clearance came back, and no mandated reporter
+      // training on file. This is the one an analyst opens first.
+      S('Sofia Ivanova','night_caregiver',dISO(-30),{livescan_cleared:false,livescan_date:null,mandated_reporter_completed:false,mandated_reporter_date:null,initial_training_complete:false,initial_training_completed:false,initial_training_hours:8}),
+    ]).select();
+    if(se)throw se;
+    stage='adding the incident reports';
+    // No resident_id: in Lite an incident is a facility record, and the column
+    // is left null exactly as the purge left the real ones.
+    const inc=(type,daysAgo,desc,action,dss)=>({facility_id:fac.id,reported_by:currentUser.id,incident_type:type,occurred_at:new Date(Date.now()-daysAgo*86400000).toISOString(),description:desc,injury:false,physician_notified:true,family_notified:true,dss_reportable:dss,corrective_action:action,status:'open'});
+    const{error:ie}=await sb.from('incidents').insert([
+      inc('fall',12,'Found seated on the floor beside the bed at 06:40 during rounds. No injury on assessment. Night staff had not completed the 02:00 check.','Fall mat placed. Night check schedule reprinted and posted. Staffing pattern reviewed with the night caregiver.',false),
+      inc('behavioral',20,'Raised voice at another person in the day room during the evening activity; separated by staff, no contact made.','Redirected to a quiet area. Trigger recorded. Activity schedule adjusted; de-escalation refresher added to next month\'s training.',false),
+    ]);
+    if(ie)throw ie;
+    stage='building the compliance checklist';
+    await seedComplianceTasks(fac.id,dISO(300));
+    if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
+    currentFacility=fac;
+    await initFacility();
+    switchTab('dashboard');
+    alert('Sample facility loaded. You\'re now viewing "Sunrise Demo Home (Sample)" — five staff, four of them with something out of date, and a checklist to work. Switch back to your own facility any time from the user menu.');
   }catch(e){
     alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
   }
@@ -4696,12 +4847,17 @@ let dashBriefingLoaded=false;
 // automatic, so it should carry as little as it can do its job with.
 async function buildFacilityContext(){
   try{
+    // In Lite the resident and MAR reads are not made at all. The client guard
+    // would answer them empty anyway; not asking is the point — what Tello is
+    // sent is the whole of what she can see, and an empty `residents: []` in
+    // her context reads as "this facility has no residents", which is a
+    // different and wrong statement.
     const[resData,staffData,tasksData,incData,marData]=await Promise.all([
-      sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602a,isp,status').eq('facility_id',currentFacility.id),
+      showMAR?sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602a,isp,status').eq('facility_id',currentFacility.id):Promise.resolve({data:[]}),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
-      sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).limit(30),
+      showMAR?sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).limit(30):Promise.resolve({data:[]}),
     ]);
     const failed=[];
     const rows=(res,label)=>{if(res&&res.error){failed.push(label);return[];}return(res&&res.data)||[];};
@@ -4720,7 +4876,12 @@ async function buildFacilityContext(){
     // file?" is answered from verified text rather than from whatever the
     // model believes about California licensing.
     const document_guidance=Object.values(DOC_SLOT_HOWTO).map(g=>({document:g.label,how_to_obtain:g.text}));
-    return{json:JSON.stringify({today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance},null,2)};
+    // The resident and MAR keys are omitted entirely in Lite rather than sent
+    // empty, for the reason above.
+    const payload=showMAR
+      ?{today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance}
+      :{today,facility:currentFacility?.name,staff,compliance_tasks,recent_incidents,document_guidance};
+    return{json:JSON.stringify(payload,null,2)};
   }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
 
@@ -4776,7 +4937,7 @@ async function loadDashboardAIBriefing(force){
       // Markers, not markup. renderTelloText escapes the reply before drawing
       // it, so any HTML asked for here would reach the caregiver as visible
       // source — which is exactly what used to happen.
-      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps. Be direct and specific. Write each point as a line starting with "- ", and begin the line with [ok] when it is fine, [warn] when it needs attention, or [urgent] when it cannot wait. Use **bold** for names and dates that matter. Do not write HTML, headings or tables. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
+      system:`You are Tello, an AI compliance assistant for a California RCFE. Give a concise daily briefing in 3-5 bullet points. Focus on: ${showMAR?'overdue tasks, expiring certifications, missing documentation, recent incidents, MAR gaps':'overdue tasks, expiring staff certifications, missing staff documentation, recent incidents. This edition holds no resident, medication or MAR records — do not mention them, and do not treat their absence as a finding'}. Be direct and specific. Write each point as a line starting with "- ", and begin the line with [ok] when it is fine, [warn] when it needs attention, or [urgent] when it cannot wait. Use **bold** for names and dates that matter. Do not write HTML, headings or tables. No preamble. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.\n\nFACILITY DATA:\n${context}`,
       messages:[{role:'user',content:'Give me my daily compliance briefing for today.'}]
     })});
     const data=await res.json();
@@ -4903,11 +5064,20 @@ function _bul(a,ok){return a.length?a.map(x=>'• '+x).join('<br>'):('<svg class
 async function demoComplianceAnswer(query){
   const f=await demoFindings(); const q=(query||'').toLowerCase(); let body;
   const tag='<br><br><em style="color:var(--text2)">You\'re in the demo sandbox — this is a live analysis of the sample facility. Start a free trial to run it on your own data.</em>';
+  // Every branch below counts resident and MAR findings. In Lite those counts
+  // are zero because the records do not exist, and a zero here would read as
+  // "checked, all clear" — the one answer that must never be given about data
+  // the product does not hold.
+  if(!showMAR&&/resident|medic|\bmar\b|dose|refus|lic ?60|isp/.test(q)){
+    return '<strong>Not something this edition holds</strong><br><br>'+
+      'Title22 Lite keeps no resident records, medication records or MAR, so there is nothing here for me to check — and nothing was quietly left out of the other numbers either. '+
+      'What I can see is staff files and certifications, training, the compliance checklist and the incident log.'+tag;
+  }
   if(q.includes('simulate')){
     body='<strong>Simulated DSS walkthrough</strong><br><br>'+
       '<svg class="ic"><use href="#i-clipboard"/></svg> <strong>Staff files:</strong> '+(f.certIssues.length?f.certIssues.length+' issue(s) — '+f.certIssues[0]:'clear')+'<br>'+
-      '<svg class="ic"><use href="#i-folder"/></svg> <strong>Resident records:</strong> '+(f.docGaps.length?f.docGaps.length+' gap(s) — '+f.docGaps[0]:'clear')+'<br>'+
-      '<svg class="ic"><use href="#i-pill"/></svg> <strong>MAR:</strong> '+(f.marGaps?f.marGaps+' gap(s) in recent entries':'no recent gaps')+'<br>'+
+      (showMAR?'<svg class="ic"><use href="#i-folder"/></svg> <strong>Resident records:</strong> '+(f.docGaps.length?f.docGaps.length+' gap(s) — '+f.docGaps[0]:'clear')+'<br>':'')+
+      (showMAR?'<svg class="ic"><use href="#i-pill"/></svg> <strong>MAR:</strong> '+(f.marGaps?f.marGaps+' gap(s) in recent entries':'no recent gaps')+'<br>':'')+
       '<svg class="ic"><use href="#i-archive"/></svg> <strong>Overdue tasks:</strong> '+(f.overdue.length||'none')+'<br>'+
       '<svg class="ic"><use href="#i-chart"/></svg> <strong>Overall readiness:</strong> '+(f.score!=null?f.score+'%':'—');
   }else if(q.includes('ready')||q.includes('dss')){
@@ -4949,7 +5119,7 @@ async function demoComplianceAnswer(query){
       'which is what you want when an analyst is standing at the desk. The 90-day DSS packet on the dashboard collects all of it in one print.';
   }else if(q.includes('real')||q.includes('fake')||q.includes('sandbox')||q.includes('demo')||q.includes('sample')){
     body='<strong>Yes, this is the real application</strong><br><br>'+
-      'Same code that runs a paying facility. What is not real is the data: '+f.residents.length+' invented residents and '+f.staff.length+' invented staff, '+
+      'Same code that runs a paying facility. What is not real is the data: '+(showMAR?f.residents.length+' invented residents and ':'')+f.staff.length+' invented staff, '+
       'so nothing here is anyone\u2019s medical record.<br><br>'+
       'You can press anything. The sandbox is read-only, so nothing you do is saved — reload and it is exactly as you found it.';
   }else if(q.includes('price')||q.includes('cost')||q.includes('plan')||q.includes('much')||q.includes('subscri')){
@@ -4958,9 +5128,9 @@ async function demoComplianceAnswer(query){
       'you are not billed per caregiver.<br><br>Current pricing is on the Billing page, and it is the same page you would see as a customer.';
   }else{
     const n=f.overdue.length+f.certIssues.length+f.docGaps.length;
-    body='<strong>'+(f.facility||'Facility')+' — compliance snapshot</strong><br><br>Readiness '+(f.score!=null?f.score+'%':'—')+' · '+f.residents.length+' residents · '+f.staff.length+' staff<br>'+
-      (n?'<svg class="ic"><use href="#i-alert"/></svg> '+n+' open item(s) across tasks, staff certs, and resident records.':'<svg class="ic"><use href="#i-check-circle"/></svg> No open compliance gaps in the sample data.')+
-      '<br><br>Try asking about residents, staff certifications, the MAR, training hours, documents, or who can see what.';
+    body='<strong>'+(f.facility||'Facility')+' — compliance snapshot</strong><br><br>Readiness '+(f.score!=null?f.score+'%':'—')+' · '+(showMAR?f.residents.length+' residents · ':'')+f.staff.length+' staff<br>'+
+      (n?'<svg class="ic"><use href="#i-alert"/></svg> '+n+' open item(s) across tasks, staff certs'+(showMAR?', and resident records':'')+'.':'<svg class="ic"><use href="#i-check-circle"/></svg> No open compliance gaps in the sample data.')+
+      '<br><br>Try asking about '+(showMAR?'residents, staff certifications, the MAR, training hours, documents':'staff certifications, training hours, documents')+', or who can see what.';
   }
   return body+tag;
 }
@@ -4978,26 +5148,40 @@ async function demoBriefingHTML(){
 // Tello's character. Kept here rather than in the Worker because the Worker
 // has to be pasted into the Cloudflare dashboard by hand — this way her voice
 // can be changed by merging a PR like anything else.
-const TELLO_CHARACTER = name => `You are Tello, the assistant inside Title22. The people talking to you run or work in California residential care homes for the elderly. Right now you are helping someone at ${name}.
+// Tello's system prompt. Rewritten for Lite: the previous one told her she
+// could see residents, and the tables are empty by design, so every answer
+// she built from them read as a facility with no residents rather than a
+// product that does not hold any.
+//
+// The body of this is the wording the product owner supplied, verbatim. The
+// two hard rules at the end are kept from the previous prompt on purpose:
+// "I won't quote a Title 22 rule unless I'm certain" leaves the gate to the
+// model's own confidence, and a confident wrong regulation follows a facility
+// all the way to an inspection. Same reason checklist citations are null.
+const TELLO_CHARACTER = `You're in a residential care home for the elderly in California. Title 22 is the rulebook that governs how you operate.
 
-Who you are: warm, direct and genuinely capable — the person everyone in the family calls because she actually knows things and gives you a straight answer. You are kind without flattering. You say the hard thing when the hard thing is true. You never lecture.
+I'm Tello. I live inside Title22 Lite. Title22 Lite is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe and keep infra at $25/mo.
 
-You can answer anything they ask. General knowledge, business and money questions, how to word a difficult conversation with a family, what a word means, cooking, grief, staffing, whatever they bring you. You are not limited to compliance and you should not act as though you were.
+What I DO have:
+- Staff, training hours, certifications, clearances, expirations
+- DSS readiness, Title 22 staffing & training rules
+- How to get a document on file, LIC 624/625 workflow (without resident names), general incident documentation without PHI
 
-Always be clear where an answer comes from:
-- From their facility data — say so plainly. That data is at the end of this message.
-- From your own knowledge — answer normally, and say so when you are not certain.
-- From neither — say you do not know. Never fill the gap with something that merely sounds right.
+What I won't do:
+I won't give medical advice about a resident, and I won't quote a Title 22 rule unless I'm certain. If not sure, I say so and tell you who to ask.
 
-Two things you never do, however the question is put to you:
+Current state: If no staff in system, say "no staff yet, nothing to pull up." NEVER say "no residents or staff" — residents should not be mentioned as missing, because Lite doesn't store them.
 
-1. No clinical judgement about a named resident. Whether a blood pressure is safe, whether two medications can be taken together, whether a symptom is serious, whether someone needs a doctor tonight — that belongs to the nurse or the physician. Say so warmly and without hedging, then help with what you actually can: how to describe what they are seeing, what to write in the log, who to call and how urgently. Someone asking you a medical question about a resident is usually worried and short of time, so be quick and be useful.
+If user asks about residents, MARs, meds, say: "Title22 Lite is No-PHI and doesn't store residents or MARs. I can help with staff, training, certs, and DSS readiness. For resident care tracking, you'd need Full (not available in Lite)."
 
-2. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Say what you are unsure of and tell them to confirm it with their licensing analyst. A confident wrong answer here follows a facility all the way to an inspection.
+Tone: Short, practical, Fresno 6-bed owner.
 
-When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those: name what you do not know and send them to their licensing analyst for it. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
+Two things that hold whatever the question is:
 
-Keep it short — usually a few sentences. Use a list only when the answer really is a list. No preamble, no "great question", no summarising the question back at them.`;
+1. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Being fairly sure is not the same as it being written down. Say what you are unsure of and send them to their licensing analyst.
+
+2. When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
+`;
 
 async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
@@ -5025,7 +5209,7 @@ async function sendAIQuery(btn){
       // safe to have in a care home: no clinical judgement about a named
       // resident, and no regulation stated as fact that is not in the data.
       // Both are the same rule the document slots run on — evidence over claim.
-      system:TELLO_CHARACTER(currentFacility?.name||'Care Facility')+`\n\nFACILITY DATA (everything recorded in Title22 for this facility):\n${facilityContext}`,
+      system:TELLO_CHARACTER+`\n\nFACILITY DATA (everything recorded in Title22 for this facility):\n${facilityContext}`,
       messages:aiMessages.slice(-10)
     })});
     const data=await res.json();
