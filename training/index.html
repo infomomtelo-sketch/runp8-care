@@ -116,7 +116,7 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
 <div class="wrap">
 
   <h1 class="page-title">Learning Title22</h1>
-  <p class="lede">Eight short lessons on how to use the app on shift — what each screen is, how to work it, and why it's built that way.</p>
+  <p class="lede">Six short lessons on how to use the app on shift — what each screen is, how to work it, and why it's built that way.</p>
 
   <div class="notice notice-amber hide-print">
     <strong>This is not your CDSS training.</strong> Title 22 requires its own approved curriculum for new-hire and continuing-education hours, and your facility or trainer provides that separately. This page only teaches you how to use the Title22 app itself — it does not carry continuing education credit and does not fulfill any state training requirement on its own.
@@ -136,7 +136,7 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
   </div>
 
   <div class="progress-wrap hide-print">
-    <div class="progress-label"><span>Progress</span><span id="progress-text">0 of 8 lessons</span></div>
+    <div class="progress-label"><span>Progress</span><span id="progress-text">0 of 6 lessons</span></div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
@@ -190,7 +190,7 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
         <li>You should land straight inside your facility. If you're instead asked to create a new facility of your own, stop and check with your administrator — it usually means the invite hasn't been sent yet, or you used a different email.</li>
         <li>Never log in with a coworker's account, and never share yours, even "just for a shift."</li>
         </ol>
-        <div class="why-block"><h4>Why it works this way</h4><p>Every save in Title22 — a medication logged, an incident reported, a document filed — is stamped with the account that made it. That's the audit trail behind every one of those records. A shared login breaks it: if two people can produce the same entry, it points at nobody, and a caregiver who documented correctly gets no credit for it. An invitation to your own work email is also what sets your role correctly from day one, rather than letting anyone pick a broader one than the job needs.</p></div>`
+        <div class="why-block"><h4>Why it works this way</h4><p>Every save in Title22 — an incident reported, a certificate filed, a checklist item ticked — is stamped with the account that made it. That's the audit trail behind every one of those records. A shared login breaks it: if two people can produce the same entry, it points at nobody, and a caregiver who documented correctly gets no credit for it. An invitation to your own work email is also what sets your role correctly from day one, rather than letting anyone pick a broader one than the job needs.</p></div>`
     },
     {
       title:'Reading the dashboard',
@@ -201,7 +201,7 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
         <h4>How to use it</h4>
         <ul>
         <li>Read the small line under the score, not just the number. It looks like "18 of 22 requirements met · 12 of 22 backed by a document · 3 recorded but unverified."</li>
-        <li>Tap an alert or a name to jump straight to that resident's or staff member's record and see exactly what's missing.</li>
+        <li>Tap an alert or a name to jump straight to that staff member's record, or to the checklist item behind it, and see exactly what's missing.</li>
         </ul>
         <div class="why-block"><h4>Why it works this way</h4><p>The score counts a requirement as "met" whether it's backed by an actual filed document or just typed in as "yes." Those are very different things, and the "recorded but unverified" count is the app telling you the difference. A high score is not proof that paperwork exists — a document attached to the record is. That's the single most important thing to understand about this app: treat the score as a starting point for what to check, never as a finished answer.</p></div>`
     },
@@ -210,56 +210,28 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
       sub:'Five roles, least privilege',
       body:`
         <h4>What the screen is</h4>
-        <p>Team Access shows every person on the facility's account and their role. Title22 has five roles: <strong>Administrator</strong> (everything, including billing and the team), <strong>Supervisor</strong> (residents, staff, medications, incidents, documents — no billing or team), <strong>In-House Caregiver</strong> (shift lead: residents, medications, the MAR, and the checklist — not staff files), <strong>Caregiver</strong> (the medication pass, incidents, daily log, and documents), and <strong>Read Only</strong> (look, don't touch — the access given to an inspector, a consultant, or family).</p>
+        <p>Team Access shows every person on the facility's account and their role. Title22 has five roles: <strong>Administrator</strong> (everything, including billing and the team), <strong>Supervisor</strong> (staff files, training, incidents, documents — no billing or team), <strong>In-House Caregiver</strong> (shift lead: the compliance checklist, documents, incidents, and their own training hours — not staff files), <strong>Caregiver</strong> (incidents and documents), and <strong>Read Only</strong> (look, don't touch — the access given to an inspector, a consultant, or family).</p>
         <h4>How to use it</h4>
         <ul>
         <li>Open Team Access to see your own role card if you're not sure which one you have, or ask your administrator.</li>
-        <li>Your role decides which tabs even show up for you. A Caregiver only sees the medication pass, incidents, the daily log, and documents — nothing else, and that's expected, not a bug.</li>
+        <li>Your role decides which tabs even show up for you. A Caregiver only sees the dashboard, incidents and documents — nothing else, and that's expected, not a bug.</li>
         <li>Nobody picks their own role. The administrator sets it at the moment the invitation goes out.</li>
         </ul>
-        <div class="why-block"><h4>Why it works this way</h4><p>This is least privilege: each role reaches exactly what the job in front of them needs, and nothing more. A caregiver on shift needs the medication pass and the incident form, not billing or the ability to remove a coworker from the team — giving broader access than the job requires only adds risk with no benefit. If a screen you expected isn't there, the fix is asking your administrator whether your role is the right one, not finding a workaround.</p></div>`
-    },
-    {
-      title:'Recording a medication (MAR)',
-      sub:'Entry, PRN reason, and why gaps get flagged',
-      body:`
-        <h4>What the screen is</h4>
-        <p>The Medication Administration Record, or MAR — where every dose given, refused, or held gets logged, at the scheduled time or as PRN ("as needed").</p>
-        <h4>How to use it</h4>
-        <ul>
-        <li>Record at the time you give (or don't give) the dose — not from memory at the end of shift.</li>
-        <li>Choose a status: <strong>Given</strong>, <strong>Refused by resident</strong>, or <strong>Held per physician order</strong>.</li>
-        <li>If the scheduled time is PRN and you mark it Given, a <strong>PRN reason</strong> field appears and is required — write the symptom or complaint that led to giving it (e.g. "c/o knee pain, 4/10").</li>
-        <li>The app will not let the entry save without that reason. If you logged something wrong, don't try to fix it yourself — ask an administrator, supervisor, or in-house caregiver to void it.</li>
-        </ul>
-        <div class="why-block"><h4>Why it works this way</h4><p>An incomplete MAR is one of the most common Title 22 citations — every dose has to be accounted for, with a documented reason for anything that isn't a plain scheduled dose given on time. The record isn't paperwork for its own sake; it's the only proof that a medication error didn't happen. And when an entry does need correcting, it's voided rather than deleted — the original stays visible, struck through, with the reason next to it, exactly like a correction on a paper chart.</p></div>`
+        <div class="why-block"><h4>Why it works this way</h4><p>This is least privilege: each role reaches exactly what the job in front of them needs, and nothing more. A caregiver on shift needs the incident form, not billing or the ability to remove a coworker from the team — giving broader access than the job requires only adds risk with no benefit. If a screen you expected isn't there, the fix is asking your administrator whether your role is the right one, not finding a workaround.</p></div>`
     },
     {
       title:'Logging an incident',
       sub:'What counts, timeliness, and why it protects you too',
       body:`
         <h4>What the screen is</h4>
-        <p>The incident form: falls, medication errors, behavioral incidents, elopement, injury, death, or other. It records what happened, whether there was an injury, whether the physician and family were notified, whether it's DSS-reportable, and what corrective action was taken.</p>
+        <p>The incident form: falls, medication errors, behavioral incidents, elopement, injury, death, or other. It records what happened, whether there was an injury, whether the physician and family were notified, whether it's DSS-reportable, and what corrective action was taken. It does not hold a resident record and no resident is named on the export.</p>
         <h4>How to use it</h4>
         <ul>
-        <li>Handle the resident's immediate needs first — then log the incident as soon as you can, not the next day.</li>
-        <li>Pick the incident type and read the guidance that appears with it. Some types carry strict clocks: a fall needs an immediate resident assessment and physician notification within 24 hours if there's an injury; elopement is immediately DSS-reportable; a resident's death requires DSS notification within 1 hour.</li>
+        <li>See to the person first — then log the incident as soon as you can, not the next day.</li>
+        <li>Pick the incident type and read the guidance that appears with it. Several types carry reporting clocks that start the moment the incident happens; the deadline that applies to yours is a question for your administrator and your licensing analyst, not for this app or its assistant.</li>
         <li>Write what happened and what was done about it in plain language — the corrective action matters as much as the description.</li>
         </ul>
-        <div class="why-block"><h4>Why it works this way</h4><p>Timeliness isn't a suggestion — some incident types carry hour-based reporting clocks that start the moment the incident happens, not when someone gets around to writing it up. And the record protects you too: a timely, factual account of what you saw and what you did is the best evidence that you responded correctly, especially if it's asked about weeks later by a family member or a regulator. An incident report isn't an admission that something went wrong — it's what shows that it was handled right.</p></div>`
-    },
-    {
-      title:'Resident records',
-      sub:'LIC 601, LIC 602A, ISP — where the documents live',
-      body:`
-        <h4>What the screen is</h4>
-        <p>Each resident's record includes a <strong>Required documents</strong> section with three slots: LIC 601 (Identification and Emergency Information), LIC 602A (Medical Assessment — the physician's report for an RCFE), and the ISP (Individual Service Plan, with a last-reviewed date). Each slot pairs a self-reported yes/no with the actual document proving it.</p>
-        <h4>How to use it</h4>
-        <ul>
-        <li>Open a resident and scroll to Required documents. Upload the file into each slot as you receive it — there's no camera-scan button here, upload only.</li>
-        <li>A slot marked "yes" with nothing attached shows amber and says an inspector will ask to see it. Attaching the document turns it green and flips the self-reported answer to yes for you.</li>
-        </ul>
-        <div class="why-block"><h4>Why it works this way</h4><p>A resident's face sheet, physician's report, and service plan are protected health information. That's why these go through upload — straight from your browser into storage: no photo of a resident document is ever sent to a third-party AI service. Camera scanning is switched off across the whole app while no HIPAA business associate agreement is in place, so upload is the only route anywhere. And where the form says "on file," an inspector wants to see the file, not hear the answer — filing it is what makes that resident's readiness verified instead of just claimed.</p></div>`
+        <div class="why-block"><h4>Why it works this way</h4><p>Timeliness isn't a suggestion — some incident types carry reporting clocks that start the moment the incident happens, not when someone gets around to writing it up. And the record protects you too: a timely, factual account of what you saw and what you did is the best evidence that you responded correctly, especially if it's asked about weeks later by a family member or a regulator. An incident report isn't an admission that something went wrong — it's what shows that it was handled right.</p></div>`
     },
     {
       title:'Staff documents',
@@ -272,7 +244,7 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
         <li>Attach each certificate as you receive it, and set the dates from the certificate itself. Upload is the only route here too — camera scanning is switched off across the app for now. Once the file is on the slot it shows those dates back to you, with an expiry that has already passed in red and one inside thirty days counting down in amber.</li>
         <li>The 16-hour hands-on portion of initial training is 16 of your first 40 hours (the other 24 come from an approved outside vendor). No vendor logs those 16 — someone at the facility has to log each supervised session so the hours add up.</li>
         </ul>
-        <div class="why-block"><h4>Why it works this way</h4><p>The expiry alerts exist so a lapse gets caught weeks ahead, not discovered on inspection day. And the same rule as resident documents applies here: a certificate marked "Yes — completed" with nothing attached shows amber. Attaching the file — not just ticking the box — is what makes the facility's "backed by a document" count, not just its raw score, reflect what's actually true.</p></div>`
+        <div class="why-block"><h4>Why it works this way</h4><p>The expiry alerts exist so a lapse gets caught weeks ahead, not discovered on inspection day. And a certificate marked "Yes — completed" with nothing attached shows amber. Attaching the file — not just ticking the box — is what makes the facility's "backed by a document" count, not just its raw score, reflect what's actually true.</p></div>`
     },
     {
       title:'Before a DSS visit',
@@ -283,10 +255,10 @@ footer{max-width:720px;margin:2rem auto 0;padding:0 1rem;font-size:12px;color:va
         <h4>How to use it</h4>
         <ol>
         <li>Open the checklist first and clear anything overdue.</li>
-        <li>Run the DSS Audit Export. It opens a printable packet in a new tab covering: facility and administrator details; the resident roster with document status; staff certifications; the full medication record for the period, including any voided entries — struck through, with the reason, never hidden; and incident reports for the period.</li>
+        <li>Run the DSS Audit Export. It opens a printable packet in a new tab covering: facility and administrator details; staff certifications and training; and incident reports for the period. There is no resident roster and no medication record in it, because Title22 holds neither.</li>
         <li>Save it as a PDF from the browser's print dialog.</li>
         </ol>
-        <div class="why-block"><h4>Why it works this way</h4><p>An analyst doesn't ask "are you compliant" in the abstract — they ask for specific documents, going back a specific number of days. The packet contains exactly what Title 22 requires a facility to be able to produce, and nothing else, so a caregiver on shift when DSS arrives isn't assembling it from memory under pressure.</p></div>`
+        <div class="why-block"><h4>Why it works this way</h4><p>An analyst doesn't ask "are you compliant" in the abstract — they ask for specific documents, going back a specific number of days. The packet contains the facility and staff side of that, ready to hand over — the resident and medication records an analyst also asks for stay on whatever system your facility already keeps them on — so a caregiver on shift when DSS arrives isn't assembling it from memory under pressure.</p></div>`
     }
   ];
 
