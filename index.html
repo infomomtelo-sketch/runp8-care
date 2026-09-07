@@ -2631,10 +2631,6 @@ function applyLiteMode(){
   // hidden — it is not a question she can answer in any edition that ships.
   const liteNote=document.getElementById('ai-lite-note');
   if(liteNote)liteNote.style.display='inline';
-  // The sample facility seeds residents, medications and a MAR history. There
-  // is no Lite version of it, so the button is not offered rather than left to
-  // fail half way through.
-  document.querySelectorAll('[data-seed-demo]').forEach(b=>{b.style.display='none';});
 }
 
 // Charise logged in and nothing told her what she was. The tabs she cannot
@@ -4173,9 +4169,10 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 let seedDemoRunning=false;
 
 async function seedDemoData(){
-  // The sample facility is resident-shaped: residents, medications, a MAR
-  // history. Rewriting it for Lite is a product decision, not a switch.
-  if(!showMAR){t22Toast(T22_LITE_BLOCKED_MSG);return;}
+  // Two sample facilities, one button. The resident-shaped one below is what
+  // the full product loads; Lite has its own, further down, because a class
+  // cannot be taught on records the product does not hold.
+  if(!showMAR)return seedLiteDemoData();
   if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
@@ -4311,6 +4308,117 @@ async function seedDemoData(){
     await initFacility();
     switchTab('dashboard');
     alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
+  }catch(e){
+    alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
+  }
+  finally{
+    seedDemoRunning=false;
+    btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
+  }
+}
+
+// ===== SAMPLE FACILITY (LITE) =====
+// The teaching facility for Lite. Same promise as the full one — one click
+// and the dashboard opens amber, so a class has something to fix in the first
+// minute — built entirely out of what Lite holds: staff, their certifications
+// and clearances, the 40-hour training, incidents without PHI, and the
+// checklist. No residents, no medications, no MAR.
+//
+// Every gap below is deliberate and is a real citation an analyst writes:
+// an overdue TB test, a CPR card three weeks out, an expired First Aid, a
+// LiveScan that was never cleared, mandated reporter training missing, and
+// two people short of their 40 hours.
+async function seedLiteDemoData(){
+  if(seedDemoRunning)return;
+  if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
+  // Completeness is judged on the compliance checklist — the last bulk insert
+  // — not on the facility row, so a run that died half way can be retried
+  // instead of switching someone into an empty sample.
+  let reuse=null;
+  if(existing){
+    const{data:seeded}=await sb.from('compliance_tasks').select('id').eq('facility_id',existing.id).limit(1);
+    if(seeded&&seeded.length){
+      currentFacility=existing;
+      await initFacility();
+      switchTab('dashboard');
+      alert('You already have a sample facility — switching to it now. Your own facilities are untouched.');
+      return;
+    }
+    reuse=existing;
+  }
+  if(!confirm((reuse
+      ?'A previous attempt at the sample facility did not finish. This clears out what it left behind and loads it again'
+      :'This creates a separate sample facility ("Sunrise Demo Home")')
+    +' with 5 staff, expiring certifications, unfinished 40-hour training and two incidents to document. No resident data — Lite holds none. Your real facilities are not touched. Continue?'))return;
+  const btns=[...document.querySelectorAll('[data-seed-demo]')];
+  btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
+  seedDemoRunning=true;
+  let stage=reuse?'clearing out the unfinished attempt':'creating the sample facility';
+  try{
+    let fac=reuse;
+    if(reuse){
+      // Only the tables Lite writes. A delete against residents, medications
+      // or mar_entries is refused by the client guard and would throw here.
+      for(const t of ['incidents','staff','compliance_tasks']){
+        const{error:de}=await sb.from(t).delete().eq('facility_id',reuse.id);
+        if(de)throw de;
+      }
+      stage='creating the sample facility';
+    }else{
+      const{data,error:fe}=await sb.from('facilities').insert({
+        user_id:currentUser.id,name:SAMPLE_FACILITY_NAME,facility_type:'rcfe',
+        license_number:'197000000',capacity:6,address:'123 Sample Lane, Fresno, CA 93701',
+        administrator_name:'Alex Morgan',administrator_cert_number:'RCFE-000000',administrator_cert_expiry:dISO(300),
+      }).select().single();
+      if(fe)throw fe;
+      fac=data;
+    }
+    stage='adding the 5 staff';
+    // staff.id has no column default — every row needs an explicit id. The
+    // administrator's is set to currentUser.id, as in the full seeder, so any
+    // policy that ties a row back to auth.uid() is satisfied.
+    const newStaffId=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+    const S=(name,role,hire,o)=>Object.assign({
+      id:newStaffId(),facility_id:fac.id,full_name:name,name,role,hire_date:hire,
+      phone:'(559) 555-0100',active:true,status:'active',
+      tb_test_date:dISO(-200),tb_test_due:dISO(160),tb_test_expiry:dISO(160),
+      cpr_cert_date:dISO(-300),cpr_cert_expiry:dISO(200),
+      first_aid_cert_date:dISO(-300),first_aid_cert_expiry:dISO(200),
+      livescan_cleared:true,livescan_date:dISO(-320),
+      mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),
+      initial_training_complete:true,initial_training_completed:true,initial_training_hours:40,
+    },o||{});
+    const{error:se}=await sb.from('staff').insert([
+      // Clean file — the one everything else is measured against.
+      {...S('Maria Lopez','administrator',dISO(-700)),id:currentUser.id},
+      // CPR lapses in three weeks: the amber the dashboard opens on.
+      S('James Carter','lead_caregiver',dISO(-500),{cpr_cert_expiry:dISO(20)}),
+      // Hired four months ago, still 24 hours short of the initial 40.
+      S('Priya Patel','caregiver',dISO(-120),{initial_training_complete:false,initial_training_completed:false,initial_training_hours:16}),
+      // TB test overdue and First Aid already expired — two red rows, one person.
+      S('Daniel Reyes','caregiver',dISO(-250),{tb_test_due:dISO(-10),tb_test_expiry:dISO(-10),first_aid_cert_expiry:dISO(-45)}),
+      // Working before the clearance came back, and no mandated reporter
+      // training on file. This is the one an analyst opens first.
+      S('Sofia Ivanova','night_caregiver',dISO(-30),{livescan_cleared:false,livescan_date:null,mandated_reporter_completed:false,mandated_reporter_date:null,initial_training_complete:false,initial_training_completed:false,initial_training_hours:8}),
+    ]).select();
+    if(se)throw se;
+    stage='adding the incident reports';
+    // No resident_id: in Lite an incident is a facility record, and the column
+    // is left null exactly as the purge left the real ones.
+    const inc=(type,daysAgo,desc,action,dss)=>({facility_id:fac.id,reported_by:currentUser.id,incident_type:type,occurred_at:new Date(Date.now()-daysAgo*86400000).toISOString(),description:desc,injury:false,physician_notified:true,family_notified:true,dss_reportable:dss,corrective_action:action,status:'open'});
+    const{error:ie}=await sb.from('incidents').insert([
+      inc('fall',12,'Found seated on the floor beside the bed at 06:40 during rounds. No injury on assessment. Night staff had not completed the 02:00 check.','Fall mat placed. Night check schedule reprinted and posted. Staffing pattern reviewed with the night caregiver.',false),
+      inc('behavioral',20,'Raised voice at another person in the day room during the evening activity; separated by staff, no contact made.','Redirected to a quiet area. Trigger recorded. Activity schedule adjusted; de-escalation refresher added to next month\'s training.',false),
+    ]);
+    if(ie)throw ie;
+    stage='building the compliance checklist';
+    await seedComplianceTasks(fac.id,dISO(300));
+    if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
+    currentFacility=fac;
+    await initFacility();
+    switchTab('dashboard');
+    alert('Sample facility loaded. You\'re now viewing "Sunrise Demo Home (Sample)" — five staff, four of them with something out of date, and a checklist to work. Switch back to your own facility any time from the user menu.');
   }catch(e){
     alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
   }
