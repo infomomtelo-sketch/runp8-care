@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Title22 — Walkthrough</title>
-<meta name="description" content="A guided walkthrough of Title22, the Title 22 compliance app for California RCFEs. Real screens, no sound needed."/>
+<meta name="description" content="A guided walkthrough of Title22, the Title 22 compliance app for California RCFEs. What each screen does, in the order you meet them."/>
 <link rel="icon" href="/favicon.svg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -13,6 +13,7 @@
 :root{
   --pine:#1d5c4d; --pine-deep:#12433a; --mint:#e7f2ee; --paper:#fbfaf7;
   --ink:#22302c; --ink2:#5c6b66; --line:#e3e0d8; --amber:#b0791f; --amber-bg:#faf3e3;
+  --red:#a8443c; --red-bg:#fbeceb;
   --mono:'IBM Plex Mono',monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -28,36 +29,42 @@ header p{margin-top:14px;color:#cfe3db;max-width:56ch;font-size:15px}
 .silent{display:inline-flex;align-items:center;gap:7px;margin-top:16px;background:rgba(255,255,255,.12);
   border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:5px 13px;font-size:13px;color:#e7f2ee}
 
-/* ---- player ---- */
-.stage{background:#0d1a17;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 18px 50px rgba(18,67,58,.18)}
-.stage video{display:block;width:100%;height:auto;background:#0d1a17}
-.bar{height:3px;background:rgba(255,255,255,.16)}
-.bar i{display:block;height:100%;width:0;background:#4fbf9b;transition:width .18s linear}
+/* ---- the walkthrough itself: one written step per screen ---- */
+.step{display:grid;grid-template-columns:44px 1fr;gap:18px;padding:26px 0;border-top:1px solid var(--line);
+  opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.step.on{opacity:1;transform:none}
+.step:first-of-type{border-top:none}
+.step .n{width:44px;height:44px;border-radius:50%;background:var(--mint);color:var(--pine-deep);
+  display:grid;place-items:center;font-family:var(--mono);font-size:15px;font-weight:500}
+.step h3{font-family:'Fraunces',serif;font-size:22px;font-weight:700;line-height:1.2;margin-bottom:10px}
+.step p{font-size:16.5px;line-height:1.7;margin-bottom:9px;color:var(--ink2)}
+.step p:last-child{margin-bottom:0}
+@media(max-width:560px){.step{grid-template-columns:1fr;gap:10px}.step .n{width:36px;height:36px;font-size:13px}}
 
-.under{display:grid;grid-template-columns:1fr 260px;gap:26px;margin-top:22px;align-items:start}
-@media(max-width:760px){.under{grid-template-columns:1fr}}
+/* Small illustrations, drawn rather than recorded, so they cannot go stale
+   the way a screen recording does. */
+.panel{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin:14px 0 4px}
+.line{display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:14.5px;padding:7px 0}
+.line + .line{border-top:1px solid var(--line)}
+.line span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.pill{flex:none;font-family:var(--mono);font-size:11.5px;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.pill.amber{background:var(--amber-bg);color:var(--amber)}
+.pill.red{background:var(--red-bg);color:var(--red)}
+.pill.green{background:var(--mint);color:var(--pine-deep)}
 
-.scene-no{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--pine);margin-bottom:6px}
-.scene-title{font-family:'Fraunces',serif;font-size:22px;font-weight:700;line-height:1.2;margin-bottom:14px}
-.lines p{font-size:16.5px;line-height:1.7;margin-bottom:10px;color:#98a4a0;transition:color .3s}
-.lines p.on{color:var(--ink)}
-.lines p:last-child{margin-bottom:0}
+.dial{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.dial svg{width:104px;height:104px;flex:none}
+.dial .arc{stroke-dasharray:283;stroke-dashoffset:283;transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.3,1)}
+.step.on .dial .arc{stroke-dashoffset:31}   /* 89% of 283 */
+.dial .num{font-family:var(--mono);font-size:20px;color:var(--pine);font-weight:500}
+.dial ol{margin:0;padding-left:18px;font-size:14.5px;color:var(--ink2)}
 
 .controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
-.btn{font:inherit;font-size:14px;font-weight:600;border-radius:9px;padding:9px 16px;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+.btn{font:inherit;font-size:14px;font-weight:600;border-radius:9px;padding:9px 16px;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;display:inline-block}
 .btn:hover{border-color:var(--pine);color:var(--pine)}
 .btn.primary{background:var(--pine);border-color:var(--pine);color:#fff}
 .btn.primary:hover{background:var(--pine-deep);color:#fff}
 .btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
-
-.rail{border-left:1px solid var(--line);padding-left:18px}
-@media(max-width:760px){.rail{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:18px}}
-.rail h3{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2);margin-bottom:11px}
-.rail button{display:flex;gap:9px;width:100%;text-align:left;font:inherit;font-size:13.5px;background:none;border:none;
-  padding:7px 8px;border-radius:7px;cursor:pointer;color:var(--ink2);align-items:baseline}
-.rail button:hover{background:var(--mint);color:var(--ink)}
-.rail button.on{background:var(--mint);color:var(--pine-deep);font-weight:600}
-.rail .n{font-family:var(--mono);font-size:11px;color:var(--pine);flex-shrink:0;width:14px}
 
 .sep{height:1px;background:var(--line);margin:56px 0 40px}
 h2{font-family:'Fraunces',serif;font-size:26px;font-weight:700;margin-bottom:8px}
@@ -70,7 +77,11 @@ h2{font-family:'Fraunces',serif;font-size:26px;font-weight:700;margin-bottom:8px
 
 .note{font-size:13.5px;color:var(--ink2);background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin-top:26px}
 footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none!important}
+  .step{opacity:1;transform:none}
+  .dial .arc{stroke-dashoffset:31}
+}
 </style>
 </head>
 <body>
@@ -79,65 +90,133 @@ footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-si
   <div class="wrap">
     <div class="eyebrow">Walkthrough</div>
     <h1>What Title22 actually looks like</h1>
-    <p>Nine screens from the real application, in the order you would meet them. Every resident and staff member you will see is invented sample data.</p>
-    <div class="silent">🔇 No sound needed — the words are on screen</div>
+    <p>Seven screens, in the order you would meet them — from an empty account to the packet you hand an analyst. Every name below is invented.</p>
+    <div class="silent">📄 No PHI — Title22 holds no resident records, medications or MAR</div>
   </div>
 </header>
 
 <div class="wrap">
 
-  <div class="stage">
-    <video id="v" playsinline muted preload="auto"></video>
-    <div class="bar"><i id="prog"></i></div>
+  <div class="step" data-step>
+    <span class="n">1</span>
+    <div>
+      <h3>Signing up for the first time</h3>
+      <p>A licensing analyst can walk into your facility on any weekday morning, unannounced, and ask to see your records.</p>
+      <p>Title22 exists to answer one question before that happens: if they came today, what would they find?</p>
+      <p>Setup is one screen — facility type, licence number, capacity, address. The things that decide which Title 22 requirements apply to you.</p>
+      <p>No credit card. Fourteen days, and the clock starts the first time you actually open the app.</p>
+    </div>
   </div>
 
-  <div class="under">
+  <div class="step" data-step>
+    <span class="n">2</span>
     <div>
-      <div class="scene-no" id="sno"></div>
-      <div class="scene-title" id="stitle"></div>
-      <div class="lines" id="lines"></div>
-      <div class="controls">
-        <button class="btn" id="prev" onclick="go(-1)">← Back</button>
-        <button class="btn primary" id="play" onclick="toggle()">Pause</button>
-        <button class="btn" id="next" onclick="go(1)">Next →</button>
+      <h3>A facility to practise on</h3>
+      <p>Before you put a single real record in, load the sample facility. Five staff, two incidents already filed, and a compliance checklist part-way through.</p>
+      <p>Four of those five staff have something out of date — a CPR card three weeks from lapsing, an overdue TB test, an expired First Aid card, a LiveScan that never cleared. The dashboard opens amber on purpose, so there is something to fix from the first minute.</p>
+      <p>It sits alongside your own facility — one you can break, empty and reload.</p>
+    </div>
+  </div>
+
+  <div class="step" data-step>
+    <span class="n">3</span>
+    <div>
+      <h3>Inviting your staff</h3>
+      <p>Five roles. A caregiver reports incidents and files documents. An in-house caregiver — your shift lead — also works the compliance checklist and logs their own training hours.</p>
+      <p>A supervisor covers staff files and training records. Read-only is what you hand an inspector.</p>
+      <p>Notice you are choosing the role. They do not pick it when they sign up — otherwise everybody would be an administrator.</p>
+    </div>
+  </div>
+
+  <div class="step" data-step>
+    <span class="n">4</span>
+    <div>
+      <h3>What your caregiver sees</h3>
+      <p>They accept, and they are inside your facility — not asked to create one of their own.</p>
+      <p>The first thing they see is their role and what comes with it, written out in full. Their menu is genuinely shorter: no billing, no staff files, no team list.</p>
+      <p>And they are covered by your subscription — nothing for them to pay.</p>
+    </div>
+  </div>
+
+  <div class="step" data-step>
+    <span class="n">5</span>
+    <div>
+      <h3>The readiness score, and what moves it</h3>
+      <p>The score is not a grade for effort. It counts requirements that are current against requirements that exist.</p>
+      <p>An expired TB test pulls it down and says whose. Tap it and you are on that person's record — no hunting through a filing cabinet.</p>
+      <div class="panel">
+        <div class="line"><span>TB clearance — D. Reyes</span><span class="pill red">Overdue</span></div>
+        <div class="line"><span>CPR — J. Carter</span><span class="pill amber">20 days</span></div>
+        <div class="line"><span>First Aid — S. Ivanova</span><span class="pill green">Current</span></div>
+      </div>
+      <div class="panel dial">
+        <svg viewBox="0 0 110 110" role="img" aria-label="Inspection readiness score, 89 percent">
+          <circle cx="55" cy="55" r="45" fill="none" stroke="var(--line)" stroke-width="9"/>
+          <circle class="arc" cx="55" cy="55" r="45" fill="none" stroke="var(--pine)"
+                  stroke-width="9" stroke-linecap="round" transform="rotate(-90 55 55)"/>
+        </svg>
+        <div>
+          <div class="num">89% inspection readiness</div>
+          <ol>
+            <li>Emergency disaster plan not on file</li>
+            <li>D. Reyes — TB clearance overdue</li>
+            <li>M. Patel — 16 of 40 training hours</li>
+          </ol>
+        </div>
       </div>
     </div>
-    <div class="rail">
-      <h3>Scenes</h3>
-      <div id="rail"></div>
+  </div>
+
+  <div class="step" data-step>
+    <span class="n">6</span>
+    <div>
+      <h3>Asking Tello</h3>
+      <p>Ask what is outstanding in plain English and the answer is assembled from what is actually in your account — not a generic FAQ.</p>
+      <p>She will not quote a Title 22 requirement back at you as settled fact, and she will not comment on clinical or dosage matters at all. Anything regulatory goes to your licensing analyst.</p>
+    </div>
+  </div>
+
+  <div class="step" data-step>
+    <span class="n">7</span>
+    <div>
+      <h3>The packet you hand over</h3>
+      <p>One button. Ninety days of facility details, staff certifications and training, and incident reports.</p>
+      <p>Save it as a PDF, or print it and hand it across the table.</p>
     </div>
   </div>
 
   <div class="note">
-    These are screen recordings of the live app running on its built-in sample facility — the same one you can open yourself at
-    <a href="/?demo=1&amp;tour=1">the sandbox</a>. Nothing here is a real resident record.
+    Every name, date and score on this page is invented. Title22 Lite holds no
+    resident records, no medications and no medication administration record —
+    so there is nothing here to anonymise. Open <a href="/?demo=1&amp;tour=1">the sandbox</a>
+    to click through the same screens yourself.
   </div>
 
   <div class="sep"></div>
 
   <h2>For your staff</h2>
-  <p class="lede">A shorter one to send a caregiver before their first shift. Same idea — read along, no sound.</p>
+  <p class="lede">The short version to send a caregiver before their first shift.</p>
 
-  <div class="stage">
-    <video id="sv" playsinline muted preload="none" controls></video>
-  </div>
-  <div class="under">
+  <div class="step" data-step>
+    <span class="n">A</span>
     <div>
-      <div class="scene-no" id="ssno"></div>
-      <div class="scene-title" id="sstitle"></div>
-      <div class="lines" id="slines"></div>
-      <div class="controls">
-        <button class="btn primary" onclick="staffStart()">▶ Play the staff walkthrough</button>
-      </div>
+      <h3>You have been invited</h3>
+      <p>Your administrator invited you, so your account is already attached to the facility. Nothing to set up and nothing to pay.</p>
+      <p>A card on your dashboard tells you what you can do here. Your menu is short on purpose — you will not see billing or staff files, and that is not a mistake.</p>
     </div>
-    <div class="rail">
-      <h3>Scenes</h3>
-      <div id="srail"></div>
+  </div>
+
+  <div class="step" data-step>
+    <span class="n">B</span>
+    <div>
+      <h3>Incidents</h3>
+      <p>A fall, an injury, a behaviour — filed the same shift, while you still remember it. The report records what happened and what was done about it; it does not hold a resident record, and no resident is named on the export.</p>
+      <p>If something you need is not there, ask your administrator. Roles are set by them, not by you.</p>
     </div>
   </div>
 
   <div class="cta">
-    <h2>Try it rather than watch it</h2>
+    <h2>Try it rather than read it</h2>
     <p>The sandbox is the same application on the same sample data, and every button works. No signup, nothing saved.</p>
     <div class="controls">
       <a class="btn primary" href="/?demo=1&amp;tour=1">Open the sandbox</a>
@@ -152,89 +231,34 @@ footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-si
 </div>
 
 <script>
-const BASE='/media/walkthrough/';
-const SCENES=[
-  {f:'01_signup.webm', t:'Signing up for the first time', l:[
-    'A licensing analyst can walk into your facility on any weekday morning, unannounced, and ask to see your records.',
-    'Title22 exists to answer one question before that happens: if they came today, what would they find?',
-    'Setup is one screen — facility type, licence number, capacity, address. The things that decide which Title 22 requirements apply to you.',
-    'No credit card. Fourteen days, and the clock starts the first time you actually open the app.']},
-  {f:'02_sample_facility.webm', t:'A facility to practise on', l:[
-    'Before you put a single real resident in, load the sample facility. Eight residents, five staff, thirty days of medication records.',
-    'It sits alongside your own — a facility you can break, empty and reload. Everything you are about to see is in it.']},
-  {f:'03_invite.webm', t:'Inviting your staff', l:[
-    'Five roles. A caregiver works the checklist and writes incidents. An in-house caregiver — your shift lead — also handles staff files and training records.',
-    'A supervisor covers staff files. Read-only is what you hand an inspector.',
-    'Notice you are choosing the role. They do not pick it when they sign up — otherwise everybody would be an administrator.']},
-  {f:'04_caregiver_view.webm', t:'What your caregiver sees', l:[
-    'They accept, and they are inside your facility — not asked to create one of their own.',
-    'The first thing they see is their role and what comes with it. Their menu is genuinely shorter: no billing, no staff files, no team list.',
-    'And they are covered by your subscription — nothing for them to pay.']},
-  {f:'06_readiness_score.webm', t:'The readiness score, and what moves it', l:[
-    'The score is not a grade for effort. It counts requirements that are current against requirements that exist.',
-    'An expired TB test pulls it down and says whose. Tap it and you are on that person’s record — no hunting through a filing cabinet.']},
-  {f:'09_dss_export.webm', t:'The packet you hand over', l:[
-    'One button. Ninety days of facility details, staff certifications and training, and incident reports.',
-    'Save it as a PDF, or print it and hand it across the table.']},
-  {f:'10_close.webm', t:'Genuine compliance every day', l:[
-    'Not just on inspection day.',
-    'Fourteen days free. Load the sample facility first — five staff, four with something out of date, and nothing you do in it touches a real record.']},
-];
-const STAFF=[
-  {f:'c01_role_card_desktop.webm', t:'You have been invited', l:[
-    'Your administrator invited you, so your account is already attached to the facility. Nothing to set up and nothing to pay.',
-    'This card tells you what you can do here. Your menu is short on purpose — you will not see billing or staff files, and that is not a mistake.']},
-  {f:'c04_incident_desktop.webm', t:'Incidents', l:[
-    'A fall, an injury, a behaviour — filed the same shift, while you still remember it.',
-    'If something you need is not there, ask your administrator. Roles are set by them, not by you.']},
-];
-
-function makePlayer(vid,list,ids){
-  const v=document.getElementById(vid);
-  let i=0, started=false;
-  const el=id=>document.getElementById(id);
-  function paint(){
-    const s=list[i];
-    el(ids.no).textContent='Scene '+(i+1)+' of '+list.length;
-    el(ids.title).textContent=s.t;
-    el(ids.lines).innerHTML=s.l.map((t,n)=>'<p data-n="'+n+'">'+t+'</p>').join('');
-    [...el(ids.rail).children].forEach((b,n)=>b.classList.toggle('on',n===i));
-    v.src=BASE+s.f;
-    v.load();
-    if(started)v.play().catch(()=>{});
+// This page used to be a player for eleven silent screen recordings. Every one
+// of them showed a Residents tab, a medication administration record, or both,
+// so they were deleted rather than re-cut — the words that were the narration
+// are the steps above now. Nothing here loads, so there is nothing to go stale
+// but the text itself.
+(function(){
+  var steps=document.querySelectorAll('[data-step]');
+  if(!steps.length)return;
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce||!('IntersectionObserver' in window)){
+    steps.forEach(function(s){s.classList.add('on');});
+    return;
   }
-  // The clips carry no audio, so the "narration" is the line that lights up.
-  // Which line that is comes from where the clip actually is, not a guessed
-  // timing, so it stays right whatever the encode.
-  v.addEventListener('timeupdate',()=>{
-    const s=list[i]; if(!v.duration||!isFinite(v.duration))return;
-    const n=Math.min(s.l.length-1,Math.floor(v.currentTime/v.duration*s.l.length));
-    el(ids.lines).querySelectorAll('p').forEach(p=>p.classList.toggle('on',+p.dataset.n===n));
-    if(ids.prog)el(ids.prog).style.width=((i+v.currentTime/v.duration)/list.length*100)+'%';
-  });
-  v.addEventListener('ended',()=>{ if(i<list.length-1){i++;paint();} else if(ids.play){el(ids.play).textContent='Replay';} });
-  el(ids.rail).innerHTML=list.map((s,n)=>
-    '<button type="button"><span class="n">'+(n+1)+'</span><span>'+s.t+'</span></button>').join('');
-  [...el(ids.rail).children].forEach((b,n)=>b.onclick=()=>{i=n;started=true;paint();v.play().catch(()=>{});});
-  paint();
-  return {
-    go(d){ const n=i+d; if(n<0||n>=list.length)return; i=n; started=true; paint(); v.play().catch(()=>{}); },
-    toggle(){ started=true; if(v.paused){ if(v.ended)paint(); v.play().catch(()=>{}); } else v.pause(); },
-    start(){ started=true; v.play().catch(()=>{}); },
-    v,
-  };
-}
-
-const main=makePlayer('v',SCENES,{no:'sno',title:'stitle',lines:'lines',rail:'rail',prog:'prog',play:'play'});
-const staff=makePlayer('sv',STAFF,{no:'ssno',title:'sstitle',lines:'slines',rail:'srail'});
-function go(d){main.go(d);}
-function toggle(){main.toggle();}
-function staffStart(){staff.start();}
-main.v.addEventListener('play',()=>document.getElementById('play').textContent='Pause');
-main.v.addEventListener('pause',()=>document.getElementById('play').textContent='Play');
-// Silent video autoplays everywhere; if a browser still refuses, the Play
-// button is right there.
-main.v.addEventListener('canplay',function once(){ main.v.removeEventListener('canplay',once); main.start(); });
+  // Reveal the step that came into view AND everything above it. Without the
+  // second half, a jump to the bottom of the page (anchor, Home/End, a restored
+  // scroll position) leaves every step it skipped stuck at opacity 0 — the
+  // observer only fires for what is on screen, so the ones it flew past never
+  // animate in and the page reads as half empty.
+  var list=[].slice.call(steps);
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting)return;
+      var upto=list.indexOf(e.target);
+      list.slice(0,upto+1).forEach(function(s){ s.classList.add('on'); io.unobserve(s); });
+    });
+  },{threshold:0.2});
+  list.forEach(function(s){io.observe(s);});
+})();
 </script>
 </body>
 </html>

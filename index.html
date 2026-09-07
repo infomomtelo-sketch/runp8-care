@@ -962,9 +962,9 @@
              roles while the invite form offered five. -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:24px;">
           <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-crown"/></svg> Administrator</div><div style="font-size:13px;color:var(--text2);">Everything, including billing and the team</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-user"/></svg> Supervisor</div><div style="font-size:13px;color:var(--text2);">Residents, staff files and records — no billing or team</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-star"/></svg> In-House Caregiver</div><div style="font-size:13px;color:var(--text2);">Shift lead: residents, medications, MAR and the checklist — no staff files</div></div>
-          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-home"/></svg> Caregiver</div><div style="font-size:13px;color:var(--text2);">MAR, daily log, incidents and documents</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-user"/></svg> Supervisor</div><div class="role-card-desc" data-lite="Staff files, training and records — no billing or team" style="font-size:13px;color:var(--text2);">Residents, staff files and records — no billing or team</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-star"/></svg> In-House Caregiver</div><div class="role-card-desc" data-lite="Shift lead: the checklist, documents and incidents — no staff files" style="font-size:13px;color:var(--text2);">Shift lead: residents, medications, MAR and the checklist — no staff files</div></div>
+          <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-home"/></svg> Caregiver</div><div class="role-card-desc" data-lite="Incidents and documents" style="font-size:13px;color:var(--text2);">MAR, daily log, incidents and documents</div></div>
           <div class="card"><div style="font-weight:700;margin-bottom:4px;"><svg class="ic"><use href="#i-eye"/></svg> Read Only</div><div style="font-size:13px;color:var(--text2);">For an inspector, a consultant, or family</div></div>
         </div>
         <div id="team-members-list"></div>
@@ -1228,19 +1228,22 @@ const T22_PLAN_LINKS = {
   pro:STRIPE_PRO,
   agency:STRIPE_AGENCY
 };
-// Map page titles to instructional video files. Only pages with videos show help links.
-// Only pages with videos show help links — and only pages that still exist.
-// The resident, medication, MAR and daily-log clips were deleted with this
-// change: they record features Lite does not have, and a help video is the
-// one place a stale recording is guaranteed to be watched. Documents pointed
-// at the resident-documents clip, which is now the wrong tab entirely.
-const VIDEO_MAP = {
-  'Compliance dashboard':'media/walkthrough/06_readiness_score.webm',
-  'Title 22 compliance':'media/walkthrough/06_readiness_score.webm',
-  'Incident reports':'media/walkthrough/c04_incident.webm',
-  'Team Access':'media/walkthrough/03_invite.webm',
-  'Audit log':'media/walkthrough/09_dss_export.webm'
-};
+// Map page titles to instructional video files. Only pages with videos show
+// help links — and only pages that still exist.
+//
+// Empty, because every clip that was left has now been watched frame by frame
+// and every one of them records the product Lite removed:
+//   06_readiness_score — a Residents tab, a Medications tab, and an alert
+//                        reading "Betty Alvarez · ISP expired 40 days ago"
+//   c04_incident       — a Resident dropdown on the incident form, and Tello
+//                        stating a reporting requirement as settled fact
+//   03_invite          — role cards promising "MAR, daily log, incidents"
+//   09_dss_export      — a resident roster with names, rooms and dates of
+//                        birth, and a medication administration record section
+// A help video is the one place a stale recording is guaranteed to be watched,
+// so they are deleted rather than left. setupVideoHelpButtons adds no button
+// while this is empty; refill it when there is something current to show.
+const VIDEO_MAP = {};
 function openVideoHelp(pageTitle){
   const videoPath = VIDEO_MAP[pageTitle];
   if(!videoPath)return;
@@ -1430,20 +1433,42 @@ const ROLE_BRIEF={
   // because "as a View only" is not a sentence.
   administrator:{label:'Administrator', joined:'as an Administrator',
     can:'everything in this facility — residents, staff, medications, MAR, incidents, documents, the team and billing.',
-    cannot:''},
+    cannot:'',
+    liteCan:'everything in this facility — staff, training, the compliance checklist, incidents, documents, the team and billing.'},
   supervisor:{label:'Supervisor', joined:'as a Supervisor',
     can:'add and edit residents, staff, medications, MAR, incidents, daily logs, training and documents.',
-    cannot:'You cannot see billing, or invite and remove team members. The administrator handles those.'},
+    cannot:'You cannot see billing, or invite and remove team members. The administrator handles those.',
+    liteCan:'add and edit staff records, training and certifications, incidents, the compliance checklist and documents.'},
   in_house_caregiver:{label:'In-House Caregiver', joined:'as an In-House Caregiver',
     can:'open resident records and print their documents, add a newly arrived medication and discontinue one that has stopped, record the MAR, void an entry that was logged wrong, work the compliance checklist, and log your own training hours.',
-    cannot:'Staff files, facility settings, billing and the team list stay with the administrator. You correct the record rather than delete from it — a voided MAR entry stays visible, struck through, with your reason beside it.'},
+    cannot:'Staff files, facility settings, billing and the team list stay with the administrator. You correct the record rather than delete from it — a voided MAR entry stays visible, struck through, with your reason beside it.',
+    liteCan:'work the compliance checklist, file documents against it, report incidents, and log your own training hours.',
+    liteCannot:'Staff files, facility settings, billing and the team list stay with the administrator.'},
   caregiver:{label:'Caregiver', joined:'as a Caregiver',
     can:'record medications on the MAR, write daily logs, report incidents, and file documents.',
-    cannot:'Resident and staff records, compliance settings, billing and the team list are not shown to you — the administrator keeps those.'},
+    cannot:'Resident and staff records, compliance settings, billing and the team list are not shown to you — the administrator keeps those.',
+    liteCan:'report incidents and file documents.',
+    liteCannot:'Staff records, compliance settings, billing and the team list are not shown to you — the administrator keeps those.'},
   readonly:{label:'View only', joined:'with view-only access',
     can:'look at the dashboard, the compliance checklist, residents, incidents, daily logs, the MAR and documents.',
-    cannot:'You cannot change or add anything. This is the access given to an inspector or a consultant.'},
+    cannot:'You cannot change or add anything. This is the access given to an inspector or a consultant.',
+    liteCan:'look at the dashboard, the compliance checklist, staff and training records, incidents and documents.'},
 };
+// Lite removes four tabs from every role at once (see allowedTabs), so the
+// sentence describing a role has to lose them too — the comment above this
+// table is the whole reason: a description that outlives the tab it names is
+// a lie told to the person relying on it. Someone invited as a Caregiver was
+// being welcomed with "record medications on the MAR" and then handed a menu
+// with no MAR in it. Falls straight back to the full wording if showMAR
+// returns; a role with no lite* override keeps what it has.
+function roleBrief(role){
+  const b=ROLE_BRIEF[role]||ROLE_BRIEF.readonly;
+  if(showMAR)return b;
+  return Object.assign({},b,{
+    can:b.liteCan||b.can,
+    cannot:('liteCannot' in b)?b.liteCannot:b.cannot,
+  });
+}
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
 function canEdit(){ return getAccess().canEdit; }
 function canDelete(){ return getAccess().canDelete; }
@@ -2064,29 +2089,20 @@ const TOUR_STEPS=[
 let tourIdx=-1;
 const TOUR_SEEN='title22_tour_done';
 
-// "Walkthrough" used to open the marketing site, then it ran the silent tour.
-// Neither is right on its own: someone clicking Walkthrough usually wants to
-// be told, and a tour with no narration reads as broken rather than quiet.
-// So: offer both, and let the video carry the words.
-const WALKTHROUGH_VIDEO='/media/walkthrough/master.mp4';
-let wtVideoChecked=false, wtVideoExists=false;
-async function openWalkthrough(){
+// "Walkthrough" used to open the marketing site, then it ran the silent tour,
+// then it probed for a narrated cut at /media/walkthrough/master.mp4 and fell
+// through to the tour when that 404'd — which it always did, because the file
+// was never published. The eleven clips that WERE published have now been
+// deleted: every one of them recorded a Residents tab or a medication
+// administration record, neither of which exists in Lite.
+//
+// So the offer is the two things that are real: click along in the app, or
+// read it through on the walkthrough page. No probe, nothing to load.
+function openWalkthrough(){
   const menu=document.getElementById('user-menu'); if(menu)menu.style.display='none';
-  // Probed once. If the narrated cut is not published yet, fall through to the
-  // tour rather than opening a player onto a 404 — but the video is the
-  // walkthrough, and the tour is only the fallback.
-  if(!wtVideoChecked){
-    wtVideoChecked=true;
-    try{ const r=await fetch(WALKTHROUGH_VIDEO,{method:'HEAD'}); wtVideoExists=r.ok; }catch(e){ wtVideoExists=false; }
-  }
-  if(!wtVideoExists){ startTour(0); return; }
-  const v=document.getElementById('wt-video');
-  v.src=WALKTHROUGH_VIDEO;
   document.getElementById('walkthrough-modal').classList.add('open');
-  v.play().catch(()=>{});   // autoplay refused is fine, the controls are there
 }
 function closeWalkthrough(){
-  const v=document.getElementById('wt-video'); if(v){v.pause();v.removeAttribute('src');v.load();}
   document.getElementById('walkthrough-modal').classList.remove('open');
 }
 
@@ -2682,6 +2698,14 @@ function applyLiteMode(){
   // hidden — it is not a question she can answer in any edition that ships.
   const liteNote=document.getElementById('ai-lite-note');
   if(liteNote)liteNote.style.display='inline';
+  // The Team Access cards describe each role in one line. Three of them named
+  // residents, medications or the MAR — tabs the invited person will never be
+  // shown — so the Lite wording rides on the element and is swapped in here
+  // rather than replacing the markup, which keeps the full text one switch
+  // away.
+  document.querySelectorAll('.role-card-desc[data-lite]').forEach(el=>{
+    el.textContent=el.dataset.lite;
+  });
 }
 
 // Charise logged in and nothing told her what she was. The tabs she cannot
@@ -2697,7 +2721,7 @@ function dismissRoleWelcome(){
   const el=document.getElementById('role-welcome');if(el)el.style.display='none';
 }
 function renderRoleUI(){
-  const brief=ROLE_BRIEF[currentUserRole]||ROLE_BRIEF.readonly;
+  const brief=roleBrief(currentUserRole);
   const badge=document.getElementById('sidebar-role');
   // The owner already knows they are the owner. Saying so is noise; saying it
   // to everybody else is the point.
@@ -8259,9 +8283,10 @@ document.addEventListener('click',function(e){
 <div class="modal-overlay" id="walkthrough-modal" onclick="if(event.target===this)closeWalkthrough()">
   <div class="modal" style="max-width:560px">
     <div class="modal-header"><h3>Walkthrough</h3><button class="modal-close" onclick="closeWalkthrough()">×</button></div>
-    <video id="wt-video" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius);background:#000"></video>
-    <div style="margin-top:12px;text-align:right">
-      <button class="btn btn-outline" style="font-size:12px;padding:5px 11px" onclick="closeWalkthrough();startTour(0)">Rather click along? Take the tour</button>
+    <p style="font-size:13.5px;color:var(--text2);margin-bottom:14px">Two ways round it. The tour points at the real thing on screen; the walkthrough page is the same seven screens written out, if you would rather read than click.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="font-size:13px" onclick="closeWalkthrough();startTour(0)">Take the tour</button>
+      <a class="btn btn-outline" style="font-size:13px;text-decoration:none" href="/title22-walkthrough.html" target="_blank" rel="noopener" onclick="closeWalkthrough()">Read the walkthrough</a>
     </div>
   </div>
 </div>
