@@ -145,12 +145,13 @@ sheet as read-only — it has nowhere to go.
   wrote only profiles, which is why the two stores disagree — one row there
   still says `active` on a period that ended six weeks ago. That row predates
   this deploy and is still there; decide it against Stripe.
-- **It does not write `users`, and nothing else does.** `enforcePaidGate` and
-  `welcomeIsPaid` in the app's `index.html` still read `users.paid`, so a
-  buyer's plan lands correctly in `profiles` while the welcome page polls a
-  table nobody writes and times out after 30 seconds. Fix it in the app
-  (`welcomeIsPaid`) or add a `users` upsert here — but pick one, rather than
-  leaving a third store to drift.
+- **It does not write `users`, and it should not start.** `public.users` does
+  not exist — that migration was never run (checked 2026-09-08, ERROR 42P01).
+  The app used to read `users.paid` on the welcome page and got an error every
+  time, which is why buyers saw "we could not check your account". It now
+  resolves the entitlement from profiles and subscriptions instead. Adding a
+  `users` upsert here would create a third store of who has paid, beside two
+  that already disagree.
 - Maps live price IDs → `title22_plan`:
   - `price_1UCIAiAH9qPFLg89ln6eHAVa` → lite ($29)
   - `price_1TkIKtAH9qPFLg89SEmENr5J` → starter

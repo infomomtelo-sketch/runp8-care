@@ -9,10 +9,9 @@ DB: Supabase project title22
 
 App State:
 - showMAR=false
-- users table has paid boolean, stripe_customer_id, plan
+- there is NO users table — that migration was never run (see below)
 - Stripe Payment Links Lite $29/mo, success_url = https://title22.app#welcome
-- Stripe webhook DEPLOYED (see below) — but it writes profiles and
-  subscriptions, not users, so users.paid still never flips
+- Stripe webhook DEPLOYED (see below), writing profiles and subscriptions
 - Quick buttons still have resident queries — must delete for Lite
 
 AI Tello:
@@ -49,12 +48,17 @@ a customer notices:
   card on 2026-09-06 and left the customer on "Free Trial"), and writes both
   `profiles.title22_*` and `public.subscriptions`.
 
-  It does **not** write `users`. Nothing does. `enforcePaidGate` and
-  `welcomeIsPaid` still read `users.paid`, so the welcome page still polls
-  for 30 seconds and times out for every buyer — the plan lands correctly in
-  `profiles`, the welcome page just looks somewhere else. Fixing it is one
-  function: point `welcomeIsPaid` at the same source `readSubscription`
-  already trusts, or have the Worker upsert `users` as well.
+  It does not write `users`, and that turned out not to matter:
+  **`public.users` does not exist.** Its migration
+  (`2026-09-06_title22_lite_users.sql`) was never run — confirmed against the
+  database on 2026-09-08, `ERROR 42P01`. So the paid gate was reading a table
+  that was never created, and two long-standing entries in this file's bug
+  list described a world that does not exist. Both are corrected below.
+
+  `welcomeIsPaid` now resolves the entitlement instead, and requires a plan in
+  `T22_PAID` — a trial is entitled and has paid nothing. `enforcePaidGate`'s
+  `users` read is gone entirely; it always errored, so the gate never once
+  fired, and `allowedTabs()` had been doing that job all along.
 
   `api/stripe-webhook.js` is NOT what runs and never has — it is a Vercel
   handler on a Cloudflare Pages site. It is kept byte-identical because it
@@ -227,18 +231,18 @@ project accumulated. Nothing stops a second signup; what changed is that
 staying is now worth more than starting over.
 
 ## Known open bugs
-- users.paid never flips. The webhook IS live now, but it
-  writes profiles.title22_* and public.subscriptions —
-  nothing writes users. So everyone who pays still lands
-  on the welcome page, polls users.paid for 30s and times
-  out, while their plan sits correct in profiles. One
-  function to fix: welcomeIsPaid (index.html).
-- The users table's "allow all for webhook" RLS policy
-  lets the published anon key read every customer email
-  and set paid=true. Narrower policy is in the migration.
 - Mobile Safari: add/edit modals won't scroll. No
   -webkit-overflow-scrolling in the file.
 - trial tier grants facilities:5, same as the $79 tier.
 
-(Fixed and removed from this list: the password show/hide toggle. It exists
-on all five password fields — `pw-field` / `togglePasswordField`.)
+(Fixed and removed from this list: the password show/hide toggle — it exists
+on all five password fields, `pw-field` / `togglePasswordField`.
+
+And two that were never real. "users.paid never flips" and "the users table's
+allow-all RLS policy exposes every customer email" both assumed
+`public.users` exists. It does not; the migration was never run. There is no
+table, no policy and no exposure. The app no longer reads it either — see the
+webhook section above. Do NOT create that table to "fix" this: it would be a
+third store of who has paid, alongside profiles.title22_* and
+public.subscriptions, and those two already disagree with each other often
+enough.)

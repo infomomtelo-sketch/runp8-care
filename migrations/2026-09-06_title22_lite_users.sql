@@ -1,3 +1,26 @@
+-- ⚠ NEVER RUN, AND DO NOT RUN IT NOW.
+--
+-- Confirmed against the database on 2026-09-08: public.users does not exist
+-- (ERROR 42P01). It never did. Two consequences worth knowing before you
+-- reach for this file:
+--
+--   * The "allow all for webhook" policy below was never applied, so the
+--     anon-key exposure it warns about has never existed. CLAUDE.md listed it
+--     as an open security bug for two days; it was describing this file, not
+--     the database.
+--   * enforcePaidGate and welcomeIsPaid read users.paid against a table that
+--     was not there. The read errored every time, so the paid gate never once
+--     fired and every buyer saw "we could not check your account" after
+--     thirty seconds on the welcome page.
+--
+-- Both are fixed in the app, not here: welcomeIsPaid resolves the entitlement
+-- (profiles.title22_* and public.subscriptions, which is where the Stripe
+-- webhook actually writes) and enforcePaidGate's users read is deleted.
+--
+-- Creating this table now would add a THIRD store of who has paid, next to
+-- two that already disagree with each other. Kept only as the record of a
+-- design that was proposed and not taken.
+
 -- Title22 Lite: the paid-account table the Stripe webhook writes and the app
 -- reads on boot (enforcePaidGate in index.html).
 --

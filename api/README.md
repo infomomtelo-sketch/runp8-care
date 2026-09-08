@@ -50,24 +50,20 @@ It also handles only `checkout.session.completed`. The Worker additionally
 handles `customer.subscription.created`, `.updated` and `.deleted`, so a
 cancelled subscription does not keep access forever.
 
-## 3. What is still broken, and it is not this file
+## 3. `public.users` does not exist
 
-The live Worker writes `profiles.title22_*` and `public.subscriptions`. It
-does **not** write `users`, and nothing else does either. Meanwhile
-`enforcePaidGate` and `welcomeIsPaid` in `index.html` still read
-`users.paid`.
+Confirmed against the database on 2026-09-08: `ERROR 42P01`. The migration
+that would create it was never run.
 
-So a Lite payment today lands the correct plan in `profiles`, and the welcome
-page still polls `users.paid` for 30 seconds and times out. The fix is one
-function — point `welcomeIsPaid` at the source `readSubscription` already
-trusts, or have the Worker upsert `users` too — and it is not a reason to
-resurrect this file.
+So this file's target table has never been there, and neither has the
+`"allow all for webhook"` RLS policy that `CLAUDE.md` carried as an open
+security bug — that warning was describing the migration file, not the
+database. There is no table, no policy, and no anon-key exposure.
 
-## 4. The RLS policy to drop
+The live Worker writes `profiles.title22_*` and `public.subscriptions`, which
+is where the money actually lands. `welcomeIsPaid` now resolves the
+entitlement from those, and `enforcePaidGate`'s `users` read is deleted — it
+errored every time, so that gate never once fired.
 
-The Worker uses the **service-role key**, which bypasses RLS entirely — it does
-not need the `"allow all for webhook"` policy in the users migration. That
-policy is what exposes the customer list to the published anon key: it lets
-anyone holding the anon key read every customer email and set `paid = true`.
-Drop it and switch to the read-own-row policy written out in
-`migrations/2026-09-06_title22_lite_users.sql`.
+Creating the table now would add a **third** store of who has paid, beside two
+that already disagree with each other. Don't.
