@@ -118,11 +118,23 @@ out in migrations/2026-09-06_title22_lite_drop_phi.sql.
 ## AI is on every tier (settled Aug 1 2026)
 TIER_LIMITS has ai:true on all tiers including trial and
 the lite/multi keys. Any copy saying AI is a paid-tier
-feature is stale and wrong. Known stale strings still
-present:
-  nav tooltip "Multi-Facility & Agency feature"
-  showTierUpsell "Tello ... available on
-              Multi-Facility and Agency plans"
+feature is stale and wrong.
+
+The two stale strings this section used to list — the nav
+tooltip "Multi-Facility & Agency feature" and
+showTierUpsell's "Tello ... available on Multi-Facility
+and Agency plans" — are GONE. Swept 2026-09-08: zero
+matches in index.html or tello.html, and showTierUpsell
+now talks only about facility counts. ("Multi-Facility"
+survives once, as T22_LABEL.specialist, which is the
+legacy label for that tier and is meant to.)
+
+showTierUpsell still takes a `feature` argument it no
+longer reads, and switchTab's showTierUpsell('ai') call
+site is unreachable — it is guarded on t22Entitled, and
+ai:true everywhere means !t22Limits.ai is only the
+fail-closed default. Harmless; noted so nobody re-derives
+it.
 
 ## Tiers
 Selling now: **Lite $29** (1 facility) and **Multi-Home
@@ -240,18 +252,36 @@ project accumulated. Nothing stops a second signup; what changed is that
 staying is now worth more than starting over.
 
 ## Known open bugs
-- Mobile Safari: add/edit modals won't scroll. No
-  -webkit-overflow-scrolling in the file.
-- trial tier grants facilities:5, same as the $79 tier.
 
-(Fixed and removed from this list: the password show/hide toggle — it exists
-on all five password fields, `pw-field` / `togglePasswordField`.
+None outstanding in the app itself. Everything this list carried has been
+checked against the code and was already fixed:
 
-And two that were never real. "users.paid never flips" and "the users table's
-allow-all RLS policy exposes every customer email" both assumed
-`public.users` exists. It does not; the migration was never run. There is no
+- **Mobile Safari modal scroll.** `.modal` has
+  `-webkit-overflow-scrolling:touch` with `max-height:90vh/90dvh` and
+  `overflow-y:auto`, and `.modal-overlay` scrolls too.
+- **trial tier grants facilities:5.** It grants 2. Below the $79 tier's 5,
+  enough to see what multiple facilities look like.
+- **Password show/hide toggle.** Exists on all five password fields —
+  `pw-field` / `togglePasswordField`.
+
+Check before adding to this list again: three separate entries here described
+code that had already been changed, which is worse than an empty list.
+
+What is genuinely open is not a bug, it is a decision:
+
+- **$29 or $79.** title-22.com says "One plan. $29 a month." The app still
+  sells Multi-Home $79 (index.html, the pricing cards). Pick one.
+- **The $29 path has never run end to end.** The webhook price map and
+  welcomeIsPaid were fixed two days apart and never tested together against a
+  real Stripe event.
+- **49 test facilities across 32 accounts.** Guarded reset is written and
+  dry-run ready: migrations/2026-09-08_title22_reset_test_facilities.sql.
+
+And two entries that were never real in the first place: "users.paid never
+flips" and "the users table's allow-all RLS policy exposes every customer
+email". Both assumed `public.users` exists. It does not; the migration was never run. There is no
 table, no policy and no exposure. The app no longer reads it either — see the
 webhook section above. Do NOT create that table to "fix" this: it would be a
 third store of who has paid, alongside profiles.title22_* and
 public.subscriptions, and those two already disagree with each other often
-enough.)
+enough.
