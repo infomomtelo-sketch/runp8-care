@@ -1174,12 +1174,29 @@ const STRIPE_STARTER    = 'https://buy.stripe.com/00w6oGdmy28K2bpes6g360f';
 const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
-// Lite pricing. Multi-Home is the existing $79 link, unchanged — same price,
-// new name. Lite is $29 and there is no $29 payment link yet: STRIPE_STARTER
-// charges $49, so pointing the $29 button at it would bill everyone the old
-// price. Create the $29/mo recurring Payment Link in Stripe and paste it
-// here; until then the button says so instead of charging.
+// Lite pricing. These are Payment Link URLs, not price IDs, and that is the
+// whole constraint here: this page has no server, so it cannot create a
+// Checkout Session from a price. A price ID cannot be pasted into either of
+// these — openStripe() opens the URL.
+//
+// Lite: $29, prod_VDBXSXDdmtFrmh, billed by price_1UCIAiAH9qPFLg89ln6eHAVa.
+// The link below is live and correct.
 const STRIPE_LITE       = 'https://buy.stripe.com/4gMcN41DQfZA5nBgAeg360l';
+// Multi-Home: $79, prod_VDypF9WL2wmjGO, price_1UDWroAH9qPFLg89kAs9h49C.
+//
+// STILL THE OLD LINK. That new price exists in Stripe and the webhook maps it
+// (workers/stripe-webhook/), but no Payment Link has been created for it yet,
+// and a price ID is not something this button can use. So Multi-Home is still
+// sold on the original Pro link: the customer is charged the right $79, but
+// against price_1TkILaAH9qPFLg8923rgvHHb, which the webhook maps to 'pro'.
+//
+// That is survivable rather than wrong — 'pro' and 'multi' are the same
+// entitlement (5 facilities, ai:true) — but the badge reads the legacy label
+// and the new product records no revenue. Create the $79/mo recurring Payment
+// Link on price_1UDWroAH9qPFLg89kAs9h49C, set its metadata to plan=multi and
+// its "After payment" redirect to https://title22.app#welcome, then paste the
+// URL here in place of STRIPE_PRO. Nothing else has to change: the webhook
+// already maps both the price and the metadata.
 const STRIPE_MULTI      = STRIPE_PRO;
 // Paste this into each Payment Link's "After payment" setting in the Stripe
 // dashboard (Don't show confirmation page -> Redirect to):
@@ -6608,6 +6625,11 @@ async function loadBilling(){
     const ent=await resolveEntitlement();
     const plan=ent.plan;
     const planLabels=T22_LABEL;
+    // Display only, keyed on the plan the account is ALREADY on — never an
+    // offer. The only tiers offered are the three cards in the billing tab
+    // (Lite, Multi-Home, Agency as Contact Sales). $49 and $149 stay because
+    // legacy starter and specialist subscribers still pay them, and blanking
+    // the figure would show a paying customer a plan with no price on it.
     const planPrices={trial:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
     let trialHtml='';
     if(plan==='trial'){

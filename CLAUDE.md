@@ -144,6 +144,30 @@ T22_LABEL as legacy labels for existing subscribers — do
 not surface them as offers. `STRIPE_MULTI` is the old $79
 Pro payment link under a new name.
 
+Stripe wiring, as of 2026-09-08:
+
+- Lite $29 — `prod_VDBXSXDdmtFrmh`, `price_1UCIAiAH9qPFLg89ln6eHAVa`. Payment
+  Link live, webhook maps the price. Done.
+- Multi-Home $79 — `prod_VDypF9WL2wmjGO`, `price_1UDWroAH9qPFLg89kAs9h49C`.
+  The webhook maps that price to `multi`. **The app does not use it yet**:
+  `STRIPE_MULTI` is still `STRIPE_PRO`, the old $79 link, because a Payment
+  Link has not been created for the new price and index.html can only open a
+  URL — there is no server here to make a Checkout Session from a price ID. So
+  the $79 charge is correct but bills `price_1TkILaAH9qPFLg8923rgvHHb`, which
+  maps to `pro`. Same entitlement (5 facilities, ai:true), wrong label, no
+  revenue on the new product. Create the link, set metadata `plan=multi` and
+  the redirect to `https://title22.app#welcome`, paste it over `STRIPE_PRO` in
+  `STRIPE_MULTI`. Nothing else changes.
+- Agency — no price anywhere. The billing card is a `mailto:` only.
+
+The plan key is `multi`, never `multi-home`. `TIER_LIMITS`, `T22_PAID` and
+`T22_PLAN_LINKS` are all keyed on `multi`, so writing `multi-home` fails
+`T22_PAID` (reads as unpaid) AND misses `TIER_LIMITS` (drops to
+`{facilities:1, ai:false}` — one facility, no Tello, on an $79 plan). The
+webhook now folds `multi-home`/`multi_home`/`multihome` to `multi` and refuses
+any plan string outside `KNOWN_PLANS` rather than writing it, because
+`planFromSubscription` used to pass Payment Link metadata through verbatim.
+
 Both places must say the same thing, and for two days
 they did not: title-22.com/pricing/ headlined "One plan.
 $29 a month." while the app's billing tab offered Lite,

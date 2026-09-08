@@ -29,12 +29,38 @@
 // reported and ignored rather than silently dropped, which is the bug this
 // file exists to fix.
 const PRICE_PLANS = {
-  'price_1UCIAiAH9qPFLg89ln6eHAVa': 'lite',       // $29, the price this map was missing
+  'price_1UCIAiAH9qPFLg89ln6eHAVa': 'lite',       // $29, prod_VDBXSXDdmtFrmh
+  'price_1UDWroAH9qPFLg89kAs9h49C': 'multi',      // $79 Multi-Home, prod_VDypF9WL2wmjGO
   'price_1TkIKtAH9qPFLg89SEmENr5J': 'starter',
-  'price_1TkILaAH9qPFLg8923rgvHHb': 'pro',        // $79, sold as Multi-Home
+  'price_1TkILaAH9qPFLg8923rgvHHb': 'pro',        // $79, the old link Multi-Home was sold on
   'price_1TkIMaAH9qPFLg89SPFZH0aG': 'specialist', // archived, legacy subs only
   'price_1TkINiAH9qPFLg89upIhpYTy': 'agency',
 };
+
+// The plan keys the app actually understands. index.html's TIER_LIMITS and
+// T22_PAID are keyed on exactly these, so a plan written here that is not in
+// this list is worse than writing nothing: T22_PAID would not match it, so the
+// subscriber reads as unpaid, and TIER_LIMITS would miss too, dropping them to
+// the {facilities:1, ai:false} default — no Tello, one facility, on a plan
+// they are being billed $79 for.
+const KNOWN_PLANS = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency', 'edu'];
+
+// Multi-Home is 'multi' in the app and "Multi-Home" everywhere a human writes
+// it, including a Payment Link's metadata. Fold the spellings before they are
+// written rather than teaching the app a second key for one tier.
+const PLAN_ALIASES = {
+  'multi-home': 'multi',
+  'multi_home': 'multi',
+  'multihome': 'multi',
+  'multi home': 'multi',
+};
+
+function normalisePlan(raw) {
+  if (!raw) return null;
+  const k = String(raw).trim().toLowerCase();
+  const plan = PLAN_ALIASES[k] || k;
+  return KNOWN_PLANS.includes(plan) ? plan : null;
+}
 
 const enc = new TextEncoder();
 
@@ -166,8 +192,15 @@ function planFromSubscription(sub) {
     const priceId = it.price && it.price.id;
     if (priceId && PRICE_PLANS[priceId]) return { plan: PRICE_PLANS[priceId], priceId };
   }
-  // Metadata is the fallback for a Payment Link that carries plan=lite.
-  const metaPlan = (sub.metadata && sub.metadata.plan) || null;
+  // Metadata is the fallback for a Payment Link that carries plan=lite. It is
+  // typed by hand in the Stripe dashboard, so it is normalised and checked
+  // against KNOWN_PLANS rather than trusted: it used to be written through
+  // verbatim, which means one Payment Link labelled plan=Multi-Home would have
+  // put the string 'Multi-Home' in profiles.title22_plan and locked the
+  // subscriber out of the tier they had just bought. An unrecognised value is
+  // now null, which the caller already handles — it refuses the event loudly
+  // with the price ID in the log, instead of writing a plan nothing matches.
+  const metaPlan = normalisePlan(sub.metadata && sub.metadata.plan);
   return { plan: metaPlan, priceId: items[0] && items[0].price && items[0].price.id };
 }
 
