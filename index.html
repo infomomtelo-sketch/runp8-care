@@ -73,7 +73,18 @@
   .logo{font-size:1.2rem;font-weight:600;color:var(--teal);letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
   .logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center}
   .logo-icon svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2}
-  .nav-actions{display:flex;gap:12px;align-items:center}
+  .nav-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  /* The app is a different domain from the marketing site, so someone who
+     lands here from a link or a bookmark has no way back to title-22.com
+     except the browser's back button — and there is none at all if they
+     opened the app directly. A text link rather than a button: it is an exit,
+     not one of the two things we want pressed. */
+  .nav-home{font-size:13px;color:var(--text2);text-decoration:none;white-space:nowrap;padding:4px 2px}
+  .nav-home:hover{color:var(--teal)}
+  @media(max-width:420px){
+    nav{padding:0.85rem 1rem;flex-wrap:wrap;row-gap:8px}
+    .nav-actions{gap:8px}
+  }
   #user-menu{max-height:calc(100vh - 90px);max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain}
   .btn{padding:8px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
   .btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
@@ -387,6 +398,7 @@
     Title22
   </div>
   <div class="nav-actions" id="nav-public" style="display:none">
+    <a class="nav-home" href="https://title-22.com">&larr; title-22.com</a>
     <button class="btn btn-outline" onclick="showPage('login')">Log in</button>
     <button class="btn btn-primary" onclick="showPage('signup')">Start 14-day free trial</button>
   </div>
@@ -423,6 +435,7 @@
         <button id="menu-billing" onclick="switchTab('billing');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-card"/></svg> Billing</button>
         <button id="menu-partners" onclick="switchTab('partners');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-users"/></svg> Partners</button>
         <button id="menu-walkthrough" onclick="window.open('/title22-walkthrough.html','_blank');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-play"/></svg> Walkthrough</button>
+        <a href="https://title-22.com" onclick="toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none;box-sizing:border-box" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-share"/></svg> title-22.com</a>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
           <button onclick="openAccountModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-gear"/></svg> Account settings</button>
           <button onclick="addFacilityGuard();toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--teal);font-weight:500" onmouseover="this.style.background='var(--teal-light)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-plus-square"/></svg> Add new facility</button>
@@ -645,7 +658,7 @@
           <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px"><svg class="ic"><use href="#i-spark"/></svg> New here? Let's get you started.</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask Tello to check it for DSS gaps.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-primary" style="font-size:13px" onclick="window.open('https://title-22.com/walkthrough/','_blank')"><svg class="ic"><use href="#i-play"/></svg> Watch 2-min walkthrough</button>
+            <button class="btn btn-primary" style="font-size:13px" onclick="window.open('/title22-walkthrough.html','_blank')"><svg class="ic"><use href="#i-clipboard"/></svg> Read the walkthrough</button>
             <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load sample facility</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')"><svg class="ic"><use href="#i-bot"/></svg> Ask Tello</button>
           </div>

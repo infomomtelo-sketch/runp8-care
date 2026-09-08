@@ -215,5 +215,7 @@ only. The backfill query is written out, commented, at the end of
   and set paid=true. Narrower policy is in the migration.
 - Mobile Safari: add/edit modals won't scroll. No
   -webkit-overflow-scrolling in the file.
-- No password show/hide toggle on auth fields.
 - trial tier grants facilities:5, same as the $79 tier.
+
+(Fixed and removed from this list: the password show/hide toggle. It exists
+on all five password fields — `pw-field` / `togglePasswordField`.)
