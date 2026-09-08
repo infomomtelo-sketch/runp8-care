@@ -144,6 +144,15 @@ T22_LABEL as legacy labels for existing subscribers — do
 not surface them as offers. `STRIPE_MULTI` is the old $79
 Pro payment link under a new name.
 
+Both places must say the same thing, and for two days
+they did not: title-22.com/pricing/ headlined "One plan.
+$29 a month." while the app's billing tab offered Lite,
+Multi-Home AND an Agency card priced at $249. The site
+carries both tiers now, with Agency as a Contact Sales
+row and no figure; the app's Agency card and planPrices
+lost the $249. "No price" means no price in either
+place.
+
 ## PHI line — do not cross
 Lite holds no resident health information at all: no
 resident records, no medications, no MAR, no LIC 601 or
