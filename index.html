@@ -2038,14 +2038,43 @@ async function handleOnboard(){
   if(error){err.textContent=error.message;err.classList.add('show');return;}
   currentFacility=data;
   allFacilities.push(data);
-  await seedComplianceTasks(data.id,adminCertExpiry);
+  // The facility row is already saved, so this cannot roll back — but it must
+  // not land them on a dashboard whose checklist is silently empty either.
+  // Say what happened, and leave them here: initFacility's self-heal picks the
+  // checklist up on their next load, and "Create facility" now retries only
+  // the seeding.
+  try{
+    await seedComplianceTasks(data.id,adminCertExpiry);
+  }catch(e){
+    err.textContent='Your facility was created, but the compliance checklist could not be built: '+
+      ((e&&e.message)||e)+' Press Create facility again to retry — it will not create a second facility.';
+    err.classList.add('show');
+    return;
+  }
   await initFacility();
   switchTab('dashboard');
 }
 
+// Copies every checklist_items row into compliance_tasks for one facility.
+// THROWS on failure — it used to swallow both of its calls:
+//
+//   const{data:items}=await sb.from('checklist_items').select('*');
+//   if(!items)return;                             // no error read, no word said
+//   await sb.from('compliance_tasks').insert(tasks);   // error never read at all
+//
+// Onboarding carried straight on to the dashboard either way, and a facility
+// that lost the race kept an empty compliance list forever — nothing re-seeds
+// it. There is one in this database: a facility with 0 of 119 tasks. The
+// compliance checklist IS the product, so that is a customer paying $29 to
+// look at a blank screen with no error anywhere to explain it.
+//
+// One insert, not chunks: a partial insert would leave a half-checklist that
+// looks seeded, which the self-heal in initFacility cannot tell from a real
+// one. All or nothing is the recoverable failure.
 async function seedComplianceTasks(facilityId,adminCertExpiry){
-  const{data:items}=await sb.from('checklist_items').select('*');
-  if(!items)return;
+  const{data:items,error:readErr}=await sb.from('checklist_items').select('*');
+  if(readErr)throw new Error('Could not read the Title 22 requirement list: '+readErr.message);
+  if(!items||!items.length)throw new Error('The Title 22 requirement list came back empty, so there was nothing to build the checklist from.');
   const highPriority=['daily','on_hire','on_admission'];
   const tasks=items.map(item=>{
     let dueDate=getDefaultDueDate(item.frequency);
@@ -2053,7 +2082,16 @@ async function seedComplianceTasks(facilityId,adminCertExpiry){
     if(item.title==='RCFE Administrator Certificate Current'&&adminCertExpiry){dueDate=adminCertExpiry;completed=true;completedAt=new Date().toISOString();}
     return{facility_id:facilityId,checklist_item_id:item.id,title:item.title,category:item.category,completed,completed_at:completedAt,priority:highPriority.includes(item.frequency)?'high':'medium',due_date:dueDate};
   });
-  await sb.from('compliance_tasks').insert(tasks);
+  // One retry, because the failure this is written against is a transient one
+  // — a dropped connection on a 119-row insert — and asking someone to redo
+  // onboarding over it is worse than trying twice.
+  let{error}=await sb.from('compliance_tasks').insert(tasks);
+  if(error){
+    await new Promise(r=>setTimeout(r,800));
+    ({error}=await sb.from('compliance_tasks').insert(tasks));
+  }
+  if(error)throw new Error('Could not build the compliance checklist: '+error.message);
+  return tasks.length;
 }
 
 function getDefaultDueDate(freq){
@@ -2698,6 +2736,21 @@ async function initFacility(){
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
   complianceTasks=tasks||[];
+  // Zero tasks against a non-empty requirement list means the seed failed at
+  // onboarding — nothing else produces that state, and until now nothing ever
+  // repaired it. Deliberately only the zero case: topping up a facility that
+  // is merely missing NEWER items would quietly add tasks and drop the score
+  // of every existing customer, which is a decision, not a repair.
+  if(!complianceTasks.length&&checklistItems.length&&!demoMode&&!t22ReadOnly&&canEdit()){
+    try{
+      await seedComplianceTasks(currentFacility.id,currentFacility.administrator_cert_expiry||null);
+      const{data:again}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
+      complianceTasks=again||[];
+      if(complianceTasks.length)t22Toast('Your compliance checklist was missing — it has been rebuilt.');
+    }catch(e){
+      t22Toast('Your compliance checklist could not be loaded. Reload the page, or email support@title22.app.');
+    }
+  }
   residents=[];
   staffList=[];
   incidents=[];

@@ -203,6 +203,15 @@ met-over-all-of-them. Two consequences:
   current and the drill log is up to date"); 2026-09-08's migration undid
   them. Read the existing titles before writing new ones.
 
+`seedComplianceTasks` THROWS now, and `initFacility` self-heals a facility
+with zero tasks. Both are deliberate: it used to read neither of its two
+errors, so a facility that lost the race kept an empty compliance checklist
+forever and onboarding walked on to the dashboard as if nothing happened.
+There is one such facility in this database. The self-heal fires ONLY on zero
+— topping up a facility merely missing newer items would silently add tasks
+and drop the score of every existing customer, which is a decision, not a
+repair.
+
 Existing facilities do NOT pick up new items — seeding runs at onboarding
 only. The backfill query is written out, commented, at the end of
 `migrations/2026-09-07_title22_lic_checklist_items.sql`.
