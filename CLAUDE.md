@@ -384,6 +384,15 @@ worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
 effect, and **has not been deployed** — so does the Multi-Home price added on
 2026-09-08. The running Worker is still the 2026-09-07 build.
 
+Confirmed against Cloudflare 2026-09-08: the Worker `stripe-webhook` exists on
+account `701117dde6af00d42bac3c4058b660be`, workers.dev route enabled, all four
+bindings present (`SUPABASE_URL` is a plain-text var, the other three are
+secrets), and `wrangler deploy` does not touch them. Its last deploy was
+2026-09-07, version `9af47f8e-2b66-4c74-aa17-f890aca4e9ef`, source
+`quick_editor` — the DASHBOARD. Every deploy of this Worker has been a paste;
+none has come from this repo. Do not repeat the claim that it was deployed
+from `stripe-webhook/index.js`.
+
 Deploying no longer needs a machine with wrangler on it: GitHub -> Actions ->
 "Deploy stripe-webhook Worker" -> Run workflow
 (`.github/workflows/deploy-stripe-webhook.yml`). It is manual-only on purpose

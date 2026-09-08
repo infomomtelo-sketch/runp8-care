@@ -132,9 +132,21 @@ sheet as read-only — it has nowhere to go.
 - Stripe destination: `memorable-wonder`.
 - Route: `https://stripe-webhook.infomomtelo.workers.dev` (a GET answers
   "Method not allowed" — that is the deployed Worker saying hello).
-- **Deployed 2026-09-07 from `stripe-webhook/index.js` in this repo.** Before
-  that the source was dashboard-only and uncommitted; it no longer is, so
-  edit the file and `wrangler deploy` rather than pasting into the dashboard.
+- **Last deployed 2026-09-07, version `9af47f8e-2b66-4c74-aa17-f890aca4e9ef`,
+  and NOT with `wrangler deploy`** — Cloudflare records the source of that
+  deploy, and every deploy of this Worker so far, as `quick_editor`: pasted
+  into the dashboard. This file used to claim it was deployed from
+  `stripe-webhook/index.js`; the CONTENT came from there, the deploy did not.
+  Nothing in this repo has ever been the deployed artifact. The first CI
+  deploy will be, and it replaces the dashboard copy wholesale — so if anyone
+  has hand-edited in the dashboard since 2026-09-07, diff it before deploying.
+- **Live compatibility date is `2026-05-21`; `wrangler.toml` says
+  `2026-09-07`.** A deploy moves it forward. This Worker uses only fetch, Web
+  Crypto and JSON, so nothing here is sensitive to it — noted because it rides
+  along with the deploy rather than being asked for.
+- Account `701117dde6af00d42bac3c4058b660be`, workers.dev subdomain
+  `infomomtelo`, route enabled. The account ID is deliberately NOT committed
+  anywhere in this repo — it is public — so CI passes it as a secret.
 - **Why it was redeployed:** the $29 Lite price was missing from the old
   price map, so a Lite payment on 2026-09-06 charged the card and left the
   customer on "Free Trial" — the webhook could not name a plan for the price
