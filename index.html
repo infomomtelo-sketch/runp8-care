@@ -652,6 +652,7 @@
 
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
+        <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">Your trial has ended — this is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Lite $29/mo</button></div>
         <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 Lite — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
@@ -1222,6 +1223,28 @@ const T22_PHI_TABLES = ['mar_entries','medications','residents','daily_logs'];
 const T22_PHI_TABS = ['mar','medications','residents','daily'];
 const T22_LITE_BLOCKED_MSG = 'MAR removed in Lite — facility compliance only';
 
+// An expired trial used to see one thing: a billing page. Not their dashboard,
+// not the readiness score they earned, not the checklist they filled in — the
+// work was still in the database, and the only way back to it was to pay for
+// something they could no longer see. The predictable result is the one in
+// this account's own history: sign up again with a different address and start
+// over, free, forever.
+//
+// So expiry is read-only now, not a wall. They keep every tab their role
+// allows and every row they entered; nothing writes. That turns the thing they
+// already built into the argument for the $29, which is the only argument
+// there is.
+//
+// Set ONLY when the entitlement read actually succeeded. "Trial ended" and "we
+// could not check" are different facts, and the second one stays fail-closed:
+// an outage must not hand out read access to accounts nobody verified.
+let t22ReadOnly = false;
+const T22_READONLY_MSG = 'Your trial has ended — this is read-only. Subscribe to make changes.';
+// Analytics still writes: knowing an expired trial came back and looked around
+// is worth more than the purity of blocking it, and track() ignores failures
+// anyway. Nothing else gets through.
+const T22_READONLY_WRITE_OK = ['events'];
+
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
   [STRIPE_STARTER]:'starter',
@@ -1348,6 +1371,24 @@ function t22Fetch(input,init){
         return Promise.resolve(new Response(
           JSON.stringify({message:T22_LITE_BLOCKED_MSG,code:'T22_LITE',details:null,hint:null}),
           {status:403,headers:{'Content-Type':'application/json'}}));
+      }
+    }
+    // Expired, and verified expired. canEdit() greys out the buttons; this is
+    // the layer under it, catching every write path that never thought to ask.
+    // RPCs are POSTs and several are the way OUT of this state — accepting an
+    // invite, re-checking entitlement — so they are never blocked here. They
+    // are SECURITY DEFINER functions carrying their own authorisation.
+    if(t22ReadOnly){
+      const url=typeof input==='string'?input:(input&&input.url)||'';
+      const m=new URL(url,window.location.origin).pathname.match(/\/rest\/v1\/([^/?]+)/);
+      if(m&&m[1]!=='rpc'&&!T22_READONLY_WRITE_OK.includes(m[1])){
+        const method=String((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
+        if(method!=='GET'&&method!=='HEAD'){
+          t22Toast(T22_READONLY_MSG);
+          return Promise.resolve(new Response(
+            JSON.stringify({message:T22_READONLY_MSG,code:'T22_READONLY',details:null,hint:null}),
+            {status:403,headers:{'Content-Type':'application/json'}}));
+        }
       }
     }
   }catch(e){/* a guard that throws must not take the request with it */}
@@ -1483,9 +1524,11 @@ function roleBrief(role){
   });
 }
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
-function canEdit(){ return getAccess().canEdit; }
-function canDelete(){ return getAccess().canDelete; }
-function canTeam(){ return getAccess().canTeam; }
+// An expired trial can look at everything and change nothing. Answered here
+// rather than at each call site, so a screen added later inherits it.
+function canEdit(){ return !t22ReadOnly && getAccess().canEdit; }
+function canDelete(){ return !t22ReadOnly && getAccess().canDelete; }
+function canTeam(){ return !t22ReadOnly && getAccess().canTeam; }
 // Voiding is a correction to a legal record, not an edit. Kept to the people
 // who answer for that record: the administrator, a supervisor, and the
 // in-house caregiver who runs the medication pass. A regular caregiver who
@@ -1498,10 +1541,22 @@ function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'
 // front of someone who is still deciding whether to sign up.
 const DEMO_TABS=['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
 function allowedTabs(){
-  if(!t22Entitled) return ['billing']; // entitlement gate (fail closed): unpaid/expired => billing only
+  const lite=t=>showMAR||!T22_PHI_TABS.includes(t);
+  // Verified expired: they keep every tab their role allows, so the work they
+  // already did is still in front of them, and billing is one click from it.
+  // Tello is the exception — every question is a paid model call, so she is
+  // the one thing the subscription actually buys back.
+  if(t22ReadOnly){
+    const t=getAccess().tabs.filter(lite).filter(x=>x!=='ai');
+    // Most roles already carry billing; a caregiver does not, and they are the
+    // one who most needs to see the price of getting their work back.
+    return t.includes('billing')?t:t.concat('billing');
+  }
+  // Not entitled and NOT verified — an unreadable profile, an outage, an
+  // account we cannot vouch for. Still fail closed.
+  if(!t22Entitled) return ['billing'];
   // Lite subtracts from every role at once, so no role list has to be edited
   // and none of them drifts out of step with the others.
-  const lite=t=>showMAR||!T22_PHI_TABS.includes(t);
   if(demoMode) return DEMO_TABS.filter(lite);
   return getAccess().tabs.filter(lite);
 }
@@ -2372,6 +2427,10 @@ async function resolveTierLimits(){
     }
   }
   t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+  // Read-only is for an account we positively read and that has run out — not
+  // for one we failed to read. The sandbox is excluded: it is already
+  // view-only by construction, and a second banner would just be noise.
+  t22ReadOnly=!demoMode&&!ent.entitled&&ent.ok!==false&&!t22TrialActivationError;
   // ent.ok was already computed and then thrown away. It is the difference
   // between "your trial ran out" and "we could not check", and those need
   // very different words in front of a customer.
@@ -2407,6 +2466,11 @@ async function enforcePaidGate(){
   if(isPublic)return;
   // Still in trial, or working inside a facility somebody else pays for.
   if(t22Entitled||t22CoveredByFacility)return;
+  // Expired, and we know it. They browse their own facility read-only; the
+  // banner and every refused write already say why, and forcing them onto a
+  // pricing page instead is how a returning customer decides to sign up again
+  // under a new address rather than pay.
+  if(t22ReadOnly)return;
   let paid=false;
   try{
     const{data,error}=await sb.from('users').select('paid').eq('email',(currentUser.email||'').toLowerCase()).maybeSingle();
@@ -2697,6 +2761,8 @@ function applyRoleUI(){
 function applyLiteMode(){
   const banner=document.getElementById('lite-banner');
   if(banner)banner.style.display=showMAR?'none':'block';
+  const ro=document.getElementById('readonly-banner');
+  if(ro)ro.style.display=t22ReadOnly?'block':'none';
   // The Team Access cards describe each role in one line, and three of them
   // named residents, medications or the MAR — tabs the invited person will
   // never be shown. The markup now carries the Lite wording, so the page is

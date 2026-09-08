@@ -203,6 +203,29 @@ Existing facilities do NOT pick up new items — seeding runs at onboarding
 only. The backfill query is written out, commented, at the end of
 `migrations/2026-09-07_title22_lic_checklist_items.sql`.
 
+## An expired trial is read-only, not locked out
+
+`t22ReadOnly` (index.html). Set only when the entitlement read SUCCEEDED and
+came back expired — "trial ended" and "we could not check" are different
+facts, and the second one still fails closed to `['billing']`. Four layers:
+
+- `allowedTabs()` returns the role's own tabs, minus Tello (every question is
+  a paid model call), plus billing.
+- `canEdit`/`canDelete`/`canTeam` all return false.
+- `t22Fetch` refuses every non-GET to `/rest/v1/<table>`, which catches the
+  write paths that never asked `canEdit()`. RPCs are never blocked — several
+  are the way OUT of this state (accepting an invite, re-checking
+  entitlement) — and `events` still writes, so you can see who came back.
+- `enforcePaidGate` no longer redirects them to #pricing.
+
+The reason, so nobody "simplifies" it back: an expired trial used to see a
+billing page and nothing else — not the readiness score they earned, not the
+checklist they filled in, though all of it was still in the database. The
+rational move for that person is to sign up again with a different address
+and start over free, which is most of the 32 accounts and 49 facilities this
+project accumulated. Nothing stops a second signup; what changed is that
+staying is now worth more than starting over.
+
 ## Known open bugs
 - users.paid never flips. The webhook IS live now, but it
   writes profiles.title22_* and public.subscriptions —
