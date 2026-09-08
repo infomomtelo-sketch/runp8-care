@@ -11,7 +11,8 @@ App State:
 - showMAR=false
 - users table has paid boolean, stripe_customer_id, plan
 - Stripe Payment Links Lite $29/mo, success_url = https://title22.app#welcome
-- Stripe webhook MISSING — users.paid never flips to true
+- Stripe webhook DEPLOYED (see below) — but it writes profiles and
+  subscriptions, not users, so users.paid still never flips
 - Quick buttons still have resident queries — must delete for Lite
 
 AI Tello:
@@ -23,10 +24,11 @@ Goal: No-PHI Lite $29, infra $25 Pro, downgrade from $599 Enterprise
 
 ---
 
-## Status of the four items above (as of 2026-09-06)
+## Status of the four items above (as of 2026-09-08)
 
-Three are done on branch `claude/subscription-waitlist-buttons-1u64kp`; one
-is not. Kept here so the block above is not read as a to-do list twice:
+Kept here so the block above is not read as a to-do list twice. Three are
+done; the fourth is half done, and the half that is missing is the half that
+a customer notices:
 
 - **Quick buttons — done.** "Which residents are missing documents?" is
   deleted from Tello's tab. The onboarding tour's residents and MAR stops
@@ -39,9 +41,46 @@ is not. Kept here so the block above is not read as a to-do list twice:
   (`TELLO_CHARACTER`, `buildFacilityContext`, the briefing prompt),
   `tello.html` (`CHARACTER`, the public page), and
   `workers/title22-ai/index.js` (a generic fallback string only).
-- **Webhook — NOT done.** `api/stripe-webhook.js` exists but cannot run on
-  this project's hosting and would not flip anyone to paid if it did. Read
-  `api/README.md` before touching it.
+- **Webhook — deployed, and it is not the file you will find first.**
+  What runs is the Cloudflare Worker `stripe-webhook`, deployed 2026-09-07
+  against the `memorable-wonder` Stripe destination, with its source in
+  `workers/stripe-webhook/`. It verifies the signature with Web Crypto, maps
+  `price_1UCIAiAH9qPFLg89ln6eHAVa` → `lite` (the missing entry that charged a
+  card on 2026-09-06 and left the customer on "Free Trial"), and writes both
+  `profiles.title22_*` and `public.subscriptions`.
+
+  It does **not** write `users`. Nothing does. `enforcePaidGate` and
+  `welcomeIsPaid` still read `users.paid`, so the welcome page still polls
+  for 30 seconds and times out for every buyer — the plan lands correctly in
+  `profiles`, the welcome page just looks somewhere else. Fixing it is one
+  function: point `welcomeIsPaid` at the same source `readSubscription`
+  already trusts, or have the Worker upsert `users` as well.
+
+  `api/stripe-webhook.js` is NOT what runs and never has — it is a Vercel
+  handler on a Cloudflare Pages site. It is kept byte-identical because it
+  was supplied that way with "do not modify it". Read `api/README.md` before
+  assuming it does anything.
+
+## Recordings and copy: all removed (2026-09-07/08)
+
+Do not re-audit this; it was done frame by frame.
+
+- Every walkthrough clip is deleted from both repos. `media/` is gone from
+  this repo; `videos/` on the marketing site keeps only
+  `title22-trainer-pitch.mp4` (classroom footage and title cards, no product
+  screens). Each deleted clip showed a Residents tab, a MAR, or named
+  residents with rooms and dates of birth.
+- `VIDEO_MAP` is `{}` on purpose, so `setupVideoHelpButtons` adds no "How To"
+  button. Refill it only with something current.
+- `title22-walkthrough.html` and `title-22.com/walkthrough/` are written
+  step pages now, not players. Nothing loads.
+- `training/` lost its "Recording a medication (MAR)" and "Resident records"
+  lessons; six remain. `tello.html`, `trainers.html` and `privacy.html` were
+  corrected too.
+- Team Access role cards ship the Lite wording in the markup, with the full
+  wording in `data-full`, restored by `applyLiteMode` only if `showMAR`
+  returns. `ROLE_BRIEF` has the same `liteCan`/`liteCannot` pattern, read
+  through `roleBrief()`.
 
 ## Repo shape
 
@@ -147,9 +186,12 @@ a claim about what the product holds — it stays true only
 while nothing re-adds resident data.
 
 ## Known open bugs
-- users.paid never flips: no working webhook. Everyone
-  who pays lands on the welcome page, polls for 30s and
-  times out. See api/README.md.
+- users.paid never flips. The webhook IS live now, but it
+  writes profiles.title22_* and public.subscriptions —
+  nothing writes users. So everyone who pays still lands
+  on the welcome page, polls users.paid for 30s and times
+  out, while their plan sits correct in profiles. One
+  function to fix: welcomeIsPaid (index.html).
 - The users table's "allow all for webhook" RLS policy
   lets the published anon key read every customer email
   and set paid=true. Narrower policy is in the migration.

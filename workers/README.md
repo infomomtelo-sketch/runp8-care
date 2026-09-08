@@ -6,8 +6,8 @@ Five Workers back Title22 in production, plus the dashboard-only `stripe-webhook
 pulled 2026-08-03 via the Cloudflare API — see below to re-pull after any
 change made directly in the dashboard). `title22-extract` was written in this
 repo and has never been dashboard-edited, so its committed source is
-authoritative. `stripe-webhook`'s source is still not committed; pull it the
-same way before changing it.
+authoritative. `stripe-webhook` was dashboard-only until 2026-09-07; the
+committed source is now what is deployed.
 
 To re-capture deployed source after a dashboard-only edit (needs a
 Cloudflare API token with Workers Scripts:Read):
@@ -130,21 +130,29 @@ sheet as read-only — it has nowhere to go.
 ## stripe-webhook
 
 - Stripe destination: `memorable-wonder`.
-- **The deployed source is still dashboard-only.** `stripe-webhook/index.js`
-  in this repo is a replacement written from what is documented here, NOT a
-  copy of what is running. Pull the live script and diff it before deploying.
-- **The $29 Lite price is not in the DEPLOYED price map.** That is why a Lite
-  payment on 2026-09-06 charged the card and left the customer on "Free
-  Trial": the webhook could not name a plan for the price, so it wrote
-  nothing. The committed replacement carries it —
-  `price_1UCIAiAH9qPFLg89ln6eHAVa` → `lite` — but that only takes effect once
-  the Worker is actually deployed.
-- It writes `profiles.title22_*`. `public.subscriptions` was never written by
-  it, which is why the two stores disagree — one row there still says
-  `active` on a period that ended six weeks ago. The committed replacement
-  keeps both current.
+- Route: `https://stripe-webhook.infomomtelo.workers.dev` (a GET answers
+  "Method not allowed" — that is the deployed Worker saying hello).
+- **Deployed 2026-09-07 from `stripe-webhook/index.js` in this repo.** Before
+  that the source was dashboard-only and uncommitted; it no longer is, so
+  edit the file and `wrangler deploy` rather than pasting into the dashboard.
+- **Why it was redeployed:** the $29 Lite price was missing from the old
+  price map, so a Lite payment on 2026-09-06 charged the card and left the
+  customer on "Free Trial" — the webhook could not name a plan for the price
+  and wrote nothing. `price_1UCIAiAH9qPFLg89ln6eHAVa` → `lite` is now in the
+  map, and an unmapped price returns 422 with a `console.error` instead of
+  failing silently.
+- It writes `profiles.title22_*` **and** `public.subscriptions`. The old one
+  wrote only profiles, which is why the two stores disagree — one row there
+  still says `active` on a period that ended six weeks ago. That row predates
+  this deploy and is still there; decide it against Stripe.
+- **It does not write `users`, and nothing else does.** `enforcePaidGate` and
+  `welcomeIsPaid` in the app's `index.html` still read `users.paid`, so a
+  buyer's plan lands correctly in `profiles` while the welcome page polls a
+  table nobody writes and times out after 30 seconds. Fix it in the app
+  (`welcomeIsPaid`) or add a `users` upsert here — but pick one, rather than
+  leaving a third store to drift.
 - Maps live price IDs → `title22_plan`:
-  - `price_1UCIAiAH9qPFLg89ln6eHAVa` → lite ($29) — in the committed file only
+  - `price_1UCIAiAH9qPFLg89ln6eHAVa` → lite ($29)
   - `price_1TkIKtAH9qPFLg89SEmENr5J` → starter
   - `price_1TkILaAH9qPFLg8923rgvHHb` → pro ($79)
   - `price_1TkIMaAH9qPFLg89SPFZH0aG` → specialist ($149)

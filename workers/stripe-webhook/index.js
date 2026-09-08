@@ -1,22 +1,24 @@
 // Title22 Stripe webhook.
 //
-// READ THIS BEFORE DEPLOYING. A `stripe-webhook` Worker is ALREADY running in
-// Cloudflare, deployed from the dashboard, and its source has never been
-// committed (workers/README.md). This file is a written-from-scratch
-// replacement based on what the README records about it — it is NOT a copy of
-// what is deployed. Pull the live source and diff it against this before you
-// paste anything over it:
+// THIS IS WHAT IS DEPLOYED. Pushed 2026-09-07 with `wrangler deploy`, serving
+// https://stripe-webhook.infomomtelo.workers.dev against the Stripe
+// `memorable-wonder` destination. Before that the Worker was dashboard-only
+// with no committed source; edit this file and redeploy, rather than pasting
+// into the dashboard, or the two diverge again.
 //
-//   curl -s "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/workers/scripts/stripe-webhook" \
-//     -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+// What went wrong, and what this fixed:
 //
-// What went wrong, and what this fixes:
-//
-// The deployed webhook maps four live price IDs to a plan (starter, pro,
-// specialist, agency) and writes profiles.title22_*. The $29 Lite price is not
+// The old webhook mapped four live price IDs to a plan (starter, pro,
+// specialist, agency) and wrote profiles.title22_*. The $29 Lite price was not
 // in that map. So a Lite payment arrived, the webhook could not name a plan,
 // and nothing was written — the customer stayed on "Free Trial" while their
 // card was charged. PRICE_PLANS below is the fix.
+//
+// STILL OPEN, and not fixable here alone: this writes profiles and
+// subscriptions, never `users`. The app's welcomeIsPaid() reads users.paid,
+// which nothing writes, so a buyer still watches the welcome page poll for 30
+// seconds and give up. Fix it in the app, or add a users upsert here — one or
+// the other, not a third store left to drift.
 //
 // No npm dependencies, matching the other Workers here: the Stripe signature
 // is verified with Web Crypto directly rather than pulling in the SDK, because

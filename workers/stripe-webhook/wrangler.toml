@@ -2,12 +2,10 @@ name = "stripe-webhook"
 main = "index.js"
 compatibility_date = "2026-09-07"
 
-# NOT the source of what is deployed. A stripe-webhook Worker has been running
-# since before this file existed, deployed from the Cloudflare dashboard, and
-# its source was never committed. Pull it and diff before deploying this:
-#
-#   curl -s "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/workers/scripts/stripe-webhook" \
-#     -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+# This IS the source of what is deployed, as of 2026-09-07. Redeploy with
+# `wrangler deploy` from this directory after any change — the Worker was
+# dashboard-only before that date, and pasting into the dashboard again is how
+# the source and the deploy drift apart.
 #
 # Secrets (set via `wrangler secret put <NAME>` — never stored here):
 #   STRIPE_WEBHOOK_SECRET  — whsec_... for the `memorable-wonder` destination.
@@ -26,7 +24,7 @@ compatibility_date = "2026-09-07"
 #   customer.subscription.updated
 #   customer.subscription.deleted
 #
-# PRICE_PLANS in index.js now carries the $29 Lite price
-# (price_1UCIAiAH9qPFLg89ln6eHAVa). Any price still not in that map is refused
-# with 422 and shows in the delivery log — the loud version of the bug that let
-# a paid customer sit on "Free Trial" for a day.
+# PRICE_PLANS in index.js carries the $29 Lite price
+# (price_1UCIAiAH9qPFLg89ln6eHAVa). Any price not in that map is refused with
+# 422 and shows in the delivery log — the loud version of the bug that let a
+# paid customer sit on "Free Trial" for a day.

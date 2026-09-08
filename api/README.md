@@ -1,8 +1,15 @@
-# `api/stripe-webhook.js` — what it is and what it still needs
+# `api/stripe-webhook.js` — this file does not run
 
-`stripe-webhook.js` is committed exactly as supplied. Nothing in it has been
-changed. This file records what has to be true around it before it flips
-`users.paid`, because none of it is true today.
+**Nothing calls it. Nothing has ever called it. It is not the webhook.**
+
+The webhook that actually runs is the Cloudflare Worker `stripe-webhook`,
+deployed 2026-09-07 against the `memorable-wonder` Stripe destination. Its
+source is `workers/stripe-webhook/index.js`. If you are here to change how a
+Stripe event is handled, go there instead.
+
+This file is kept, byte for byte, because it was supplied that way with the
+instruction not to modify it. What follows is why it cannot be the answer,
+so nobody spends a second afternoon rediscovering it.
 
 ## 1. It cannot run on this project's hosting as written
 
@@ -19,50 +26,48 @@ step**, and the backend pieces are **Cloudflare Workers**. The handler is a
 | `import Stripe from 'stripe'` | No `package.json` and no build step in this repo, so nothing resolves the import. |
 | `stripe.webhooks.constructEvent` | Synchronous Node crypto. On Workers use `constructEventAsync` with `Stripe.createSubtleCryptoProvider()`. |
 
-Two ways forward — pick one deliberately:
+The port was done rather than debated: `workers/stripe-webhook/index.js` is
+that same logic in Workers idioms, with no npm dependency — the Stripe
+signature is verified with Web Crypto directly, because this repo has no
+build step to resolve an SDK import.
 
-- **Deploy this file to Vercel** as a separate project (`api/stripe-webhook.js`
-  is already the path Vercel expects), point the Stripe endpoint at it, and add
-  `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_URL` and
-  `SUPABASE_SERVICE_ROLE_KEY` there. The app itself stays on Pages.
-- **Port it to a Worker** under `workers/`, alongside `title22-ai` and
-  `title22-email`, and deploy with `wrangler`. Same logic, Workers idioms.
+## 2. Three bugs in this file that the Worker does not have
 
-## 2. Three things to fix before it flips anyone to paid
-
-These are in the supplied code and were left as-is:
+Left in place here, since the file is not to be modified:
 
 1. **`.update()` never creates a row.** Nothing in the app inserts into `users`
    — `enforcePaidGate` and `handleWelcome` only read it. A first-time buyer has
    no row, `.update()` matches nothing, and `paid` stays false: the exact bug
-   this file exists to fix. It needs an upsert:
-
-   ```js
-   await supabase.from('users').upsert(
-     { email, paid: true, stripe_customer_id: session.customer, plan: 'lite' },
-     { onConflict: 'email' }
-   );
-   ```
-
+   this file was meant to fix.
 2. **Email casing.** The app queries `.eq('email', user.email.toLowerCase())`.
    Stripe returns the address as the customer typed it, so `Ada@Example.com`
-   writes a row the app will never find. Lower-case on write
-   (`email.toLowerCase()`), and add the unique index in
-   `migrations/2026-09-06_title22_lite_users.sql`.
+   writes a row the app will never find.
+3. **`plan` is hardcoded to `'lite'`.** A $79 Multi-Home checkout would record
+   `lite`, and `TIER_LIMITS.lite` allows one facility — capping a Multi-Home
+   customer at one. The Worker reads the plan from the subscription's price ID.
 
-3. **`plan` is hardcoded to `'lite'`.** A $79 Multi-Home checkout records
-   `lite`, and `TIER_LIMITS.lite` allows one facility — so a Multi-Home
-   customer is capped at one. Read it from the Payment Link's metadata
-   (`session.metadata?.plan`) and fall back to `'lite'`.
+It also handles only `checkout.session.completed`. The Worker additionally
+handles `customer.subscription.created`, `.updated` and `.deleted`, so a
+cancelled subscription does not keep access forever.
 
-Also unhandled: `customer.subscription.deleted` and
-`invoice.payment_failed`. Without them a cancelled subscription keeps
-`paid = true` forever.
+## 3. What is still broken, and it is not this file
 
-## 3. The RLS policy this writes through
+The live Worker writes `profiles.title22_*` and `public.subscriptions`. It
+does **not** write `users`, and nothing else does either. Meanwhile
+`enforcePaidGate` and `welcomeIsPaid` in `index.html` still read
+`users.paid`.
 
-The webhook uses the **service-role key**, which bypasses RLS entirely — it does
+So a Lite payment today lands the correct plan in `profiles`, and the welcome
+page still polls `users.paid` for 30 seconds and times out. The fix is one
+function — point `welcomeIsPaid` at the source `readSubscription` already
+trusts, or have the Worker upsert `users` too — and it is not a reason to
+resurrect this file.
+
+## 4. The RLS policy to drop
+
+The Worker uses the **service-role key**, which bypasses RLS entirely — it does
 not need the `"allow all for webhook"` policy in the users migration. That
-policy is what exposes the customer list to the published anon key. Once this
-webhook is live, drop it and switch to the read-own-row policy written out in
+policy is what exposes the customer list to the published anon key: it lets
+anyone holding the anon key read every customer email and set `paid = true`.
+Drop it and switch to the read-own-row policy written out in
 `migrations/2026-09-06_title22_lite_users.sql`.
