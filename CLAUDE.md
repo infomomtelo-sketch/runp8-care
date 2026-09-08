@@ -155,6 +155,20 @@ The AI never suggests, corrects, or comments on clinical
 dosage information, on any plan.
 Incidents (LIC 624) are kept, unlinked from residents —
 do not re-link them or add resident names to the export.
+The incident form hides its Resident field in Lite and
+saves resident_id null; it used to REQUIRE a selection
+from a list that is always empty, so no incident could be
+filed at all. In its place the form carries a note: do
+not name a resident in the description. That free-text
+box is the only place PHI can now get in, and a note is
+the only control on it.
+
+Reads must not embed residents either. t22Fetch matches
+on the request PATH, so `.select('*, residents(...)')`
+on incidents or documents sails past it — the embed
+rides in the query string. Those two are gated on
+showMAR now. The remaining embeds are on mar_entries and
+daily_logs, whose paths t22Fetch already blocks.
 
 ## Admission forms are print-only
 Dormant in Lite — ADMISSION_FORMS renders in the resident

@@ -4065,7 +4065,7 @@ let currentIncidentResidentId=null;
 async function loadIncidents(){
   if(!currentFacility)return;
   const{data}=await sb.from('incidents')
-    .select('*, residents(name, full_name)')
+    .select(showMAR?'*, residents(name, full_name)':'*')
     .eq('facility_id',currentFacility.id)
     .order('occurred_at',{ascending:false});
   incidents=data||[];renderIncidents();
@@ -4106,6 +4106,14 @@ function openIncidentModal(incidentId){
   currentIncidentId=incidentId||null;
   const inc=incidentId?incidents.find(x=>x.id===incidentId):null;
   document.getElementById('inc-modal-title').textContent=inc?'Edit incident':'Report incident';
+  // Lite holds no residents, so this select is permanently empty and the
+  // required-check in saveIncident made it impossible to file an incident at
+  // all — on a product whose incident reporting (LIC 624) is a headline
+  // feature. Hidden rather than deleted: it comes back with showMAR.
+  const resGroup=document.getElementById('inc-resident-group');
+  if(resGroup)resGroup.style.display=showMAR?'':'none';
+  const noPhiNote=document.getElementById('inc-nophi-note');
+  if(noPhiNote)noPhiNote.style.display=showMAR?'none':'block';
   const resSel=document.getElementById('inc-resident-select');
   resSel.innerHTML='<option value="">Select resident...</option>';
   residents.forEach(r=>{
@@ -4144,12 +4152,15 @@ function closeIncidentModal(){document.getElementById('incident-modal').classLis
 async function saveIncident(){
   const residentId=document.getElementById('inc-resident-select').value;
   const err=document.getElementById('inc-modal-error');
-  if(!residentId){err.textContent='Please select a resident.';err.classList.add('show');return;}
+  // Only ask for a resident where residents exist. In Lite the incident is
+  // deliberately unlinked — CLAUDE.md keeps LIC 624 without the PHI — and
+  // demanding a selection from an empty list refused every save.
+  if(showMAR&&!residentId){err.textContent='Please select a resident.';err.classList.add('show');return;}
   const dateVal=document.getElementById('inc-date').value;
   const timeVal=document.getElementById('inc-time').value||'00:00';
   const occurredAt=dateVal?new Date(dateVal+'T'+timeVal+':00').toISOString():new Date().toISOString();
   const payload={
-    facility_id:currentFacility.id,resident_id:residentId,reported_by:currentUser?.id||null,
+    facility_id:currentFacility.id,resident_id:showMAR?residentId:null,reported_by:currentUser?.id||null,
     incident_type:document.getElementById('inc-type').value,occurred_at:occurredAt,
     description:document.getElementById('inc-description').value.trim()||null,
     injury:document.getElementById('inc-injury').value==='yes',
@@ -4168,7 +4179,7 @@ async function saveIncident(){
     error=e;
     if(!e){const idx=incidents.findIndex(i=>i.id===currentIncidentId);if(idx>-1)incidents[idx]={...incidents[idx],...payload};}
   }else{
-    const{data,error:e}=await sb.from('incidents').insert(payload).select('*, residents(name, full_name)').single();
+    const{data,error:e}=await sb.from('incidents').insert(payload).select(showMAR?'*, residents(name, full_name)':'*').single();
     error=e;if(!e&&data){incidents.unshift(data);track('record_created',{record_type:'incident',record_id:data.id});}
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
@@ -5449,9 +5460,16 @@ async function loadDocuments(){
   // migrations/2026-08-09_title22_document_slots.sql. Until that has run the
   // join is rejected, so fall back to the resident-only query rather than
   // leaving the whole Documents tab broken.
-  let{data,error}=await sb.from('documents').select('*, residents(name,full_name), staff(full_name,name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  // Lite drops the residents embed entirely: documents there are facility and
+  // staff records, there are no residents to name, and asking PostgREST to
+  // join the table anyway is what quietly makes "no request for a PHI table
+  // leaves the browser" untrue — t22Fetch matches on the path, and an embed
+  // rides in the query string where it cannot see it.
+  const docSel=showMAR?'*, residents(name,full_name), staff(full_name,name)':'*, staff(full_name,name)';
+  const docSelFallback=showMAR?'*, residents(name,full_name)':'*';
+  let{data,error}=await sb.from('documents').select(docSel).eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
   if(error){
-    ({data,error}=await sb.from('documents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}));
+    ({data,error}=await sb.from('documents').select(docSelFallback).eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}));
   }
   facilityDocs=error?[]:(data||[]);
   // Lite holds no resident records, so a file attached to one — a LIC 601,
@@ -8637,11 +8655,16 @@ document.addEventListener('click',function(e){
       <div id="inc-ai-tip-text"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group" style="grid-column:1/-1">
+      <div class="form-group" id="inc-resident-group" style="grid-column:1/-1">
         <label>Resident</label>
         <select id="inc-resident-select" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none">
           <option value="">Select resident...</option>
         </select>
+      </div>
+      <div id="inc-nophi-note" style="display:none;grid-column:1/-1;font-size:12px;color:var(--text2);background:var(--gray-bg);border-radius:var(--radius);padding:9px 12px;line-height:1.5">
+        <strong>Do not name a resident below.</strong> This report is not linked to
+        anyone, and no resident name appears on the DSS export. Record what
+        happened and what was done about it — "a resident", "the person in room 4".
       </div>
       <div class="form-group"><label>Incident type</label><select id="inc-type" onchange="onIncidentTypeChange(this.value)"><option value="fall">Fall</option><option value="medication_error">Medication error</option><option value="behavioral">Behavioral incident</option><option value="elopement">Elopement</option><option value="injury">Injury</option><option value="death">Death</option><option value="other">Other</option></select></div>
       <div class="form-group"><label>DSS reportable?</label><select id="inc-dss"><option value="no">No</option><option value="yes">Yes — must report to DSS</option></select></div>
