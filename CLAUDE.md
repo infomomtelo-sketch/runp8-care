@@ -370,7 +370,17 @@ charged a card and showed the customer a trial:
 
 The app-side half heals accounts that are already broken with no redeploy. The
 worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
-effect, and has not been deployed.
+effect, and **has not been deployed** — so does the Multi-Home price added on
+2026-09-08. The running Worker is still the 2026-09-07 build.
+
+Deploying no longer needs a machine with wrangler on it: GitHub -> Actions ->
+"Deploy stripe-webhook Worker" -> Run workflow
+(`.github/workflows/deploy-stripe-webhook.yml`). It is manual-only on purpose
+— this Worker is what turns a payment into a paid account, so a deploy should
+not ride along with an unrelated merge. One-time setup is a repository secret
+`CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" token template). The
+Worker's own secrets are untouched by a deploy; never put them in the
+workflow.
 
 `readEntitlement` still reads `profiles` and must keep reading it — it is the
 only store that carries the trial, the edu tier, and subscribers who predate
