@@ -14,11 +14,11 @@
 // and nothing was written — the customer stayed on "Free Trial" while their
 // card was charged. PRICE_PLANS below is the fix.
 //
-// STILL OPEN, and not fixable here alone: this writes profiles and
-// subscriptions, never `users`. The app's welcomeIsPaid() reads users.paid,
-// which nothing writes, so a buyer still watches the welcome page poll for 30
-// seconds and give up. Fix it in the app, or add a users upsert here — one or
-// the other, not a third store left to drift.
+// CLOSED since: this writes profiles and subscriptions, never `users`, and it
+// turned out `public.users` does not exist at all — its migration was never
+// run. welcomeIsPaid() no longer reads it; it resolves the entitlement from
+// the two stores that are actually written. Do not add a users upsert here to
+// "finish" this — a third store is what the note above was warning about.
 //
 // No npm dependencies, matching the other Workers here: the Stripe signature
 // is verified with Web Crypto directly rather than pulling in the SDK, because
@@ -74,11 +74,23 @@ function sbHeaders(env) {
 // PATCH profiles by id. The webhook writes ONLY title22_* columns, as the
 // README requires — nothing else on that row is ours to touch.
 async function patchProfile(env, userId, patch) {
+  // return=representation, not minimal, because a PATCH that matches no row is
+  // a 200 with an empty body — it succeeds and writes nothing. That is the
+  // case for anyone who paid before they had an account, and it is silent:
+  // profiles never learns the plan, the app stamps them 'trial' on first
+  // login, and they read as "Free Trial" having been charged. The app now
+  // recovers from it on its own (planToStamp in index.html), but it should be
+  // visible in the Worker tail rather than inferred from a support email.
   const res = await fetch(
     `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-    { method: 'PATCH', headers: { ...sbHeaders(env), 'Prefer': 'return=minimal' }, body: JSON.stringify(patch) }
+    { method: 'PATCH', headers: { ...sbHeaders(env), 'Prefer': 'return=representation' }, body: JSON.stringify(patch) }
   );
-  return res.ok;
+  if (!res.ok) return false;
+  const rows = await res.json().catch(() => null);
+  if (Array.isArray(rows) && rows.length === 0) {
+    console.error('patchProfile matched no profiles row for user', userId, '- plan not recorded on profiles');
+  }
+  return true;
 }
 
 // public.subscriptions is a second store, and the two disagreed for months
@@ -163,6 +175,28 @@ function isoOrNull(unixSeconds) {
   return unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
 }
 
+// Stripe's 2025-03-31 API version removed current_period_end from the
+// subscription object and moved it onto the subscription's items. Reading only
+// the root left every row this worker wrote carrying a null period end, which
+// the app treats as unverifiable — so a real Lite subscriber fell through to
+// profiles, and if the webhook's PATCH of profiles had matched no row (a
+// customer who paid before they signed up), they read as "Free Trial" and kept
+// reading that way through every refresh.
+//
+// Root first so an older API version keeps working unchanged, then the latest
+// end across the items.
+function periodEndOf(sub) {
+  if (sub && sub.current_period_end) return isoOrNull(sub.current_period_end);
+  const items = (sub && sub.items && sub.items.data) || [];
+  let latest = null;
+  for (const it of items) {
+    if (it && it.current_period_end && (latest === null || it.current_period_end > latest)) {
+      latest = it.current_period_end;
+    }
+  }
+  return isoOrNull(latest);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
@@ -222,7 +256,7 @@ export default {
             console.error('Unmapped Stripe price', priceId, 'on subscription', obj.id);
             return new Response('Unmapped price: ' + priceId, { status: 422 });
           }
-          const periodEnd = isoOrNull(obj.current_period_end);
+          const periodEnd = periodEndOf(obj);
           const active = obj.status === 'active' || obj.status === 'trialing';
           await patchProfile(env, userId, {
             title22_plan: active ? plan : undefined,
@@ -247,7 +281,7 @@ export default {
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           if (!userId) return new Response('No matching user for cancellation', { status: 202 });
-          const periodEnd = isoOrNull(obj.current_period_end) || new Date().toISOString();
+          const periodEnd = periodEndOf(obj) || new Date().toISOString();
           await patchProfile(env, userId, { title22_plan_expires_at: periodEnd });
           await upsertSubscription(env, {
             user_id: userId,

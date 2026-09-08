@@ -317,9 +317,43 @@ What is genuinely open is not a bug, it is a decision:
   sells Multi-Home $79 (index.html, the pricing cards). Pick one.
 - **The $29 path has never run end to end.** The webhook price map and
   welcomeIsPaid were fixed two days apart and never tested together against a
-  real Stripe event.
+  real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
+  below, but neither has met a real Stripe event either — this stays open
+  until one does.
 - **49 test facilities across 32 accounts.** Guarded reset is written and
   dry-run ready: migrations/2026-09-08_title22_reset_test_facilities.sql.
+
+## Why a paid account said "Free Trial" through every refresh (2026-09-08)
+
+Two independent faults, either of which alone is survivable and which together
+charged a card and showed the customer a trial:
+
+1. **`ensureProfile` stamped `title22_plan='trial'` on a paying account.** It
+   only ever asked whether the column was null, and null is exactly what a
+   customer who paid *before* they signed up has: the webhook PATCHes
+   `profiles?id=eq.<uid>`, and a PATCH matching no row returns 200 having
+   written nothing. So the plan never landed, the app stamped 'trial' over it
+   on first login, and stamped it permanently. `planToStamp()` now asks
+   `subscriptions` first and stamps the paid plan (and no trial end date)
+   instead.
+2. **Every row the webhook wrote was undated.** Stripe's 2025-03-31 API
+   version moved `current_period_end` off the subscription object onto its
+   items; the worker read only the root, so `periodEnd` was null on every
+   event from a current API version — and `readSubscription` discarded undated
+   rows by design. `periodEndOf()` in the worker reads the items as a
+   fallback, and `readSubscription` now reports an undated paid row rather
+   than dropping it.
+
+The app-side half heals accounts that are already broken with no redeploy. The
+worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
+effect, and has not been deployed.
+
+`readEntitlement` still reads `profiles` and must keep reading it — it is the
+only store that carries the trial, the edu tier, and subscribers who predate
+`public.subscriptions`. What changed is that an undated paid subscription now
+wins over the word "trial", and only over that word: it does not override edu,
+a paid plan, or a cancelled plan past its period end. 15 branch cases were run
+against the rewritten function, including every one of those.
 
 And two entries that were never real in the first place: "users.paid never
 flips" and "the users table's allow-all RLS policy exposes every customer
