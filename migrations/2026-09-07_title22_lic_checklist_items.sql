@@ -1,3 +1,21 @@
+-- ⚠ ALREADY RUN (2026-09-07), AND IT INSERTED 16 NEAR-DUPLICATES.
+--
+-- Do not re-run this file. Run 2026-09-08_title22_lic_checklist_dedupe.sql
+-- instead, which removes them and moves the citations below onto the rows
+-- that were already there.
+--
+-- The mistake: every insert here is guarded on an exact title match, which
+-- only stops a byte-identical row. checklist_items already covered most of
+-- this ground in different words (2026-08-20_title22_checklist_items.sql) —
+-- "Fire clearance current" versus "Your fire clearance is current and the
+-- drill log is up to date" — so the guard passed and 19 of the 20 inserted.
+-- Only "RCFE Administrator Certificate Current" matched exactly and was
+-- skipped. Three of the nineteen were genuinely new and are kept: LIC 602A,
+-- LIC 508, and medication-entry attribution.
+--
+-- Before adding to this table again: read the existing titles first. A guard
+-- on title equality is not a guard against saying the same thing twice.
+
 -- The LIC forms, as facility-level yes/no checklist items.
 --
 -- Supabase SQL editor, project nwlhsshvqmbhemhxcran. Additive and idempotent

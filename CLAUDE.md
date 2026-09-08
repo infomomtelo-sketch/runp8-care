@@ -185,6 +185,24 @@ guarantee compliance or inspection outcomes. "No PHI" is
 a claim about what the product holds — it stays true only
 while nothing re-adds resident data.
 
+## checklist_items: read it before you insert
+
+~119 rows, and `seedComplianceTasks` copies EVERY one of them into
+`compliance_tasks` for each new facility, so the readiness score is
+met-over-all-of-them. Two consequences:
+
+- Adding a row adds a task to every facility created afterwards and lowers
+  everyone's starting score. It is not a free change.
+- A `where not exists (... c.title = v.title)` guard only stops a
+  byte-identical title. On 2026-09-07 that let 16 restatements of existing
+  items through ("Fire clearance current" versus "Your fire clearance is
+  current and the drill log is up to date"); 2026-09-08's migration undid
+  them. Read the existing titles before writing new ones.
+
+Existing facilities do NOT pick up new items — seeding runs at onboarding
+only. The backfill query is written out, commented, at the end of
+`migrations/2026-09-07_title22_lic_checklist_items.sql`.
+
 ## Known open bugs
 - users.paid never flips. The webhook IS live now, but it
   writes profiles.title22_* and public.subscriptions —
