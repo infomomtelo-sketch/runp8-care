@@ -28,13 +28,19 @@
 // Add the Lite and Multi-Home prices; a price that is not in this map is
 // reported and ignored rather than silently dropped, which is the bug this
 // file exists to fix.
+// `facilities` and `name` are documentation, not authority: the entitlement a
+// subscriber actually gets comes from TIER_LIMITS in index.html, and these
+// mirror it so the two can be compared without opening both files. `plan` is
+// the only field read at runtime, and it goes through normalisePlan() before
+// it is written anywhere — which is why 'multi-home' is safe to write here
+// even though the app is keyed on 'multi'. See PLAN_ALIASES below.
 const PRICE_PLANS = {
-  'price_1UCIAiAH9qPFLg89ln6eHAVa': 'lite',       // $29, prod_VDBXSXDdmtFrmh
-  'price_1UDWroAH9qPFLg89kAs9h49C': 'multi',      // $79 Multi-Home, prod_VDypF9WL2wmjGO
-  'price_1TkIKtAH9qPFLg89SEmENr5J': 'starter',
-  'price_1TkILaAH9qPFLg8923rgvHHb': 'pro',        // $79, the old link Multi-Home was sold on
-  'price_1TkIMaAH9qPFLg89SPFZH0aG': 'specialist', // archived, legacy subs only
-  'price_1TkINiAH9qPFLg89upIhpYTy': 'agency',
+  'price_1UCIAiAH9qPFLg89ln6eHAVa': { plan: 'lite',       facilities: 1,        name: 'Title22 Lite' },        // $29, prod_VDBXSXDdmtFrmh
+  'price_1UDWroAH9qPFLg89kAs9h49C': { plan: 'multi-home', facilities: 5,        name: 'Title22 Multi-Home' },  // $79, prod_VDypF9WL2wmjGO
+  'price_1TkIKtAH9qPFLg89SEmENr5J': { plan: 'starter',    facilities: 1,        name: 'Title22 Starter' },     // legacy subs only
+  'price_1TkILaAH9qPFLg8923rgvHHb': { plan: 'pro',        facilities: 5,        name: 'Title22 Pro' },         // $79, the old link Multi-Home was sold on
+  'price_1TkIMaAH9qPFLg89SPFZH0aG': { plan: 'specialist', facilities: 5,        name: 'Title22 Specialist' },  // archived, legacy subs only
+  'price_1TkINiAH9qPFLg89upIhpYTy': { plan: 'agency',     facilities: Infinity, name: 'Title22 Agency' },
 };
 
 // The plan keys the app actually understands. index.html's TIER_LIMITS and
@@ -190,7 +196,13 @@ function planFromSubscription(sub) {
   const items = (sub.items && sub.items.data) || [];
   for (const it of items) {
     const priceId = it.price && it.price.id;
-    if (priceId && PRICE_PLANS[priceId]) return { plan: PRICE_PLANS[priceId], priceId };
+    const tier = priceId && PRICE_PLANS[priceId];
+    // normalisePlan, not tier.plan raw: the map is written in the tier's
+    // human name ('multi-home') and the app is keyed on 'multi'. It also means
+    // a typo in the map is caught here — an unrecognised plan comes back null,
+    // and the caller refuses the event with the price ID in the log rather
+    // than writing a plan nothing matches.
+    if (tier) return { plan: normalisePlan(tier.plan), priceId, tier };
   }
   // Metadata is the fallback for a Payment Link that carries plan=lite. It is
   // typed by hand in the Stripe dashboard, so it is normalised and checked
