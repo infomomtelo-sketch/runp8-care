@@ -7,19 +7,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
-<meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<meta name="description" content="Title22 Lite — No PHI by design. Keeps your staff certified, your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
 <link rel="canonical" href="https://title22.app/"/>
 <meta name="robots" content="noindex,follow"/>
 <meta property="og:site_name" content="Title22"/>
 <meta property="og:title" content="Title22 — RCFE Compliance App"/>
-<meta property="og:description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<meta property="og:description" content="Title22 Lite — No PHI by design. Keeps your staff certified, your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
 <meta property="og:url" content="https://title22.app/"/>
 <meta property="og:type" content="website"/>
 <meta property="og:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
 <meta property="og:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="Title22 — RCFE Compliance App"/>
-<meta name="twitter:description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities."/>
+<meta name="twitter:description" content="Title22 Lite — No PHI by design. Staff certifications, training logs and a DSS-ready Title 22 checklist."/>
 <meta name="twitter:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
 <meta name="twitter:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
@@ -792,8 +792,8 @@
         <div id="doc-upload-row" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:16px;display:none">
           <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload a document</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602a">LIC 602A — Medical Assessment</option><option value="isp">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
-            <select id="doc-resident" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
+            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601" data-phi="1">LIC 601</option><option value="lic602a" data-phi="1">LIC 602A — Medical Assessment</option><option value="isp" data-phi="1">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
+            <select id="doc-resident" data-phi="1" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
             <select id="doc-staff" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a staff member</option></select>
             <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
             <span id="doc-upload-status" style="font-size:12px;color:var(--text2)"></span>
@@ -1174,12 +1174,29 @@ const STRIPE_STARTER    = 'https://buy.stripe.com/00w6oGdmy28K2bpes6g360f';
 const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
-// Lite pricing. Multi-Home is the existing $79 link, unchanged — same price,
-// new name. Lite is $29 and there is no $29 payment link yet: STRIPE_STARTER
-// charges $49, so pointing the $29 button at it would bill everyone the old
-// price. Create the $29/mo recurring Payment Link in Stripe and paste it
-// here; until then the button says so instead of charging.
+// Lite pricing. These are Payment Link URLs, not price IDs, and that is the
+// whole constraint here: this page has no server, so it cannot create a
+// Checkout Session from a price. A price ID cannot be pasted into either of
+// these — openStripe() opens the URL.
+//
+// Lite: $29, prod_VDBXSXDdmtFrmh, billed by price_1UCIAiAH9qPFLg89ln6eHAVa.
+// The link below is live and correct.
 const STRIPE_LITE       = 'https://buy.stripe.com/4gMcN41DQfZA5nBgAeg360l';
+// Multi-Home: $79, prod_VDypF9WL2wmjGO, price_1UDWroAH9qPFLg89kAs9h49C.
+//
+// STILL THE OLD LINK. That new price exists in Stripe and the webhook maps it
+// (workers/stripe-webhook/), but no Payment Link has been created for it yet,
+// and a price ID is not something this button can use. So Multi-Home is still
+// sold on the original Pro link: the customer is charged the right $79, but
+// against price_1TkILaAH9qPFLg8923rgvHHb, which the webhook maps to 'pro'.
+//
+// That is survivable rather than wrong — 'pro' and 'multi' are the same
+// entitlement (5 facilities, ai:true) — but the badge reads the legacy label
+// and the new product records no revenue. Create the $79/mo recurring Payment
+// Link on price_1UDWroAH9qPFLg89kAs9h49C, set its metadata to plan=multi and
+// its "After payment" redirect to https://title22.app#welcome, then paste the
+// URL here in place of STRIPE_PRO. Nothing else has to change: the webhook
+// already maps both the price and the metadata.
 const STRIPE_MULTI      = STRIPE_PRO;
 // Paste this into each Payment Link's "After payment" setting in the Stripe
 // dashboard (Don't show confirmation page -> Redirect to):
@@ -1787,6 +1804,22 @@ async function stampTrialIfMissing(userId,trialEnds){
   if(pe){t22TrialActivationError=pe.message;console.error('Trial activation failed:',pe.message);}
 }
 
+// What plan to stamp on a profile that has never carried one. Normally
+// 'trial'. But a profile with no plan is exactly what a customer who bought
+// before they signed up has — the webhook PATCHes profiles by id, and a PATCH
+// that matches no row succeeds while writing nothing — so "no plan yet" and
+// "has paid" are not mutually exclusive, and stamping 'trial' over the second
+// one is how a paying account came to say Free Trial and keep saying it
+// through every refresh. Ask the store the money lands in before writing.
+//
+// Null on any doubt: the caller then stamps 'trial' exactly as it always did.
+async function planToStamp(userId){
+  try{
+    const sub=await readSubscription(userId);
+    return(sub&&sub.plan&&T22_PAID.includes(sub.plan))?sub.plan:null;
+  }catch(e){return null;}
+}
+
 async function ensureProfile(user){
   // Title22 only touches title22_* entitlement columns on profiles. The shared
   // columns (plan, stripe_subscription_id, plan_expires_at, trial_ends_at,
@@ -1812,13 +1845,16 @@ async function ensureProfile(user){
       isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
-      const{error:insErr}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      // A paid plan carries no trial end date — they never had a trial, and
+      // stamping one would hand them an expiry they have already paid past.
+      const paid=await planToStamp(user.id);
+      const{error:insErr}=await sb.from('profiles').upsert({id:user.id,title22_plan:paid||'trial',title22_trial_ends_at:paid?null:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       // Not just console.error. If this write fails the trial is never stamped,
       // resolveEntitlement finds no plan, and the new customer is shown "your
       // trial has expired" on their first minute. Record it so the banner can
       // tell the truth instead.
       if(insErr){t22TrialActivationError=insErr.message;console.error('Trial activation failed:',insErr.message);}
-      else await stampTrialIfMissing(user.id,trialEnds);
+      else if(!paid)await stampTrialIfMissing(user.id,trialEnds);
     }
     isPartnerAdmin=!!(data&&data.title22_is_partner_admin);
     if(data&&(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at)){
@@ -1826,7 +1862,8 @@ async function ensureProfile(user){
       isNewProfile=!data.title22_plan;
       const patch={};
       if(!data.created_at)patch.created_at=new Date().toISOString();
-      if(!data.title22_plan)patch.title22_plan='trial';
+      const paid=(!data.title22_plan||!data.title22_trial_ends_at)?await planToStamp(user.id):null;
+      if(!data.title22_plan)patch.title22_plan=paid||'trial';
       // Starts from now, not from the row's created_at. This profiles table is
       // shared with the other apps on this Supabase project, so a person can
       // have had a row for months before they ever opened Title22 — and dating
@@ -1837,9 +1874,16 @@ async function ensureProfile(user){
       // This branch only runs when title22_trial_ends_at is null, which means
       // no Title22 trial has ever been recorded for them, so today really is
       // day one however old the row is.
-      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date(Date.now()+trialDays*86400000).toISOString();
-      const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
-      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
+      // Same reason as above: do not date a trial that a paying customer is
+      // not on. Left null, readEntitlement reads the paid plan and stops.
+      if(!data.title22_trial_ends_at&&!paid)patch.title22_trial_ends_at=new Date(Date.now()+trialDays*86400000).toISOString();
+      // Can now be empty — a paid account with a plan already on it and no
+      // trial date is missing nothing we are willing to write — and an empty
+      // PATCH is a 400, not a no-op.
+      if(Object.keys(patch).length){
+        const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
+        if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
+      }
     }
   }catch(e){console.log('Profile check:',e.message);}
   const navPartners=document.getElementById('nav-partners');
@@ -2420,8 +2464,10 @@ async function resolveEntitlement(){
 // A failure here is NOT fail-closed. The read is additive: if the table is
 // missing, unreachable, or refused by RLS, the profiles read below still
 // decides, exactly as it did before. Only losing BOTH locks anyone out.
-async function readSubscription(){
+async function readSubscription(userId){
   try{
+    const uid=userId||currentUser?.id;
+    if(!uid)return null;
     // Two things this query has to get right, both learned the hard way:
     //
     // 1. status is filtered HERE, not after. Taking the newest row and then
@@ -2432,7 +2478,7 @@ async function readSubscription(){
     //    outranked the real subscription and became the plan on the badge.
     const{data,error}=await sb.from('subscriptions')
       .select('plan,status,current_period_end')
-      .eq('user_id',currentUser.id)
+      .eq('user_id',uid)
       .eq('status','active')
       .order('current_period_end',{ascending:false,nullsFirst:false})
       .limit(10);
@@ -2441,19 +2487,37 @@ async function readSubscription(){
     // used to count as "open-ended, entitled" — which is what put Pro on an
     // account that had never been on Pro.
     //
-    // The reason is that nothing maintains this table. The Stripe webhook
-    // writes profiles.title22_*, not here (workers/README.md), so these rows
-    // are frozen at whatever wrote them: one of them still says 'active' on a
-    // period that ended six weeks ago. A null date here means unverifiable,
-    // not forever, and profiles — which the webhook does keep current —
-    // decides instead.
+    // That was written when nothing maintained this table: the old webhook
+    // wrote profiles.title22_* and never came here, so these rows were frozen
+    // at whatever wrote them, and one of them still says 'active' on a period
+    // that ended six weeks ago. The deployed webhook does keep this table
+    // current now (workers/stripe-webhook/), so a dated row is trustworthy —
+    // but the stale rows are still in there, which is why an undated one is
+    // handled below rather than simply believed.
     const live=data.filter(r=>{
       if(!r.current_period_end)return false;
       const ends=new Date(r.current_period_end).getTime();
       return Number.isFinite(ends)&&Date.now()<ends;
     });
-    if(!live.length)return null;
-    return live[0].plan||null;
+    if(live.length&&live[0].plan)return{plan:live[0].plan,dated:true};
+    // A dated row is still the answer we want. But a null date is no longer
+    // only the fingerprint of a hand-inserted test row, and treating it as
+    // one is what charged a card and then said "Free Trial":
+    //
+    //  - checkout.session.completed writes the row before the plan is known,
+    //    so there is a window where it carries status active and no date; and
+    //  - Stripe moved current_period_end off the subscription root onto its
+    //    items in the 2025-03-31 API version, so the webhook's read of
+    //    obj.current_period_end comes back undefined on every event sent by a
+    //    newer version. The row is then permanently undated, not briefly.
+    //
+    // So an undated row is reported separately rather than discarded, and
+    // readEntitlement uses it only where the alternative is calling a paying
+    // customer a trialist. It must still name a plan somebody can actually
+    // buy — the checkout.session.completed row names none, and never matches.
+    const undated=data.filter(r=>!r.current_period_end&&T22_PAID.includes(r.plan));
+    if(undated.length)return{plan:undated[0].plan,dated:false};
+    return null;
   }catch(e){return null;}
 }
 
@@ -2461,12 +2525,19 @@ async function readEntitlement(){
   // Single source of truth for access. Fail CLOSED: any read error or missing
   // row => NOT entitled. Never falls through to full access on failure.
   try{
-    const subPlan=await readSubscription();
-    if(subPlan)return{plan:subPlan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    const sub=await readSubscription();
+    if(sub&&sub.dated)return{plan:sub.plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    // Held back for the trial branches below. An undated paid subscription
+    // does not outrank anything profiles has to say about a paid or edu plan
+    // — it is only ever used instead of the word "trial".
+    const paidUndated=(sub&&!sub.dated)?sub.plan:null;
     const{data,error}=await sb.from('profiles')
       .select('title22_plan,title22_trial_ends_at,title22_subscription_id,title22_plan_expires_at')
       .eq('id',currentUser.id).maybeSingle();
-    if(error||!data)return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
+    if(error||!data){
+      if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+      return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
+    }
     const plan=data.title22_plan||'trial';
 // edu = permanent teaching tier: always entitled, never expires
 if(plan==='edu') return {plan:'edu',entitled:true,daysLeft:null,trialExpired:false,ok:true};
@@ -2479,6 +2550,13 @@ if(T22_PAID.includes(plan)){
         return{plan,entitled:false,daysLeft:0,trialExpired:false,ok:true};
       return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     }
+    // Everything below this line is about a trial, so this is where an
+    // undated paid subscription gets its say. Someone who bought Lite without
+    // ever trialling has profiles.title22_plan='trial' stamped on them by
+    // ensureProfile and an undated row in subscriptions — the whole of the
+    // "I paid and it still says Free Trial" bug, and it survived a refresh
+    // because both halves are written to permanently.
+    if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
     if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
     const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
@@ -2926,6 +3004,26 @@ function applyLiteMode(){
   });
   const marCard=document.getElementById('dash-mar-card');
   if(marCard)marCard.style.display='none';
+  // The Documents tab IS shown in Lite, and its upload row was still offering
+  // LIC 601, "LIC 602A — Medical Assessment" and ISP, next to a select that
+  // asked which resident the file belonged to. Every read around it is gated,
+  // so the file would have been stored and then filtered back out of the list
+  // — but the form asked for it, which is the part that matters: a product
+  // that says it holds no resident health information must not hand someone a
+  // menu for filing some. Hidden, never deleted: the markup still ships every
+  // option, so a showMAR build reaches this function's early return and the
+  // full set is exactly as it was.
+  // Options are hidden AND disabled: Safari ignores display:none on an
+  // <option>, and disabled makes it unselectable there anyway. doc-type is
+  // then reset off a hidden option so a stale selection cannot ride along on
+  // the next upload.
+  document.querySelectorAll('#doc-upload-row [data-phi]').forEach(el=>{
+    if(el.tagName==='OPTION'){el.hidden=true;el.disabled=true;}
+    else el.style.display='none';
+  });
+  const docType=document.getElementById('doc-type');
+  const picked=docType&&docType.options[docType.selectedIndex];
+  if(picked&&picked.dataset.phi)docType.value='other';
   const addResident=document.getElementById('qa-add-resident');
   if(addResident)addResident.style.display='none';
   // Tello's tab: the resident suggestion is deleted outright rather than
@@ -6527,6 +6625,11 @@ async function loadBilling(){
     const ent=await resolveEntitlement();
     const plan=ent.plan;
     const planLabels=T22_LABEL;
+    // Display only, keyed on the plan the account is ALREADY on — never an
+    // offer. The only tiers offered are the three cards in the billing tab
+    // (Lite, Multi-Home, Agency as Contact Sales). $49 and $149 stay because
+    // legacy starter and specialist subscribers still pay them, and blanking
+    // the figure would show a paying customer a plan with no price on it.
     const planPrices={trial:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
     let trialHtml='';
     if(plan==='trial'){

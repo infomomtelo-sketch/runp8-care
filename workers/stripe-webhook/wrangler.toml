@@ -24,7 +24,15 @@ compatibility_date = "2026-09-07"
 #   customer.subscription.updated
 #   customer.subscription.deleted
 #
-# PRICE_PLANS in index.js carries the $29 Lite price
-# (price_1UCIAiAH9qPFLg89ln6eHAVa). Any price not in that map is refused with
-# 422 and shows in the delivery log — the loud version of the bug that let a
-# paid customer sit on "Free Trial" for a day.
+# PRICE_PLANS in index.js carries both live prices:
+#   price_1UCIAiAH9qPFLg89ln6eHAVa  $29 Lite        prod_VDBXSXDdmtFrmh
+#   price_1UDWroAH9qPFLg89kAs9h49C  $79 Multi-Home  prod_VDypF9WL2wmjGO
+# plus the four legacy IDs. Any price not in that map is refused with 422 and
+# shows in the delivery log — the loud version of the bug that let a paid
+# customer sit on "Free Trial" for a day.
+#
+# The map is written in each tier's human name, so Multi-Home reads
+# plan: 'multi-home'. normalisePlan() folds that to 'multi' before anything is
+# written, because index.html's TIER_LIMITS and T22_PAID are keyed on 'multi' —
+# storing the unfolded string would read as unpaid AND drop the subscriber to
+# one facility with no Tello.

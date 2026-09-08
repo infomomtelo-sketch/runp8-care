@@ -14,11 +14,11 @@
 // and nothing was written — the customer stayed on "Free Trial" while their
 // card was charged. PRICE_PLANS below is the fix.
 //
-// STILL OPEN, and not fixable here alone: this writes profiles and
-// subscriptions, never `users`. The app's welcomeIsPaid() reads users.paid,
-// which nothing writes, so a buyer still watches the welcome page poll for 30
-// seconds and give up. Fix it in the app, or add a users upsert here — one or
-// the other, not a third store left to drift.
+// CLOSED since: this writes profiles and subscriptions, never `users`, and it
+// turned out `public.users` does not exist at all — its migration was never
+// run. welcomeIsPaid() no longer reads it; it resolves the entitlement from
+// the two stores that are actually written. Do not add a users upsert here to
+// "finish" this — a third store is what the note above was warning about.
 //
 // No npm dependencies, matching the other Workers here: the Stripe signature
 // is verified with Web Crypto directly rather than pulling in the SDK, because
@@ -28,13 +28,45 @@
 // Add the Lite and Multi-Home prices; a price that is not in this map is
 // reported and ignored rather than silently dropped, which is the bug this
 // file exists to fix.
+// `facilities` and `name` are documentation, not authority: the entitlement a
+// subscriber actually gets comes from TIER_LIMITS in index.html, and these
+// mirror it so the two can be compared without opening both files. `plan` is
+// the only field read at runtime, and it goes through normalisePlan() before
+// it is written anywhere — which is why 'multi-home' is safe to write here
+// even though the app is keyed on 'multi'. See PLAN_ALIASES below.
 const PRICE_PLANS = {
-  'price_1UCIAiAH9qPFLg89ln6eHAVa': 'lite',       // $29, the price this map was missing
-  'price_1TkIKtAH9qPFLg89SEmENr5J': 'starter',
-  'price_1TkILaAH9qPFLg8923rgvHHb': 'pro',        // $79, sold as Multi-Home
-  'price_1TkIMaAH9qPFLg89SPFZH0aG': 'specialist', // archived, legacy subs only
-  'price_1TkINiAH9qPFLg89upIhpYTy': 'agency',
+  'price_1UCIAiAH9qPFLg89ln6eHAVa': { plan: 'lite',       facilities: 1,        name: 'Title22 Lite' },        // $29, prod_VDBXSXDdmtFrmh
+  'price_1UDWroAH9qPFLg89kAs9h49C': { plan: 'multi-home', facilities: 5,        name: 'Title22 Multi-Home' },  // $79, prod_VDypF9WL2wmjGO
+  'price_1TkIKtAH9qPFLg89SEmENr5J': { plan: 'starter',    facilities: 1,        name: 'Title22 Starter' },     // legacy subs only
+  'price_1TkILaAH9qPFLg8923rgvHHb': { plan: 'pro',        facilities: 5,        name: 'Title22 Pro' },         // $79, the old link Multi-Home was sold on
+  'price_1TkIMaAH9qPFLg89SPFZH0aG': { plan: 'specialist', facilities: 5,        name: 'Title22 Specialist' },  // archived, legacy subs only
+  'price_1TkINiAH9qPFLg89upIhpYTy': { plan: 'agency',     facilities: Infinity, name: 'Title22 Agency' },
 };
+
+// The plan keys the app actually understands. index.html's TIER_LIMITS and
+// T22_PAID are keyed on exactly these, so a plan written here that is not in
+// this list is worse than writing nothing: T22_PAID would not match it, so the
+// subscriber reads as unpaid, and TIER_LIMITS would miss too, dropping them to
+// the {facilities:1, ai:false} default — no Tello, one facility, on a plan
+// they are being billed $79 for.
+const KNOWN_PLANS = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency', 'edu'];
+
+// Multi-Home is 'multi' in the app and "Multi-Home" everywhere a human writes
+// it, including a Payment Link's metadata. Fold the spellings before they are
+// written rather than teaching the app a second key for one tier.
+const PLAN_ALIASES = {
+  'multi-home': 'multi',
+  'multi_home': 'multi',
+  'multihome': 'multi',
+  'multi home': 'multi',
+};
+
+function normalisePlan(raw) {
+  if (!raw) return null;
+  const k = String(raw).trim().toLowerCase();
+  const plan = PLAN_ALIASES[k] || k;
+  return KNOWN_PLANS.includes(plan) ? plan : null;
+}
 
 const enc = new TextEncoder();
 
@@ -74,11 +106,23 @@ function sbHeaders(env) {
 // PATCH profiles by id. The webhook writes ONLY title22_* columns, as the
 // README requires — nothing else on that row is ours to touch.
 async function patchProfile(env, userId, patch) {
+  // return=representation, not minimal, because a PATCH that matches no row is
+  // a 200 with an empty body — it succeeds and writes nothing. That is the
+  // case for anyone who paid before they had an account, and it is silent:
+  // profiles never learns the plan, the app stamps them 'trial' on first
+  // login, and they read as "Free Trial" having been charged. The app now
+  // recovers from it on its own (planToStamp in index.html), but it should be
+  // visible in the Worker tail rather than inferred from a support email.
   const res = await fetch(
     `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-    { method: 'PATCH', headers: { ...sbHeaders(env), 'Prefer': 'return=minimal' }, body: JSON.stringify(patch) }
+    { method: 'PATCH', headers: { ...sbHeaders(env), 'Prefer': 'return=representation' }, body: JSON.stringify(patch) }
   );
-  return res.ok;
+  if (!res.ok) return false;
+  const rows = await res.json().catch(() => null);
+  if (Array.isArray(rows) && rows.length === 0) {
+    console.error('patchProfile matched no profiles row for user', userId, '- plan not recorded on profiles');
+  }
+  return true;
 }
 
 // public.subscriptions is a second store, and the two disagreed for months
@@ -152,15 +196,50 @@ function planFromSubscription(sub) {
   const items = (sub.items && sub.items.data) || [];
   for (const it of items) {
     const priceId = it.price && it.price.id;
-    if (priceId && PRICE_PLANS[priceId]) return { plan: PRICE_PLANS[priceId], priceId };
+    const tier = priceId && PRICE_PLANS[priceId];
+    // normalisePlan, not tier.plan raw: the map is written in the tier's
+    // human name ('multi-home') and the app is keyed on 'multi'. It also means
+    // a typo in the map is caught here — an unrecognised plan comes back null,
+    // and the caller refuses the event with the price ID in the log rather
+    // than writing a plan nothing matches.
+    if (tier) return { plan: normalisePlan(tier.plan), priceId, tier };
   }
-  // Metadata is the fallback for a Payment Link that carries plan=lite.
-  const metaPlan = (sub.metadata && sub.metadata.plan) || null;
+  // Metadata is the fallback for a Payment Link that carries plan=lite. It is
+  // typed by hand in the Stripe dashboard, so it is normalised and checked
+  // against KNOWN_PLANS rather than trusted: it used to be written through
+  // verbatim, which means one Payment Link labelled plan=Multi-Home would have
+  // put the string 'Multi-Home' in profiles.title22_plan and locked the
+  // subscriber out of the tier they had just bought. An unrecognised value is
+  // now null, which the caller already handles — it refuses the event loudly
+  // with the price ID in the log, instead of writing a plan nothing matches.
+  const metaPlan = normalisePlan(sub.metadata && sub.metadata.plan);
   return { plan: metaPlan, priceId: items[0] && items[0].price && items[0].price.id };
 }
 
 function isoOrNull(unixSeconds) {
   return unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
+}
+
+// Stripe's 2025-03-31 API version removed current_period_end from the
+// subscription object and moved it onto the subscription's items. Reading only
+// the root left every row this worker wrote carrying a null period end, which
+// the app treats as unverifiable — so a real Lite subscriber fell through to
+// profiles, and if the webhook's PATCH of profiles had matched no row (a
+// customer who paid before they signed up), they read as "Free Trial" and kept
+// reading that way through every refresh.
+//
+// Root first so an older API version keeps working unchanged, then the latest
+// end across the items.
+function periodEndOf(sub) {
+  if (sub && sub.current_period_end) return isoOrNull(sub.current_period_end);
+  const items = (sub && sub.items && sub.items.data) || [];
+  let latest = null;
+  for (const it of items) {
+    if (it && it.current_period_end && (latest === null || it.current_period_end > latest)) {
+      latest = it.current_period_end;
+    }
+  }
+  return isoOrNull(latest);
 }
 
 export default {
@@ -222,7 +301,7 @@ export default {
             console.error('Unmapped Stripe price', priceId, 'on subscription', obj.id);
             return new Response('Unmapped price: ' + priceId, { status: 422 });
           }
-          const periodEnd = isoOrNull(obj.current_period_end);
+          const periodEnd = periodEndOf(obj);
           const active = obj.status === 'active' || obj.status === 'trialing';
           await patchProfile(env, userId, {
             title22_plan: active ? plan : undefined,
@@ -247,7 +326,7 @@ export default {
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           if (!userId) return new Response('No matching user for cancellation', { status: 202 });
-          const periodEnd = isoOrNull(obj.current_period_end) || new Date().toISOString();
+          const periodEnd = periodEndOf(obj) || new Date().toISOString();
           await patchProfile(env, userId, { title22_plan_expires_at: periodEnd });
           await upsertSubscription(env, {
             user_id: userId,

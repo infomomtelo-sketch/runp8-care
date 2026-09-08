@@ -144,6 +144,30 @@ T22_LABEL as legacy labels for existing subscribers — do
 not surface them as offers. `STRIPE_MULTI` is the old $79
 Pro payment link under a new name.
 
+Stripe wiring, as of 2026-09-08:
+
+- Lite $29 — `prod_VDBXSXDdmtFrmh`, `price_1UCIAiAH9qPFLg89ln6eHAVa`. Payment
+  Link live, webhook maps the price. Done.
+- Multi-Home $79 — `prod_VDypF9WL2wmjGO`, `price_1UDWroAH9qPFLg89kAs9h49C`.
+  The webhook maps that price to `multi`. **The app does not use it yet**:
+  `STRIPE_MULTI` is still `STRIPE_PRO`, the old $79 link, because a Payment
+  Link has not been created for the new price and index.html can only open a
+  URL — there is no server here to make a Checkout Session from a price ID. So
+  the $79 charge is correct but bills `price_1TkILaAH9qPFLg8923rgvHHb`, which
+  maps to `pro`. Same entitlement (5 facilities, ai:true), wrong label, no
+  revenue on the new product. Create the link, set metadata `plan=multi` and
+  the redirect to `https://title22.app#welcome`, paste it over `STRIPE_PRO` in
+  `STRIPE_MULTI`. Nothing else changes.
+- Agency — no price anywhere. The billing card is a `mailto:` only.
+
+The plan key is `multi`, never `multi-home`. `TIER_LIMITS`, `T22_PAID` and
+`T22_PLAN_LINKS` are all keyed on `multi`, so writing `multi-home` fails
+`T22_PAID` (reads as unpaid) AND misses `TIER_LIMITS` (drops to
+`{facilities:1, ai:false}` — one facility, no Tello, on an $79 plan). The
+webhook now folds `multi-home`/`multi_home`/`multihome` to `multi` and refuses
+any plan string outside `KNOWN_PLANS` rather than writing it, because
+`planFromSubscription` used to pass Payment Link metadata through verbatim.
+
 Both places must say the same thing, and for two days
 they did not: title-22.com/pricing/ headlined "One plan.
 $29 a month." while the app's billing tab offered Lite,
@@ -317,9 +341,53 @@ What is genuinely open is not a bug, it is a decision:
   sells Multi-Home $79 (index.html, the pricing cards). Pick one.
 - **The $29 path has never run end to end.** The webhook price map and
   welcomeIsPaid were fixed two days apart and never tested together against a
-  real Stripe event.
+  real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
+  below, but neither has met a real Stripe event either — this stays open
+  until one does.
 - **49 test facilities across 32 accounts.** Guarded reset is written and
   dry-run ready: migrations/2026-09-08_title22_reset_test_facilities.sql.
+
+## Why a paid account said "Free Trial" through every refresh (2026-09-08)
+
+Two independent faults, either of which alone is survivable and which together
+charged a card and showed the customer a trial:
+
+1. **`ensureProfile` stamped `title22_plan='trial'` on a paying account.** It
+   only ever asked whether the column was null, and null is exactly what a
+   customer who paid *before* they signed up has: the webhook PATCHes
+   `profiles?id=eq.<uid>`, and a PATCH matching no row returns 200 having
+   written nothing. So the plan never landed, the app stamped 'trial' over it
+   on first login, and stamped it permanently. `planToStamp()` now asks
+   `subscriptions` first and stamps the paid plan (and no trial end date)
+   instead.
+2. **Every row the webhook wrote was undated.** Stripe's 2025-03-31 API
+   version moved `current_period_end` off the subscription object onto its
+   items; the worker read only the root, so `periodEnd` was null on every
+   event from a current API version — and `readSubscription` discarded undated
+   rows by design. `periodEndOf()` in the worker reads the items as a
+   fallback, and `readSubscription` now reports an undated paid row rather
+   than dropping it.
+
+The app-side half heals accounts that are already broken with no redeploy. The
+worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
+effect, and **has not been deployed** — so does the Multi-Home price added on
+2026-09-08. The running Worker is still the 2026-09-07 build.
+
+Deploying no longer needs a machine with wrangler on it: GitHub -> Actions ->
+"Deploy stripe-webhook Worker" -> Run workflow
+(`.github/workflows/deploy-stripe-webhook.yml`). It is manual-only on purpose
+— this Worker is what turns a payment into a paid account, so a deploy should
+not ride along with an unrelated merge. One-time setup is a repository secret
+`CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" token template). The
+Worker's own secrets are untouched by a deploy; never put them in the
+workflow.
+
+`readEntitlement` still reads `profiles` and must keep reading it — it is the
+only store that carries the trial, the edu tier, and subscribers who predate
+`public.subscriptions`. What changed is that an undated paid subscription now
+wins over the word "trial", and only over that word: it does not override edu,
+a paid plan, or a cancelled plan past its period end. 15 branch cases were run
+against the rewritten function, including every one of those.
 
 And two entries that were never real in the first place: "users.paid never
 flips" and "the users table's allow-all RLS policy exposes every customer
