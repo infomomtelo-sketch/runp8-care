@@ -1182,22 +1182,15 @@ const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
 // Lite: $29, prod_VDBXSXDdmtFrmh, billed by price_1UCIAiAH9qPFLg89ln6eHAVa.
 // The link below is live and correct.
 const STRIPE_LITE       = 'https://buy.stripe.com/4gMcN41DQfZA5nBgAeg360l';
-// Multi-Home: $79, prod_VDypF9WL2wmjGO, price_1UDWroAH9qPFLg89kAs9h49C.
+// Multi-Home: $79, prod_VDypF9WL2wmjGO, billed by
+// price_1UDWroAH9qPFLg89kAs9h49C. Its own Payment Link at last — this was
+// STRIPE_PRO until 2026-09-08, so every Multi-Home sale went through the old
+// $79 price and the webhook recorded it as 'pro': the right money under the
+// legacy label, and nothing at all on the new product.
 //
-// STILL THE OLD LINK. That new price exists in Stripe and the webhook maps it
-// (workers/stripe-webhook/), but no Payment Link has been created for it yet,
-// and a price ID is not something this button can use. So Multi-Home is still
-// sold on the original Pro link: the customer is charged the right $79, but
-// against price_1TkILaAH9qPFLg8923rgvHHb, which the webhook maps to 'pro'.
-//
-// That is survivable rather than wrong — 'pro' and 'multi' are the same
-// entitlement (5 facilities, ai:true) — but the badge reads the legacy label
-// and the new product records no revenue. Create the $79/mo recurring Payment
-// Link on price_1UDWroAH9qPFLg89kAs9h49C, set its metadata to plan=multi and
-// its "After payment" redirect to https://title22.app#welcome, then paste the
-// URL here in place of STRIPE_PRO. Nothing else has to change: the webhook
-// already maps both the price and the metadata.
-const STRIPE_MULTI      = STRIPE_PRO;
+// STRIPE_PRO stays defined below for the legacy subscribers still on it. It is
+// no longer what this button opens.
+const STRIPE_MULTI      = 'https://buy.stripe.com/9B6fZg5U64gS17lfwag360m';
 // Paste this into each Payment Link's "After payment" setting in the Stripe
 // dashboard (Don't show confirmation page -> Redirect to):
 //     https://title22.app#welcome
@@ -1332,6 +1325,11 @@ const T22_READONLY_WRITE_OK = ['events'];
 
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
+  [STRIPE_LITE]:'lite',
+  // Only correct since Multi-Home got its own link. While STRIPE_MULTI was
+  // STRIPE_PRO these two were the same key, so one silently overwrote the
+  // other and a Multi-Home checkout recorded itself as 'pro'.
+  [STRIPE_MULTI]:'multi',
   [STRIPE_STARTER]:'starter',
   [STRIPE_PRO]:'pro',
   [STRIPE_SPECIALIST]:'specialist',
@@ -1346,8 +1344,18 @@ const T22_PLAN_LINKS = {
   lite:STRIPE_LITE,
   multi:STRIPE_MULTI,
   starter:STRIPE_STARTER,
-  pro:STRIPE_PRO,
-  agency:STRIPE_AGENCY
+  pro:STRIPE_PRO
+  // agency is deliberately absent. Agency is Contact Sales and carries no
+  // price, and it stopped carrying one everywhere else — the billing card is
+  // a mailto, planPrices says "Contact Sales", the site shows no figure — but
+  // the $249 Payment Link was still sitting in this map. Nothing calls
+  // openStripe('agency') today, so it charged nobody; it just meant the one
+  // tier we promise has no price was a single function call from taking $249.
+  // Without an entry here openStripe falls through to its "not set up yet,
+  // email us" toast, which is what Contact Sales means anyway.
+  //
+  // STRIPE_AGENCY itself stays defined, and stays in STRIPE_PLANS, so a
+  // historic checkout_started event still resolves to a plan name.
 };
 // Map page titles to instructional video files. Only pages with videos show
 // help links — and only pages that still exist.
