@@ -159,9 +159,30 @@ The incident form hides its Resident field in Lite and
 saves resident_id null; it used to REQUIRE a selection
 from a list that is always empty, so no incident could be
 filed at all. In its place the form carries a note: do
-not name a resident in the description. That free-text
-box is the only place PHI can now get in, and a note is
-the only control on it.
+not name a resident in the description.
+
+`t22PhiScan` / `t22PhiBlock` refuse a save containing an
+SSN, email, phone number, MRN, or an explicit date-of-
+birth or insurance-number marker. Wired into incidents,
+checklist notes, and the Tello query box — that last one
+matters most, because it is the only free text that
+leaves the database at all.
+
+IDENTIFIERS ONLY. It does not detect names, on purpose.
+The first version did: two capitalised words in a row
+caught "Betty Alvarez" and also "Fire Drill", a Title 22
+term, on a Title 22 compliance app. The shapes are
+identical and no word list fixes it — the list only moves
+which legitimate phrase gets refused next, and a guard
+that cries wolf on the customer's own vocabulary teaches
+people to route around it. Dates are not matched either:
+"Fell on 09/08 at 06:40" is how an incident is written.
+
+Do not add name detection back without a corpus showing
+zero false positives on real narratives. Say plainly what
+this is: No PHI is ENFORCED in the schema — there is
+nowhere to put a resident record — and ASKED FOR in free
+text.
 
 Reads must not embed residents either. t22Fetch matches
 on the request PATH, so `.select('*, residents(...)')`

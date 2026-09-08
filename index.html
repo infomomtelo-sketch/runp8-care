@@ -1223,6 +1223,74 @@ const T22_PHI_TABLES = ['mar_entries','medications','residents','daily_logs'];
 const T22_PHI_TABS = ['mar','medications','residents','daily'];
 const T22_LITE_BLOCKED_MSG = 'MAR removed in Lite — facility compliance only';
 
+// ===== THE PHI LINE, ENFORCED =====
+//
+// Removing residents, medications and the MAR took the structured PHI out of
+// this product and is what makes "no BAA" true. It left exactly one hole: the
+// free-text boxes. A caregiver typing "Betty fell getting out of bed, hip pain,
+// sent to ER" has just put health information about a named person into the
+// database, and in a six-bed home a date and a time identify someone on their
+// own. A note asking nicely does not close that; this does.
+//
+// Deterministic and local. Nothing here is sent anywhere to be judged —
+// shipping the text to a model to ask "is this PHI?" would be the disclosure
+// it is meant to prevent.
+//
+// It refuses IDENTIFIERS ONLY — patterns that are never anything else in an
+// incident narrative. It does NOT try to detect names, and that is a decision
+// rather than an omission.
+//
+// The first version did. Two capitalised words in a row is what a written
+// name looks like, so "Betty Alvarez" was caught — and so was "Fire Drill", a
+// Title 22 term, on a Title 22 compliance app. The shapes are identical and no
+// word list fixes that; the list just moves which legitimate phrase gets
+// refused next. A guard that cries wolf on the customer's own vocabulary
+// teaches people to route around it, and then it protects nothing.
+//
+// Dates are not matched either, for the same reason: "Fell on 09/08 at 06:40"
+// is how an incident is legitimately written.
+//
+// So names are handled by the note on the form, not by a regex. That is a
+// weaker control and worth saying plainly: "No PHI" is enforced in the schema
+// — there is nowhere to put a resident record — and asked for in free text.
+
+const T22_PHI_RULES = [
+  {kind:'a Social Security number', re:/\b\d{3}-\d{2}-\d{4}\b/},
+  {kind:'an email address',         re:/\b[\w.+-]+@[\w-]+\.[A-Za-z]{2,}\b/},
+  {kind:'a phone number',           re:/\b\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/},
+  {kind:'a date of birth',          re:/\b(d\.?o\.?b\.?|date of birth|born on|birthdate)\b/i},
+  {kind:'a medical record number',  re:/\b(mrn|medical record (number|no\.?|#))\b/i},
+  {kind:'an insurance or Medicare number',
+                                    re:/\b(medicare|medi-?cal|insurance)\s*(id|no\.?|number|#)\b/i},
+];
+
+// Returns [] when the text is clean, otherwise a list of plain-English reasons.
+function t22PhiScan(text){
+  const t=String(text||'');
+  if(!t.trim())return [];
+  const found=[];
+  for(const r of T22_PHI_RULES){
+    const m=t.match(r.re);
+    if(m)found.push(r.kind+' ("'+m[0].trim()+'")');
+  }
+  return found;
+}
+
+// Check several fields at once and build the message. Returns '' when clean.
+function t22PhiBlock(fields){
+  if(showMAR)return '';   // the full product holds resident records by design
+  const reasons=[];
+  for(const [label,value] of fields){
+    for(const r of t22PhiScan(value))reasons.push(label+' contains '+r);
+  }
+  if(!reasons.length)return '';
+  return 'This cannot be saved as written. Title22 holds no resident health '+
+    'information, which is what keeps it out of HIPAA business-associate '+
+    'territory — so identifying details must not go in a free-text box.\n\n'+
+    reasons.join('\n')+'\n\nDescribe the person by room or role instead: '+
+    '"the resident in room 4", "the person on the evening shift".';
+}
+
 // An expired trial used to see one thing: a billing page. Not their dashboard,
 // not the readiness score they earned, not the checklist they filled in — the
 // work was still in the database, and the only way back to it was to pay for
@@ -3528,6 +3596,8 @@ function closeNoteModal(){document.getElementById('note-modal').classList.remove
 async function saveNote(){
   if(!currentNoteTaskId)return;
   const note=document.getElementById('note-modal-text').value.trim();
+  const notePhi=t22PhiBlock([['This note',note]]);
+  if(notePhi){alert(notePhi);return;}
   const task=complianceTasks.find(t=>t.id===currentNoteTaskId);if(!task)return;
   task.notes=note;
   await sb.from('compliance_tasks').update({notes:note}).eq('id',currentNoteTaskId);
@@ -4156,6 +4226,12 @@ async function saveIncident(){
   // deliberately unlinked — CLAUDE.md keeps LIC 624 without the PHI — and
   // demanding a selection from an empty list refused every save.
   if(showMAR&&!residentId){err.textContent='Please select a resident.';err.classList.add('show');return;}
+  const phi=t22PhiBlock([
+    ['The description',document.getElementById('inc-description').value],
+    ['The injury description',document.getElementById('inc-injury-desc').value],
+    ['The corrective action',document.getElementById('inc-corrective').value],
+  ]);
+  if(phi){err.textContent=phi;err.classList.add('show');err.style.whiteSpace='pre-line';return;}
   const dateVal=document.getElementById('inc-date').value;
   const timeVal=document.getElementById('inc-time').value||'00:00';
   const occurredAt=dateVal?new Date(dateVal+'T'+timeVal+':00').toISOString():new Date().toISOString();
@@ -5396,6 +5472,12 @@ async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
   if(!query)return;
+  // The one free-text box whose contents LEAVE this database — the question is
+  // sent to Anthropic to be answered. A name typed here is a disclosure to a
+  // third party, not just a row in a table, so it is refused before the send
+  // and the box is left holding what they typed so they can rewrite it.
+  const askPhi=t22PhiBlock([['Your question',query]]);
+  if(askPhi){alert(askPhi);return;}
   if(input)input.value='';
   addAIMessage(query,'user');
   if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
