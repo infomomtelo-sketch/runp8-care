@@ -148,17 +148,28 @@ Stripe wiring, as of 2026-09-08:
 
 - Lite $29 — `prod_VDBXSXDdmtFrmh`, `price_1UCIAiAH9qPFLg89ln6eHAVa`. Payment
   Link live, webhook maps the price. Done.
-- Multi-Home $79 — `prod_VDypF9WL2wmjGO`, `price_1UDWroAH9qPFLg89kAs9h49C`.
-  The webhook maps that price to `multi`. **The app does not use it yet**:
-  `STRIPE_MULTI` is still `STRIPE_PRO`, the old $79 link, because a Payment
-  Link has not been created for the new price and index.html can only open a
-  URL — there is no server here to make a Checkout Session from a price ID. So
-  the $79 charge is correct but bills `price_1TkILaAH9qPFLg8923rgvHHb`, which
-  maps to `pro`. Same entitlement (5 facilities, ai:true), wrong label, no
-  revenue on the new product. Create the link, set metadata `plan=multi` and
-  the redirect to `https://title22.app#welcome`, paste it over `STRIPE_PRO` in
-  `STRIPE_MULTI`. Nothing else changes.
-- Agency — no price anywhere. The billing card is a `mailto:` only.
+- Multi-Home $79 — `prod_VDypF9WL2wmjGO`, `price_1UDWroAH9qPFLg89kAs9h49C`,
+  Payment Link `https://buy.stripe.com/9B6fZg5U64gS17lfwag360m`. Wired
+  2026-09-08. `STRIPE_MULTI` was `STRIPE_PRO` until then, so every Multi-Home
+  sale went through the old $79 price and was recorded as `pro` — right money,
+  legacy label, nothing on the new product. NOT verified from here: this
+  environment's egress proxy blocks `buy.stripe.com`, so the link's amount,
+  interval and metadata have never been read back. Confirm in the Stripe
+  dashboard, and confirm the link carries metadata `plan=multi` (or
+  `multi-home` — the webhook folds it) and redirects to
+  `https://title22.app#welcome`.
+- Agency — no price anywhere, and that now includes the code. The billing card
+  is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
+  and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to
+  the $249 Payment Link: nothing called `openStripe('agency')`, so nobody was
+  charged, but the one tier promised to have no price was a single function
+  call from taking $249. `STRIPE_AGENCY` and its `STRIPE_PLANS` entry stay, so
+  historic checkout events still resolve to a name.
+
+Because `STRIPE_MULTI` was literally `STRIPE_PRO`, the two were the same key in
+`STRIPE_PLANS` and one overwrote the other — a Multi-Home checkout recorded
+itself as `pro` in analytics. Both links are distinct now and `STRIPE_PLANS`
+names `lite` and `multi` explicitly.
 
 The plan key is `multi`, never `multi-home`. `TIER_LIMITS`, `T22_PAID` and
 `T22_PLAN_LINKS` are all keyed on `multi`, so writing `multi-home` fails
@@ -372,6 +383,15 @@ The app-side half heals accounts that are already broken with no redeploy. The
 worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
 effect, and **has not been deployed** — so does the Multi-Home price added on
 2026-09-08. The running Worker is still the 2026-09-07 build.
+
+Confirmed against Cloudflare 2026-09-08: the Worker `stripe-webhook` exists on
+account `701117dde6af00d42bac3c4058b660be`, workers.dev route enabled, all four
+bindings present (`SUPABASE_URL` is a plain-text var, the other three are
+secrets), and `wrangler deploy` does not touch them. Its last deploy was
+2026-09-07, version `9af47f8e-2b66-4c74-aa17-f890aca4e9ef`, source
+`quick_editor` — the DASHBOARD. Every deploy of this Worker has been a paste;
+none has come from this repo. Do not repeat the claim that it was deployed
+from `stripe-webhook/index.js`.
 
 Deploying no longer needs a machine with wrangler on it: GitHub -> Actions ->
 "Deploy stripe-webhook Worker" -> Run workflow
