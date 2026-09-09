@@ -312,6 +312,38 @@ rides in the query string. Those two are gated on
 showMAR now. The remaining embeds are on mar_entries and
 daily_logs, whose paths t22Fetch already blocks.
 
+## Tello has a chat dock now, inside the app only
+
+`mountTelloDock()` builds a floating button and panel as children of
+`#page-app`, called from `initFacility` after `showPage('app')` and after the
+`applyRoleUI()` that runs `applyLiteMode`. Being a child of `#page-app` is the
+whole hiding mechanism: `.page{display:none}` takes it off the landing page,
+onboarding, pricing and the signed-out state for free, and no screen added
+later has to remember to hide it. `clearSession` removes it from the DOM
+outright rather than leaving a conversation in the page for the next person at
+that browser.
+
+Who gets it is read from `allowedTabs().includes('ai')`, not from a second
+rule that could drift — so an expired trial loses the dock exactly as it loses
+the Tello tab, and demo mode never gets it (the sandbox answers from a canned
+path).
+
+**The dock is No-PHI unconditionally, including in a classroom.** It sends
+`buildFacilityContext({noPhi:true})` — a new option that forces the Lite shape
+even where `showMAR` is true — and `TELLO_DOCK_RULES` forbids outputting a
+resident name, a LIC 601, a LIC 602A, a MAR, an ISP, a diagnosis or a dosage.
+Without the option an `edu` account's practice roster would be sent to a model
+that had just been told never to say a name. The Tello TAB is unchanged and
+keeps the full context: that is the surface a classroom uses.
+
+It is passed `{facilityId, plan, showMAR, isSample}`, and `showMAR` is sent as
+`false` always, because this surface does not get the MAR whatever the account
+is entitled to. History is per facility (`title22_tello_dock_<facilityId>`,
+capped at 20 messages): switching facility is a different conversation, since a
+compliance answer about one home is wrong for another. The input goes through
+`t22PhiBlock` like the Tello tab's — those two boxes are the only free text
+that leaves the database.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by

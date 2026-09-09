@@ -125,6 +125,29 @@
   .lh-photo{margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .lh-photo img{width:104px;height:104px;object-fit:cover;border-radius:var(--radius);border:2px solid var(--border);background:var(--gray-bg)}
   .lh-photo-name{font-size:14px;color:var(--text2)}
+  /* Tello's chat dock. Lives INSIDE #page-app, so .page{display:none} takes it
+     off every other screen for free — there is no landing page, no onboarding
+     screen and no signed-out state where a chat button can appear, and nothing
+     has to remember to hide it. position:fixed still pins it to the viewport. */
+  #tello-dock-btn{position:fixed;right:20px;bottom:20px;z-index:900;width:60px;height:60px;border-radius:50%;border:none;background:var(--teal);color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
+  #tello-dock-btn:hover{background:#0a5442}
+  #tello-dock-btn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  #tello-dock{position:fixed;right:20px;bottom:92px;z-index:901;width:min(380px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 130px));max-height:min(560px,calc(100dvh - 130px));display:none;flex-direction:column;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden}
+  #tello-dock.open{display:flex}
+  .td-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--teal-light);color:var(--teal);font-weight:600;font-size:15px}
+  .td-head .td-sub{font-weight:400;font-size:12px;color:var(--text2)}
+  .td-close{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text2);padding:0 4px}
+  .td-msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .td-msg{border-radius:var(--radius);padding:9px 12px;font-size:13.5px;line-height:1.65;max-width:92%}
+  .td-msg.user{background:var(--teal-light);color:var(--teal);align-self:flex-end;margin-left:auto}
+  .td-msg.assistant{background:var(--gray-bg);border:1px solid var(--border);color:var(--text)}
+  .td-foot{border-top:1px solid var(--border);padding:10px;display:flex;gap:8px}
+  .td-foot textarea{flex:1;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;resize:none;outline:none}
+  .td-foot button{align-self:flex-end;min-height:40px}
+  @media(max-width:520px){
+    #tello-dock{right:8px;left:8px;width:auto;bottom:86px}
+    #tello-dock-btn{right:14px;bottom:14px}
+  }
   @media(max-width:520px){
     .lh-title{font-size:20px}
     .lh-num{width:44px;height:44px;font-size:19px}
@@ -2190,6 +2213,11 @@ async function handleLogin(){
 }
 
 function clearSession(){
+  // Off the DOM, not merely hidden: #page-app is inactive after this, but the
+  // conversation should not still be sitting in the page for the next person
+  // at this browser.
+  unmountTelloDock();
+  telloDockMessages=[];telloDockFacility=null;
   currentUser=null;currentFacility=null;
   document.getElementById('nav-app').style.display='none';
   document.getElementById('nav-public').style.display='flex';
@@ -3144,6 +3172,12 @@ async function initFacility(){
     switchTab('billing');
     return;
   }
+  // After showPage('app') above, and after the applyRoleUI() near the top of
+  // this function — which is what runs applyLiteMode. Both matter: the dock is
+  // built into #page-app, and telloDockAllowed() reads allowedTabs(), which is
+  // only meaningful once the role and entitlement are resolved. Re-runs on a
+  // facility switch, which is where the per-facility history is picked up.
+  mountTelloDock();
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
   }else if(t22Plan==='trial'&&!t22CoveredByFacility){
@@ -5519,7 +5553,13 @@ let dashBriefingLoaded=false;
 // reasons about — the free-text description is where resident detail lives.
 // Photos already go to this service only behind two human gates; this call is
 // automatic, so it should carry as little as it can do its job with.
-async function buildFacilityContext(){
+// opts.noPhi forces the Lite shape even where showMAR is true. The dock passes
+// it: that surface is declared No-PHI unconditionally, and a Classroom account
+// has showMAR on, so without this the practice roster's names would be sent to
+// a model that has just been told never to say one. The Tello TAB is unchanged
+// — it is the surface a classroom uses, and it keeps the full context.
+async function buildFacilityContext(opts){
+  const withPhi = showMAR && !(opts&&opts.noPhi);
   try{
     // In Lite the resident and MAR reads are not made at all. The client guard
     // would answer them empty anyway; not asking is the point — what Tello is
@@ -5527,11 +5567,11 @@ async function buildFacilityContext(){
     // her context reads as "this facility has no residents", which is a
     // different and wrong statement.
     const[resData,staffData,tasksData,incData,marData]=await Promise.all([
-      showMAR?sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602a,isp,status').eq('facility_id',currentFacility.id):Promise.resolve({data:[]}),
+      withPhi?sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602a,isp,status').eq('facility_id',currentFacility.id):Promise.resolve({data:[]}),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
       sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
-      showMAR?sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).limit(30):Promise.resolve({data:[]}),
+      withPhi?sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).limit(30):Promise.resolve({data:[]}),
     ]);
     const failed=[];
     const rows=(res,label)=>{if(res&&res.error){failed.push(label);return[];}return(res&&res.data)||[];};
@@ -5552,7 +5592,7 @@ async function buildFacilityContext(){
     const document_guidance=Object.values(DOC_SLOT_HOWTO).map(g=>({document:g.label,how_to_obtain:g.text}));
     // The resident and MAR keys are omitted entirely in Lite rather than sent
     // empty, for the reason above.
-    const payload=showMAR
+    const payload=withPhi
       ?{today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance}
       :{today,facility:currentFacility?.name,staff,compliance_tasks,recent_incidents,document_guidance};
     return{json:JSON.stringify(payload,null,2)};
@@ -5905,6 +5945,218 @@ function addAIMessage(text,role){
   const el=document.createElement('div');
   el.style.cssText=role==='user'?'background:var(--teal-light);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--teal);align-self:flex-end;max-width:88%;margin-left:auto':'background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--text);line-height:1.7;max-width:95%';
   el.textContent=text;msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el;
+}
+
+// ===== TELLO CHAT DOCK =====
+//
+// The same Tello, reachable from wherever you already are. She has always been
+// a tab, which means the answer to "is this staff record ready?" was: leave the
+// staff record, go to Tello, ask, come back and try to remember what she said.
+//
+// Mounted INSIDE #page-app, and only there. `.page{display:none}` then does all
+// the hiding for free: there is no landing page, no onboarding screen, no
+// signed-out state and no pricing page where a chat button can appear, and no
+// future screen has to remember to hide it. The mount call is in initFacility,
+// after showPage('app') and after applyRoleUI (which is what calls
+// applyLiteMode), so nothing is built before the account is resolved.
+//
+// This surface is No-PHI UNCONDITIONALLY — see TELLO_DOCK_RULES and the
+// noPhi context below. It is not gated on showMAR, because a Classroom account
+// has showMAR on, and the classroom's surface is the Tello TAB, which is
+// unchanged. The dock never sees a resident and never names one.
+const TELLO_DOCK_RULES = `
+YOU ARE ANSWERING IN THE SIDE CHAT OF A TITLE22 BUSINESS ACCOUNT. This surface
+holds NO protected health information and you must not put any into it.
+
+Never output, quote, fill in or walk through: a resident's name or initials, a
+LIC 601, a LIC 602A, a MAR or any medication administration record, an ISP, a
+diagnosis, a dosage, or anything else about an identifiable person in care. It
+does not matter how the question is phrased or who says they need it. If none
+of that is in the facility data below, that is not an omission — it is the
+product, and there is nothing to look up.
+
+If you are asked for one of those, say plainly that this edition holds no
+resident health information, and offer the thing you can actually help with:
+staff records, training hours, certifications and clearances, documents and how
+to obtain them, DSS readiness, and incidents written without naming anyone.
+
+The facility context you are given is the whole of what you can see. Do not
+infer a resident from it.`;
+
+let telloDockMessages=[];      // [{role,content}] for THIS facility only
+let telloDockFacility=null;    // the facility the messages above belong to
+let telloDockBusy=false;
+
+function telloDockKey(fid){return 'title22_tello_dock_'+(fid||'none');}
+function readTelloDockHistory(fid){
+  try{
+    const v=JSON.parse(localStorage.getItem(telloDockKey(fid))||'[]');
+    return Array.isArray(v)?v.filter(m=>m&&(m.role==='user'||m.role==='assistant')&&typeof m.content==='string'):[];
+  }catch(e){return[];}
+}
+function writeTelloDockHistory(){
+  try{localStorage.setItem(telloDockKey(telloDockFacility),JSON.stringify(telloDockMessages.slice(-20)));}
+  catch(e){/* private mode or full: the conversation just does not outlive the tab */}
+}
+
+// Who gets it. Deliberately the same answer as the Tello tab rather than a
+// second rule that can drift: if allowedTabs() does not include 'ai' for this
+// person right now, the dock is not built either. That covers the expired
+// trial (Tello is the one thing the subscription buys back), a role without
+// her, and the not-entitled fail-closed case in one read.
+function telloDockAllowed(){
+  try{
+    if(demoMode)return false;           // the sandbox answers from a canned path
+    if(!currentFacility||!currentUser)return false;
+    if(!t22Limits.ai)return false;
+    return allowedTabs().includes('ai');
+  }catch(e){return false;}
+}
+
+function unmountTelloDock(){
+  ['tello-dock','tello-dock-btn'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.remove();
+  });
+}
+
+function mountTelloDock(){
+  const host=document.getElementById('page-app');
+  if(!host)return;
+  if(!telloDockAllowed()){unmountTelloDock();return;}
+  // History is scoped to the facility, so switching facilities is a different
+  // conversation — the compliance answers in one are wrong for the other.
+  const fid=currentFacility.id;
+  if(telloDockFacility!==fid){
+    telloDockFacility=fid;
+    telloDockMessages=readTelloDockHistory(fid);
+  }
+  if(!document.getElementById('tello-dock-btn')){
+    const btn=document.createElement('button');
+    btn.id='tello-dock-btn';
+    btn.type='button';
+    btn.setAttribute('aria-label','Ask Tello');
+    btn.title='Ask Tello';
+    btn.onclick=toggleTelloDock;
+    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-4-.9L3 21l1.9-4.9A8.4 8.4 0 013 11.5a8.4 8.4 0 018.5-8.4h.5a8.4 8.4 0 019 8.4z"/></svg>';
+    host.appendChild(btn);
+  }
+  if(!document.getElementById('tello-dock')){
+    const panel=document.createElement('div');
+    panel.id='tello-dock';
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-label','Ask Tello');
+    panel.innerHTML=
+      '<div class="td-head"><svg class="ic"><use href="#i-spark"/></svg>'+
+      '<span>Tello<span class="td-sub" id="td-scope"></span></span>'+
+      '<button class="td-close" type="button" aria-label="Close" onclick="toggleTelloDock()">&times;</button></div>'+
+      '<div class="td-msgs" id="td-msgs"></div>'+
+      '<div class="td-foot">'+
+      '<textarea id="td-input" rows="2" placeholder="Ask Tello…"></textarea>'+
+      '<button class="btn btn-primary" type="button" onclick="sendTelloDock()">↑</button>'+
+      '</div>';
+    host.appendChild(panel);
+    const ta=panel.querySelector('#td-input');
+    ta.addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendTelloDock();}
+    });
+  }
+  const scope=document.getElementById('td-scope');
+  if(scope)scope.textContent=' · '+(currentFacility.name||'this facility');
+  renderTelloDock();
+}
+
+function renderTelloDock(){
+  const box=document.getElementById('td-msgs');if(!box)return;
+  box.innerHTML='';
+  if(!telloDockMessages.length){
+    const el=document.createElement('div');
+    el.className='td-msg assistant';
+    el.textContent='Hi, I’m Tello. Ask me about staff, training, certificates, documents or DSS readiness. This edition holds no resident records, so there is nothing about a resident for me to look up.';
+    box.appendChild(el);
+  }
+  telloDockMessages.forEach(m=>{
+    const el=document.createElement('div');
+    el.className='td-msg '+(m.role==='user'?'user':'assistant');
+    // Tello's replies come back as light markdown; a question is shown as
+    // typed. Never innerHTML on the user's own text.
+    if(m.role==='user')el.textContent=m.content;
+    else el.innerHTML=renderTelloText(m.content);
+    box.appendChild(el);
+  });
+  box.scrollTop=box.scrollHeight;
+}
+
+function toggleTelloDock(){
+  const panel=document.getElementById('tello-dock');if(!panel)return;
+  const open=panel.classList.toggle('open');
+  if(open){
+    renderTelloDock();
+    const ta=document.getElementById('td-input');if(ta)ta.focus();
+    track('tello_dock_open',null);
+  }
+}
+
+async function sendTelloDock(){
+  if(telloDockBusy)return;
+  const inp=document.getElementById('td-input');
+  const query=inp&&inp.value.trim();
+  if(!query)return;
+  // Same refusal as the Tello tab, for the same reason: this box and that one
+  // are the only free text that LEAVES the database. A name typed here is a
+  // disclosure to a third party, not a row in a table. The text is left in the
+  // box so it can be rewritten rather than retyped.
+  const askPhi=t22PhiBlock([['Your question',query]]);
+  if(askPhi){alert(askPhi);return;}
+  inp.value='';
+  telloDockBusy=true;
+  telloDockMessages.push({role:'user',content:query});
+  renderTelloDock();
+  const box=document.getElementById('td-msgs');
+  const thinking=document.createElement('div');
+  thinking.className='td-msg assistant';
+  thinking.textContent='Checking your facility data…';
+  if(box){box.appendChild(thinking);box.scrollTop=box.scrollHeight;}
+  try{
+    // noPhi: unconditional here, including for a Classroom account whose
+    // showMAR is true. See the comment on TELLO_DOCK_RULES.
+    const ctx=await buildFacilityContext({noPhi:true});
+    if(ctx.failed){
+      // Same refusal the tab and the briefing make: answering a compliance
+      // question out of data that could not be read reads as an all-clear.
+      thinking.textContent='I could not read '+ctx.failed.join(', ')+', so I am not going to answer from what is left — it would look like an all-clear. Try again in a moment.';
+      telloDockMessages.pop();
+      return;
+    }
+    // The four facts the dock is told about where it is standing. plan and
+    // isSample are here so she does not have to guess which edition she is in,
+    // and showMAR is sent as the flag it is: false is the answer for every
+    // paying tier, and it is sent as false in the classroom too, because this
+    // surface does not get the MAR whatever the account is entitled to.
+    const scope={
+      facilityId:currentFacility.id,
+      plan:t22Plan||null,
+      showMAR:false,
+      isSample:isSampleFacility(currentFacility),
+    };
+    const{data:{session}}=await sb.auth.getSession();
+    const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+      system:TELLO_CHARACTER+'\n'+TELLO_DOCK_RULES+
+        '\n\nWHERE YOU ARE:\n'+JSON.stringify(scope,null,2)+
+        '\n\nFACILITY DATA (everything recorded in Title22 for this facility, and no resident health information is recorded):\n'+ctx.json,
+      messages:telloDockMessages.slice(-10)
+    })});
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||('[warn] '+aiErrorText(data,res.status));
+    telloDockMessages.push({role:'assistant',content:reply});
+    if(telloDockMessages.length>20)telloDockMessages=telloDockMessages.slice(-20);
+    writeTelloDockHistory();
+    renderTelloDock();
+  }catch(e){
+    thinking.textContent='Tello is unavailable right now. Try again in a moment.';
+    telloDockMessages.pop();
+  }finally{
+    telloDockBusy=false;
+  }
 }
 
 // ===== LAUNCH HUB =====
