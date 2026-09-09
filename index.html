@@ -2248,7 +2248,7 @@ const TOUR_STEPS=[
    title:'Five roles, and you choose them',
    body:(showMAR
      ?'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions.'
-     :'A caregiver logs incidents and works the checklist. A supervisor sees the whole facility.')+
+     :'A caregiver logs incidents and files documents. An in-house caregiver also works the checklist; a supervisor sees staff files too.')+
      ' Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
   {tab:'ai', sel:'#tab-ai .card',
    title:'Now ask me something',
@@ -2761,7 +2761,7 @@ async function loadAppInner(){
   // is signed in — initFacility reads currentUser.email on its second line —
   // so stop rather than initialise a facility for nobody.
   if(!currentUser)return;
-  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();showPage('onboard');return;}
+  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();applyLiteMode();showPage('onboard');return;}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
 }
@@ -2904,6 +2904,13 @@ function applyRoleUI(){
 // Every way into the removed sections, closed. Runs at the end of applyRoleUI
 // because that pass sets the same display properties from the role lists and
 // would otherwise put the sidebar entries back.
+// Called from applyRoleUI, AND once at load — see the call at the bottom of
+// this script. applyRoleUI only runs once a facility is initialised, so the
+// zero-facility path (a brand-new account going straight to onboarding) never
+// reached it: the first screen a new customer saw offered MAR, Medications,
+// Daily log and Residents in the menu, on a product that has none of them.
+// Everything below depends on showMAR, which is a const, and on static markup
+// — so running it early is safe and running it twice is a no-op.
 function applyLiteMode(){
   const banner=document.getElementById('lite-banner');
   if(banner)banner.style.display=showMAR?'none':'block';
@@ -8457,6 +8464,24 @@ document.addEventListener('focusout',function(e){
 document.addEventListener('click',function(e){
   if(taActive&&!taActive.box.contains(e.target)&&e.target!==taActive.input)taClose();
 });
+
+// Hide the PHI menu entries once, at load, before any screen is shown.
+//
+// applyLiteMode has always been called from applyRoleUI, which only runs once
+// a facility is initialised. A brand-new account has no facility: loadAppInner
+// takes its zero-facility exit straight to onboarding, applyRoleUI never runs,
+// and the very first screen of the very first session offered MAR,
+// Medications, Daily log and Residents in the menu — on a product that holds
+// none of them, to the person least equipped to know that.
+//
+// This depends on nothing but showMAR and static markup, so it is safe here
+// and idempotent everywhere else it is called.
+(function(){
+  function t22HideLiteMenus(){ try{ applyLiteMode(); }catch(e){} }
+  if(document.readyState==='loading')
+    document.addEventListener('DOMContentLoaded',t22HideLiteMenus);
+  else t22HideLiteMenus();
+})();
 </script>
 
 <!-- MODALS -->
