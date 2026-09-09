@@ -8,7 +8,9 @@ DB: Supabase project title22
 - DO NOT repopulate those tables. DO NOT query them if showMAR=false.
 
 App State:
-- showMAR=false
+- showMAR is a GETTER now, not a constant — false for every paying tier,
+  true only for a Classroom account in the sample facility. See the
+  "showMAR is not a constant any more" section.
 - there is NO users table — that migration was never run (see below)
 - Stripe Payment Links Lite $29/mo, success_url = https://title22.app#welcome
 - Stripe webhook DEPLOYED (see below), writing profiles and subscriptions
@@ -101,7 +103,8 @@ committing, not from your working copy, before claiming
 an edit landed.
 
 ## How Lite is enforced
-`showMAR = false` is the switch, and it is not cosmetic:
+`showMAR` is the switch, and it is not cosmetic. It reads false for every
+paying tier — see the getter section above for the one exception:
 - `allowedTabs()` subtracts mar/medications/residents/daily
   from every role, `switchTab` refuses them with a toast.
 - `applyLiteMode()` (end of `applyRoleUI`) hides the
@@ -399,10 +402,21 @@ checked against the code and was already fixed:
 Check before adding to this list again: three separate entries here described
 code that had already been changed, which is worse than an empty list.
 
-What is genuinely open is not a bug, it is a decision:
+Settled since: **$29 or $79** was open because title-22.com headlined "One
+plan. $29 a month." while the app sold both. Both surfaces now sell both, with
+Agency as Contact Sales and no figure anywhere — title-22-site 8838ba9,
+index.html c089c60. The classroom MAR was approved by Eli on 2026-09-09; it is
+a decision that was taken, not an open question.
 
-- **$29 or $79.** title-22.com says "One plan. $29 a month." The app still
-  sells Multi-Home $79 (index.html, the pricing cards). Pick one.
+What is genuinely open:
+
+- **The Worker running in production is the 2026-09-07 dashboard build.**
+  Nothing since is live: not the Multi-Home price, not the plan folding, not
+  the `current_period_end` fallback that stopped every written row being
+  undated. Deploy is manual on purpose — GitHub -> Actions -> "Deploy
+  stripe-webhook Worker" — and needs a repository secret
+  `CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" template) that does not
+  exist yet. Until that runs, a Multi-Home sale still records as `pro`.
 - **The $29 path has never run end to end.** The webhook price map and
   welcomeIsPaid were fixed two days apart and never tested together against a
   real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
