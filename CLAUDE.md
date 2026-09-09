@@ -458,13 +458,6 @@ a decision that was taken, not an open question.
 
 What is genuinely open:
 
-- **The Worker running in production is the 2026-09-07 dashboard build.**
-  Nothing since is live: not the Multi-Home price, not the plan folding, not
-  the `current_period_end` fallback that stopped every written row being
-  undated. Deploy is manual on purpose — GitHub -> Actions -> "Deploy
-  stripe-webhook Worker" — and needs a repository secret
-  `CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" template) that does not
-  exist yet. Until that runs, a Multi-Home sale still records as `pro`.
 - **The $29 path has never run end to end.** The webhook price map and
   welcomeIsPaid were fixed two days apart and never tested together against a
   real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
@@ -494,10 +487,21 @@ charged a card and showed the customer a trial:
    fallback, and `readSubscription` now reports an undated paid row rather
    than dropping it.
 
-The app-side half heals accounts that are already broken with no redeploy. The
-worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
-effect, and **has not been deployed** — so does the Multi-Home price added on
-2026-09-08. The running Worker is still the 2026-09-07 build.
+The app-side half heals accounts that are already broken with no redeploy.
+
+The worker half IS DEPLOYED. Run #8 of the GitHub workflow succeeded at
+2026-09-09T01:46Z against commit 539ed01, and run #9 at 18:50Z against
+3125a0b; `workers/stripe-webhook/` has not changed between them, so both
+carry the same code. Live in production: the Multi-Home price
+`price_1UDWroAH9qPFLg89kAs9h49C`, `periodEndOf()`'s current_period_end
+fallback, and the plan folding.
+
+CHECK THE ACTIONS HISTORY BEFORE SAYING OTHERWISE. This file claimed for a
+day that the Worker "has not been deployed" and that the CLOUDFLARE_API_TOKEN
+secret "does not exist yet". Both were false the moment run #8 went green, and
+the claim was repeated to Eli three times — who then spent an evening creating
+a Cloudflare token he already had. One API call answers it:
+`actions_list / list_workflow_runs` on `deploy-stripe-webhook.yml`.
 
 Confirmed against Cloudflare 2026-09-08: the Worker `stripe-webhook` exists on
 account `701117dde6af00d42bac3c4058b660be`, workers.dev route enabled, all four
@@ -512,10 +516,15 @@ Deploying no longer needs a machine with wrangler on it: GitHub -> Actions ->
 "Deploy stripe-webhook Worker" -> Run workflow
 (`.github/workflows/deploy-stripe-webhook.yml`). It is manual-only on purpose
 — this Worker is what turns a payment into a paid account, so a deploy should
-not ride along with an unrelated merge. One-time setup is a repository secret
-`CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" token template). The
-Worker's own secrets are untouched by a deploy; never put them in the
-workflow.
+not ride along with an unrelated merge. The repository secret `CLOUDFLARE_API_TOKEN` is ALREADY SET — runs #8 and #9
+both authenticated with it. The Worker's own secrets are untouched by a
+deploy; never put them in the workflow.
+
+The workflow can be triggered from a Claude session: the GitHub MCP's
+`actions_run_trigger` / `run_workflow` on `deploy-stripe-webhook.yml`, ref
+`main`, then `actions_get / get_workflow_run` for the conclusion. Creating the
+Cloudflare token and adding the secret cannot be — those authenticate as a
+person — but the deploy itself does not need a human.
 
 `readEntitlement` still reads `profiles` and must keep reading it — it is the
 only store that carries the trial, the edu tier, and subscribers who predate
