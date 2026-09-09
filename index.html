@@ -3103,7 +3103,12 @@ function applyTierUI(){
     const b=document.getElementById('team-prompt-body');
     const c=document.getElementById('team-prompt-cta');
     if(t)t.innerHTML='<svg class="ic"><use href="#i-users"/></svg> Bring your class in';
-    if(b)b.textContent='Invite your students so each one logs MAR entries and incidents under their own name. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
+    // Lite has no MAR, so a trainer told to demo one is being set up to fail
+    // in front of a class. The full wording waits behind showMAR.
+    if(b)b.textContent=(showMAR
+      ?'Invite your students so each one logs MAR entries and incidents under their own name. '
+      :'Invite your students so each one logs incidents and works the compliance checklist under their own name. ')+
+      'Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
     if(c)c.textContent='Invite your students';
   }
 }
@@ -6638,7 +6643,7 @@ async function loadBilling(){
     // (Lite, Multi-Home, Agency as Contact Sales). $49 and $149 stay because
     // legacy starter and specialist subscribers still pay them, and blanking
     // the figure would show a paying customer a plan with no price on it.
-    const planPrices={trial:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
+    const planPrices={trial:'$0',edu:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
     let trialHtml='';
     if(plan==='trial'){
       const daysLeft=ent.daysLeft;
