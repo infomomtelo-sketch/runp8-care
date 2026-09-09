@@ -312,6 +312,50 @@ rides in the query string. Those two are gated on
 showMAR now. The remaining embeds are on mar_entries and
 daily_logs, whose paths t22Fetch already blocks.
 
+## Launch Hub — the "Start Your Home" tab
+
+`#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by
+`renderLaunchHub()`. Twelve steps in three cards — Get Certified / Prep House /
+Get License — for the customer who has not opened yet. Until this existed the
+app had nothing for them until the day they held a licence, which is a large
+share of who signs up.
+
+Three rules it is built on, and none is decoration:
+
+- **No PHI, and no path to any.** Every step is about the applicant, the
+  building or the licence. No resident field, no medical document, no free text
+  at all. That is why `launch` is NOT in `T22_PHI_TABS` and why `applyLiteMode`
+  does not touch it — verified in the browser: in Lite, `nav-launch` and
+  `menu-launch` are visible while `nav-mar` is not. If a step is ever added
+  that names a resident or a medical document, delete the step; do not start
+  hiding the tab.
+- **It states no requirement as fact.** Same rule as `DOC_SLOT_HOWTO` and
+  Tello's prompt: each step says what the thing IS and who issues it, never how
+  long it takes, how long it lasts, what it costs, or what an inspector
+  accepts. The page opens by saying so, in both languages.
+- **Nobody types.** Every step is answered with a 56px button or a photograph
+  (`capture="environment"`, so a phone opens the camera). English title with a
+  Tagalog line under it on all three cards and all twelve steps. One card open
+  at a time.
+
+Photos go to the existing `facility-documents` bucket under the same
+`<facility_id>/<uuid>.<ext>` path as every other upload, and are NOT written to
+`documents` — a house photo has no business in the compliance file list or the
+DSS export.
+
+Storage is `public.launch_checklist`
+(`migrations/2026-09-09_title22_launch_checklist.sql`), one row per facility
+per step. **Until that migration is run the tab still works**: `loadLaunchHub`
+recognises PGRST205/42P01, falls back to this browser's localStorage, and says
+on the page that progress is device-only and which file to run. That is the
+direct lesson of `public.users` — code that assumed a migration had run, for
+two days, in silence. The two stores are sequenced, never both.
+
+Roles: administrator and supervisor (they can edit), plus `DEMO_TABS` so the
+sandbox shows it. An expired trial keeps the tab and loses the buttons, like
+everywhere else — `canEdit()` disables them and `t22Fetch` refuses the write
+underneath.
+
 ## Admission forms are print-only
 Dormant in Lite — ADMISSION_FORMS renders in the resident
 modal, which Lite does not show. The rule stands for

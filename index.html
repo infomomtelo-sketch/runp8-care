@@ -85,6 +85,53 @@
   body.t22-no-phi #nav-residents,    body.t22-no-phi #menu-residents,
   body.t22-no-phi #nav-daily,        body.t22-no-phi #menu-daily,
   body.t22-no-phi #dash-mar-card,    body.t22-no-phi #qa-add-resident{display:none!important}
+
+  /* Launch Hub — the "Start Your Home" tab.
+     Built for someone who has never held a licence and may not be reading in
+     their first language: three cards, ONE open at a time, one decision per
+     screenful, every control 56px tall so it can be hit with a thumb, and no
+     text field anywhere — the answer to a step is a photograph, not typing.
+     Deliberately NOT in the t22-no-phi list above and deliberately not gated
+     on showMAR: nothing here touches a resident, and it is the one tab a Lite
+     customer has the most use for. See applyLiteMode, which leaves it alone. */
+  .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+  .lh-bar{height:12px;border-radius:999px;background:var(--gray-light);overflow:hidden;margin-bottom:8px}
+  .lh-bar-fill{height:100%;background:var(--teal);border-radius:999px;transition:width .25s}
+  .lh-bar-label{font-size:15px;font-weight:600;color:var(--text);margin-bottom:22px}
+  .lh-card{border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--white);margin-bottom:16px;overflow:hidden}
+  .lh-card.open{border-color:var(--teal)}
+  .lh-head{display:flex;align-items:center;gap:16px;width:100%;min-height:56px;padding:20px;border:none;background:none;cursor:pointer;text-align:left;font-family:inherit;color:var(--text)}
+  .lh-head:hover{background:var(--gray-bg)}
+  .lh-num{flex:none;width:52px;height:52px;border-radius:50%;background:var(--teal-light);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
+  .lh-card.done .lh-num{background:var(--green-light);color:var(--green)}
+  .lh-head-text{flex:1;min-width:0}
+  .lh-title{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:700;line-height:1.2}
+  .lh-tl{font-size:15px;color:var(--teal);font-style:italic;margin-top:2px}
+  .lh-count{font-size:13px;color:var(--text2);margin-top:4px}
+  .lh-chev{flex:none;width:26px;height:26px;stroke:var(--text2);fill:none;stroke-width:2.5;transition:transform .2s}
+  .lh-card.open .lh-chev{transform:rotate(180deg)}
+  .lh-body{padding:0 20px 20px}
+  .lh-step{border-top:1px solid var(--border);padding:20px 0}
+  .lh-step-title{font-size:18px;font-weight:600;line-height:1.35}
+  .lh-step-tl{font-size:15px;color:var(--teal);font-style:italic;margin-top:2px}
+  .lh-step-text{font-size:15px;color:var(--text2);line-height:1.65;margin-top:8px}
+  .lh-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  /* 56px on both, and min-width so a big finger has somewhere to land. */
+  .lh-btn{min-height:56px;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:0 22px;border-radius:var(--radius);font-size:17px;font-weight:600;font-family:inherit;cursor:pointer;border:2px solid var(--border);background:var(--white);color:var(--text)}
+  .lh-btn:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+  .lh-btn:disabled{opacity:.5;cursor:default}
+  .lh-btn svg{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .lh-btn.is-done{background:var(--green-light);border-color:var(--green);color:var(--green)}
+  .lh-photo{margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .lh-photo img{width:104px;height:104px;object-fit:cover;border-radius:var(--radius);border:2px solid var(--border);background:var(--gray-bg)}
+  .lh-photo-name{font-size:14px;color:var(--text2)}
+  @media(max-width:520px){
+    .lh-title{font-size:20px}
+    .lh-num{width:44px;height:44px;font-size:19px}
+    .lh-head{padding:16px;gap:12px}
+    .lh-body{padding:0 16px 16px}
+    .lh-btn{width:100%;min-width:0}
+  }
   nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:0;z-index:100}
   .logo{font-size:1.2rem;font-weight:600;color:var(--teal);letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
   .logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center}
@@ -431,6 +478,7 @@
         </div>
         <div data-menu-group="daily" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">On shift</div>
         <button id="menu-dashboard" onclick="switchTab('dashboard');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-chart"/></svg> Dashboard</button>
+        <button id="menu-launch" onclick="switchTab('launch');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-home"/></svg> Start Your Home</button>
         <button id="menu-mar" onclick="switchTab('mar');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-clipboard"/></svg> MAR</button>
         <button id="menu-medications" onclick="switchTab('medications');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-pill"/></svg> Medications</button>
         <button id="menu-daily" onclick="switchTab('daily');toggleUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-note"/></svg> Daily log</button>
@@ -640,6 +688,7 @@
         <div id="sidebar-role" style="display:none;font-size:11px;color:var(--text2);margin-top:4px"></div>
       </div>
       <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</button>
+      <button class="nav-item" id="nav-launch" onclick="switchTab('launch')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 10v6M9 13h6"/></svg>Start Your Home</button>
       <button class="nav-item" id="nav-checklist" onclick="switchTab('checklist')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Compliance</button>
       <button class="nav-item" id="nav-staff" onclick="switchTab('staff')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Staff</button>
       <button class="nav-item" id="nav-residents" onclick="switchTab('residents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Residents</button>
@@ -729,6 +778,31 @@
             <button class="btn btn-outline" style="font-size:13px;padding:10px 14px;text-align:left" onclick="exportDSSAudit()"><svg class="ic"><use href="#i-file"/></svg> DSS Audit Export (90 days)</button>
           </div>
         </div>
+      </div>
+
+      <!-- LAUNCH HUB — "Start Your Home".
+           Non-PHI throughout: it is about the person, the building and the
+           licence, and there is no resident anywhere in it. Cards are rendered
+           by renderLaunchHub() from LAUNCH_CARDS so the markup cannot drift out
+           of step with the data. -->
+      <div id="tab-launch" style="display:none">
+        <div class="page-header"><h1>Start Your Home</h1><span class="badge badge-teal">Simulan ang Bahay</span></div>
+        <div class="lh-note">
+          <strong>This is the usual order of things, in plain words — it is not legal advice, and it is not a statement of what the Department requires.</strong>
+          Dates, fees and what an inspector will accept change, and they are your licensing analyst's to give you. Use this to keep track of where you are.
+          <div style="margin-top:8px"><em>Ito ay gabay lamang. Ang inyong licensing analyst ang masusunod.</em></div>
+        </div>
+        <div class="lh-note" style="background:var(--amber-light);border-color:#e6c170;color:var(--text)">
+          <strong>Photograph the house, the paperwork in your own name, and your own certificates.</strong>
+          Never photograph a resident, or anybody's medical paperwork. Title22 holds no resident health information and these pictures must not be where it starts.
+        </div>
+        <div class="lh-bar"><div class="lh-bar-fill" id="lh-bar-fill" style="width:0%"></div></div>
+        <div class="lh-bar-label" id="lh-bar-label">Loading&hellip;</div>
+        <div class="lh-note" id="lh-local-note" style="display:none;background:var(--amber-light);border-color:#e6c170;color:var(--text)"></div>
+        <div id="lh-cards"></div>
+        <!-- One input for every step. capture asks a phone for the camera
+             directly; a laptop ignores it and opens the file picker. -->
+        <input type="file" id="lh-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handleLaunchPhoto(this)"/>
       </div>
 
       <!-- CHECKLIST -->
@@ -1665,8 +1739,8 @@ let currentUserRole = 'readonly';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'] },
-  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','lessons','ai','documents'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'] },
+  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','lessons','ai','documents'] },
   // The shift lead who runs the floor. Resident records and their documents,
   // the medications list so a newly arrived prescription can be added and a
   // stopped one discontinued, and the MAR — including voiding an entry that
@@ -1738,7 +1812,7 @@ function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'
 // Without it the tour cannot open Tello or Team — readonly's tab list has
 // neither — and switchTab would put a "you do not have permission" alert in
 // front of someone who is still deciding whether to sign up.
-const DEMO_TABS=['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
+const DEMO_TABS=['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
 function allowedTabs(){
   const lite=t=>showMAR||!T22_PHI_TABS.includes(t);
   // Verified expired: they keep every tab their role allows, so the work they
@@ -1803,7 +1877,7 @@ function switchTab(name){
   if(menu)menu.style.display='none';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
+  ['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -1814,6 +1888,7 @@ function switchTab(name){
   if(sel)sel.style.display='block';
   if(selNav)selNav.classList.add('active');
   if(name==='dashboard'){refreshDashboard();loadComplianceDocs().then(refreshDashboard);loadDashboardMARStats();maybeShowOnboarding();maybeShowTeamPrompt();setTimeout(()=>loadDashboardAIBriefing(false),500);}
+  if(name==='launch')loadLaunchHub();
   if(name==='checklist'){renderExpiryBanner();renderChecklist(activeFilter);}
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
@@ -3113,7 +3188,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'].forEach(t=>{
+  ['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
     // The dropdown entries had no ids, so this never reached them: a caregiver
@@ -3187,6 +3262,13 @@ function applyLiteMode(){
   document.body.classList.toggle('t22-no-phi',hidePhi);
   // The tab PANEL is only ever hidden here. switchTab owns showing it, and
   // forcing it visible would put two tabs on screen at once.
+  //
+  // 'launch' is deliberately NOT in T22_PHI_TABS and deliberately not touched
+  // anywhere in this function. Start Your Home holds nothing about a resident
+  // — it is the applicant, the building and the licence — and the customer it
+  // is for is precisely the Lite customer who has not opened yet. If a step is
+  // ever added there that names a resident or a medical document, the answer
+  // is to delete that step, not to start hiding this tab.
   if(hidePhi)T22_PHI_TABS.forEach(t=>{
     const tab=document.getElementById('tab-'+t);if(tab)tab.style.display='none';
   });
@@ -5823,6 +5905,326 @@ function addAIMessage(text,role){
   const el=document.createElement('div');
   el.style.cssText=role==='user'?'background:var(--teal-light);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--teal);align-self:flex-end;max-width:88%;margin-left:auto':'background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--text);line-height:1.7;max-width:95%';
   el.textContent=text;msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el;
+}
+
+// ===== LAUNCH HUB =====
+//
+// "Start Your Home" — the twelve things between deciding to run a six-bed home
+// and holding a licence. It is the reason a lot of these customers signed up:
+// they are not running a facility yet, they are trying to get one started, and
+// until now the app had nothing for them until the day they had a licence.
+//
+// Three rules it is built on, and none of them is decoration:
+//
+// 1. NO PHI, and no path to any. Every step is about the person applying, the
+//    building, or the licence. There is no resident field, no medical
+//    document, and the photo prompts say so out loud — see the amber note in
+//    the markup. This is why the tab is exempt from applyLiteMode's hiding and
+//    from T22_PHI_TABS: there is nothing here to hide, and a Lite customer is
+//    exactly who it is for.
+// 2. It states no requirement as fact. Same rule Tello and the document slots
+//    run on: each step says what the thing IS and who issues it, never how
+//    long it takes, how long it lasts, what it costs, or what an inspector
+//    will accept. Those change, and they are the licensing analyst's to give.
+//    Anything added here later must hold to that.
+// 3. Nobody types. Every step is answered with a button or a photograph, in
+//    two languages, at 56px. The customers this is for are on a phone, often
+//    in a second language, and a form is where they stop.
+const LAUNCH_CARDS=[
+  {key:'certify', title:'Get Certified', tl:'Kumuha ng Sertipiko',
+   blurb:'The part that is about you. None of it needs a house.',
+   steps:[
+    {key:'cert_course', title:'Take the administrator certification course',
+     tl:'Kunin ang kurso para sa administrator',
+     text:'The certification course for RCFE administrators, run by a vendor the Department has approved. The vendor issues the certificate when you finish. Photograph the certificate when it arrives.'},
+    {key:'cert_exam', title:'Pass the state administrator exam',
+     tl:'Ipasa ang pagsusulit ng estado',
+     text:'The exam is taken through the state, separately from the course. You are sent the result. Photograph it.'},
+    {key:'cert_livescan', title:'Get your Live Scan fingerprint clearance',
+     tl:'Magpa-Live Scan at kunin ang clearance',
+     text:'You are fingerprinted at a Live Scan location, and the clearance comes back from the Department’s background check bureau. Photograph the clearance, not the receipt.'},
+    {key:'cert_cpr', title:'Get a CPR and First Aid card',
+     tl:'Kunin ang CPR at First Aid card',
+     text:'The cards a training provider issues when you complete the class — usually both in one session. Photograph the cards.'},
+   ]},
+  {key:'house', title:'Prep House', tl:'Ihanda ang Bahay',
+   blurb:'The building itself. Photographs, not descriptions.',
+   steps:[
+    {key:'house_pick', title:'Choose the house',
+     tl:'Piliin ang bahay',
+     text:'Yours or leased. Photograph the front of the house from the street, the way somebody arriving would see it.'},
+    {key:'house_fire', title:'Get the fire clearance',
+     tl:'Kunin ang fire clearance',
+     text:'The clearance is issued by the fire authority for the area the house is in — they inspect and then issue it. Photograph the clearance they give you.'},
+    {key:'house_rooms', title:'Bedrooms, bathrooms and the way out',
+     tl:'Mga kwarto, banyo at labasan',
+     text:'Photograph each bedroom, each bathroom, and every door someone would leave by. One picture each is enough.'},
+    {key:'house_kitchen', title:'Kitchen, food storage and hot water',
+     tl:'Kusina, imbakan ng pagkain at mainit na tubig',
+     text:'Photograph the kitchen, where food is stored, and the water heater with its setting visible.'},
+   ]},
+  {key:'license', title:'Get License', tl:'Kumuha ng Lisensya',
+   blurb:'The application itself, and the visit at the end of it.',
+   steps:[
+    {key:'lic_orientation', title:'Go to the licensing orientation',
+     tl:'Pumunta sa orientation ng lisensya',
+     text:'The Department runs an orientation for new applicants and gives you the application packet there. Photograph anything they hand you.'},
+    {key:'lic_packet', title:'Fill in the application packet',
+     tl:'Punan ang application packet',
+     text:'The forms in the packet from orientation, filled in and signed. Photograph the completed packet before you send it, so you have your own copy.'},
+    {key:'lic_fee', title:'Pay the application fee',
+     tl:'Bayaran ang bayad sa aplikasyon',
+     text:'The fee is paid to the Department as part of the application. Photograph the receipt or the confirmation.'},
+    {key:'lic_visit', title:'The licensing visit',
+     tl:'Ang pagbisita ng licensing analyst',
+     text:'An analyst comes to the house before a licence is issued. Photograph the paperwork they leave with you.'},
+   ]},
+];
+
+let launchChecklist={};        // step key -> {done:bool, photo_path:string|null}
+let launchOpenCard=null;       // one card open at a time, by design
+let launchPhotoStep=null;      // which step the hidden file input is answering
+// 'db' while public.launch_checklist answers, 'local' once it has not.
+// Sequenced, never both: see loadLaunchHub.
+let launchStore='db';
+
+function launchAllSteps(){return LAUNCH_CARDS.reduce((a,c)=>a.concat(c.steps),[]);}
+function launchStepDef(key){return launchAllSteps().find(s=>s.key===key)||null;}
+function launchState(key){return launchChecklist[key]||{done:false,photo_path:null};}
+function launchLocalKey(){return 'title22_launch_'+(currentFacility&&currentFacility.id||'none');}
+function readLaunchLocal(){
+  try{const v=JSON.parse(localStorage.getItem(launchLocalKey())||'{}');return(v&&typeof v==='object')?v:{};}
+  catch(e){return{};}
+}
+function writeLaunchLocal(){
+  try{localStorage.setItem(launchLocalKey(),JSON.stringify(launchChecklist));}catch(e){/* private mode or full */}
+}
+
+// The lesson of public.users, applied ahead of time: a migration that was never
+// run must not read as "you have not started yet". PostgREST answers a missing
+// table with PGRST205 (not in the schema cache) or the raw 42P01, so both are
+// treated as "no table" — anything else is a real error and is surfaced.
+function launchTableMissing(err){
+  if(!err)return false;
+  const code=String(err.code||'');
+  if(code==='PGRST205'||code==='42P01')return true;
+  return /schema cache|does not exist/i.test(String(err.message||''));
+}
+
+async function loadLaunchHub(){
+  if(!currentFacility)return;
+  launchChecklist={};
+  launchStore='db';
+  let rows=null;
+  try{
+    const{data,error}=await sb.from('launch_checklist')
+      .select('step_key,done,photo_path').eq('facility_id',currentFacility.id);
+    if(error){
+      if(!launchTableMissing(error))throw error;
+      launchStore='local';
+    }else rows=data||[];
+  }catch(e){
+    // A real read failure, not a missing table. Say so rather than showing an
+    // empty checklist to somebody who has done half of it.
+    launchStore='error';
+    renderLaunchHub(String(e&&e.message||e));
+    return;
+  }
+  if(launchStore==='local')launchChecklist=readLaunchLocal();
+  else (rows||[]).forEach(r=>{launchChecklist[r.step_key]={done:!!r.done,photo_path:r.photo_path||null};});
+  // Open the first card that is not finished, so the tab lands on the work
+  // rather than on the top of a list.
+  if(!launchOpenCard){
+    const next=LAUNCH_CARDS.find(c=>c.steps.some(s=>!launchState(s.key).done));
+    launchOpenCard=(next||LAUNCH_CARDS[0]).key;
+  }
+  renderLaunchHub();
+}
+
+function renderLaunchHub(errMsg){
+  const wrap=document.getElementById('lh-cards');if(!wrap)return;
+  const note=document.getElementById('lh-local-note');
+  if(note){
+    if(errMsg){
+      note.style.display='block';
+      note.innerHTML='<strong>Your progress could not be loaded.</strong> '+esc(errMsg)+' Nothing has been lost — reload the page and try again before ticking anything off.';
+    }else if(launchStore==='local'){
+      note.style.display='block';
+      note.innerHTML='<strong>Saved on this device only.</strong> Your progress is being kept in this browser because the launch checklist table has not been created in the database yet (<code>migrations/2026-09-09_title22_launch_checklist.sql</code>). It will not follow you to your phone until that has been run.';
+    }else note.style.display='none';
+  }
+  if(errMsg){wrap.innerHTML='';return;}
+  const all=launchAllSteps();
+  const doneCount=all.filter(s=>launchState(s.key).done).length;
+  const fill=document.getElementById('lh-bar-fill');
+  if(fill)fill.style.width=Math.round(doneCount/all.length*100)+'%';
+  const label=document.getElementById('lh-bar-label');
+  if(label)label.textContent=doneCount+' of '+all.length+' done  ·  '+doneCount+' sa '+all.length+' tapos na';
+  const editable=canEdit();
+  wrap.innerHTML=LAUNCH_CARDS.map((card,ci)=>{
+    const open=launchOpenCard===card.key;
+    const cDone=card.steps.filter(s=>launchState(s.key).done).length;
+    const allDone=cDone===card.steps.length;
+    return `
+    <div class="lh-card${open?' open':''}${allDone?' done':''}">
+      <button class="lh-head" onclick="toggleLaunchCard('${card.key}')" aria-expanded="${open?'true':'false'}">
+        <span class="lh-num">${allDone?'✓':(ci+1)}</span>
+        <span class="lh-head-text">
+          <span class="lh-title">${esc(card.title)}</span>
+          <div class="lh-tl">${esc(card.tl)}</div>
+          <div class="lh-count">${cDone} of ${card.steps.length} done · ${esc(card.blurb)}</div>
+        </span>
+        <svg class="lh-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="lh-body" ${open?'':'style="display:none"'}>
+        ${card.steps.map((st,si)=>{
+          const stt=launchState(st.key);
+          const n=ci*4+si+1;
+          return `
+          <div class="lh-step">
+            <div class="lh-step-title">${n}. ${esc(st.title)}</div>
+            <div class="lh-step-tl">${esc(st.tl)}</div>
+            <div class="lh-step-text">${esc(st.text)}</div>
+            <div class="lh-actions">
+              <button class="lh-btn${stt.done?' is-done':''}" ${editable?'':'disabled'} onclick="setLaunchDone('${st.key}',${stt.done?'false':'true'})">
+                <svg viewBox="0 0 24 24">${stt.done?'<polyline points="20 6 9 17 4 12"/>':'<circle cx="12" cy="12" r="9"/>'}</svg>
+                ${stt.done?'Done · Tapos na':'Mark done · Tapos na'}
+              </button>
+              <button class="lh-btn" ${editable?'':'disabled'} onclick="pickLaunchPhoto('${st.key}')">
+                <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                ${stt.photo_path?'Replace photo':'Take a photo'}
+              </button>
+            </div>
+            ${stt.photo_path?`
+            <div class="lh-photo">
+              <img id="lh-img-${st.key}" alt="Photo for: ${esc(st.title)}"/>
+              <span class="lh-photo-name">Photo saved · May larawan na</span>
+              <button class="btn btn-ghost" ${editable?'':'disabled'} style="color:var(--red)" onclick="removeLaunchPhoto('${st.key}')">Remove</button>
+            </div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  showLaunchPhotos();
+}
+
+// The bucket is private, so each thumbnail needs its own short-lived signed
+// URL. Done after render rather than during it: one await per photo must not
+// hold up the page drawing.
+async function showLaunchPhotos(){
+  for(const st of launchAllSteps()){
+    const path=launchState(st.key).photo_path;
+    if(!path)continue;
+    const img=document.getElementById('lh-img-'+st.key);
+    if(!img)continue;
+    try{
+      const{data,error}=await sb.storage.from('facility-documents').createSignedUrl(path,600);
+      if(!error&&data&&data.signedUrl)img.src=data.signedUrl;
+    }catch(e){/* a thumbnail that will not load is not worth an error */}
+  }
+}
+
+function toggleLaunchCard(key){
+  // One open at a time: pressing the open one closes it, pressing another
+  // swaps. Two open cards on a phone is a scroll, which is the thing this
+  // whole screen is built to avoid.
+  launchOpenCard=(launchOpenCard===key)?null:key;
+  renderLaunchHub();
+}
+
+// Write one step through whichever store is live. Optimistic — the button
+// flips at once — and rolled back if the write is refused, because a tick that
+// silently did not save is worse than one that visibly failed.
+async function persistLaunchStep(stepKey,before){
+  const st=launchState(stepKey);
+  if(launchStore==='local'){writeLaunchLocal();return true;}
+  try{
+    const{error}=await sb.from('launch_checklist').upsert({
+      facility_id:currentFacility.id,
+      step_key:stepKey,
+      done:!!st.done,
+      photo_path:st.photo_path||null,
+      updated_at:new Date().toISOString(),
+      updated_by:currentUser?currentUser.id:null,
+    },{onConflict:'facility_id,step_key'});
+    if(error){
+      if(launchTableMissing(error)){
+        // The table is not there. Keep the change rather than losing it, move
+        // to the device store, and say which one is in use.
+        launchStore='local';writeLaunchLocal();renderLaunchHub();return true;
+      }
+      throw error;
+    }
+    return true;
+  }catch(e){
+    if(before===undefined)delete launchChecklist[stepKey];
+    else launchChecklist[stepKey]=before;
+    renderLaunchHub();
+    t22Toast('That could not be saved: '+((e&&e.message)||e));
+    return false;
+  }
+}
+
+async function setLaunchDone(stepKey,done){
+  if(!canEdit()){t22Toast('You do not have permission to change this.');return;}
+  if(!launchStepDef(stepKey))return;
+  const before=launchChecklist[stepKey]?Object.assign({},launchChecklist[stepKey]):undefined;
+  launchChecklist[stepKey]=Object.assign({done:false,photo_path:null},launchChecklist[stepKey],{done:done===true||done==='true'});
+  renderLaunchHub();
+  if(await persistLaunchStep(stepKey,before))track('launch_step',{step:stepKey,done:launchState(stepKey).done});
+}
+
+function pickLaunchPhoto(stepKey){
+  if(!canEdit()){t22Toast('You do not have permission to add photos.');return;}
+  const inp=document.getElementById('lh-photo-input');if(!inp)return;
+  launchPhotoStep=stepKey;
+  inp.value='';
+  inp.click();
+}
+
+async function handleLaunchPhoto(inp){
+  const file=inp.files&&inp.files[0];
+  const stepKey=launchPhotoStep;
+  launchPhotoStep=null;
+  if(!file||!stepKey||!currentFacility)return;
+  if(!canEdit()){t22Toast('You do not have permission to add photos.');return;}
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+  const id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+  // Same path shape every other upload in this app uses — facility id first,
+  // which is what the bucket's policy matches on.
+  const path=currentFacility.id+'/'+id+'.'+ext;
+  t22Toast('Uploading the photo…');
+  try{
+    const{error:upErr}=await sb.storage.from('facility-documents')
+      .upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
+    if(upErr)throw upErr;
+    const before=launchChecklist[stepKey]?Object.assign({},launchChecklist[stepKey]):undefined;
+    const old=launchState(stepKey).photo_path;
+    launchChecklist[stepKey]=Object.assign({done:false,photo_path:null},launchChecklist[stepKey],{photo_path:path});
+    renderLaunchHub();
+    if(await persistLaunchStep(stepKey,before)){
+      // Only once the new path is recorded: an object removed before its row
+      // is written is a photo nobody can get back.
+      if(old&&old!==path)await sb.storage.from('facility-documents').remove([old]).catch(()=>{});
+      track('launch_photo',{step:stepKey});
+    }else{
+      await sb.storage.from('facility-documents').remove([path]).catch(()=>{});
+    }
+  }catch(e){
+    t22Toast('That photo could not be uploaded: '+((e&&e.message)||e));
+  }
+}
+
+async function removeLaunchPhoto(stepKey){
+  if(!canEdit()){t22Toast('You do not have permission to change this.');return;}
+  const path=launchState(stepKey).photo_path;
+  if(!path)return;
+  const before=Object.assign({},launchChecklist[stepKey]);
+  launchChecklist[stepKey]=Object.assign({},launchChecklist[stepKey],{photo_path:null});
+  renderLaunchHub();
+  if(await persistLaunchStep(stepKey,before))
+    await sb.storage.from('facility-documents').remove([path]).catch(()=>{});
 }
 
 // ===== DOCUMENTS =====
