@@ -155,12 +155,21 @@ Stripe wiring, as of 2026-09-08:
   Payment Link `https://buy.stripe.com/9B6fZg5U64gS17lfwag360m`. Wired
   2026-09-08. `STRIPE_MULTI` was `STRIPE_PRO` until then, so every Multi-Home
   sale went through the old $79 price and was recorded as `pro` — right money,
-  legacy label, nothing on the new product. NOT verified from here: this
-  environment's egress proxy blocks `buy.stripe.com`, so the link's amount,
-  interval and metadata have never been read back. Confirm in the Stripe
-  dashboard, and confirm the link carries metadata `plan=multi` (or
-  `multi-home` — the webhook folds it) and redirects to
-  `https://title22.app#welcome`.
+  legacy label, nothing on the new product.
+
+  VERIFIED from the live link 2026-09-09, by screenshot: "Subscribe to
+  Title22-Multi-Home", $79.00 per month, merchant title-22.com. Amount,
+  interval, product name and merchant all correct. Still unverified: the
+  link's metadata and its redirect, neither of which is visible on the
+  checkout page. This environment's egress proxy blocks `buy.stripe.com`, so
+  read them in the Stripe dashboard.
+
+  The metadata matters MORE than usual right now, because the deployed Worker
+  is the 2026-09-07 build and that build has never heard of this price — it
+  was created the following day. A $79 checkout therefore falls through to the
+  metadata, and if the link carries none, `planFromSubscription` returns null
+  and the event is refused: charged, nothing written, "Free Trial". Exactly
+  what happened to Lite on 2026-09-06.
 - Agency — no price anywhere, and that now includes the code. The billing card
   is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
   and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to
@@ -190,6 +199,27 @@ carries both tiers now, with Agency as a Contact Sales
 row and no figure; the app's Agency card and planPrices
 lost the $249. "No price" means no price in either
 place.
+
+## The app folds plan spellings on the way in
+
+`t22NormalisePlan` (index.html), mirroring the Worker's `PLAN_ALIASES`.
+Applied at all three reads: `readSubscription`'s dated and undated paths, and
+`readEntitlement`'s `profiles.title22_plan`.
+
+One tier has several spellings and the app is keyed on exactly one. Written
+verbatim, "Multi-Home" misses `T22_PAID` (the subscriber reads as UNPAID) and
+misses `TIER_LIMITS` (dropping them to `{facilities:1, ai:false}` — one
+facility and no Tello, on the plan they just paid $79 for).
+
+Belt and braces once the Worker is deployed, since it folds these too. Until
+then it is the only thing between a Multi-Home customer and the same failure
+Lite hit on 2026-09-06 — and it ships with a push, where the Worker needs a
+token nobody has added yet.
+
+KNOWN aliases only. An unrecognised plan passes through unchanged, so nothing
+invalid is quietly made valid: `nonsense-plan` still reads as unpaid. Checked
+across 17 inputs including case, underscores, spaces, padding, null, undefined
+and empty.
 
 ## showMAR is not a constant any more
 

@@ -2484,6 +2484,40 @@ addEventListener('scroll',()=>{
 
 // ===== TITLE22 ENTITLEMENT (namespaced; decoupled from profiles.plan) =====
 const T22_PAID=['lite','multi','starter','pro','specialist','agency'];
+
+// One tier, several spellings, and the app is keyed on exactly one of them.
+//
+// The Worker running in production is the 2026-09-07 build. The Multi-Home
+// price (price_1UDWroAH9qPFLg89kAs9h49C) was created the day after, so that
+// build has never heard of it: a $79 checkout falls through to the Payment
+// Link's metadata, which is typed by hand in the Stripe dashboard and is
+// almost certainly "Multi-Home" or "multi-home" rather than "multi".
+//
+// Written verbatim, that string misses T22_PAID (the subscriber reads as
+// UNPAID) and misses TIER_LIMITS (dropping them to {facilities:1, ai:false} —
+// one facility and no Tello, on the plan they just paid $79 for).
+//
+// The Worker folds these too, and once it is deployed this is belt and
+// braces. Until then it is the only thing standing between a Multi-Home
+// customer and the same "you paid, here is your Free Trial" that Lite hit on
+// 2026-09-06 — and it ships with a push, where the Worker needs a token
+// nobody has added yet.
+//
+// Folds KNOWN aliases only. An unrecognised plan passes through unchanged, so
+// nothing invalid is quietly made valid.
+const T22_PLAN_ALIASES={'multi-home':'multi','multi_home':'multi','multihome':'multi','multi home':'multi','multi-facility':'specialist'};
+// try/catch for the same reason t22MarAllowed has one: this is a hoisted
+// declaration and T22_PLAN_ALIASES is a const a few lines above it. Nothing
+// calls this before the script finishes today, but a caller added higher up
+// later would get a TDZ ReferenceError rather than undefined, and the safe
+// answer to "we cannot fold it" is the string exactly as it came.
+function t22NormalisePlan(plan){
+  if(!plan)return plan;
+  try{
+    const k=String(plan).trim().toLowerCase();
+    return T22_PLAN_ALIASES[k]||k;
+  }catch(e){return plan;}
+}
 // Display labels only — the underlying plan keys and Stripe price IDs are
 // unchanged (renaming Stripe products would orphan live subscriptions).
 const T22_LABEL={trial:'Free Trial',edu:'Classroom',lite:'Lite',multi:'Multi-Home',starter:'Starter',pro:'Pro',specialist:'Multi-Facility',agency:'Agency'};
@@ -2581,7 +2615,7 @@ async function readSubscription(userId){
       const ends=new Date(r.current_period_end).getTime();
       return Number.isFinite(ends)&&Date.now()<ends;
     });
-    if(live.length&&live[0].plan)return{plan:live[0].plan,dated:true};
+    if(live.length&&live[0].plan)return{plan:t22NormalisePlan(live[0].plan),dated:true};
     // A dated row is still the answer we want. But a null date is no longer
     // only the fingerprint of a hand-inserted test row, and treating it as
     // one is what charged a card and then said "Free Trial":
@@ -2597,8 +2631,8 @@ async function readSubscription(userId){
     // readEntitlement uses it only where the alternative is calling a paying
     // customer a trialist. It must still name a plan somebody can actually
     // buy — the checkout.session.completed row names none, and never matches.
-    const undated=data.filter(r=>!r.current_period_end&&T22_PAID.includes(r.plan));
-    if(undated.length)return{plan:undated[0].plan,dated:false};
+    const undated=data.filter(r=>!r.current_period_end&&T22_PAID.includes(t22NormalisePlan(r.plan)));
+    if(undated.length)return{plan:t22NormalisePlan(undated[0].plan),dated:false};
     return null;
   }catch(e){return null;}
 }
@@ -2620,7 +2654,10 @@ async function readEntitlement(){
       if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
       return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
     }
-    const plan=data.title22_plan||'trial';
+    // Folded on the way in: profiles.title22_plan is written by the Worker
+    // (and, for a customer who paid before signing up, by planToStamp reading
+    // subscriptions), so it carries whatever spelling reached it.
+    const plan=t22NormalisePlan(data.title22_plan)||'trial';
 // edu = permanent teaching tier: always entitled, never expires
 if(plan==='edu') return {plan:'edu',entitled:true,daysLeft:null,trialExpired:false,ok:true};
 if(T22_PAID.includes(plan)){
