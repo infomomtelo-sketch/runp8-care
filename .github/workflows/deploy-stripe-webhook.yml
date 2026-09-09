@@ -14,6 +14,25 @@
 # STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY). Those are already set
 # on the Worker and a deploy leaves them alone — see wrangler.toml. Never add
 # them to this file.
+#
+# THE SECRET NAMES THIS FILE READS, in full, verified against the steps below
+# on 2026-09-09. Written out because a secret added under a name nothing reads
+# is invisible: the job does not warn, it just behaves as though the secret is
+# missing, and the person who added it has no way to tell the two apart.
+#
+#   secrets.CLOUDFLARE_API_TOKEN   — the ONLY repository secret read here.
+#                                    Read three times: the emptiness check, the
+#                                    dry-run step, and the deploy step.
+#
+# There is NO second secret. In particular there is no CLOUDFLARE_ACCOUNT_ID
+# secret and nothing here would read one: the account is the plain-text
+# CF_ACCOUNT_ID env var below, for the reason written beside it. A repository
+# secret by that name is harmless and also useless — it can be deleted.
+#
+# A name that is close but not exact — CF_API_TOKEN, CLOUDFLARE_TOKEN,
+# CLOUDFLARE_API_KEY — is the same as no secret at all, and shows up as the
+# "CLOUDFLARE_API_TOKEN is not set" error below rather than as anything about
+# the name that was used.
 name: Deploy stripe-webhook Worker
 
 on:

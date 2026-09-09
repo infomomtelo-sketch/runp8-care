@@ -551,6 +551,29 @@ The workflow can be triggered from a Claude session: the GitHub MCP's
 Cloudflare token and adding the secret cannot be — those authenticate as a
 person — but the deploy itself does not need a human.
 
+### The secret names, in full (verified 2026-09-09)
+
+Read out of the workflow file and written into its header comment, because a
+secret added under a name nothing reads is invisible: the job does not warn
+about it, it behaves exactly as though no secret exists.
+
+- `CLOUDFLARE_API_TOKEN` — the ONLY repository secret the workflow reads. Three
+  reads: the emptiness check, the `deploy --dry-run` step, the `deploy` step.
+- There is NO `CLOUDFLARE_ACCOUNT_ID` secret, and nothing would read one. The
+  account is the plain-text `CF_ACCOUNT_ID` env var
+  (`701117dde6af00d42bac3c4058b660be`), deliberately not a secret. A repository
+  secret of that name is harmless and unused; it can be deleted.
+- A near-miss name (`CF_API_TOKEN`, `CLOUDFLARE_TOKEN`, `CLOUDFLARE_API_KEY`)
+  surfaces as "CLOUDFLARE_API_TOKEN is not set", never as anything naming the
+  spelling that was actually used.
+
+And the secret is not in doubt: run #9 (2026-09-09T18:50Z, `3125a0b`) passed
+its "Check the token is set" step and every step after it, Deploy included. So
+did run #8. `workers/stripe-webhook/` has not changed since `3125a0b`, so the
+Worker running in production IS this repo's build, and the Multi-Home price
+`price_1UDWroAH9qPFLg89kAs9h49C`, `PLAN_ALIASES` and `periodEndOf()` are all
+live. A Multi-Home sale today records as `multi`, NOT as `pro`.
+
 `readEntitlement` still reads `profiles` and must keep reading it — it is the
 only store that carries the trial, the edu tier, and subscribers who predate
 `public.subscriptions`. What changed is that an undated paid subscription now
