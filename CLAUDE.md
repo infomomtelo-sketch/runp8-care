@@ -333,6 +333,25 @@ Existing facilities do NOT pick up new items — seeding runs at onboarding
 only. The backfill query is written out, commented, at the end of
 `migrations/2026-09-07_title22_lic_checklist_items.sql`.
 
+## applyLiteMode runs at LOAD, and both ways
+
+Called from applyRoleUI as before, and once more at the bottom of the script.
+applyRoleUI only runs after a facility is initialised, so the zero-facility
+path — a brand-new account going straight to onboarding — never reached it,
+and the first screen of the first session offered MAR, Medications, Daily log
+and Residents in the menu.
+
+Because it now runs before the entitlement is resolved, and because showMAR is
+a getter rather than a const, every element it touches is set from the flag in
+BOTH directions. Hiding on the way in and returning early on the way out would
+strand a Classroom account's MAR hidden for good: at load showMAR is false, so
+the entries get hidden, and the early return means turning showMAR on later
+never puts them back.
+
+Verified in all three states: load with nothing resolved (hidden, fails
+closed), edu plan standing in the sample facility (restored), and the same
+trainer switching to their own real facility (hidden again).
+
 ## An expired trial is read-only, not locked out
 
 `t22ReadOnly` (index.html). Set only when the entitlement read SUCCEEDED and

@@ -3069,8 +3069,11 @@ function applyRoleUI(){
 // zero-facility path (a brand-new account going straight to onboarding) never
 // reached it: the first screen a new customer saw offered MAR, Medications,
 // Daily log and Residents in the menu, on a product that has none of them.
-// Everything below depends on showMAR, which is a const, and on static markup
-// — so running it early is safe and running it twice is a no-op.
+// showMAR is a getter now, not a const, and at load nothing is resolved yet —
+// t22MarAllowed fails closed, which is the right answer for that moment. It is
+// also why everything below sets display from the flag in BOTH directions
+// rather than only hiding: a Classroom account flips showMAR true later, and
+// an element hidden here has to come back.
 function applyLiteMode(){
   const banner=document.getElementById('lite-banner');
   if(banner)banner.style.display=showMAR?'none':'block';
@@ -3099,14 +3102,28 @@ function applyLiteMode(){
     const msg=resEmpty.querySelector('div:nth-of-type(3)');
     if(msg)msg.textContent='The practice facility seeds its own eight residents. Press "Load sample facility" on the dashboard.';
   }
-  if(showMAR)return;
+  // Both directions, and ABOVE the early return. This function now runs once
+  // at load, before the entitlement is resolved, when showMAR can only be
+  // false — so a Classroom account arriving at its practice facility a moment
+  // later needs these put back, not merely left alone. Hiding on the way in
+  // and returning on the way out would strand them hidden for good.
+  const hidePhi=!showMAR;
   T22_PHI_TABS.forEach(t=>{
-    const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
-    const item=document.getElementById('menu-'+t);if(item)item.style.display='none';
-    const tab=document.getElementById('tab-'+t);if(tab)tab.style.display='none';
+    const nav=document.getElementById('nav-'+t);if(nav)nav.style.display=hidePhi?'none':'';
+    const item=document.getElementById('menu-'+t);if(item)item.style.display=hidePhi?'none':'';
+    // The tab PANEL is only ever hidden here. switchTab owns showing it, and
+    // forcing it visible would put two tabs on screen at once.
+    const tab=document.getElementById('tab-'+t);if(tab&&hidePhi)tab.style.display='none';
   });
   const marCard=document.getElementById('dash-mar-card');
-  if(marCard)marCard.style.display='none';
+  if(marCard)marCard.style.display=hidePhi?'none':'';
+  const addResidentQa=document.getElementById('qa-add-resident');
+  if(addResidentQa)addResidentQa.style.display=hidePhi?'none':'';
+  document.querySelectorAll('#doc-upload-row [data-phi]').forEach(el=>{
+    if(el.tagName==='OPTION'){el.hidden=hidePhi;el.disabled=hidePhi;}
+    else el.style.display=hidePhi?'none':'';
+  });
+  if(showMAR)return;
   // The Documents tab IS shown in Lite, and its upload row was still offering
   // LIC 601, "LIC 602A — Medical Assessment" and ISP, next to a select that
   // asked which resident the file belonged to. Every read around it is gated,
@@ -3120,15 +3137,9 @@ function applyLiteMode(){
   // <option>, and disabled makes it unselectable there anyway. doc-type is
   // then reset off a hidden option so a stale selection cannot ride along on
   // the next upload.
-  document.querySelectorAll('#doc-upload-row [data-phi]').forEach(el=>{
-    if(el.tagName==='OPTION'){el.hidden=true;el.disabled=true;}
-    else el.style.display='none';
-  });
   const docType=document.getElementById('doc-type');
   const picked=docType&&docType.options[docType.selectedIndex];
   if(picked&&picked.dataset.phi)docType.value='other';
-  const addResident=document.getElementById('qa-add-resident');
-  if(addResident)addResident.style.display='none';
   // Tello's tab: the resident suggestion is deleted outright rather than
   // hidden — it is not a question she can answer in any edition that ships.
   const liteNote=document.getElementById('ai-lite-note');
