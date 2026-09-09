@@ -411,6 +411,31 @@ frame from document-start for 3.5s — zero frames with a PHI nav entry, menu
 entry, dashboard MAR card or add-resident button visible. Do not make either
 container visible by default without re-checking this.
 
+### And none of it depends on the script running at all
+
+`<body class="t22-no-phi">` ships in the markup, and CSS hides the four nav
+entries, the four menu entries, the dashboard MAR card and the Add-resident
+action while it is there. `applyLiteMode` only toggles the class.
+
+Because the load-time call was not enough. `applyLiteMode` is defined ~1500
+lines BELOW `supabase.createClient`, and if `/vendor/supabase-js-2.110.5.min.js`
+does not load — a bad deploy, a cache miss, a phone that dropped the request —
+the script throws there and every line after it never runs. What the customer
+is left looking at is the menu as it ships in the HTML: MAR, Medications,
+Daily log, Residents. Reproduced by aborting that one request: before this,
+all ten elements visible; after, none.
+
+`!important` because those elements carry `display` in their own style
+attribute. The class is also why the restore path stopped setting
+`style.display=''` — a menu button ships `display:flex` inline, and clearing
+the property took the flex with it, so a Classroom account got its MAR back
+with the icon and label unaligned. Dropping the class restores each element's
+own display instead of a value guessed in JavaScript.
+
+Verified in four states: vendor bundle aborted (hidden), normal Lite load
+(hidden), edu in the sample facility (restored), edu on their own real
+facility (hidden again).
+
 ## An expired trial is read-only, not locked out
 
 `t22ReadOnly` (index.html). Set only when the entitlement read SUCCEEDED and

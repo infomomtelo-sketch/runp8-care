@@ -69,6 +69,22 @@
   .ic-md{width:1.35rem;height:1.35rem;stroke-width:1.8;vertical-align:-.3rem}
   .feature-icon .ic{width:1.5rem;height:1.5rem;stroke-width:1.8;vertical-align:middle}
   .page{display:none}.page.active{display:block}
+  /* The PHI entries are hidden by CSS, from the markup, with no script needed.
+     applyLiteMode() is defined ~1500 lines BELOW the Supabase client, and the
+     script dies at createClient if /vendor/supabase-js fails to load — a bad
+     deploy, a cache miss, a phone that dropped the request. Every line after
+     that never runs, applyLiteMode included, and the menu that ships in the
+     HTML is what the customer is left looking at: MAR, Medications, Daily log,
+     Residents, on a product that has none of them.
+     !important because these carry display in their own style attribute.
+     applyLiteMode drops the class for a Classroom account, and dropping it
+     restores the markup's own display — no inline juggling, so nothing loses
+     its flex layout on the way back. */
+  body.t22-no-phi #nav-mar,          body.t22-no-phi #menu-mar,
+  body.t22-no-phi #nav-medications,  body.t22-no-phi #menu-medications,
+  body.t22-no-phi #nav-residents,    body.t22-no-phi #menu-residents,
+  body.t22-no-phi #nav-daily,        body.t22-no-phi #menu-daily,
+  body.t22-no-phi #dash-mar-card,    body.t22-no-phi #qa-add-resident{display:none!important}
   nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border);background:var(--white);position:sticky;top:0;z-index:100}
   .logo{font-size:1.2rem;font-weight:600;color:var(--teal);letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
   .logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center}
@@ -342,7 +358,7 @@
 </style>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "2a8582694cd940e189c47986d7068ca6"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
-<body style="visibility:hidden">
+<body class="t22-no-phi" style="visibility:hidden">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
 <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/></symbol>
 <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l4-5 3 3 5-7"/></symbol>
@@ -3161,17 +3177,19 @@ function applyLiteMode(){
   // later needs these put back, not merely left alone. Hiding on the way in
   // and returning on the way out would strand them hidden for good.
   const hidePhi=!showMAR;
-  T22_PHI_TABS.forEach(t=>{
-    const nav=document.getElementById('nav-'+t);if(nav)nav.style.display=hidePhi?'none':'';
-    const item=document.getElementById('menu-'+t);if(item)item.style.display=hidePhi?'none':'';
-    // The tab PANEL is only ever hidden here. switchTab owns showing it, and
-    // forcing it visible would put two tabs on screen at once.
-    const tab=document.getElementById('tab-'+t);if(tab&&hidePhi)tab.style.display='none';
+  // ONE class does the nav entries, the menu entries, the dashboard MAR card
+  // and the Add-resident action — see the CSS. The markup ships with the class
+  // on, so those are hidden before a line of script runs and stay hidden if
+  // none ever does. Removing it restores each element's own display rather
+  // than a value guessed here, which is what setting style.display='' got
+  // wrong: a menu button ships display:flex in its style attribute, and
+  // clearing the property took the flex with it.
+  document.body.classList.toggle('t22-no-phi',hidePhi);
+  // The tab PANEL is only ever hidden here. switchTab owns showing it, and
+  // forcing it visible would put two tabs on screen at once.
+  if(hidePhi)T22_PHI_TABS.forEach(t=>{
+    const tab=document.getElementById('tab-'+t);if(tab)tab.style.display='none';
   });
-  const marCard=document.getElementById('dash-mar-card');
-  if(marCard)marCard.style.display=hidePhi?'none':'';
-  const addResidentQa=document.getElementById('qa-add-resident');
-  if(addResidentQa)addResidentQa.style.display=hidePhi?'none':'';
   document.querySelectorAll('#doc-upload-row [data-phi]').forEach(el=>{
     if(el.tagName==='OPTION'){el.hidden=hidePhi;el.disabled=hidePhi;}
     else el.style.display=hidePhi?'none':'';
