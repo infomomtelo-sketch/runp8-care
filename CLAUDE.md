@@ -144,6 +144,41 @@ T22_LABEL as legacy labels for existing subscribers — do
 not surface them as offers. `STRIPE_MULTI` is the old $79
 Pro payment link under a new name.
 
+Stripe wiring, as of 2026-09-08:
+
+- Lite $29 — `prod_VDBXSXDdmtFrmh`, `price_1UCIAiAH9qPFLg89ln6eHAVa`. Payment
+  Link live, webhook maps the price. Done.
+- Multi-Home $79 — `prod_VDypF9WL2wmjGO`, `price_1UDWroAH9qPFLg89kAs9h49C`,
+  Payment Link `https://buy.stripe.com/9B6fZg5U64gS17lfwag360m`. Wired
+  2026-09-08. `STRIPE_MULTI` was `STRIPE_PRO` until then, so every Multi-Home
+  sale went through the old $79 price and was recorded as `pro` — right money,
+  legacy label, nothing on the new product. NOT verified from here: this
+  environment's egress proxy blocks `buy.stripe.com`, so the link's amount,
+  interval and metadata have never been read back. Confirm in the Stripe
+  dashboard, and confirm the link carries metadata `plan=multi` (or
+  `multi-home` — the webhook folds it) and redirects to
+  `https://title22.app#welcome`.
+- Agency — no price anywhere, and that now includes the code. The billing card
+  is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
+  and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to
+  the $249 Payment Link: nothing called `openStripe('agency')`, so nobody was
+  charged, but the one tier promised to have no price was a single function
+  call from taking $249. `STRIPE_AGENCY` and its `STRIPE_PLANS` entry stay, so
+  historic checkout events still resolve to a name.
+
+Because `STRIPE_MULTI` was literally `STRIPE_PRO`, the two were the same key in
+`STRIPE_PLANS` and one overwrote the other — a Multi-Home checkout recorded
+itself as `pro` in analytics. Both links are distinct now and `STRIPE_PLANS`
+names `lite` and `multi` explicitly.
+
+The plan key is `multi`, never `multi-home`. `TIER_LIMITS`, `T22_PAID` and
+`T22_PLAN_LINKS` are all keyed on `multi`, so writing `multi-home` fails
+`T22_PAID` (reads as unpaid) AND misses `TIER_LIMITS` (drops to
+`{facilities:1, ai:false}` — one facility, no Tello, on an $79 plan). The
+webhook now folds `multi-home`/`multi_home`/`multihome` to `multi` and refuses
+any plan string outside `KNOWN_PLANS` rather than writing it, because
+`planFromSubscription` used to pass Payment Link metadata through verbatim.
+
 Both places must say the same thing, and for two days
 they did not: title-22.com/pricing/ headlined "One plan.
 $29 a month." while the app's billing tab offered Lite,
@@ -153,10 +188,36 @@ row and no figure; the app's Agency card and planPrices
 lost the $249. "No price" means no price in either
 place.
 
+## showMAR is not a constant any more
+
+It is a getter (`t22MarAllowed`). False for every paying tier; true only for a
+Classroom (`edu`) account standing in the sample facility, or while that
+facility is being seeded. Three conditions, fails closed if any is unknown —
+the entitlement read SUCCEEDED, the plan is `edu`, and the open facility IS
+the sample. The facility check is the one that matters: `edu` also grants a
+real facility of its own, and the MAR stays off there.
+
+It is one getter rather than fifty edited call sites because every path that
+asks "is there a MAR here" — the tab list, the fetch guard, the dashboard
+card, the DSS export, Tello's context, the tour — has to answer the same way
+at the same moment. `seedDemoData` is the exception and keys on the plan
+directly, because it runs before the sample facility exists.
+
+The classroom roster is FIXED: eight seeded residents, `t22RosterFixed()`
+refuses add, edit and delete at the function, and the buttons are hidden.
+That is what makes it safe — there is no field to type a real name into.
+Written up in `docs/classroom-practice-mar.md`.
+
+DO NOT run `migrations/2026-09-06_title22_lite_drop_phi.sql`. It revokes the
+grants at the database level and breaks every classroom.
+
 ## PHI line — do not cross
 Lite holds no resident health information at all: no
 resident records, no medications, no MAR, no LIC 601 or
-LIC 602A. Do not add one back without a decision about
+LIC 602A. The one exception is a Classroom account in the
+sample facility — eight invented residents and a practice
+MAR, roster fixed, see the section above. No real
+person's data is in it and none can be added. Do not add one back without a decision about
 the BAA that removing them avoided.
 Staff records (TB, Live Scan, certs) are employment
 records, not PHI, and may use scan.
@@ -317,9 +378,62 @@ What is genuinely open is not a bug, it is a decision:
   sells Multi-Home $79 (index.html, the pricing cards). Pick one.
 - **The $29 path has never run end to end.** The webhook price map and
   welcomeIsPaid were fixed two days apart and never tested together against a
-  real Stripe event.
+  real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
+  below, but neither has met a real Stripe event either — this stays open
+  until one does.
 - **49 test facilities across 32 accounts.** Guarded reset is written and
   dry-run ready: migrations/2026-09-08_title22_reset_test_facilities.sql.
+
+## Why a paid account said "Free Trial" through every refresh (2026-09-08)
+
+Two independent faults, either of which alone is survivable and which together
+charged a card and showed the customer a trial:
+
+1. **`ensureProfile` stamped `title22_plan='trial'` on a paying account.** It
+   only ever asked whether the column was null, and null is exactly what a
+   customer who paid *before* they signed up has: the webhook PATCHes
+   `profiles?id=eq.<uid>`, and a PATCH matching no row returns 200 having
+   written nothing. So the plan never landed, the app stamped 'trial' over it
+   on first login, and stamped it permanently. `planToStamp()` now asks
+   `subscriptions` first and stamps the paid plan (and no trial end date)
+   instead.
+2. **Every row the webhook wrote was undated.** Stripe's 2025-03-31 API
+   version moved `current_period_end` off the subscription object onto its
+   items; the worker read only the root, so `periodEnd` was null on every
+   event from a current API version — and `readSubscription` discarded undated
+   rows by design. `periodEndOf()` in the worker reads the items as a
+   fallback, and `readSubscription` now reports an undated paid row rather
+   than dropping it.
+
+The app-side half heals accounts that are already broken with no redeploy. The
+worker half needs `wrangler deploy` in `workers/stripe-webhook/` to take
+effect, and **has not been deployed** — so does the Multi-Home price added on
+2026-09-08. The running Worker is still the 2026-09-07 build.
+
+Confirmed against Cloudflare 2026-09-08: the Worker `stripe-webhook` exists on
+account `701117dde6af00d42bac3c4058b660be`, workers.dev route enabled, all four
+bindings present (`SUPABASE_URL` is a plain-text var, the other three are
+secrets), and `wrangler deploy` does not touch them. Its last deploy was
+2026-09-07, version `9af47f8e-2b66-4c74-aa17-f890aca4e9ef`, source
+`quick_editor` — the DASHBOARD. Every deploy of this Worker has been a paste;
+none has come from this repo. Do not repeat the claim that it was deployed
+from `stripe-webhook/index.js`.
+
+Deploying no longer needs a machine with wrangler on it: GitHub -> Actions ->
+"Deploy stripe-webhook Worker" -> Run workflow
+(`.github/workflows/deploy-stripe-webhook.yml`). It is manual-only on purpose
+— this Worker is what turns a payment into a paid account, so a deploy should
+not ride along with an unrelated merge. One-time setup is a repository secret
+`CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" token template). The
+Worker's own secrets are untouched by a deploy; never put them in the
+workflow.
+
+`readEntitlement` still reads `profiles` and must keep reading it — it is the
+only store that carries the trial, the edu tier, and subscribers who predate
+`public.subscriptions`. What changed is that an undated paid subscription now
+wins over the word "trial", and only over that word: it does not override edu,
+a paid plan, or a cancelled plan past its period end. 15 branch cases were run
+against the rewritten function, including every one of those.
 
 And two entries that were never real in the first place: "users.paid never
 flips" and "the users table's allow-all RLS policy exposes every customer

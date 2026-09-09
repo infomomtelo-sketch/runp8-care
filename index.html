@@ -7,19 +7,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
-<meta name="description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<meta name="description" content="Title22 Lite — No PHI by design. Keeps your staff certified, your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
 <link rel="canonical" href="https://title22.app/"/>
 <meta name="robots" content="noindex,follow"/>
 <meta property="og:site_name" content="Title22"/>
 <meta property="og:title" content="Title22 — RCFE Compliance App"/>
-<meta property="og:description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities — staff certifications, resident records, medications, and more."/>
+<meta property="og:description" content="Title22 Lite — No PHI by design. Keeps your staff certified, your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
 <meta property="og:url" content="https://title22.app/"/>
 <meta property="og:type" content="website"/>
 <meta property="og:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
 <meta property="og:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="Title22 — RCFE Compliance App"/>
-<meta name="twitter:description" content="Stay inspection-ready every day. Title22 tracks Title 22 compliance for RCFE facilities."/>
+<meta name="twitter:description" content="Title22 Lite — No PHI by design. Staff certifications, training logs and a DSS-ready Title 22 checklist."/>
 <meta name="twitter:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
 <meta name="twitter:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
@@ -769,14 +769,14 @@
 
       <!-- RESIDENTS -->
       <div id="tab-residents" style="display:none">
-        <div class="page-header"><h1>Residents</h1><button class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button></div>
+        <div class="page-header"><h1>Residents</h1><button id="res-add-btn" class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button></div>
         <div id="res-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
           <button type="button" class="stat-filter" id="res-filter-all" aria-pressed="true" onclick="setResidentFilter('all')"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div><div style="font-size:11px;color:var(--text2)">Residents</div></button>
           <button type="button" class="stat-filter" id="res-filter-complete" aria-pressed="false" onclick="setResidentFilter('complete')"><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div><div style="font-size:11px;color:var(--text2)">Docs complete</div></button>
           <button type="button" class="stat-filter" id="res-filter-missing" aria-pressed="false" onclick="setResidentFilter('missing')"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></button>
         </div>
         <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
-        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
+        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button id="res-add-first-btn" class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
       </div>
 
       <!-- INCIDENTS -->
@@ -792,8 +792,8 @@
         <div id="doc-upload-row" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:16px;display:none">
           <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload a document</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601">LIC 601</option><option value="lic602a">LIC 602A — Medical Assessment</option><option value="isp">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
-            <select id="doc-resident" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
+            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601" data-phi="1">LIC 601</option><option value="lic602a" data-phi="1">LIC 602A — Medical Assessment</option><option value="isp" data-phi="1">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
+            <select id="doc-resident" data-phi="1" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
             <select id="doc-staff" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a staff member</option></select>
             <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
             <span id="doc-upload-status" style="font-size:12px;color:var(--text2)"></span>
@@ -1174,13 +1174,23 @@ const STRIPE_STARTER    = 'https://buy.stripe.com/00w6oGdmy28K2bpes6g360f';
 const STRIPE_PRO        = 'https://buy.stripe.com/8x2cN40zM7t49DR3Nsg360g';
 const STRIPE_SPECIALIST = 'https://buy.stripe.com/28E14m1DQ28Kg2f4Rwg360h';
 const STRIPE_AGENCY     = 'https://buy.stripe.com/7sYbJ00zMbJkeYb97Mg360i';
-// Lite pricing. Multi-Home is the existing $79 link, unchanged — same price,
-// new name. Lite is $29 and there is no $29 payment link yet: STRIPE_STARTER
-// charges $49, so pointing the $29 button at it would bill everyone the old
-// price. Create the $29/mo recurring Payment Link in Stripe and paste it
-// here; until then the button says so instead of charging.
+// Lite pricing. These are Payment Link URLs, not price IDs, and that is the
+// whole constraint here: this page has no server, so it cannot create a
+// Checkout Session from a price. A price ID cannot be pasted into either of
+// these — openStripe() opens the URL.
+//
+// Lite: $29, prod_VDBXSXDdmtFrmh, billed by price_1UCIAiAH9qPFLg89ln6eHAVa.
+// The link below is live and correct.
 const STRIPE_LITE       = 'https://buy.stripe.com/4gMcN41DQfZA5nBgAeg360l';
-const STRIPE_MULTI      = STRIPE_PRO;
+// Multi-Home: $79, prod_VDypF9WL2wmjGO, billed by
+// price_1UDWroAH9qPFLg89kAs9h49C. Its own Payment Link at last — this was
+// STRIPE_PRO until 2026-09-08, so every Multi-Home sale went through the old
+// $79 price and the webhook recorded it as 'pro': the right money under the
+// legacy label, and nothing at all on the new product.
+//
+// STRIPE_PRO stays defined below for the legacy subscribers still on it. It is
+// no longer what this button opens.
+const STRIPE_MULTI      = 'https://buy.stripe.com/9B6fZg5U64gS17lfwag360m';
 // Paste this into each Payment Link's "After payment" setting in the Stripe
 // dashboard (Don't show confirmation page -> Redirect to):
 //     https://title22.app#welcome
@@ -1210,7 +1220,70 @@ const GEO_WORKER = 'https://title22-geo.infomomtelo.workers.dev/api/address';
 // Flip showMAR back to true and every one of those paths returns; nothing is
 // deleted from this file. Deleting the DATA is a separate, deliberate step —
 // migrations/2026-09-06_title22_lite_drop_phi.sql.
-const showMAR = false;
+//
+// ===== showMAR IS NO LONGER A CONSTANT =====
+//
+// It is false for the product. It is true in exactly one place: a Classroom
+// (`edu`) account, standing in the sample facility. See
+// docs/classroom-practice-mar.md for why — medication administration is the
+// subject RCFE training is about, and the eight residents in the practice
+// facility are invented, so no BAA question arises.
+//
+// It is a getter rather than fifty edited call sites on purpose. Every path
+// that asks "is there a MAR here" — the tab list, the fetch guard, the
+// dashboard card, the DSS export, Tello's context, the tour — already asks
+// this one question, and they must all answer it the same way at the same
+// moment. Splitting it into a product flag and a classroom flag is how they
+// drift.
+//
+// THREE conditions, and it fails closed if any is unknown:
+//
+//   1. the entitlement read SUCCEEDED — not "we could not check"
+//   2. the plan is `edu`
+//   3. the open facility IS the sample, or the sample is being seeded
+//
+// Condition 3 is the one that matters. `edu` grants one real facility of its
+// own and the sample does not count against that cap, so a trainer has both.
+// Without the facility check this is just the MAR switched back on, and a
+// trainer could record a real resident against a real home.
+//
+// Read per call, never cached: it has to go false again the moment someone
+// switches from the sample to their own facility.
+const T22_MAR_PRODUCT = false;   // the product answer, for every paying tier
+let t22SeedingSample = false;    // true only inside the sample seeder
+
+function t22MarAllowed(){
+  if(T22_MAR_PRODUCT)return true;
+  // try/catch because everything below is declared ~1200 lines further down.
+  // Reading a `let` before its declaration runs is a ReferenceError, not
+  // undefined, and this getter is reachable from t22Fetch the moment the
+  // Supabase client is built. Any such read means the account is not resolved
+  // yet, and the answer to that is false.
+  try{
+    // t22EntitlementVerified is false when the read failed — "trial ended"
+    // and "we could not check" are different facts, and only the first is one.
+    if(!t22EntitlementVerified)return false;
+    if(t22Plan!=='edu')return false;
+    // The seeder is building the sample facility, so currentFacility is not
+    // it yet. Scoped to the seeder's own try/finally, never left on.
+    return t22SeedingSample||isSampleFacility(currentFacility);
+  }catch(e){return false;}
+}
+
+// Defined on window so the ~50 existing `showMAR` reads keep working
+// unchanged and cannot fall out of step with the rule above.
+Object.defineProperty(window,'showMAR',{get:t22MarAllowed,configurable:true});
+
+// The classroom roster is FIXED: the eight seeded residents, and nobody adds
+// a ninth. It is the whole reason this is safe to ship — there is no field to
+// type a real person's name into, so the practice facility cannot quietly
+// become a real one. Viewing a resident and their documents still works;
+// that is the lesson.
+//
+// True whenever the MAR is on WITHOUT the product being on, which is exactly
+// the classroom case. A real showMAR build admits residents normally.
+function t22RosterFixed(){return !T22_MAR_PRODUCT;}
+const T22_ROSTER_FIXED_MSG='The practice roster is fixed — these eight residents are the lesson. Nobody real goes in here.';
 
 // PostgREST tables holding resident health information, blocked in the
 // Supabase client's own fetch rather than at each call site, so a query added
@@ -1252,7 +1325,18 @@ const T22_LITE_BLOCKED_MSG = 'MAR removed in Lite — facility compliance only';
 //
 // So names are handled by the note on the form, not by a regex. That is a
 // weaker control and worth saying plainly: "No PHI" is enforced in the schema
-// — there is nowhere to put a resident record — and asked for in free text.
+// — for every paying tier there is nowhere to put a resident record — and
+// asked for in free text.
+//
+// One exception, and it is stated rather than buried: a Classroom (`edu`)
+// account standing in the sample facility DOES have residents, medications
+// and a MAR. Eight of them, invented, seeded by the product, and the roster is
+// fixed so a ninth cannot be added. No real person's health information is in
+// there and none can be put there. See t22MarAllowed() and
+// docs/classroom-practice-mar.md.
+//
+// This scan stays on for that account too. A student typing a real name into
+// an incident narrative is the same problem it has always been.
 
 const T22_PHI_RULES = [
   {kind:'a Social Security number', re:/\b\d{3}-\d{2}-\d{4}\b/},
@@ -1315,6 +1399,11 @@ const T22_READONLY_WRITE_OK = ['events'];
 
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
+  [STRIPE_LITE]:'lite',
+  // Only correct since Multi-Home got its own link. While STRIPE_MULTI was
+  // STRIPE_PRO these two were the same key, so one silently overwrote the
+  // other and a Multi-Home checkout recorded itself as 'pro'.
+  [STRIPE_MULTI]:'multi',
   [STRIPE_STARTER]:'starter',
   [STRIPE_PRO]:'pro',
   [STRIPE_SPECIALIST]:'specialist',
@@ -1329,8 +1418,18 @@ const T22_PLAN_LINKS = {
   lite:STRIPE_LITE,
   multi:STRIPE_MULTI,
   starter:STRIPE_STARTER,
-  pro:STRIPE_PRO,
-  agency:STRIPE_AGENCY
+  pro:STRIPE_PRO
+  // agency is deliberately absent. Agency is Contact Sales and carries no
+  // price, and it stopped carrying one everywhere else — the billing card is
+  // a mailto, planPrices says "Contact Sales", the site shows no figure — but
+  // the $249 Payment Link was still sitting in this map. Nothing calls
+  // openStripe('agency') today, so it charged nobody; it just meant the one
+  // tier we promise has no price was a single function call from taking $249.
+  // Without an entry here openStripe falls through to its "not set up yet,
+  // email us" toast, which is what Contact Sales means anyway.
+  //
+  // STRIPE_AGENCY itself stays defined, and stays in STRIPE_PLANS, so a
+  // historic checkout_started event still resolves to a plan name.
 };
 // Map page titles to instructional video files. Only pages with videos show
 // help links — and only pages that still exist.
@@ -1787,6 +1886,22 @@ async function stampTrialIfMissing(userId,trialEnds){
   if(pe){t22TrialActivationError=pe.message;console.error('Trial activation failed:',pe.message);}
 }
 
+// What plan to stamp on a profile that has never carried one. Normally
+// 'trial'. But a profile with no plan is exactly what a customer who bought
+// before they signed up has — the webhook PATCHes profiles by id, and a PATCH
+// that matches no row succeeds while writing nothing — so "no plan yet" and
+// "has paid" are not mutually exclusive, and stamping 'trial' over the second
+// one is how a paying account came to say Free Trial and keep saying it
+// through every refresh. Ask the store the money lands in before writing.
+//
+// Null on any doubt: the caller then stamps 'trial' exactly as it always did.
+async function planToStamp(userId){
+  try{
+    const sub=await readSubscription(userId);
+    return(sub&&sub.plan&&T22_PAID.includes(sub.plan))?sub.plan:null;
+  }catch(e){return null;}
+}
+
 async function ensureProfile(user){
   // Title22 only touches title22_* entitlement columns on profiles. The shared
   // columns (plan, stripe_subscription_id, plan_expires_at, trial_ends_at,
@@ -1812,13 +1927,16 @@ async function ensureProfile(user){
       isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
       const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
-      const{error:insErr}=await sb.from('profiles').upsert({id:user.id,title22_plan:'trial',title22_trial_ends_at:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
+      // A paid plan carries no trial end date — they never had a trial, and
+      // stamping one would hand them an expiry they have already paid past.
+      const paid=await planToStamp(user.id);
+      const{error:insErr}=await sb.from('profiles').upsert({id:user.id,title22_plan:paid||'trial',title22_trial_ends_at:paid?null:trialEnds,created_at:new Date().toISOString(),referred_by:referredBy},{onConflict:'id',ignoreDuplicates:true});
       // Not just console.error. If this write fails the trial is never stamped,
       // resolveEntitlement finds no plan, and the new customer is shown "your
       // trial has expired" on their first minute. Record it so the banner can
       // tell the truth instead.
       if(insErr){t22TrialActivationError=insErr.message;console.error('Trial activation failed:',insErr.message);}
-      else await stampTrialIfMissing(user.id,trialEnds);
+      else if(!paid)await stampTrialIfMissing(user.id,trialEnds);
     }
     isPartnerAdmin=!!(data&&data.title22_is_partner_admin);
     if(data&&(!data.created_at||!data.title22_plan||!data.title22_trial_ends_at)){
@@ -1826,7 +1944,8 @@ async function ensureProfile(user){
       isNewProfile=!data.title22_plan;
       const patch={};
       if(!data.created_at)patch.created_at=new Date().toISOString();
-      if(!data.title22_plan)patch.title22_plan='trial';
+      const paid=(!data.title22_plan||!data.title22_trial_ends_at)?await planToStamp(user.id):null;
+      if(!data.title22_plan)patch.title22_plan=paid||'trial';
       // Starts from now, not from the row's created_at. This profiles table is
       // shared with the other apps on this Supabase project, so a person can
       // have had a row for months before they ever opened Title22 — and dating
@@ -1837,9 +1956,16 @@ async function ensureProfile(user){
       // This branch only runs when title22_trial_ends_at is null, which means
       // no Title22 trial has ever been recorded for them, so today really is
       // day one however old the row is.
-      if(!data.title22_trial_ends_at)patch.title22_trial_ends_at=new Date(Date.now()+trialDays*86400000).toISOString();
-      const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
-      if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
+      // Same reason as above: do not date a trial that a paying customer is
+      // not on. Left null, readEntitlement reads the paid plan and stops.
+      if(!data.title22_trial_ends_at&&!paid)patch.title22_trial_ends_at=new Date(Date.now()+trialDays*86400000).toISOString();
+      // Can now be empty — a paid account with a plan already on it and no
+      // trial date is missing nothing we are willing to write — and an empty
+      // PATCH is a 400, not a no-op.
+      if(Object.keys(patch).length){
+        const{error}=await sb.from('profiles').update(patch).eq('id',user.id);
+        if(error){t22TrialActivationError=error.message;console.error('Trial activation failed:',error.message);}
+      }
     }
   }catch(e){console.log('Profile check:',e.message);}
   const navPartners=document.getElementById('nav-partners');
@@ -2420,8 +2546,10 @@ async function resolveEntitlement(){
 // A failure here is NOT fail-closed. The read is additive: if the table is
 // missing, unreachable, or refused by RLS, the profiles read below still
 // decides, exactly as it did before. Only losing BOTH locks anyone out.
-async function readSubscription(){
+async function readSubscription(userId){
   try{
+    const uid=userId||currentUser?.id;
+    if(!uid)return null;
     // Two things this query has to get right, both learned the hard way:
     //
     // 1. status is filtered HERE, not after. Taking the newest row and then
@@ -2432,7 +2560,7 @@ async function readSubscription(){
     //    outranked the real subscription and became the plan on the badge.
     const{data,error}=await sb.from('subscriptions')
       .select('plan,status,current_period_end')
-      .eq('user_id',currentUser.id)
+      .eq('user_id',uid)
       .eq('status','active')
       .order('current_period_end',{ascending:false,nullsFirst:false})
       .limit(10);
@@ -2441,19 +2569,37 @@ async function readSubscription(){
     // used to count as "open-ended, entitled" — which is what put Pro on an
     // account that had never been on Pro.
     //
-    // The reason is that nothing maintains this table. The Stripe webhook
-    // writes profiles.title22_*, not here (workers/README.md), so these rows
-    // are frozen at whatever wrote them: one of them still says 'active' on a
-    // period that ended six weeks ago. A null date here means unverifiable,
-    // not forever, and profiles — which the webhook does keep current —
-    // decides instead.
+    // That was written when nothing maintained this table: the old webhook
+    // wrote profiles.title22_* and never came here, so these rows were frozen
+    // at whatever wrote them, and one of them still says 'active' on a period
+    // that ended six weeks ago. The deployed webhook does keep this table
+    // current now (workers/stripe-webhook/), so a dated row is trustworthy —
+    // but the stale rows are still in there, which is why an undated one is
+    // handled below rather than simply believed.
     const live=data.filter(r=>{
       if(!r.current_period_end)return false;
       const ends=new Date(r.current_period_end).getTime();
       return Number.isFinite(ends)&&Date.now()<ends;
     });
-    if(!live.length)return null;
-    return live[0].plan||null;
+    if(live.length&&live[0].plan)return{plan:live[0].plan,dated:true};
+    // A dated row is still the answer we want. But a null date is no longer
+    // only the fingerprint of a hand-inserted test row, and treating it as
+    // one is what charged a card and then said "Free Trial":
+    //
+    //  - checkout.session.completed writes the row before the plan is known,
+    //    so there is a window where it carries status active and no date; and
+    //  - Stripe moved current_period_end off the subscription root onto its
+    //    items in the 2025-03-31 API version, so the webhook's read of
+    //    obj.current_period_end comes back undefined on every event sent by a
+    //    newer version. The row is then permanently undated, not briefly.
+    //
+    // So an undated row is reported separately rather than discarded, and
+    // readEntitlement uses it only where the alternative is calling a paying
+    // customer a trialist. It must still name a plan somebody can actually
+    // buy — the checkout.session.completed row names none, and never matches.
+    const undated=data.filter(r=>!r.current_period_end&&T22_PAID.includes(r.plan));
+    if(undated.length)return{plan:undated[0].plan,dated:false};
+    return null;
   }catch(e){return null;}
 }
 
@@ -2461,12 +2607,19 @@ async function readEntitlement(){
   // Single source of truth for access. Fail CLOSED: any read error or missing
   // row => NOT entitled. Never falls through to full access on failure.
   try{
-    const subPlan=await readSubscription();
-    if(subPlan)return{plan:subPlan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    const sub=await readSubscription();
+    if(sub&&sub.dated)return{plan:sub.plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    // Held back for the trial branches below. An undated paid subscription
+    // does not outrank anything profiles has to say about a paid or edu plan
+    // — it is only ever used instead of the word "trial".
+    const paidUndated=(sub&&!sub.dated)?sub.plan:null;
     const{data,error}=await sb.from('profiles')
       .select('title22_plan,title22_trial_ends_at,title22_subscription_id,title22_plan_expires_at')
       .eq('id',currentUser.id).maybeSingle();
-    if(error||!data)return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
+    if(error||!data){
+      if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
+      return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
+    }
     const plan=data.title22_plan||'trial';
 // edu = permanent teaching tier: always entitled, never expires
 if(plan==='edu') return {plan:'edu',entitled:true,daysLeft:null,trialExpired:false,ok:true};
@@ -2479,6 +2632,13 @@ if(T22_PAID.includes(plan)){
         return{plan,entitled:false,daysLeft:0,trialExpired:false,ok:true};
       return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     }
+    // Everything below this line is about a trial, so this is where an
+    // undated paid subscription gets its say. Someone who bought Lite without
+    // ever trialling has profiles.title22_plan='trial' stamped on them by
+    // ensureProfile and an undated row in subscriptions — the whole of the
+    // "I paid and it still says Free Trial" bug, and it survived a refresh
+    // because both halves are written to permanently.
+    if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
     if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
     const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
@@ -2925,6 +3085,20 @@ function applyLiteMode(){
   document.querySelectorAll('.role-card-desc[data-full]').forEach(el=>{
     if(showMAR)el.textContent=el.dataset.full;
   });
+  // Above the early return, like the role cards: a Classroom account HAS the
+  // residents tab, so this is the one case where showMAR is true and these
+  // buttons still must not be there. openResidentModal refuses anyway; this
+  // is so nobody is offered a button that only says no.
+  const rosterFixed=t22RosterFixed();
+  ['res-add-btn','res-add-first-btn'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=rosterFixed?'none':'';
+  });
+  const resEmpty=document.getElementById('residents-empty');
+  if(resEmpty&&rosterFixed){
+    const msg=resEmpty.querySelector('div:nth-of-type(3)');
+    if(msg)msg.textContent='The practice facility seeds its own eight residents. Press "Load sample facility" on the dashboard.';
+  }
   if(showMAR)return;
   T22_PHI_TABS.forEach(t=>{
     const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
@@ -2933,6 +3107,26 @@ function applyLiteMode(){
   });
   const marCard=document.getElementById('dash-mar-card');
   if(marCard)marCard.style.display='none';
+  // The Documents tab IS shown in Lite, and its upload row was still offering
+  // LIC 601, "LIC 602A — Medical Assessment" and ISP, next to a select that
+  // asked which resident the file belonged to. Every read around it is gated,
+  // so the file would have been stored and then filtered back out of the list
+  // — but the form asked for it, which is the part that matters: a product
+  // that says it holds no resident health information must not hand someone a
+  // menu for filing some. Hidden, never deleted: the markup still ships every
+  // option, so a showMAR build reaches this function's early return and the
+  // full set is exactly as it was.
+  // Options are hidden AND disabled: Safari ignores display:none on an
+  // <option>, and disabled makes it unselectable there anyway. doc-type is
+  // then reset off a hidden option so a stale selection cannot ride along on
+  // the next upload.
+  document.querySelectorAll('#doc-upload-row [data-phi]').forEach(el=>{
+    if(el.tagName==='OPTION'){el.hidden=true;el.disabled=true;}
+    else el.style.display='none';
+  });
+  const docType=document.getElementById('doc-type');
+  const picked=docType&&docType.options[docType.selectedIndex];
+  if(picked&&picked.dataset.phi)docType.value='other';
   const addResident=document.getElementById('qa-add-resident');
   if(addResident)addResident.style.display='none';
   // Tello's tab: the resident suggestion is deleted outright rather than
@@ -3004,7 +3198,12 @@ function applyTierUI(){
     const b=document.getElementById('team-prompt-body');
     const c=document.getElementById('team-prompt-cta');
     if(t)t.innerHTML='<svg class="ic"><use href="#i-users"/></svg> Bring your class in';
-    if(b)b.textContent='Invite your students so each one logs MAR entries and incidents under their own name. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
+    // Lite has no MAR, so a trainer told to demo one is being set up to fail
+    // in front of a class. The full wording waits behind showMAR.
+    if(b)b.textContent=(showMAR
+      ?'Invite your students so each one logs MAR entries and incidents under their own name. '
+      :'Invite your students so each one logs incidents and works the compliance checklist under their own name. ')+
+      'Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
     if(c)c.textContent='Invite your students';
   }
 }
@@ -3692,6 +3891,9 @@ function renderResidents(){
 }
 
 function openResidentModal(resId){
+  // Add and edit both. Blocked at the function rather than by hiding buttons,
+  // because goAddResident() and editCurrentResident() reach it by other doors.
+  if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   if(!canEdit()){alert('You do not have permission to edit residents.');return;}
   currentResidentId=resId||null;
   const r=resId?residents.find(x=>x.id===resId):null;
@@ -3722,6 +3924,7 @@ function closeResidentModal(){
   clearRecordDocs();
 }
 async function saveResident(){
+  if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   const name=document.getElementById('res-name').value.trim();
   const err=document.getElementById('res-modal-error');
   if(!name){err.textContent='Name is required.';err.classList.add('show');return;}
@@ -3791,6 +3994,7 @@ function editCurrentResident(){closeResidentDetail();openResidentModal(currentRe
 async function deleteCurrentResident(){
   if(!currentResidentId)return;
   const r=residents.find(x=>x.id===currentResidentId);
+  if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   if(!confirm(`Delete "${r?.name||'this resident'}"?`))return;
   await sb.from('residents').delete().eq('id',currentResidentId);
   residents=residents.filter(x=>x.id!==currentResidentId);
@@ -4497,9 +4701,16 @@ let seedDemoRunning=false;
 
 async function seedDemoData(){
   // Two sample facilities, one button. The resident-shaped one below is what
-  // the full product loads; Lite has its own, further down, because a class
-  // cannot be taught on records the product does not hold.
-  if(!showMAR)return seedLiteDemoData();
+  // a Classroom account loads; every paying tier gets the Lite one further
+  // down, because a class cannot be taught on records the product does not
+  // hold — and a customer must not be handed records it does.
+  //
+  // Keyed on the PLAN, not on showMAR. showMAR also asks whether the sample
+  // facility is open, and at this moment it does not exist yet — this is the
+  // button that creates it. t22SeedingSample below is what lets the inserts
+  // through t22Fetch while it is being built.
+  const forClassroom=!T22_MAR_PRODUCT&&t22EntitlementVerified&&t22Plan==='edu';
+  if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData();
   if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
@@ -4531,6 +4742,12 @@ async function seedDemoData(){
   const btns=[...document.querySelectorAll('[data-seed-demo]')];
   btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
   seedDemoRunning=true;
+  // Opens the MAR tables to t22Fetch for the length of this seed only. The
+  // facility being written does not exist yet, so the isSampleFacility test
+  // in t22MarAllowed() cannot pass on its own. Cleared in the finally below,
+  // including on the throw path — leaving it set would unlock the MAR against
+  // whatever facility the trainer opens next.
+  t22SeedingSample=forClassroom;
   // Named so a failure says which insert stopped it. "Demo data failed:
   // <postgres error>" on its own does not say whether it was the residents,
   // the 300 MAR rows, or the compliance tasks.
@@ -4640,6 +4857,7 @@ async function seedDemoData(){
   }
   finally{
     seedDemoRunning=false;
+    t22SeedingSample=false;
     btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
   }
 }
@@ -6534,7 +6752,12 @@ async function loadBilling(){
     const ent=await resolveEntitlement();
     const plan=ent.plan;
     const planLabels=T22_LABEL;
-    const planPrices={trial:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
+    // Display only, keyed on the plan the account is ALREADY on — never an
+    // offer. The only tiers offered are the three cards in the billing tab
+    // (Lite, Multi-Home, Agency as Contact Sales). $49 and $149 stay because
+    // legacy starter and specialist subscribers still pay them, and blanking
+    // the figure would show a paying customer a plan with no price on it.
+    const planPrices={trial:'$0',edu:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
     let trialHtml='';
     if(plan==='trial'){
       const daysLeft=ent.daysLeft;

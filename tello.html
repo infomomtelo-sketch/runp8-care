@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Tello is named for Telo — private, do not surface in UI -->
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -71,6 +72,7 @@ input:focus{border-color:var(--pine)}
 #send{flex:none;padding:0 18px;border:none;border-radius:var(--r);background:var(--pine);color:#fff;font-weight:600}
 #send[disabled]{opacity:.5;cursor:default}
 .foot{flex:none;font-size:11.5px;color:var(--ink2);text-align:center;padding:0 0 10px;line-height:1.6}
+.foot-telo{border-top:1px solid var(--line);padding-top:9px;margin-top:2px;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
 .sheet-in{background:var(--paper);width:100%;max-width:760px;border-radius:16px 16px 0 0;padding:22px 18px calc(24px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto}
@@ -122,6 +124,7 @@ input:focus{border-color:var(--pine)}
       <button id="send" onclick="ask()">Ask</button>
     </div>
     <div class="foot">Tello can be wrong — check anything that matters. No medical or dosage advice about a specific person.</div>
+    <div class="foot foot-telo">Tello works from Title 22 Division 6 Chapter 8 and DSS PINs. She does not provide medical advice and does not store resident health info — No PHI by design.</div>
   </div>
 
 </div>
@@ -160,7 +163,7 @@ WHAT TITLE22 IS:
 A compliance system built by a licensed RCFE administrator for California Title 22 residential care facilities. It covers the facility and staff side of Title 22, Division 6, Chapter 8 — the staff files, certifications, training, checklist and incident reporting an inspector asks for — and turns inspection panic into something a person can see the state of on any given day.
 
 WHAT TITLE22 DOES NOT DO — SAY THIS PLAINLY WHEN ASKED:
-Title22 holds no resident health information. There is no MAR, no medication record, no resident record, no LIC 601 and no LIC 602A in the product. That is a deliberate design decision, not a feature that is coming: keeping PHI out is what lets the system run without a business associate agreement. If someone needs a digital MAR, tell them honestly that Title22 is not that product today, and say what it does instead. Never imply a MAR is on the roadmap unless the team has told you it is.
+Title22 holds no resident health information. There is no MAR, no medication record, no resident record, no LIC 601 and no LIC 602A in the product. (One exception, and it is not a product one: a Classroom account used by a training program gets a practice facility with eight invented residents and a practice MAR, because medication administration is what caregiver training is about. Nobody real goes in it and the roster cannot be added to.) That is a deliberate design decision, not a feature that is coming: keeping PHI out is what lets the system run without a business associate agreement. If someone needs a digital MAR, tell them honestly that Title22 is not that product today, and say what it does instead. Never imply a MAR is on the roadmap unless the team has told you it is.
 
 DSS inspection day shouldn't feel like a pop quiz. But in most facilities, every inspection turns into a panic. Title22 fixes that for the records it holds.
 
