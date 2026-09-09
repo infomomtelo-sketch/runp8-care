@@ -1,7 +1,9 @@
 # Classroom practice MAR — spec
 
-Status: **proposed, not built.** Written 2026-09-09 after "the MAR is the most
-important to learning".
+Status: **BUILT 2026-09-09.** Written earlier the same day after "the MAR is
+the most important to learning", then implemented. What follows is the design
+as shipped; the three decisions at the bottom were answered — Tello sees the
+practice roster, students cannot admit a resident, incidents stay unlinked.
 
 ## Why
 
@@ -116,7 +118,11 @@ That is still true and still strong, but it is a longer sentence, and
 `CLAUDE.md`, `privacy.html`, `tello.html` and the marketing copy all have to
 carry the longer version. Nobody should discover this by reading the code.
 
-## Work items
+## Work items — all done
+
+Items 6, 7 and 8 needed no code: the tour stops, the Classroom team-access
+copy and `buildFacilityContext` were all already written as
+`showMAR ? ... : ...`, so making `showMAR` scope-aware carried them.
 
 | # | Change | Where |
 |---|---|---|

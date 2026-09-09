@@ -769,14 +769,14 @@
 
       <!-- RESIDENTS -->
       <div id="tab-residents" style="display:none">
-        <div class="page-header"><h1>Residents</h1><button class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button></div>
+        <div class="page-header"><h1>Residents</h1><button id="res-add-btn" class="btn btn-primary" style="font-size:13px" onclick="openResidentModal()">+ Add resident</button></div>
         <div id="res-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
           <button type="button" class="stat-filter" id="res-filter-all" aria-pressed="true" onclick="setResidentFilter('all')"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="res-count">0</div><div style="font-size:11px;color:var(--text2)">Residents</div></button>
           <button type="button" class="stat-filter" id="res-filter-complete" aria-pressed="false" onclick="setResidentFilter('complete')"><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="res-docs-ok">0</div><div style="font-size:11px;color:var(--text2)">Docs complete</div></button>
           <button type="button" class="stat-filter" id="res-filter-missing" aria-pressed="false" onclick="setResidentFilter('missing')"><div style="font-size:1.4rem;font-weight:700;color:var(--red)" id="res-docs-missing">0</div><div style="font-size:11px;color:var(--text2)">Docs missing</div></button>
         </div>
         <div id="residents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
-        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
+        <div id="residents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2.5rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-home"/></svg></div><div style="font-weight:600;margin-bottom:6px">No residents yet</div><div style="margin-bottom:20px">Add residents to track LIC 601/602A, ISPs, and care records</div><button id="res-add-first-btn" class="btn btn-primary" onclick="openResidentModal()">+ Add first resident</button></div>
       </div>
 
       <!-- INCIDENTS -->
@@ -1220,7 +1220,70 @@ const GEO_WORKER = 'https://title22-geo.infomomtelo.workers.dev/api/address';
 // Flip showMAR back to true and every one of those paths returns; nothing is
 // deleted from this file. Deleting the DATA is a separate, deliberate step —
 // migrations/2026-09-06_title22_lite_drop_phi.sql.
-const showMAR = false;
+//
+// ===== showMAR IS NO LONGER A CONSTANT =====
+//
+// It is false for the product. It is true in exactly one place: a Classroom
+// (`edu`) account, standing in the sample facility. See
+// docs/classroom-practice-mar.md for why — medication administration is the
+// subject RCFE training is about, and the eight residents in the practice
+// facility are invented, so no BAA question arises.
+//
+// It is a getter rather than fifty edited call sites on purpose. Every path
+// that asks "is there a MAR here" — the tab list, the fetch guard, the
+// dashboard card, the DSS export, Tello's context, the tour — already asks
+// this one question, and they must all answer it the same way at the same
+// moment. Splitting it into a product flag and a classroom flag is how they
+// drift.
+//
+// THREE conditions, and it fails closed if any is unknown:
+//
+//   1. the entitlement read SUCCEEDED — not "we could not check"
+//   2. the plan is `edu`
+//   3. the open facility IS the sample, or the sample is being seeded
+//
+// Condition 3 is the one that matters. `edu` grants one real facility of its
+// own and the sample does not count against that cap, so a trainer has both.
+// Without the facility check this is just the MAR switched back on, and a
+// trainer could record a real resident against a real home.
+//
+// Read per call, never cached: it has to go false again the moment someone
+// switches from the sample to their own facility.
+const T22_MAR_PRODUCT = false;   // the product answer, for every paying tier
+let t22SeedingSample = false;    // true only inside the sample seeder
+
+function t22MarAllowed(){
+  if(T22_MAR_PRODUCT)return true;
+  // try/catch because everything below is declared ~1200 lines further down.
+  // Reading a `let` before its declaration runs is a ReferenceError, not
+  // undefined, and this getter is reachable from t22Fetch the moment the
+  // Supabase client is built. Any such read means the account is not resolved
+  // yet, and the answer to that is false.
+  try{
+    // t22EntitlementVerified is false when the read failed — "trial ended"
+    // and "we could not check" are different facts, and only the first is one.
+    if(!t22EntitlementVerified)return false;
+    if(t22Plan!=='edu')return false;
+    // The seeder is building the sample facility, so currentFacility is not
+    // it yet. Scoped to the seeder's own try/finally, never left on.
+    return t22SeedingSample||isSampleFacility(currentFacility);
+  }catch(e){return false;}
+}
+
+// Defined on window so the ~50 existing `showMAR` reads keep working
+// unchanged and cannot fall out of step with the rule above.
+Object.defineProperty(window,'showMAR',{get:t22MarAllowed,configurable:true});
+
+// The classroom roster is FIXED: the eight seeded residents, and nobody adds
+// a ninth. It is the whole reason this is safe to ship — there is no field to
+// type a real person's name into, so the practice facility cannot quietly
+// become a real one. Viewing a resident and their documents still works;
+// that is the lesson.
+//
+// True whenever the MAR is on WITHOUT the product being on, which is exactly
+// the classroom case. A real showMAR build admits residents normally.
+function t22RosterFixed(){return !T22_MAR_PRODUCT;}
+const T22_ROSTER_FIXED_MSG='The practice roster is fixed — these eight residents are the lesson. Nobody real goes in here.';
 
 // PostgREST tables holding resident health information, blocked in the
 // Supabase client's own fetch rather than at each call site, so a query added
@@ -1262,7 +1325,18 @@ const T22_LITE_BLOCKED_MSG = 'MAR removed in Lite — facility compliance only';
 //
 // So names are handled by the note on the form, not by a regex. That is a
 // weaker control and worth saying plainly: "No PHI" is enforced in the schema
-// — there is nowhere to put a resident record — and asked for in free text.
+// — for every paying tier there is nowhere to put a resident record — and
+// asked for in free text.
+//
+// One exception, and it is stated rather than buried: a Classroom (`edu`)
+// account standing in the sample facility DOES have residents, medications
+// and a MAR. Eight of them, invented, seeded by the product, and the roster is
+// fixed so a ninth cannot be added. No real person's health information is in
+// there and none can be put there. See t22MarAllowed() and
+// docs/classroom-practice-mar.md.
+//
+// This scan stays on for that account too. A student typing a real name into
+// an incident narrative is the same problem it has always been.
 
 const T22_PHI_RULES = [
   {kind:'a Social Security number', re:/\b\d{3}-\d{2}-\d{4}\b/},
@@ -3004,6 +3078,20 @@ function applyLiteMode(){
   document.querySelectorAll('.role-card-desc[data-full]').forEach(el=>{
     if(showMAR)el.textContent=el.dataset.full;
   });
+  // Above the early return, like the role cards: a Classroom account HAS the
+  // residents tab, so this is the one case where showMAR is true and these
+  // buttons still must not be there. openResidentModal refuses anyway; this
+  // is so nobody is offered a button that only says no.
+  const rosterFixed=t22RosterFixed();
+  ['res-add-btn','res-add-first-btn'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=rosterFixed?'none':'';
+  });
+  const resEmpty=document.getElementById('residents-empty');
+  if(resEmpty&&rosterFixed){
+    const msg=resEmpty.querySelector('div:nth-of-type(3)');
+    if(msg)msg.textContent='The practice facility seeds its own eight residents. Press "Load sample facility" on the dashboard.';
+  }
   if(showMAR)return;
   T22_PHI_TABS.forEach(t=>{
     const nav=document.getElementById('nav-'+t);if(nav)nav.style.display='none';
@@ -3796,6 +3884,9 @@ function renderResidents(){
 }
 
 function openResidentModal(resId){
+  // Add and edit both. Blocked at the function rather than by hiding buttons,
+  // because goAddResident() and editCurrentResident() reach it by other doors.
+  if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   if(!canEdit()){alert('You do not have permission to edit residents.');return;}
   currentResidentId=resId||null;
   const r=resId?residents.find(x=>x.id===resId):null;
@@ -3826,6 +3917,7 @@ function closeResidentModal(){
   clearRecordDocs();
 }
 async function saveResident(){
+  if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   const name=document.getElementById('res-name').value.trim();
   const err=document.getElementById('res-modal-error');
   if(!name){err.textContent='Name is required.';err.classList.add('show');return;}
@@ -3895,6 +3987,7 @@ function editCurrentResident(){closeResidentDetail();openResidentModal(currentRe
 async function deleteCurrentResident(){
   if(!currentResidentId)return;
   const r=residents.find(x=>x.id===currentResidentId);
+  if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   if(!confirm(`Delete "${r?.name||'this resident'}"?`))return;
   await sb.from('residents').delete().eq('id',currentResidentId);
   residents=residents.filter(x=>x.id!==currentResidentId);
@@ -4601,9 +4694,16 @@ let seedDemoRunning=false;
 
 async function seedDemoData(){
   // Two sample facilities, one button. The resident-shaped one below is what
-  // the full product loads; Lite has its own, further down, because a class
-  // cannot be taught on records the product does not hold.
-  if(!showMAR)return seedLiteDemoData();
+  // a Classroom account loads; every paying tier gets the Lite one further
+  // down, because a class cannot be taught on records the product does not
+  // hold — and a customer must not be handed records it does.
+  //
+  // Keyed on the PLAN, not on showMAR. showMAR also asks whether the sample
+  // facility is open, and at this moment it does not exist yet — this is the
+  // button that creates it. t22SeedingSample below is what lets the inserts
+  // through t22Fetch while it is being built.
+  const forClassroom=!T22_MAR_PRODUCT&&t22EntitlementVerified&&t22Plan==='edu';
+  if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData();
   if(seedDemoRunning)return;
   if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
@@ -4635,6 +4735,12 @@ async function seedDemoData(){
   const btns=[...document.querySelectorAll('[data-seed-demo]')];
   btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
   seedDemoRunning=true;
+  // Opens the MAR tables to t22Fetch for the length of this seed only. The
+  // facility being written does not exist yet, so the isSampleFacility test
+  // in t22MarAllowed() cannot pass on its own. Cleared in the finally below,
+  // including on the throw path — leaving it set would unlock the MAR against
+  // whatever facility the trainer opens next.
+  t22SeedingSample=forClassroom;
   // Named so a failure says which insert stopped it. "Demo data failed:
   // <postgres error>" on its own does not say whether it was the residents,
   // the 300 MAR rows, or the compliance tasks.
@@ -4744,6 +4850,7 @@ async function seedDemoData(){
   }
   finally{
     seedDemoRunning=false;
+    t22SeedingSample=false;
     btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
   }
 }

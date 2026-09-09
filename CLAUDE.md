@@ -188,10 +188,36 @@ row and no figure; the app's Agency card and planPrices
 lost the $249. "No price" means no price in either
 place.
 
+## showMAR is not a constant any more
+
+It is a getter (`t22MarAllowed`). False for every paying tier; true only for a
+Classroom (`edu`) account standing in the sample facility, or while that
+facility is being seeded. Three conditions, fails closed if any is unknown —
+the entitlement read SUCCEEDED, the plan is `edu`, and the open facility IS
+the sample. The facility check is the one that matters: `edu` also grants a
+real facility of its own, and the MAR stays off there.
+
+It is one getter rather than fifty edited call sites because every path that
+asks "is there a MAR here" — the tab list, the fetch guard, the dashboard
+card, the DSS export, Tello's context, the tour — has to answer the same way
+at the same moment. `seedDemoData` is the exception and keys on the plan
+directly, because it runs before the sample facility exists.
+
+The classroom roster is FIXED: eight seeded residents, `t22RosterFixed()`
+refuses add, edit and delete at the function, and the buttons are hidden.
+That is what makes it safe — there is no field to type a real name into.
+Written up in `docs/classroom-practice-mar.md`.
+
+DO NOT run `migrations/2026-09-06_title22_lite_drop_phi.sql`. It revokes the
+grants at the database level and breaks every classroom.
+
 ## PHI line — do not cross
 Lite holds no resident health information at all: no
 resident records, no medications, no MAR, no LIC 601 or
-LIC 602A. Do not add one back without a decision about
+LIC 602A. The one exception is a Classroom account in the
+sample facility — eight invented residents and a practice
+MAR, roster fixed, see the section above. No real
+person's data is in it and none can be added. Do not add one back without a decision about
 the BAA that removing them avoided.
 Staff records (TB, Live Scan, certs) are employment
 records, not PHI, and may use scan.
