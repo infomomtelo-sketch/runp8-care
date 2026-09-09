@@ -348,9 +348,17 @@ strand a Classroom account's MAR hidden for good: at load showMAR is false, so
 the entries get hidden, and the early return means turning showMAR on later
 never puts them back.
 
-Verified in all three states: load with nothing resolved (hidden, fails
-closed), edu plan standing in the sample facility (restored), and the same
-trainer switching to their own real facility (hidden again).
+Verified in all four states: load with nothing resolved (hidden, fails
+closed), a brand-new Lite account on onboarding (hidden — the screenshot
+path), edu standing in the sample facility (restored), and the same trainer
+switching to their own real facility (hidden again).
+
+No flash, and the reason is worth keeping: `#page-app` is `.page{display:none}`
+until showPage('app'), and `#user-menu` carries inline `display:none`, so
+nothing PHI is painted before the load-time call runs. Sampled every animation
+frame from document-start for 3.5s — zero frames with a PHI nav entry, menu
+entry, dashboard MAR card or add-resident button visible. Do not make either
+container visible by default without re-checking this.
 
 ## An expired trial is read-only, not locked out
 
