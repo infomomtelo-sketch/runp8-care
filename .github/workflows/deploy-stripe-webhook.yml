@@ -26,6 +26,23 @@ on:
   #   branches: [main]
   #   paths: ['workers/stripe-webhook/**']
 
+env:
+  # Not a credential, and not a secret in any useful sense: an account ID does
+  # nothing without a token, and the Cloudflare Pages bot already posts this
+  # one in plain sight on every PR in this public repo.
+  #
+  # It is here because without it wrangler does not know which account to
+  # deploy to, and asks Cloudflare by calling GET /memberships — a USER-scoped
+  # endpoint that an account-scoped token is refused on, with
+  # "Authentication error [code: 10000]". That refusal failed three deploys.
+  # Given the account up front, wrangler never makes the call, and the token
+  # needs nothing beyond Workers Scripts: Edit.
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  # Pinned because wrangler-action defaults to 3.90.0 while this Worker's
+  # bundle was validated against 4.x. Deploying a billing webhook with a
+  # different major version than the one it was checked with is not a detail.
+  WRANGLER_VERSION: '4.130.0'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -51,6 +68,8 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
           workingDirectory: workers/stripe-webhook
           command: deploy --dry-run
 
@@ -59,6 +78,8 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
           workingDirectory: workers/stripe-webhook
           command: deploy
 
