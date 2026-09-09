@@ -170,6 +170,24 @@ Stripe wiring, as of 2026-09-08:
   metadata, and if the link carries none, `planFromSubscription` returns null
   and the event is refused: charged, nothing written, "Free Trial". Exactly
   what happened to Lite on 2026-09-06.
+- **Two $79 products exist in Stripe.** The old Pro product — no name, no
+  description — alongside `Title22-Multi-Home`. That duplicate does NOT cause
+  the webhook problem: what decides the outcome is the price ID on the
+  subscription, and the live link charges the named Multi-Home product (seen
+  on the checkout page 2026-09-09). The webhook problem is only that the
+  deployed Worker predates that price.
+
+  It is still worth clearing. The blank product name is what a customer reads
+  on their receipt and their card statement, which is how a legitimate charge
+  gets disputed. Archive the old $79 product in Stripe once no live
+  subscription is still billing against it — check before archiving; existing
+  Pro subscribers renew on that price.
+
+  `pro` and `starter` have been REMOVED from `T22_PLAN_LINKS` for the same
+  reason `agency` was: a checkout link is not a label, it is an offer one
+  function call away, and `pro` pointed at that nameless product. Only `lite`
+  and `multi` are sellable from the app now. Both stay in `STRIPE_PLANS`, so
+  historic checkout events still resolve to a name.
 - Agency — no price anywhere, and that now includes the code. The billing card
   is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
   and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to

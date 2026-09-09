@@ -1416,10 +1416,26 @@ const STRIPE_PLANS = {
 // string, and this app has no server to create Checkout Sessions).
 const T22_PLAN_LINKS = {
   lite:STRIPE_LITE,
-  multi:STRIPE_MULTI,
-  starter:STRIPE_STARTER,
-  pro:STRIPE_PRO
-  // agency is deliberately absent. Agency is Contact Sales and carries no
+  multi:STRIPE_MULTI
+  // starter, pro and agency are all deliberately absent, for one reason.
+  //
+  // The tier rule is that starter/pro/specialist/agency stay as LABELS for
+  // existing subscribers and are never surfaced as offers. A checkout link is
+  // not a label — it is an offer one function call away. Nothing calls
+  // openStripe('pro') or openStripe('starter') today, exactly as nothing
+  // called openStripe('agency') before it was removed for the same reason.
+  //
+  // pro matters most of the three: it is the OLD $79 Payment Link, pointing at
+  // a Stripe product with no name and no description. That product still
+  // exists alongside Title22-Multi-Home, so there are two $79 products in the
+  // account and only one of them is the one being sold. A blank product name
+  // is also what a customer reads on their receipt and their card statement,
+  // which is how a legitimate charge gets disputed.
+  //
+  // Removing the entry is enough: openStripe falls through to its "not set up
+  // yet, email us" toast rather than opening the wrong price.
+  //
+  // The old agency note, still true: Agency is Contact Sales and carries no
   // price, and it stopped carrying one everywhere else — the billing card is
   // a mailto, planPrices says "Contact Sales", the site shows no figure — but
   // the $249 Payment Link was still sitting in this map. Nothing calls
