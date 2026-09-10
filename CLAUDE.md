@@ -199,7 +199,8 @@ Stripe wiring, as of 2026-09-08:
 Because `STRIPE_MULTI` was literally `STRIPE_PRO`, the two were the same key in
 `STRIPE_PLANS` and one overwrote the other — a Multi-Home checkout recorded
 itself as `pro` in analytics — or would have, had there been any: `public.events`
-does not exist (see the audit section), so no event has ever been recorded.
+did not exist until 2026-09-10 (see the audit section), so nothing from that
+period was ever recorded, and no query of it will show that mistake.
 Both links are distinct now and `STRIPE_PLANS`
 names `lite` and `multi` explicitly.
 
@@ -426,14 +427,24 @@ Run of `migrations/2026-09-10_title22_migration_audit.sql` against the live
 database. 21 of 25 applied. The four that were not, and what each actually
 costs:
 
-- **`2026-08-07_title22_events.sql` — NOT applied. `public.events` does not
-  exist, and this is the one that matters.** `track()` writes to it from 19
-  call sites and swallows the rejection by design
-  (`.then(()=>{},()=>{})`, "analytics must never surface to the user"). So
-  every event since 2026-08-07 has been discarded silently and there is no
-  analytics data at all — not a partial record, none. Nothing in the app reads
-  the table, so nothing is visibly broken, which is exactly why it went
-  unnoticed. Run the migration; it is additive and self-contained.
+- **`2026-08-07_title22_events.sql` — was NOT applied. APPLIED 2026-09-10.**
+  This was the one that mattered. `track()` writes to it from 19 call sites and
+  swallows the rejection by design (`.then(()=>{},()=>{})`, "analytics must
+  never surface to the user"), so from 2026-08-07 until 2026-09-10 every event
+  was discarded silently — no analytics data at all, not a partial record.
+  Nothing in the app reads the table, so nothing was visibly broken, which is
+  exactly why it went a month unnoticed.
+
+  Two things follow and neither goes away. **The record starts 2026-09-10** —
+  nothing was buffered, those events are gone, so any question about usage
+  before that date has no data behind it. And `profiles.title22_utm_source`
+  from `2026-07-23_funnel_columns` has been populated all along but had no
+  `events` row to join against, so the funnel only becomes answerable from now.
+
+  The general lesson is the one that cost the month: an error handler written
+  to never surface is also an error handler that can never tell you the table
+  is missing. `track()` keeps its silence deliberately — analytics must not
+  break a save — so the check on it is this audit, not the console.
 - **`2026-08-13_title22_profile_photo_url.sql` — NOT applied, and dead.**
   `photo_url` appears nowhere in the repo outside that file. Nothing to fix;
   do not run it to tidy the audit.
@@ -465,8 +476,9 @@ are settled and neither should be re-run.
 A migration whose effect a later migration intentionally reverses cannot be
 audited by its own output; pick something durable, or exclude it.
 
-So the only thing the audit leaves to do is run
-`migrations/2026-08-07_title22_events.sql`.
+That was the whole audit. Its one action — running
+`migrations/2026-08-07_title22_events.sql` — was done on 2026-09-10, so nothing
+is outstanding from it.
 
 ## Admission forms are print-only
 Dormant in Lite — ADMISSION_FORMS renders in the resident
