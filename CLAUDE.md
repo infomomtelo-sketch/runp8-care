@@ -160,22 +160,37 @@ Stripe wiring, as of 2026-09-08:
   VERIFIED from the live link 2026-09-09, by screenshot: "Subscribe to
   Title22-Multi-Home", $79.00 per month, merchant title-22.com. Amount,
   interval, product name and merchant all correct. Still unverified: the
-  link's metadata and its redirect, neither of which is visible on the
-  checkout page. This environment's egress proxy blocks `buy.stripe.com`, so
-  read them in the Stripe dashboard.
+  link's redirect, which is not visible on the checkout page. This
+  environment's egress proxy blocks `buy.stripe.com`, so read it in the Stripe
+  dashboard.
 
-  The metadata matters MORE than usual right now, because the deployed Worker
-  is the 2026-09-07 build and that build has never heard of this price — it
-  was created the following day. A $79 checkout therefore falls through to the
-  metadata, and if the link carries none, `planFromSubscription` returns null
-  and the event is refused: charged, nothing written, "Free Trial". Exactly
-  what happened to Lite on 2026-09-06.
+  **The metadata does NOT matter, and the paragraph that used to stand here
+  saying otherwise was wrong.** It said the deployed Worker was the 2026-09-07
+  build, had never heard of this price, and that a $79 checkout would fall
+  through to metadata and end as "charged, nothing written, Free Trial". That
+  stopped being true the moment run #8 went green on 2026-09-09. Re-checked
+  2026-09-10: `PRICE_PLANS` in `workers/stripe-webhook/index.js` maps
+  `price_1UDWroAH9qPFLg89kAs9h49C` → `multi-home`, `normalisePlan` folds that
+  to `multi`, and `workers/stripe-webhook/` is byte-identical to the deployed
+  commit `3125a0b`. `planFromSubscription` resolves the price directly and
+  never reaches the metadata fallback.
+
+  **A Multi-Home sale today records as `multi`, correctly.** Every fault that
+  did break $79 — `STRIPE_MULTI` still pointing at the old Pro link, the
+  `multi-home` key missing `T22_PAID` and `TIER_LIMITS`, the price missing from
+  the Worker — is fixed and deployed. What remains is the duplicate product
+  below, which is a receipt problem, not a webhook one.
+
+  This paragraph is the third time this file has frightened someone with a
+  deploy claim that was already stale — see the Worker section's "CHECK THE
+  ACTIONS HISTORY BEFORE SAYING OTHERWISE". A statement about what is deployed
+  has a shelf life of one deploy. Date it, or check it before repeating it.
 - **Two $79 products exist in Stripe.** The old Pro product — no name, no
   description — alongside `Title22-Multi-Home`. That duplicate does NOT cause
   the webhook problem: what decides the outcome is the price ID on the
   subscription, and the live link charges the named Multi-Home product (seen
-  on the checkout page 2026-09-09). The webhook problem is only that the
-  deployed Worker predates that price.
+  on the checkout page 2026-09-09). And there is no webhook problem left: the
+  deployed Worker maps that price, as of run #8.
 
   It is still worth clearing. The blank product name is what a customer reads
   on their receipt and their card statement, which is how a legitimate charge
@@ -232,10 +247,12 @@ verbatim, "Multi-Home" misses `T22_PAID` (the subscriber reads as UNPAID) and
 misses `TIER_LIMITS` (dropping them to `{facilities:1, ai:false}` — one
 facility and no Tello, on the plan they just paid $79 for).
 
-Belt and braces once the Worker is deployed, since it folds these too. Until
-then it is the only thing between a Multi-Home customer and the same failure
-Lite hit on 2026-09-06 — and it ships with a push, where the Worker needs a
-token nobody has added yet.
+Belt and braces, not the last line of defence. The Worker has folded these
+since run #8 on 2026-09-09, so both ends now agree. The sentence that stood
+here — that this was "the only thing between a Multi-Home customer and the
+same failure Lite hit", because "the Worker needs a token nobody has added
+yet" — was stale on both counts: `CLOUDFLARE_API_TOKEN` was already set and
+runs #8 and #9 authenticated with it.
 
 KNOWN aliases only. An unrecognised plan passes through unchanged, so nothing
 invalid is quietly made valid: `nonsense-plan` still reads as unpaid. Checked
