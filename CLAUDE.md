@@ -198,7 +198,9 @@ Stripe wiring, as of 2026-09-08:
 
 Because `STRIPE_MULTI` was literally `STRIPE_PRO`, the two were the same key in
 `STRIPE_PLANS` and one overwrote the other — a Multi-Home checkout recorded
-itself as `pro` in analytics. Both links are distinct now and `STRIPE_PLANS`
+itself as `pro` in analytics — or would have, had there been any: `public.events`
+does not exist (see the audit section), so no event has ever been recorded.
+Both links are distinct now and `STRIPE_PLANS`
 names `lite` and `multi` explicitly.
 
 The plan key is `multi`, never `multi-home`. `TIER_LIMITS`, `T22_PAID` and
@@ -417,6 +419,48 @@ Roles: administrator and supervisor (they can edit), plus `DEMO_TABS` so the
 sandbox shows it. An expired trial keeps the tab and loses the buttons, like
 everywhere else — `canEdit()` disables them and `t22Fetch` refuses the write
 underneath.
+
+## What the migration audit found (2026-09-10)
+
+Run of `migrations/2026-09-10_title22_migration_audit.sql` against the live
+database. 21 of 25 applied. The four that were not, and what each actually
+costs:
+
+- **`2026-08-07_title22_events.sql` — NOT applied. `public.events` does not
+  exist, and this is the one that matters.** `track()` writes to it from 19
+  call sites and swallows the rejection by design
+  (`.then(()=>{},()=>{})`, "analytics must never surface to the user"). So
+  every event since 2026-08-07 has been discarded silently and there is no
+  analytics data at all — not a partial record, none. Nothing in the app reads
+  the table, so nothing is visibly broken, which is exactly why it went
+  unnoticed. Run the migration; it is additive and self-contained.
+- **`2026-08-13_title22_profile_photo_url.sql` — NOT applied, and dead.**
+  `photo_url` appears nowhere in the repo outside that file. Nothing to fix;
+  do not run it to tidy the audit.
+- **`2026-08-13b_title22_facility_capabilities.sql` — NOT applied, and
+  half-moot.** `title22_has_capability` is called nowhere. Its other function,
+  `title22_current_facility_role`, IS in the database because the Launch Hub
+  migration installs it. Nothing to fix.
+- **`2026-09-06_title22_lite_users.sql` — NOT applied, and must stay that
+  way.** Expected. Do not create `public.users`.
+
+Every RPC the app calls resolves: `title22_member_entitlement`,
+`title22_accept_my_invite`, `title22_redeem_invite`,
+`title22_grant_classroom_account`, `title22_check_trainer_code`,
+`title22_create_trainer`, `title22_trainer_signups` — all present, and the
+last one's body carries the edu exclusion. The entitlement path, which is
+where both earlier silent failures lived, is intact.
+
+**A sentinel bug worth remembering.** The first run reported
+`2026-09-07_lic_checklist_items` as NOT applied. It ran. Its sentinel was one
+of the 16 titles that `2026-09-08`'s dedupe deliberately DELETED as
+restatements — so on a correctly maintained database that check can only ever
+read false, and acting on it would mean re-running 09-07, re-adding 16
+restatements and dropping the starting readiness score of every facility made
+afterwards. The sentinel is now the LIC 508 row, one of the four of 09-07's 20
+that survived the dedupe and one of the three unique to it. A migration whose
+effect a later migration intentionally reverses cannot be audited by its own
+output; pick something durable, or exclude it.
 
 ## Admission forms are print-only
 Dormant in Lite — ADMISSION_FORMS renders in the resident

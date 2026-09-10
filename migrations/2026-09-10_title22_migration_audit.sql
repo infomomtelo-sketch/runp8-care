@@ -75,13 +75,25 @@ order by migration;
 -- whole query.
 -- ---------------------------------------------------------------------------
 
+-- The sentinel here has to be a row 2026-09-07 inserted AND 2026-09-08 did not
+-- then delete. That is not a detail: 09-07 inserted 20 titles, 09-08 deleted 16
+-- of them as restatements of items already in the 08-20 seed, and the first
+-- version of this file used one of those 16. It reported 09-07 as NOT applied
+-- on a database where both had run correctly — which would send someone to
+-- re-run 09-07, re-adding 16 restatements and dropping the starting readiness
+-- score of every facility created afterwards. Exactly the harm CLAUDE.md warns
+-- about under "checklist_items: read it before you insert".
+--
+-- Four of the 20 survived. Three are unique to 09-07; the fourth ("RCFE
+-- Administrator Certificate Current") is also in the 08-20 seed, so it proves
+-- nothing. LIC 508 is one of the three.
 select
   '2026-09-07_lic_checklist_items' as migration,
-  'a checklist_items row it inserts' as sentinel,
+  'LIC 508 row (survived the 09-08 dedupe)' as sentinel,
   case when to_regclass('public.checklist_items') is not null then
     (xpath('/row/c/text()', query_to_xml(
       $q$ select count(*) as c from public.checklist_items
-          where title = 'Every admission has a signed admission agreement on file' $q$,
+          where title = 'A LIC 508 (Criminal Record Statement) is on file for every employee' $q$,
       false, true, '')))[1]::text::int > 0
   end as applied
 union all
