@@ -383,6 +383,24 @@ on the page that progress is device-only and which file to run. That is the
 direct lesson of `public.users` — code that assumed a migration had run, for
 two days, in silence. The two stores are sequenced, never both.
 
+**And `2026-08-13b_title22_facility_capabilities.sql` has never been run
+either.** The first version of the launch migration called
+`public.title22_current_facility_role()` in its policies and was refused with
+`ERROR 42883: function ... does not exist` — the same fault as `public.users`,
+found twice in one week. That migration file now installs the function itself,
+copied verbatim from 2026-08-13b under `create or replace`, so applying
+2026-08-13b later is a no-op for it and still installs its second function.
+Assume nothing in `migrations/` has been applied unless you have watched it
+run or checked the database.
+
+Verified by running it against a local Postgres 16 with a stub `auth.uid()`,
+not by reading it: it applies clean, and re-running it, then applying
+2026-08-13b on top, leaves 4 policies and the existing rows untouched. The
+owner — who is `facilities.user_id` and is NOT necessarily a row in
+`facility_members`, which is exactly the solo operator this tab is for — can
+upsert; a supervisor can; a caregiver reads and is refused a write; a stranger
+and a signed-out session read nothing.
+
 Roles: administrator and supervisor (they can edit), plus `DEMO_TABS` so the
 sandbox shows it. An expired trial keeps the tab and loses the buttons, like
 everywhere else — `canEdit()` disables them and `t22Fetch` refuses the write
