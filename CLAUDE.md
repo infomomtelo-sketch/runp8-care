@@ -198,7 +198,10 @@ Stripe wiring, as of 2026-09-08:
 
 Because `STRIPE_MULTI` was literally `STRIPE_PRO`, the two were the same key in
 `STRIPE_PLANS` and one overwrote the other — a Multi-Home checkout recorded
-itself as `pro` in analytics. Both links are distinct now and `STRIPE_PLANS`
+itself as `pro` in analytics — or would have, had there been any: `public.events`
+did not exist until 2026-09-10 (see the audit section), so nothing from that
+period was ever recorded, and no query of it will show that mistake.
+Both links are distinct now and `STRIPE_PLANS`
 names `lite` and `multi` explicitly.
 
 The plan key is `multi`, never `multi-home`. `TIER_LIMITS`, `T22_PAID` and
@@ -311,6 +314,171 @@ on incidents or documents sails past it — the embed
 rides in the query string. Those two are gated on
 showMAR now. The remaining embeds are on mar_entries and
 daily_logs, whose paths t22Fetch already blocks.
+
+## Tello has a chat dock now, inside the app only
+
+`mountTelloDock()` builds a floating button and panel as children of
+`#page-app`, called from `initFacility` after `showPage('app')` and after the
+`applyRoleUI()` that runs `applyLiteMode`. Being a child of `#page-app` is the
+whole hiding mechanism: `.page{display:none}` takes it off the landing page,
+onboarding, pricing and the signed-out state for free, and no screen added
+later has to remember to hide it. `clearSession` removes it from the DOM
+outright rather than leaving a conversation in the page for the next person at
+that browser.
+
+Who gets it is read from `allowedTabs().includes('ai')`, not from a second
+rule that could drift — so an expired trial loses the dock exactly as it loses
+the Tello tab, and demo mode never gets it (the sandbox answers from a canned
+path).
+
+**The dock is No-PHI unconditionally, including in a classroom.** It sends
+`buildFacilityContext({noPhi:true})` — a new option that forces the Lite shape
+even where `showMAR` is true — and `TELLO_DOCK_RULES` forbids outputting a
+resident name, a LIC 601, a LIC 602A, a MAR, an ISP, a diagnosis or a dosage.
+Without the option an `edu` account's practice roster would be sent to a model
+that had just been told never to say a name. The Tello TAB is unchanged and
+keeps the full context: that is the surface a classroom uses.
+
+It is passed `{facilityId, plan, showMAR, isSample}`, and `showMAR` is sent as
+`false` always, because this surface does not get the MAR whatever the account
+is entitled to. History is per facility (`title22_tello_dock_<facilityId>`,
+capped at 20 messages): switching facility is a different conversation, since a
+compliance answer about one home is wrong for another. The input goes through
+`t22PhiBlock` like the Tello tab's — those two boxes are the only free text
+that leaves the database.
+
+## Launch Hub — the "Start Your Home" tab
+
+`#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by
+`renderLaunchHub()`. Twelve steps in three cards — Get Certified / Prep House /
+Get License — for the customer who has not opened yet. Until this existed the
+app had nothing for them until the day they held a licence, which is a large
+share of who signs up.
+
+Three rules it is built on, and none is decoration:
+
+- **No PHI, and no path to any.** Every step is about the applicant, the
+  building or the licence. No resident field, no medical document, no free text
+  at all. That is why `launch` is NOT in `T22_PHI_TABS` and why `applyLiteMode`
+  does not touch it — verified in the browser: in Lite, `nav-launch` and
+  `menu-launch` are visible while `nav-mar` is not. If a step is ever added
+  that names a resident or a medical document, delete the step; do not start
+  hiding the tab.
+- **It states no requirement as fact.** Same rule as `DOC_SLOT_HOWTO` and
+  Tello's prompt: each step says what the thing IS and who issues it, never how
+  long it takes, how long it lasts, what it costs, or what an inspector
+  accepts. The page opens by saying so, in both languages.
+- **Nobody types.** Every step is answered with a 56px button or a photograph
+  (`capture="environment"`, so a phone opens the camera). English title with a
+  Tagalog line under it on all three cards and all twelve steps. One card open
+  at a time.
+
+Photos go to the existing `facility-documents` bucket under the same
+`<facility_id>/<uuid>.<ext>` path as every other upload, and are NOT written to
+`documents` — a house photo has no business in the compliance file list or the
+DSS export.
+
+Storage is `public.launch_checklist`
+(`migrations/2026-09-09_title22_launch_checklist.sql`), one row per facility
+per step. **Until that migration is run the tab still works**: `loadLaunchHub`
+recognises PGRST205/42P01, falls back to this browser's localStorage, and says
+on the page that progress is device-only and which file to run. That is the
+direct lesson of `public.users` — code that assumed a migration had run, for
+two days, in silence. The two stores are sequenced, never both.
+
+**And `2026-08-13b_title22_facility_capabilities.sql` has never been run
+either.** The first version of the launch migration called
+`public.title22_current_facility_role()` in its policies and was refused with
+`ERROR 42883: function ... does not exist` — the same fault as `public.users`,
+found twice in one week. That migration file now installs the function itself,
+copied verbatim from 2026-08-13b under `create or replace`, so applying
+2026-08-13b later is a no-op for it and still installs its second function.
+Assume nothing in `migrations/` has been applied unless you have watched it
+run or checked the database.
+
+Checking it is one paste now: `migrations/2026-09-10_title22_migration_audit.sql`
+is read-only and reports applied/not for all 25 migrations that create
+something, from a sentinel object each one leaves behind. Six files are
+excluded and named there because "applied" is not a question they answer —
+four check scripts whose statements are commented on purpose, the guarded
+test-facility reset, and `lite_drop_phi`, which must never be run.
+
+Its sentinels are picked so one migration cannot vouch for another: 2026-08-13b
+is checked by `title22_has_capability`, NOT `title22_current_facility_role`,
+because 2026-09-09 installs that second function itself and would otherwise
+report 08-13b as applied when it is not.
+
+Verified by running it against a local Postgres 16 with a stub `auth.uid()`,
+not by reading it: it applies clean, and re-running it, then applying
+2026-08-13b on top, leaves 4 policies and the existing rows untouched. The
+owner — who is `facilities.user_id` and is NOT necessarily a row in
+`facility_members`, which is exactly the solo operator this tab is for — can
+upsert; a supervisor can; a caregiver reads and is refused a write; a stranger
+and a signed-out session read nothing.
+
+Roles: administrator and supervisor (they can edit), plus `DEMO_TABS` so the
+sandbox shows it. An expired trial keeps the tab and loses the buttons, like
+everywhere else — `canEdit()` disables them and `t22Fetch` refuses the write
+underneath.
+
+## What the migration audit found (2026-09-10)
+
+Run of `migrations/2026-09-10_title22_migration_audit.sql` against the live
+database. 21 of 25 applied. The four that were not, and what each actually
+costs:
+
+- **`2026-08-07_title22_events.sql` — was NOT applied. APPLIED 2026-09-10.**
+  This was the one that mattered. `track()` writes to it from 19 call sites and
+  swallows the rejection by design (`.then(()=>{},()=>{})`, "analytics must
+  never surface to the user"), so from 2026-08-07 until 2026-09-10 every event
+  was discarded silently — no analytics data at all, not a partial record.
+  Nothing in the app reads the table, so nothing was visibly broken, which is
+  exactly why it went a month unnoticed.
+
+  Two things follow and neither goes away. **The record starts 2026-09-10** —
+  nothing was buffered, those events are gone, so any question about usage
+  before that date has no data behind it. And `profiles.title22_utm_source`
+  from `2026-07-23_funnel_columns` has been populated all along but had no
+  `events` row to join against, so the funnel only becomes answerable from now.
+
+  The general lesson is the one that cost the month: an error handler written
+  to never surface is also an error handler that can never tell you the table
+  is missing. `track()` keeps its silence deliberately — analytics must not
+  break a save — so the check on it is this audit, not the console.
+- **`2026-08-13_title22_profile_photo_url.sql` — NOT applied, and dead.**
+  `photo_url` appears nowhere in the repo outside that file. Nothing to fix;
+  do not run it to tidy the audit.
+- **`2026-08-13b_title22_facility_capabilities.sql` — NOT applied, and
+  half-moot.** `title22_has_capability` is called nowhere. Its other function,
+  `title22_current_facility_role`, IS in the database because the Launch Hub
+  migration installs it. Nothing to fix.
+- **`2026-09-06_title22_lite_users.sql` — NOT applied, and must stay that
+  way.** Expected. Do not create `public.users`.
+
+Every RPC the app calls resolves: `title22_member_entitlement`,
+`title22_accept_my_invite`, `title22_redeem_invite`,
+`title22_grant_classroom_account`, `title22_check_trainer_code`,
+`title22_create_trainer`, `title22_trainer_signups` — all present, and the
+last one's body carries the edu exclusion. The entitlement path, which is
+where both earlier silent failures lived, is intact.
+
+**A sentinel bug worth remembering.** The first run reported
+`2026-09-07_lic_checklist_items` as NOT applied. It ran. Its sentinel was one
+of the 16 titles that `2026-09-08`'s dedupe deliberately DELETED as
+restatements — so on a correctly maintained database that check can only ever
+read false, and acting on it would mean re-running 09-07, re-adding 16
+restatements and dropping the starting readiness score of every facility made
+afterwards. The sentinel is now the LIC 508 row, one of the four of 09-07's 20
+that survived the dedupe and one of the three unique to it. Re-run with that
+sentinel: **true** — 09-07 is applied, as is 09-08. Both checklist migrations
+are settled and neither should be re-run.
+
+A migration whose effect a later migration intentionally reverses cannot be
+audited by its own output; pick something durable, or exclude it.
+
+That was the whole audit. Its one action — running
+`migrations/2026-08-07_title22_events.sql` — was done on 2026-09-10, so nothing
+is outstanding from it.
 
 ## Admission forms are print-only
 Dormant in Lite — ADMISSION_FORMS renders in the resident
@@ -550,6 +718,29 @@ The workflow can be triggered from a Claude session: the GitHub MCP's
 `main`, then `actions_get / get_workflow_run` for the conclusion. Creating the
 Cloudflare token and adding the secret cannot be — those authenticate as a
 person — but the deploy itself does not need a human.
+
+### The secret names, in full (verified 2026-09-09)
+
+Read out of the workflow file and written into its header comment, because a
+secret added under a name nothing reads is invisible: the job does not warn
+about it, it behaves exactly as though no secret exists.
+
+- `CLOUDFLARE_API_TOKEN` — the ONLY repository secret the workflow reads. Three
+  reads: the emptiness check, the `deploy --dry-run` step, the `deploy` step.
+- There is NO `CLOUDFLARE_ACCOUNT_ID` secret, and nothing would read one. The
+  account is the plain-text `CF_ACCOUNT_ID` env var
+  (`701117dde6af00d42bac3c4058b660be`), deliberately not a secret. A repository
+  secret of that name is harmless and unused; it can be deleted.
+- A near-miss name (`CF_API_TOKEN`, `CLOUDFLARE_TOKEN`, `CLOUDFLARE_API_KEY`)
+  surfaces as "CLOUDFLARE_API_TOKEN is not set", never as anything naming the
+  spelling that was actually used.
+
+And the secret is not in doubt: run #9 (2026-09-09T18:50Z, `3125a0b`) passed
+its "Check the token is set" step and every step after it, Deploy included. So
+did run #8. `workers/stripe-webhook/` has not changed since `3125a0b`, so the
+Worker running in production IS this repo's build, and the Multi-Home price
+`price_1UDWroAH9qPFLg89kAs9h49C`, `PLAN_ALIASES` and `periodEndOf()` are all
+live. A Multi-Home sale today records as `multi`, NOT as `pro`.
 
 `readEntitlement` still reads `profiles` and must keep reading it — it is the
 only store that carries the trial, the edu tier, and subscribers who predate
