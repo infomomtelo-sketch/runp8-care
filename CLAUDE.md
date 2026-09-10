@@ -393,6 +393,18 @@ copied verbatim from 2026-08-13b under `create or replace`, so applying
 Assume nothing in `migrations/` has been applied unless you have watched it
 run or checked the database.
 
+Checking it is one paste now: `migrations/2026-09-10_title22_migration_audit.sql`
+is read-only and reports applied/not for all 25 migrations that create
+something, from a sentinel object each one leaves behind. Six files are
+excluded and named there because "applied" is not a question they answer —
+four check scripts whose statements are commented on purpose, the guarded
+test-facility reset, and `lite_drop_phi`, which must never be run.
+
+Its sentinels are picked so one migration cannot vouch for another: 2026-08-13b
+is checked by `title22_has_capability`, NOT `title22_current_facility_role`,
+because 2026-09-09 installs that second function itself and would otherwise
+report 08-13b as applied when it is not.
+
 Verified by running it against a local Postgres 16 with a stub `auth.uid()`,
 not by reading it: it applies clean, and re-running it, then applying
 2026-08-13b on top, leaves 4 policies and the existing rows untouched. The
