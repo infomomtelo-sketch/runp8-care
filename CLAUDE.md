@@ -458,9 +458,15 @@ restatements — so on a correctly maintained database that check can only ever
 read false, and acting on it would mean re-running 09-07, re-adding 16
 restatements and dropping the starting readiness score of every facility made
 afterwards. The sentinel is now the LIC 508 row, one of the four of 09-07's 20
-that survived the dedupe and one of the three unique to it. A migration whose
-effect a later migration intentionally reverses cannot be audited by its own
-output; pick something durable, or exclude it.
+that survived the dedupe and one of the three unique to it. Re-run with that
+sentinel: **true** — 09-07 is applied, as is 09-08. Both checklist migrations
+are settled and neither should be re-run.
+
+A migration whose effect a later migration intentionally reverses cannot be
+audited by its own output; pick something durable, or exclude it.
+
+So the only thing the audit leaves to do is run
+`migrations/2026-08-07_title22_events.sql`.
 
 ## Admission forms are print-only
 Dormant in Lite — ADMISSION_FORMS renders in the resident
