@@ -2697,21 +2697,27 @@ const T22_PAID=['lite','multi','starter','pro','specialist','agency'];
 
 // One tier, several spellings, and the app is keyed on exactly one of them.
 //
-// The Worker running in production is the 2026-09-07 build. The Multi-Home
-// price (price_1UDWroAH9qPFLg89kAs9h49C) was created the day after, so that
-// build has never heard of it: a $79 checkout falls through to the Payment
-// Link's metadata, which is typed by hand in the Stripe dashboard and is
-// almost certainly "Multi-Home" or "multi-home" rather than "multi".
-//
-// Written verbatim, that string misses T22_PAID (the subscriber reads as
+// Written verbatim, "Multi-Home" misses T22_PAID (the subscriber reads as
 // UNPAID) and misses TIER_LIMITS (dropping them to {facilities:1, ai:false} —
-// one facility and no Tello, on the plan they just paid $79 for).
+// one facility and no Tello, on the plan they just paid $79 for). So fold it
+// on the way in.
 //
-// The Worker folds these too, and once it is deployed this is belt and
-// braces. Until then it is the only thing standing between a Multi-Home
-// customer and the same "you paid, here is your Free Trial" that Lite hit on
-// 2026-09-06 — and it ships with a push, where the Worker needs a token
-// nobody has added yet.
+// Belt and braces, not the last line of defence: the Worker folds these too,
+// via PLAN_ALIASES, and has since run #8 on 2026-09-09.
+//
+// What stood here until 2026-09-13 was a warning that the deployed Worker was
+// the 2026-09-07 build, had never heard of price_1UDWroAH9qPFLg89kAs9h49C, and
+// that "the Worker needs a token nobody has added yet" — so this fold was the
+// only thing between a Multi-Home customer and "you paid, here is your Free
+// Trial". Every clause of that was stale: the token had been set since run #8,
+// the price has been mapped since run #8, and production is now run #11
+// (version 046b4577, commit 355c565).
+//
+// It is the FOURTH time that same stale deploy claim has been found and
+// corrected, after three in CLAUDE.md — see its Worker section. A statement
+// about what is deployed has a shelf life of one deploy, and a comment is a
+// worse place to keep one than a file somebody re-reads. Date it or check it
+// before repeating it.
 //
 // Folds KNOWN aliases only. An unrecognised plan passes through unchanged, so
 // nothing invalid is quietly made valid.
