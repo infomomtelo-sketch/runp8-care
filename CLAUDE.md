@@ -369,9 +369,25 @@ Three rules it is built on, and none is decoration:
   long it takes, how long it lasts, what it costs, or what an inspector
   accepts. The page opens by saying so, in both languages.
 - **Nobody types.** Every step is answered with a 56px button or a photograph
-  (`capture="environment"`, so a phone opens the camera). English title with a
-  Tagalog line under it on all three cards and all twelve steps. One card open
-  at a time.
+  (`capture="environment"`, so a phone opens the camera). One card open at a
+  time.
+- **Four languages, one line at a time.** The English title is always the
+  heading; a picker (`LAUNCH_LANGS`, `setLaunchLang`, `launchTr`) chooses which
+  translation sits under it — Tagalog, Español, ਪੰਜਾਬੀ, or English only for
+  none. Stored per browser in `title22_launch_lang`, defaulted from
+  `navigator.language`, falling back to **Tagalog** so a user who never touches
+  the picker sees exactly what shipped before. Every card, every step and the
+  progress counter follow it. Stacking all three under twelve steps would
+  triple the reading on a screen whose whole design is one decision per
+  screenful — hence one line, never three. `launchTr` falls back to Tagalog if
+  a translation is ever missing, so a gap shows in one language rather than
+  blanking the line.
+
+  **The Spanish and Punjabi are machine-produced and have not been read by a
+  native speaker.** Neither has the Tagalog. They are short imperative phrases,
+  so the risk is low, but this is a compliance product read by people who may
+  not read English well — get each language checked by someone who speaks it
+  before leaning on it in marketing.
 
 Photos go to the existing `facility-documents` bucket under the same
 `<facility_id>/<uuid>.<ext>` path as every other upload, and are NOT written to
