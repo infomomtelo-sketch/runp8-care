@@ -672,6 +672,23 @@ What is genuinely open:
   real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
   below, but neither has met a real Stripe event either — this stays open
   until one does.
+
+  `docs/test-the-29-path.md` is the runbook: what to check at each of the three
+  hops and what each failure means. Two things it establishes that are worth
+  knowing before anyone tries: **Stripe test mode cannot test this**, because
+  `PRICE_PLANS` holds only live price ids and a test-mode event refuses with
+  422; and the in-app purchase path is the one to test, because `openStripe()`
+  attaches `client_reference_id` and every CTA on title-22.com leads there.
+
+  Traced 2026-09-13 without running it. `resolveUserId` tries
+  client_reference_id, then a `subscriptions` lookup by subscription id, then
+  the customer email. An in-app purchase resolves on the first branch and never
+  reaches the fragile one. A bare `buy.stripe.com` link sent to somebody with no
+  account resolves on none of them — that used to return 202, which Stripe
+  treats as handled and never retries, so the money landed and nothing was
+  written. It returns 409 now and Stripe retries for ~3 days, which heals the
+  ordinary version of it. Still: **never share a raw Payment Link.** Send people
+  to title22.app and let them buy from inside.
 - **49 test facilities across 32 accounts.** Guarded reset is written and
   dry-run ready: migrations/2026-09-08_title22_reset_test_facilities.sql.
 
