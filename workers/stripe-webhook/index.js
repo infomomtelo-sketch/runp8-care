@@ -242,9 +242,67 @@ function periodEndOf(sub) {
   return isoOrNull(latest);
 }
 
+// Everything this Worker needs from its environment, checked before any of it
+// is used. This exists because of the 2026-09-13 outage, and the shape of that
+// outage is the argument for it:
+//
+// SUPABASE_URL went missing from the Worker (see wrangler.toml for how), and
+// nothing said so. The deploy was green. The endpoint stayed Active. The
+// signature check passed, because its secret was still there. Every event this
+// Worker does not handle answered 200, because those paths touch no binding at
+// all. The only symptom was that the two events that matter returned 500 with
+// the body "Handler error" — `fetch(undefined + '/rest/v1/...')` throwing a
+// TypeError into the catch at the bottom of this file, four frames from
+// anything that names the cause.
+//
+// A missing binding is not a runtime error to be caught downstream. It is a
+// deployment that should never have been allowed to serve, and it should say
+// which one, by name, in the first thing anybody reads.
+//
+// STRIPE_SECRET_KEY is in this list even though the Worker technically limps
+// without it — it is only read to look up a customer's email when an event
+// does not carry one, which is the fallback that attributes a purchase made
+// outside the app. Running without it is a decision; take it deliberately by
+// removing it here, not by discovering it in a delivery log six days later.
+const REQUIRED_BINDINGS = [
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_SECRET_KEY',
+];
+
+function missingBindings(env) {
+  return REQUIRED_BINDINGS.filter(name => !env || !env[name]);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+
+    // Before the signature check, deliberately. A missing STRIPE_WEBHOOK_SECRET
+    // makes verifyStripe() return false, which answers 400 "Signature
+    // verification failed" — blaming Stripe for our own empty environment, and
+    // sending whoever reads it to rotate a signing secret that was never the
+    // problem.
+    //
+    // All of them at once, not the first one found, so one redeploy fixes
+    // everything rather than uncovering the next name each time.
+    //
+    // The names go in the BODY, not only the console: the body is what Stripe
+    // shows in the delivery log, and the console needs `wrangler tail` to have
+    // been running at the moment it happened. They are binding names, never
+    // values, and they are already written out in this repo's wrangler.toml —
+    // an unauthenticated POST learns nothing here it could not read on GitHub.
+    //
+    // 500 rather than 4xx so Stripe keeps retrying for its ~3 days: restore the
+    // binding, redeploy, and the pending events deliver on their own. That is
+    // the difference between a customer who activates without being asked and
+    // one who needs a row written by hand.
+    const missing = missingBindings(env);
+    if (missing.length) {
+      console.error('stripe-webhook is misconfigured — missing binding(s):', missing.join(', '));
+      return new Response('Worker misconfigured — missing binding(s): ' + missing.join(', '), { status: 500 });
+    }
 
     const raw = await request.text();
     const ok = await verifyStripe(raw, request.headers.get('stripe-signature'), env.STRIPE_WEBHOOK_SECRET);
@@ -371,8 +429,14 @@ export default {
     } catch (e) {
       // 500 so Stripe retries: a Supabase blip should not cost someone the
       // plan they paid for.
-      console.error('stripe-webhook failed on', event.type, e && e.message);
-      return new Response('Handler error', { status: 500 });
+      // The message in the body, not just the console. "Handler error" is what
+      // this said on 2026-09-13 and it cost days: the delivery log is the only
+      // record anyone can read after the fact, and it carried no cause. Nothing
+      // reaches this line without a valid Stripe signature, so the only reader
+      // is Stripe's own dashboard.
+      const why = (e && e.message) || String(e);
+      console.error('stripe-webhook failed on', event.type, why);
+      return new Response('Handler error on ' + event.type + ': ' + why, { status: 500 });
     }
 
     return new Response(JSON.stringify({ received: true }), {

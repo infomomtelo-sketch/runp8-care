@@ -13,10 +13,39 @@ compatibility_date = "2026-09-07"
 #                            against the wrong one fails every request.
 #   STRIPE_SECRET_KEY      — sk_live_..., used only to read a customer's email
 #                            when a subscription event does not carry one.
-#   SUPABASE_URL           — https://nwlhsshvqmbhemhxcran.supabase.co
 #   SUPABASE_SERVICE_KEY   — service_role key. Bypasses RLS, which is what lets
 #                            this write profiles and subscriptions for a user
 #                            who is not the caller.
+#
+# SUPABASE_URL was in that list until 2026-09-13, and it did not belong there.
+# It is not a secret — it is the project's public REST host, the same string
+# index.html ships to every browser — and in Cloudflare it was never stored as
+# one. It was a PLAIN-TEXT VAR, set by hand in the dashboard, and the
+# distinction is the whole of the outage below.
+#
+# `wrangler deploy` preserves secrets. It does NOT preserve plain-text vars: it
+# sends the complete set of vars from THIS FILE and replaces whatever the
+# Worker had. With no [vars] block here, "the complete set" was none, so the
+# first deploy from CI deleted SUPABASE_URL.
+#
+# That is what happened. The Worker ran from the dashboard until 2026-09-07 and
+# worked. Runs #8 and #9 of deploy-stripe-webhook.yml on 2026-09-09 were the
+# first `wrangler deploy`s it had ever had, and they took the var with them.
+# Nothing looked wrong: the deploy went green, the endpoint stayed Active, the
+# signature check kept passing (its secret survived), and every event the
+# Worker does not handle kept answering 200. Only the two events that write to
+# Supabase broke, and they broke as an opaque 500, because `fetch(undefined +
+# '/rest/v1/...')` throws a TypeError into the handler's catch.
+#
+# It surfaced on 2026-09-13, the first time a real customer bought Lite: both
+# checkout.session.completed and customer.subscription.created returned 500,
+# the card was charged, and the account read "Free Trial".
+#
+# So it lives in [vars] now, where a deploy re-sets it every time and the file
+# is the authority. Do not move it back to a secret and do not set it in the
+# dashboard — a dashboard value is exactly what the next deploy erases. The
+# [vars] table itself is at the BOTTOM of this file, so that a key added later
+# cannot land inside it by accident.
 #
 # Stripe dashboard, on the `memorable-wonder` destination, these events:
 #   checkout.session.completed
@@ -36,3 +65,8 @@ compatibility_date = "2026-09-07"
 # written, because index.html's TIER_LIMITS and T22_PAID are keyed on 'multi' —
 # storing the unfolded string would read as unpaid AND drop the subscriber to
 # one facility with no Tello.
+
+# Keep this table last. Everything above it is a comment or a top-level key;
+# anything written below it belongs to [vars] whether that was meant or not.
+[vars]
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
