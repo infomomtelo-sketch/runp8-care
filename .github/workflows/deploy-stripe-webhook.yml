@@ -10,10 +10,22 @@
 # "Edit Cloudflare Workers" template, scoped to this account. The token is
 # never printed here — wrangler-action reads it from the secret.
 #
-# What this does NOT touch: the Worker's own secrets (STRIPE_WEBHOOK_SECRET,
-# STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY). Those are already set
-# on the Worker and a deploy leaves them alone — see wrangler.toml. Never add
-# them to this file.
+# What this does NOT touch: the Worker's own SECRETS (STRIPE_WEBHOOK_SECRET,
+# STRIPE_SECRET_KEY, SUPABASE_SERVICE_KEY). Those are set on the Worker and a
+# deploy leaves them alone. Never add them to this file.
+#
+# What it DOES touch, and what this comment got wrong until 2026-09-13:
+# PLAIN-TEXT VARS. `wrangler deploy` sends the complete set of vars from
+# wrangler.toml and replaces whatever the Worker had. SUPABASE_URL used to be
+# listed on the line above as though it were a secret; in Cloudflare it was a
+# var, typed into the dashboard, and runs #8 and #9 of this workflow — the
+# Worker's first CI deploys — deleted it. The webhook then returned 500 on
+# every event it handles, a real $29 purchase was charged with nothing written,
+# and the account read "Free Trial". It is in wrangler.toml's [vars] now, so a
+# deploy re-sets it.
+#
+# The rule: any binding this Worker needs that is NOT a secret must be in
+# wrangler.toml. If it only exists in the dashboard, this workflow deletes it.
 #
 # THE SECRET NAMES THIS FILE READS, in full, verified against the steps below
 # on 2026-09-09. Written out because a secret added under a name nothing reads

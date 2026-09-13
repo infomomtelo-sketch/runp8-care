@@ -140,6 +140,18 @@ sheet as read-only — it has nowhere to go.
   Nothing in this repo has ever been the deployed artifact. The first CI
   deploy will be, and it replaces the dashboard copy wholesale — so if anyone
   has hand-edited in the dashboard since 2026-09-07, diff it before deploying.
+- **`SUPABASE_URL` lives in `wrangler.toml`'s `[vars]`, and must stay there.**
+  It was a dashboard-only plain-text var until 2026-09-13, and the first two CI
+  deploys (runs #8 and #9, 2026-09-09) deleted it — `wrangler deploy` preserves
+  secrets but replaces vars with whatever the toml declares, which was nothing.
+  The Worker then threw `TypeError: Invalid URL` on every Supabase call and
+  answered 500 to `checkout.session.completed` and
+  `customer.subscription.created` for four days, through a real $29 purchase.
+  Setting it in the dashboard does not fix this; the next deploy erases it
+  again. Same rule for every other Worker here: **a var that is not in
+  `wrangler.toml` does not survive CI**, and right now none of these six files
+  declares one. The other five have only ever been deployed by hand, so they
+  still hold their dashboard values — check before putting any of them in CI.
 - **Live compatibility date is `2026-05-21`; `wrangler.toml` says
   `2026-09-07`.** A deploy moves it forward. This Worker uses only fetch, Web
   Crypto and JSON, so nothing here is sensitive to it — noted because it rides

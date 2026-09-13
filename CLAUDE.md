@@ -667,11 +667,12 @@ a decision that was taken, not an open question.
 
 What is genuinely open:
 
-- **The $29 path has never run end to end.** The webhook price map and
-  welcomeIsPaid were fixed two days apart and never tested together against a
-  real Stripe event. Two failures found by reading it on 2026-09-08 and fixed
-  below, but neither has met a real Stripe event either — this stays open
-  until one does.
+- **The $29 path RAN end to end on 2026-09-13, and it failed.** It is still
+  open, but it is no longer untested — see "How the $29 path actually failed"
+  below for the cause, which was not in any of the code this bullet used to
+  worry about. The webhook price map and `welcomeIsPaid` were both correct and
+  both irrelevant: the Worker never reached them. It stays open until a live
+  Stripe event is written all the way through to a paid account.
 
   `docs/test-the-29-path.md` is the runbook: what to check at each of the three
   hops and what each failure means. Two things it establishes that are worth
@@ -732,7 +733,15 @@ a Cloudflare token he already had. One API call answers it:
 Confirmed against Cloudflare 2026-09-08: the Worker `stripe-webhook` exists on
 account `701117dde6af00d42bac3c4058b660be`, workers.dev route enabled, all four
 bindings present (`SUPABASE_URL` is a plain-text var, the other three are
-secrets), and `wrangler deploy` does not touch them. Its last deploy was
+secrets), and `wrangler deploy` does not touch them.
+
+**That last clause was half true, and the wrong half broke the webhook — see
+"How the $29 path actually failed" below.** `wrangler deploy` preserves
+SECRETS. It REPLACES plain-text vars with whatever `[vars]` in `wrangler.toml`
+says, and that file had no `[vars]` block, so the first CI deploy deleted
+`SUPABASE_URL`. Three of the four bindings were deploy-safe. The fourth — the
+only one that was a var rather than a secret — was not, and the sentence above
+is what stopped anyone looking at it. Its last deploy was
 2026-09-07, version `9af47f8e-2b66-4c74-aa17-f890aca4e9ef`, source
 `quick_editor` — the DASHBOARD. Every deploy of this Worker has been a paste;
 none has come from this repo. Do not repeat the claim that it was deployed
@@ -751,6 +760,87 @@ The workflow can be triggered from a Claude session: the GitHub MCP's
 `main`, then `actions_get / get_workflow_run` for the conclusion. Creating the
 Cloudflare token and adding the secret cannot be — those authenticate as a
 person — but the deploy itself does not need a human.
+
+## How the $29 path actually failed (2026-09-13)
+
+The first real Lite purchase. Card charged $29, subscription created in Stripe,
+account showed "Free Trial, 14 days" through every refresh. The cause was not
+in `index.html`, not in the price map, and not in `resolveUserId`. It was a
+missing environment variable, and every layer built to make this loud was
+looking somewhere else.
+
+**`wrangler deploy` deleted `SUPABASE_URL` from the Worker.** Secrets survive a
+deploy; plain-text vars do not — wrangler sends the complete set of vars from
+`wrangler.toml` and replaces what the Worker had. `wrangler.toml` had no
+`[vars]` block, so the complete set was none. `SUPABASE_URL` had been typed
+into the dashboard by hand and was the only one of the four bindings stored as
+a var rather than a secret.
+
+Runs #8 and #9 on 2026-09-09 were this Worker's first `wrangler deploy`s ever
+— every prior deploy was a dashboard paste — so they were also the first
+deploy that could take it. Both went green. Nothing anywhere reported it.
+
+Then `fetch(undefined + '/rest/v1/profiles?...')` throws `TypeError: Invalid
+URL`, the handler's catch turns that into **500 "Handler error"**, and that is
+all the Stripe delivery log ever said.
+
+What made it survive four days of looking:
+
+- **The endpoint looked healthy.** Active, no required tasks, correct URL. That
+  is what an endpoint that has never once succeeded also looks like.
+- **The signature check kept passing**, because `STRIPE_WEBHOOK_SECRET` is a
+  secret and secrets survived. So the Worker was demonstrably alive and
+  correctly wired — which argued against exactly the right answer.
+- **Unhandled events kept answering 200.** `invoice.payment_succeeded` hits
+  `default:` and touches no binding, so the log showed a green row next to the
+  red ones. A totally dead Worker would have been easier to find.
+- **Only `SUPABASE_URL` produces a 500.** Work the other three: a missing
+  `STRIPE_WEBHOOK_SECRET` answers 400 at the signature check; a missing
+  `SUPABASE_SERVICE_KEY` sends the string "undefined" as a header, gets 401
+  from PostgREST, and returns **200** having written nothing; a missing
+  `STRIPE_SECRET_KEY` returns null from its own guard. Only an absent
+  `SUPABASE_URL` throws. A 500 on this Worker names its own cause, if you
+  know that table.
+- **And CLAUDE.md said it could not happen** — "`wrangler deploy` does not
+  touch them", written on 2026-09-08 when it was true of the three that were
+  secrets. Corrected above.
+
+Reproduced before it was fixed, not reasoned about: the deployed build
+(`3125a0b`) replayed against a real-shaped `checkout.session.completed` and
+`customer.subscription.created` with `SUPABASE_URL` removed returns 500
+"Handler error" on both and 200 `{"received":true}` on
+`invoice.payment_succeeded` — the same three rows, same bodies, as the live
+delivery log. With the binding restored, all three return 200 and write
+`title22_plan: 'lite'`, `status: 'active'` and a real `current_period_end`.
+
+The two fixes:
+
+- `[vars]` in `workers/stripe-webhook/wrangler.toml` now carries
+  `SUPABASE_URL`. It is not a secret — it is the same public REST host
+  `index.html` ships to every browser — and putting it in the file makes a
+  deploy idempotent instead of destructive. **Do not set it in the dashboard
+  instead. A dashboard value is precisely what the next deploy erases.**
+- `REQUIRED_BINDINGS` is checked in `index.js` before anything else, including
+  the signature check, and a missing one returns 500 naming it **in the
+  response body** — the body is what the Stripe delivery log shows, and the
+  console needs `wrangler tail` to have been running at the time. The
+  bottom-of-file catch now puts the thrown message in the body too, instead of
+  "Handler error".
+
+The rule this leaves behind: **a binding that is not in `wrangler.toml` does
+not survive CI.** Any Worker here whose config lives only in the dashboard is
+one deploy from this same outage, and none of the six `wrangler.toml` files in
+`workers/` declares a single var. The other five were last deployed by hand,
+so they still hold whatever the dashboard holds — that is luck, not design.
+Before adding any of them to CI, write their vars into their `wrangler.toml`
+first.
+
+And the lesson that is not about Cloudflare: **Stripe's delivery log was
+right all along.** It had been showing red 500s since the moment of purchase.
+Four days went to the app, the database, the wrong Stripe account and a
+sandbox belonging to a different product, because nobody opened the one page
+that records what the payment system actually did. Check the delivery log
+first, before any code.
 
 ### The secret names, in full (verified 2026-09-09)
 
