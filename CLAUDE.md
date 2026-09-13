@@ -171,9 +171,12 @@ Stripe wiring, as of 2026-09-08:
   stopped being true the moment run #8 went green on 2026-09-09. Re-checked
   2026-09-10: `PRICE_PLANS` in `workers/stripe-webhook/index.js` maps
   `price_1UDWroAH9qPFLg89kAs9h49C` → `multi-home`, `normalisePlan` folds that
-  to `multi`, and `workers/stripe-webhook/` is byte-identical to the deployed
-  commit `3125a0b`. `planFromSubscription` resolves the price directly and
-  never reaches the metadata fallback.
+  to `multi`, and `planFromSubscription` resolves the price directly, never
+  reaching the metadata fallback. (This paragraph said `workers/stripe-webhook/`
+  was byte-identical to the deployed commit `3125a0b`. It was, for four days.
+  Run #10 on 2026-09-13 deployed `320bba8`, version
+  `519d0666-28bd-4cc8-9a34-531d971d2480` — which is the point this whole entry
+  is making, arriving faster than expected.)
 
   **A Multi-Home sale today records as `multi`, correctly.** Every fault that
   did break $79 — `STRIPE_MULTI` still pointing at the old Pro link, the
@@ -189,8 +192,11 @@ Stripe wiring, as of 2026-09-08:
   description — alongside `Title22-Multi-Home`. That duplicate does NOT cause
   the webhook problem: what decides the outcome is the price ID on the
   subscription, and the live link charges the named Multi-Home product (seen
-  on the checkout page 2026-09-09). And there is no webhook problem left: the
-  deployed Worker maps that price, as of run #8.
+  on the checkout page 2026-09-09). The deployed Worker has mapped that price
+  since run #8, so there is no PRICE problem left — which is all this bullet
+  ever claimed. It is not a claim that the webhook is healthy in general: on
+  2026-09-13 it returned 500 to every event it handles, for a reason that had
+  nothing to do with any price. See "How the $29 path actually failed".
 
   It is still worth clearing. The blank product name is what a customer reads
   on their receipt and their card statement, which is how a legitimate charge
