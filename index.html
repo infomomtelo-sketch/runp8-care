@@ -1270,11 +1270,11 @@
           <button id="trial-expired-buy" class="btn btn-primary" style="font-size:13px" onclick="openStripe('lite')">Subscribe — Lite $29/mo</button>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email support@title22.app.</div></div>
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email hello@title-22.com.</div></div>
           <button class="btn btn-primary" style="font-size:13px" onclick="initFacility()">Try again</button>
         </div>
         <div id="entitlement-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't check your account just now</div><div style="font-size:13px;color:var(--text2);margin-top:4px">This is on our side, not yours — your trial has not expired. The rest of Title22 is hidden until we can confirm your plan. Try again, and if it keeps happening email support@title22.app.</div></div>
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't check your account just now</div><div style="font-size:13px;color:var(--text2);margin-top:4px">This is on our side, not yours — your trial has not expired. The rest of Title22 is hidden until we can confirm your plan. Try again, and if it keeps happening email hello@title-22.com.</div></div>
           <button class="btn btn-primary" style="font-size:13px" onclick="retryEntitlement()">Try again</button>
         </div>
         <div id="tier-upsell-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
@@ -1305,7 +1305,7 @@
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · facility &amp; staff compliance · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Contact Sales</div><button id="buy-agency" onclick="window.location.href='mailto:support@title22.app?subject=Agency%20plan'" class="btn btn-outline" style="font-size:13px">Contact Sales</button></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Contact Sales</div><button id="buy-agency" onclick="window.location.href='mailto:hello@title-22.com?subject=Agency%20plan'" class="btn btn-outline" style="font-size:13px">Contact Sales</button></div>
             </div>
           </div>
         </div>
@@ -1636,7 +1636,7 @@ function openStripe(plan){
   if(!url){
     // Better than opening the wrong price. A Lite button with no $29 link
     // behind it says so rather than charging $49.
-    t22Toast('Checkout for this plan is not set up yet — email support@title22.app and we will take it from there.');
+    t22Toast('Checkout for this plan is not set up yet — email hello@title-22.com and we will take it from there.');
     track('checkout_unavailable',{plan:planName});
     return;
   }
@@ -3105,7 +3105,7 @@ async function handleWelcome(){
     welcomeRender(
       paid===null?'We could not check your account':'Still processing',
       paid===null
-        ?'Your payment may well have gone through — we just could not read your account back. Open the app and check Billing, or email support@title22.app.'
+        ?'Your payment may well have gone through — we just could not read your account back. Open the app and check Billing, or email hello@title-22.com.'
         :'Stripe has not confirmed the payment to us yet. This usually clears within a minute or two. Nothing was charged twice.',
       '',
       '<button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleWelcome()">Check again</button>'+
@@ -3223,7 +3223,7 @@ async function initFacility(){
       complianceTasks=again||[];
       if(complianceTasks.length)t22Toast('Your compliance checklist was missing — it has been rebuilt.');
     }catch(e){
-      t22Toast('Your compliance checklist could not be loaded. Reload the page, or email support@title22.app.');
+      t22Toast('Your compliance checklist could not be loaded. Reload the page, or email hello@title-22.com.');
     }
   }
   residents=[];
