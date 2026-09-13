@@ -7,6 +7,36 @@ that combination is what charged a card on 2026-09-06 and showed the customer
 
 This is how to run it once, and how to tell exactly which hop failed.
 
+## It was run on 2026-09-13, and it found two bugs in series
+
+Recorded here because the runbook below was written from reading the code, and
+running it turned up neither of the things reading it predicted.
+
+**First, the webhook was returning 500 to everything it handles.** Not a code
+bug — a missing binding. `wrangler deploy` had deleted `SUPABASE_URL`, because
+secrets survive a deploy and plain-text vars do not, and `wrangler.toml`
+declared no `[vars]`. Fixed, deployed as run #10, and confirmed: both
+`checkout.session.completed` and `customer.subscription.deleted` now return
+200, the latter proving the Supabase writes work because it does two of them.
+
+**Second, underneath it, the price map does not match Stripe.**
+`customer.subscription.created` answers 422 "Unmapped price" on a real live
+$29 subscription. The ID appears to differ only in characters that are
+indistinguishable by eye (`I`, `l`, `i`). Open at time of writing — the
+correct ID has to be pasted as text, never read off a screenshot.
+
+Three things worth carrying into any future run of this:
+
+- **Open the Stripe delivery log FIRST.** It had been red since the moment of
+  purchase. Four days went to the app, the database, the wrong Stripe account
+  and a sandbox belonging to a different product before anybody looked at the
+  one page that records what the payment system actually did.
+- **Check the Status filter.** A delivery list filtered to "Delivered" is all
+  green by construction. The tell is a missing event TYPE, not a red row.
+- **Two bugs can hide behind one another.** The 500 sat in front of the price
+  lookup, so the price bug could not surface until the first was fixed. "The
+  symptom changed" is progress, not completion.
+
 ## Before you start: test mode will not work
 
 Stripe's test mode issues its own price ids, and `PRICE_PLANS` in

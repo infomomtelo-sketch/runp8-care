@@ -865,6 +865,70 @@ sandbox belonging to a different product, because nobody opened the one page
 that records what the payment system actually did. Check the delivery log
 first, before any code.
 
+### And underneath it, a second bug: the price map does not match Stripe
+
+Found 2026-09-13, once the Worker could finally get far enough to fail properly.
+
+With `SUPABASE_URL` restored, `checkout.session.completed` returns **200** —
+the fix is confirmed against the live database, and the **200 on
+`customer.subscription.deleted`** is the strongest evidence there is, because
+that handler does both a `patchProfile` and an `upsertSubscription` and neither
+threw.
+
+But `customer.subscription.created` then returned **422**:
+
+    "Unmapped price: price_1UCIA?AH9qPFLg89?n6eHAVa"
+
+The price on a real live $29 subscription does not byte-match
+`PRICE_PLANS`. The two characters in doubt are `I` / `l` / `i`, which render
+nearly identically in the dashboard font — so this looks exactly like an ID
+transcribed by eye. **DO NOT guess which character it is.** The correct ID must
+be pasted as text, from the dashboard's Copy button or `stripe prices list`;
+a screenshot cannot settle it, which is a fact established the hard way.
+
+The likely history, still a hypothesis until the ID is in hand: the $29 price
+was ABSENT from the map on 2026-09-06 (the original bug), was added on
+2026-09-07/08 by reading it off the screen, and the copy was wrong. Nobody
+could tell, because until 2026-09-13 the Worker died on `SUPABASE_URL` long
+before it reached the price lookup. Two bugs in series, the outer one hiding
+the inner one.
+
+Note what the 422 IS, though: the Worker refusing a payment it cannot name,
+loudly, exactly as designed. That is the intended behaviour and it worked.
+
+**The defence that follows from it — `PRODUCT_PLANS`.** One hand-copied string
+was the only thing between a payment and an account. There are two now:
+
+- On a price-map miss, the Worker asks Stripe what the price is
+  (`stripePrice`) and tries again on its PRODUCT. `prod_VDBXSXDdmtFrmh` → lite,
+  `prod_VDypF9WL2wmjGO` → multi-home. Both identifiers being mistyped is far
+  less likely than one.
+- The lookup runs ONLY on a miss, so a recognised price costs no extra API
+  call. Verified: zero lookups on the normal path.
+- A rescue is not silent, and this is the part that matters. It returns **200
+  with a `warning` in the body** naming the exact price ID to add to
+  `PRICE_PLANS`. Stripe records response bodies against every delivery, so the
+  problem appears on the delivery log where somebody will actually meet it.
+  `console.error` alone would need `wrangler tail` running at that moment —
+  which means needing to already suspect the bug. The whole of this week says
+  nobody does.
+- A genuine miss still 422s, but the body now carries what Stripe says the
+  price is (amount, interval, product) and the full list of keys we know.
+
+Only the two sellable tiers are in `PRODUCT_PLANS`. Legacy subscribers renew
+on their price IDs as they always have.
+
+Verified across four cases: known price (200, plan written, zero lookups);
+mis-cased price with a real product (200, `lite` written, warning in the body);
+unknown price and unknown product (422 naming everything); and Stripe's API
+unreachable (422, degrades, still names the price and the known keys).
+
+**Still open:** the correct price ID, and therefore the one-line `PRICE_PLANS`
+correction. Also worth doing in Stripe, not code: put `plan=lite` /
+`plan=multi` in the Payment Links' SUBSCRIPTION metadata (not the checkout
+session's — `planFromSubscription` reads `sub.metadata`). That is a third
+independent path to the tier, and it already exists in the code unused.
+
 ### The secret names, in full (verified 2026-09-09)
 
 Read out of the workflow file and written into its header comment, because a
