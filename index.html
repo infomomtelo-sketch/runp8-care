@@ -95,6 +95,9 @@
      on showMAR: nothing here touches a resident, and it is the one tab a Lite
      customer has the most use for. See applyLiteMode, which leaves it alone. */
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+  .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .lh-lang-btn{min-height:44px;padding:0 16px;border:2px solid var(--border);background:var(--white);color:var(--text);border-radius:999px;font-size:15px;font-family:inherit;cursor:pointer}
+  .lh-lang-btn.on{border-color:var(--teal);background:var(--teal-light);color:var(--teal);font-weight:600}
   .lh-bar{height:12px;border-radius:999px;background:var(--gray-light);overflow:hidden;margin-bottom:8px}
   .lh-bar-fill{height:100%;background:var(--teal);border-radius:999px;transition:width .25s}
   .lh-bar-label{font-size:15px;font-weight:600;color:var(--text);margin-bottom:22px}
@@ -819,6 +822,7 @@
           <strong>Photograph the house, the paperwork in your own name, and your own certificates.</strong>
           Never photograph a resident, or anybody's medical paperwork. Title22 holds no resident health information and these pictures must not be where it starts.
         </div>
+        <div class="lh-lang" id="lh-lang"></div>
         <div class="lh-bar"><div class="lh-bar-fill" id="lh-bar-fill" style="width:0%"></div></div>
         <div class="lh-bar-label" id="lh-bar-label">Loading&hellip;</div>
         <div class="lh-note" id="lh-local-note" style="display:none;background:var(--amber-light);border-color:#e6c170;color:var(--text)"></div>
@@ -6183,52 +6187,52 @@ async function sendTelloDock(){
 //    two languages, at 56px. The customers this is for are on a phone, often
 //    in a second language, and a form is where they stop.
 const LAUNCH_CARDS=[
-  {key:'certify', title:'Get Certified', tl:'Kumuha ng Sertipiko',
+  {key:'certify', title:'Get Certified', tr:{tl:'Kumuha ng Sertipiko',es:'Obtenga su certificación',pa:'ਸਰਟੀਫਿਕੇਟ ਲਵੋ'},
    blurb:'The part that is about you. None of it needs a house.',
    steps:[
     {key:'cert_course', title:'Take the administrator certification course',
-     tl:'Kunin ang kurso para sa administrator',
+     tr:{tl:'Kunin ang kurso para sa administrator',es:'Tome el curso de certificación para administradores',pa:'ਐਡਮਿਨਿਸਟ੍ਰੇਟਰ ਸਰਟੀਫਿਕੇਸ਼ਨ ਕੋਰਸ ਕਰੋ'},
      text:'The certification course for RCFE administrators, run by a vendor the Department has approved. The vendor issues the certificate when you finish. Photograph the certificate when it arrives.'},
     {key:'cert_exam', title:'Pass the state administrator exam',
-     tl:'Ipasa ang pagsusulit ng estado',
+     tr:{tl:'Ipasa ang pagsusulit ng estado',es:'Apruebe el examen estatal de administrador',pa:'ਸਟੇਟ ਐਡਮਿਨਿਸਟ੍ਰੇਟਰ ਇਮਤਿਹਾਨ ਪਾਸ ਕਰੋ'},
      text:'The exam is taken through the state, separately from the course. You are sent the result. Photograph it.'},
     {key:'cert_livescan', title:'Get your Live Scan fingerprint clearance',
-     tl:'Magpa-Live Scan at kunin ang clearance',
+     tr:{tl:'Magpa-Live Scan at kunin ang clearance',es:'Obtenga su autorización de huellas Live Scan',pa:'ਲਾਈਵ ਸਕੈਨ ਫਿੰਗਰਪ੍ਰਿੰਟ ਕਲੀਅਰੈਂਸ ਲਵੋ'},
      text:'You are fingerprinted at a Live Scan location, and the clearance comes back from the Department’s background check bureau. Photograph the clearance, not the receipt.'},
     {key:'cert_cpr', title:'Get a CPR and First Aid card',
-     tl:'Kunin ang CPR at First Aid card',
+     tr:{tl:'Kunin ang CPR at First Aid card',es:'Obtenga su tarjeta de CPR y primeros auxilios',pa:'CPR ਅਤੇ ਫਸਟ ਏਡ ਕਾਰਡ ਲਵੋ'},
      text:'The cards a training provider issues when you complete the class — usually both in one session. Photograph the cards.'},
    ]},
-  {key:'house', title:'Prep House', tl:'Ihanda ang Bahay',
+  {key:'house', title:'Prep House', tr:{tl:'Ihanda ang Bahay',es:'Prepare la casa',pa:'ਘਰ ਤਿਆਰ ਕਰੋ'},
    blurb:'The building itself. Photographs, not descriptions.',
    steps:[
     {key:'house_pick', title:'Choose the house',
-     tl:'Piliin ang bahay',
+     tr:{tl:'Piliin ang bahay',es:'Elija la casa',pa:'ਘਰ ਚੁਣੋ'},
      text:'Yours or leased. Photograph the front of the house from the street, the way somebody arriving would see it.'},
     {key:'house_fire', title:'Get the fire clearance',
-     tl:'Kunin ang fire clearance',
+     tr:{tl:'Kunin ang fire clearance',es:'Obtenga la autorización de bomberos',pa:'ਫਾਇਰ ਕਲੀਅਰੈਂਸ ਲਵੋ'},
      text:'The clearance is issued by the fire authority for the area the house is in — they inspect and then issue it. Photograph the clearance they give you.'},
     {key:'house_rooms', title:'Bedrooms, bathrooms and the way out',
-     tl:'Mga kwarto, banyo at labasan',
+     tr:{tl:'Mga kwarto, banyo at labasan',es:'Dormitorios, baños y las salidas',pa:'ਸੌਣ ਵਾਲੇ ਕਮਰੇ, ਬਾਥਰੂਮ ਅਤੇ ਬਾਹਰ ਜਾਣ ਦਾ ਰਸਤਾ'},
      text:'Photograph each bedroom, each bathroom, and every door someone would leave by. One picture each is enough.'},
     {key:'house_kitchen', title:'Kitchen, food storage and hot water',
-     tl:'Kusina, imbakan ng pagkain at mainit na tubig',
+     tr:{tl:'Kusina, imbakan ng pagkain at mainit na tubig',es:'Cocina, almacenamiento de alimentos y agua caliente',pa:'ਰਸੋਈ, ਖਾਣੇ ਦਾ ਭੰਡਾਰ ਅਤੇ ਗਰਮ ਪਾਣੀ'},
      text:'Photograph the kitchen, where food is stored, and the water heater with its setting visible.'},
    ]},
-  {key:'license', title:'Get License', tl:'Kumuha ng Lisensya',
+  {key:'license', title:'Get License', tr:{tl:'Kumuha ng Lisensya',es:'Obtenga la licencia',pa:'ਲਾਇਸੰਸ ਲਵੋ'},
    blurb:'The application itself, and the visit at the end of it.',
    steps:[
     {key:'lic_orientation', title:'Go to the licensing orientation',
-     tl:'Pumunta sa orientation ng lisensya',
+     tr:{tl:'Pumunta sa orientation ng lisensya',es:'Asista a la orientación de licencias',pa:'ਲਾਇਸੰਸਿੰਗ ਓਰੀਐਂਟੇਸ਼ਨ ਵਿੱਚ ਜਾਓ'},
      text:'The Department runs an orientation for new applicants and gives you the application packet there. Photograph anything they hand you.'},
     {key:'lic_packet', title:'Fill in the application packet',
-     tl:'Punan ang application packet',
+     tr:{tl:'Punan ang application packet',es:'Complete el paquete de solicitud',pa:'ਅਰਜ਼ੀ ਦਾ ਪੈਕੇਟ ਭਰੋ'},
      text:'The forms in the packet from orientation, filled in and signed. Photograph the completed packet before you send it, so you have your own copy.'},
     {key:'lic_fee', title:'Pay the application fee',
-     tl:'Bayaran ang bayad sa aplikasyon',
+     tr:{tl:'Bayaran ang bayad sa aplikasyon',es:'Pague la cuota de solicitud',pa:'ਅਰਜ਼ੀ ਦੀ ਫੀਸ ਭਰੋ'},
      text:'The fee is paid to the Department as part of the application. Photograph the receipt or the confirmation.'},
     {key:'lic_visit', title:'The licensing visit',
-     tl:'Ang pagbisita ng licensing analyst',
+     tr:{tl:'Ang pagbisita ng licensing analyst',es:'La visita del analista de licencias',pa:'ਲਾਇਸੰਸਿੰਗ ਵਿਜ਼ਿਟ'},
      text:'An analyst comes to the house before a licence is issued. Photograph the paperwork they leave with you.'},
    ]},
 ];
@@ -6239,6 +6243,49 @@ let launchPhotoStep=null;      // which step the hidden file input is answering
 // 'db' while public.launch_checklist answers, 'local' once it has not.
 // Sequenced, never both: see loadLaunchHub.
 let launchStore='db';
+
+// Four languages on this tab, and only this tab — the rest of the app is
+// English. The English title is always the heading; the picker chooses which
+// translation sits under it, or 'en' for none.
+//
+// One line under the title, never three. Stacking Tagalog, Spanish and Punjabi
+// on all twelve steps would triple the reading on a screen whose whole design
+// is one decision per screenful for someone on a phone.
+const LAUNCH_LANGS=[
+  {key:'en', label:'English'},
+  {key:'tl', label:'Tagalog'},
+  {key:'es', label:'Español'},
+  {key:'pa', label:'ਪੰਜਾਬੀ'},
+];
+// Tagalog is the fallback rather than English, so an existing user who has
+// never touched the picker sees exactly what they saw before this change.
+function launchDefaultLang(){
+  try{
+    const saved=localStorage.getItem('title22_launch_lang');
+    if(saved&&LAUNCH_LANGS.some(l=>l.key===saved))return saved;
+    const nav=(navigator.language||'').toLowerCase();
+    if(nav.startsWith('es'))return 'es';
+    if(nav.startsWith('pa'))return 'pa';
+    if(nav.startsWith('tl')||nav.startsWith('fil'))return 'tl';
+  }catch(e){/* private mode: fall through */}
+  return 'tl';
+}
+let launchLang=launchDefaultLang();
+function setLaunchLang(k){
+  if(!LAUNCH_LANGS.some(l=>l.key===k))return;
+  launchLang=k;
+  try{localStorage.setItem('title22_launch_lang',k);}catch(e){}
+  renderLaunchHub();
+  track('launch_lang',{lang:k});
+}
+// The translated line for a card or a step. Returns '' for English, and falls
+// back to Tagalog rather than to nothing if a translation is ever missing —
+// a missing line should be a visible gap in one language, not an empty tab.
+function launchTr(o){
+  if(launchLang==='en')return '';
+  const tr=o&&o.tr; if(!tr)return '';
+  return tr[launchLang]||tr.tl||'';
+}
 
 function launchAllSteps(){return LAUNCH_CARDS.reduce((a,c)=>a.concat(c.steps),[]);}
 function launchStepDef(key){return launchAllSteps().find(s=>s.key===key)||null;}
@@ -6311,7 +6358,20 @@ function renderLaunchHub(errMsg){
   const fill=document.getElementById('lh-bar-fill');
   if(fill)fill.style.width=Math.round(doneCount/all.length*100)+'%';
   const label=document.getElementById('lh-bar-label');
-  if(label)label.textContent=doneCount+' of '+all.length+' done  ·  '+doneCount+' sa '+all.length+' tapos na';
+  // The most-read line on the page, so it follows the picker too. English is
+  // always shown; the chosen language follows it, which is the same shape as
+  // every step.
+  const done={
+    en:doneCount+' of '+all.length+' done',
+    tl:doneCount+' sa '+all.length+' tapos na',
+    es:doneCount+' de '+all.length+' hechos',
+    pa:all.length+' ਵਿੱਚੋਂ '+doneCount+' ਹੋ ਗਏ',
+  };
+  if(label)label.textContent=done.en+(launchLang!=='en'?'  ·  '+(done[launchLang]||done.tl):'');
+  const langBar=document.getElementById('lh-lang');
+  if(langBar)langBar.innerHTML=LAUNCH_LANGS.map(l=>
+    `<button class="lh-lang-btn${l.key===launchLang?' on':''}" onclick="setLaunchLang('${l.key}')">${esc(l.label)}</button>`
+  ).join('');
   const editable=canEdit();
   wrap.innerHTML=LAUNCH_CARDS.map((card,ci)=>{
     const open=launchOpenCard===card.key;
@@ -6323,7 +6383,7 @@ function renderLaunchHub(errMsg){
         <span class="lh-num">${allDone?'✓':(ci+1)}</span>
         <span class="lh-head-text">
           <span class="lh-title">${esc(card.title)}</span>
-          <div class="lh-tl">${esc(card.tl)}</div>
+          ${launchTr(card)?`<div class="lh-tl">${esc(launchTr(card))}</div>`:''}
           <div class="lh-count">${cDone} of ${card.steps.length} done · ${esc(card.blurb)}</div>
         </span>
         <svg class="lh-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
@@ -6335,7 +6395,7 @@ function renderLaunchHub(errMsg){
           return `
           <div class="lh-step">
             <div class="lh-step-title">${n}. ${esc(st.title)}</div>
-            <div class="lh-step-tl">${esc(st.tl)}</div>
+            ${launchTr(st)?`<div class="lh-step-tl">${esc(launchTr(st))}</div>`:''}
             <div class="lh-step-text">${esc(st.text)}</div>
             <div class="lh-actions">
               <button class="lh-btn${stt.done?' is-done':''}" ${editable?'':'disabled'} onclick="setLaunchDone('${st.key}',${stt.done?'false':'true'})">
