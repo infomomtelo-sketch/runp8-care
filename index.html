@@ -94,6 +94,13 @@
      Deliberately NOT in the t22-no-phi list above and deliberately not gated
      on showMAR: nothing here touches a resident, and it is the one tab a Lite
      customer has the most use for. See applyLiteMode, which leaves it alone. */
+  /* The two doors on the onboarding card. Same 56px floor as Launch Hub's
+     controls, and for the same reason: this is the first screen a new owner
+     sees, often on a phone, often not in their first language. */
+  .ob-path-btn{display:block;width:100%;text-align:left;min-height:56px;padding:16px 18px;margin-bottom:12px;border-radius:var(--radius);line-height:1.4}
+  .ob-path-btn strong{display:block;font-size:16px;font-weight:600}
+  .ob-path-btn span{display:block;font-size:13px;color:var(--text2);margin-top:3px}
+  .ob-path-btn:hover span{color:var(--teal)}
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
   .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .lh-lang-btn{min-height:44px;padding:0 16px;border:2px solid var(--border);background:var(--white);color:var(--text);border-radius:999px;font-size:15px;font-family:inherit;cursor:pointer}
@@ -677,13 +684,35 @@
         <button class="btn btn-outline" style="width:100%;padding:11px;margin-top:10px" onclick="createFacilityInstead()">Set up my own facility instead</button>
       </div>
       <div id="ob-create-form">
-      <div class="onboard-step">Step 1 of 1 · Setup</div>
-      <h2>Tell us about your facility</h2>
-      <p>This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
+      <!-- Which door. INSIDE #ob-create-form on purpose: renderInviteWaiting()
+           shows and hides that one div, so an invited caregiver gets the join
+           panel and never sees this question.
+           The reason it exists: Start Your Home is built for the person who has
+           no licence yet, and every route into the app ran through a form
+           headed "Tell us about your facility" asking for a licence number and
+           a certificate number — the two things they are trying to obtain. The
+           tab was unreachable by the only people it was for. -->
+      <div id="ob-path-choice">
+        <div class="onboard-step">Step 1 of 2 · Where you are</div>
+        <h2>Do you have a licensed home yet?</h2>
+        <p>Either answer is fine — it just decides what we show you first.</p>
+        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('licensed')">
+          <strong>Yes, I run a licensed home</strong>
+          <span>Track staff, training, documents and DSS readiness.</span>
+        </button>
+        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('starting')">
+          <strong>Not yet — I'm starting one</strong>
+          <span>Oo, nagsisimula pa lang. Walk through the twelve steps to your licence.</span>
+        </button>
+      </div>
+      <div id="ob-form-fields" style="display:none">
+      <div class="onboard-step">Step 2 of 2 · Setup</div>
+      <h2 id="ob-form-title">Tell us about your facility</h2>
+      <p id="ob-form-sub">This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
       <div class="form-group"><label>Facility type</label><select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
       <div class="form-group"><label>Facility name</label><input type="text" id="ob-name" autocomplete="organization" placeholder="Sunrise Care Home"/></div>
       <div class="form-row">
-        <div class="form-group"><label>License number</label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX"/></div>
+        <div class="form-group" id="ob-row-license"><label>License number</label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX"/></div>
         <div class="form-group"><label>Facility capacity</label><input type="number" id="ob-capacity" autocomplete="off" placeholder="6"/></div>
       </div>
       <div class="form-group"><label>Street address</label><input type="text" id="ob-address-street" autocomplete="off" placeholder="1234 Main St"/></div>
@@ -692,12 +721,14 @@
         <div class="form-group"><label>ZIP code</label><input type="text" id="ob-address-zip" autocomplete="postal-code" inputmode="numeric" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" placeholder="93701"/></div>
       </div>
       <div class="form-group"><label>Administrator name</label><input type="text" id="ob-admin-name" autocomplete="off" placeholder="Jane Smith"/></div>
-      <div class="form-row">
+      <div class="form-row" id="ob-row-cert">
         <div class="form-group"><label>Certificate number</label><input type="text" id="ob-cert" autocomplete="off" placeholder="RCFE-XXXXXX"/></div>
         <div class="form-group"><label>Certificate expiry</label><input type="date" id="ob-cert-expiry" autocomplete="off"/></div>
       </div>
       <div class="error-msg" id="ob-error"></div>
-      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleOnboard()">Set up my facility →</button>
+      <button class="btn btn-primary" style="width:100%;padding:11px" id="ob-submit" onclick="handleOnboard()">Set up my facility →</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="chooseOnboardPath(null)">← Back</button>
+      </div>
       </div>
     </div>
   </div>
@@ -2342,6 +2373,41 @@ async function handleSetNewPassword(){
 }
 
 // ===== ONBOARD =====
+// Which door they came through. Read once, at the end of handleOnboard, to
+// decide where they land. Anything other than 'starting' behaves exactly as
+// this flow always has — so if this is somehow never set, the result is the
+// old behaviour rather than a new one.
+let obPath=null;
+
+// null re-opens the chooser (the Back button). The licence and certificate
+// rows are HIDDEN, never removed, for someone who is not licensed yet: they
+// were already optional in handleOnboard — only `name` is required — so
+// hiding them changes what is asked for, not what is saved. Someone who is
+// mid-application and already holds a certificate can go Back and pick the
+// other door.
+function chooseOnboardPath(path){
+  obPath=path;
+  const choice=document.getElementById('ob-path-choice');
+  const fields=document.getElementById('ob-form-fields');
+  if(!choice||!fields)return;
+  if(!path){choice.style.display='';fields.style.display='none';return;}
+  choice.style.display='none';
+  fields.style.display='';
+  const starting=path==='starting';
+  const title=document.getElementById('ob-form-title');
+  const sub=document.getElementById('ob-form-sub');
+  const submit=document.getElementById('ob-submit');
+  if(title)title.textContent=starting?'What will you call your home?':'Tell us about your facility';
+  if(sub)sub.textContent=starting
+    ?'A working name is enough — you can change it later. Everything else is optional and can wait until you have it.'
+    :'This information helps Title22 load the correct Title 22 requirements for your RCFE.';
+  if(submit)submit.textContent=starting?'Start my checklist →':'Set up my facility →';
+  ['ob-row-license','ob-row-cert'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=starting?'none':'';
+  });
+}
+
 async function handleOnboard(){
   const name=document.getElementById('ob-name').value.trim();
   const err=document.getElementById('ob-error');
@@ -2385,7 +2451,12 @@ async function handleOnboard(){
     return;
   }
   await initFacility();
-  switchTab('dashboard');
+  // The whole point of the chooser. Someone who said they are not licensed yet
+  // lands on the twelve steps; everybody else lands exactly where they always
+  // have. Guarded on allowedTabs so this can never drop them on a tab their
+  // role or entitlement does not allow — that falls back to the dashboard.
+  const wantLaunch=obPath==='starting'&&allowedTabs().includes('launch');
+  switchTab(wantLaunch?'launch':'dashboard');
 }
 
 // Copies every checklist_items row into compliance_tasks for one facility.
@@ -7267,6 +7338,14 @@ function renderInviteWaiting(){
   if(err){err.textContent='';err.style.display='none';}
   if(!t22PendingInvite){
     note.style.display='none';join.style.display='none';form.style.display='';
+    // Re-assert which of the two children inside #ob-create-form is showing.
+    // This function un-hides the wrapper but knew nothing about the chooser
+    // added inside it, so whatever was last displayed there survived — an
+    // invited caregiver who opted out could get the form with no chooser above
+    // it. Passing the CURRENT obPath rather than null makes it idempotent: it
+    // restores the chooser when no door has been picked, and does not throw
+    // away a choice already made.
+    chooseOnboardPath(obPath);
     return;
   }
   note.style.display='none';
