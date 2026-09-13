@@ -271,7 +271,18 @@ export default {
             clientReferenceId: obj.client_reference_id,
             email,
           });
-          if (!userId) return new Response('No matching user for checkout session', { status: 202 });
+          if (!userId) {
+            // 409, not 202. A paid checkout we cannot attribute is not a
+            // success to be acknowledged and forgotten — 2xx tells Stripe the
+            // event is handled and it is never sent again, so the money lands
+            // and nothing is ever written. Any non-2xx makes Stripe retry with
+            // backoff for about three days AND shows the delivery red in the
+            // dashboard. Both matter: the retry is what heals the case where
+            // somebody pays first and creates their account minutes later, and
+            // the red row is what tells a human it happened at all.
+            console.error('Unattributed checkout session', obj.id, 'email', email || '(none)');
+            return new Response('No matching user for checkout session — will retry', { status: 409 });
+          }
           if (subscriptionId) {
             await patchProfile(env, userId, {
               title22_subscription_id: subscriptionId,
@@ -293,7 +304,14 @@ export default {
           const { plan, priceId } = planFromSubscription(obj);
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
-          if (!userId) return new Response('No matching user for subscription', { status: 202 });
+          if (!userId) {
+            // See the note on checkout.session.completed above. This is the
+            // event that decides the plan, so an unattributed one is the
+            // difference between a paying customer and someone looking at
+            // "Free Trial" after being charged.
+            console.error('Unattributed subscription', obj.id, 'email', email || '(none)');
+            return new Response('No matching user for subscription — will retry', { status: 409 });
+          }
           if (!plan) {
             // The failure that started all of this: an unmapped price used to
             // write nothing at all, silently. Now it is refused loudly enough
@@ -325,7 +343,15 @@ export default {
         case 'customer.subscription.deleted': {
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
-          if (!userId) return new Response('No matching user for cancellation', { status: 202 });
+          // Deliberately still 202, and the only one. A cancellation we cannot
+          // attribute has nothing to heal: there is no account to unlock and
+          // no money at stake, so three days of retries would be noise that
+          // trains everyone to ignore red rows in the delivery log. Logged,
+          // acknowledged, dropped.
+          if (!userId) {
+            console.warn('Unattributed cancellation', obj.id, '— acknowledged, nothing to do');
+            return new Response('No matching user for cancellation', { status: 202 });
+          }
           const periodEnd = periodEndOf(obj) || new Date().toISOString();
           await patchProfile(env, userId, { title22_plan_expires_at: periodEnd });
           await upsertSubscription(env, {
