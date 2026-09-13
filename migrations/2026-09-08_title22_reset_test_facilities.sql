@@ -5,9 +5,12 @@
 --
 -- WHAT IT KEEPS, and why
 --
---   jas@thehomewellgroup.com   a real prospect: signed up 18 Aug, came back
---                              13 hours later, has a facility. Not yours.
---   the four zero-facility strangers  nothing to delete anyway, excluded so
+--   the accounts you list in t22_keep_owners  real prospects and partners.
+--                              You build that list yourself in STEP 0 below —
+--                              it is not committed to this file. One of them
+--                              is a prospect who signed up 18 Aug, came back
+--                              13 hours later, and has a facility.
+--   the zero-facility strangers  nothing to delete anyway, excluded so
 --                              the question does not arise.
 --   the newest sample home     the one you asked to keep.
 --   ANY facility holding an incident   CLAUDE.md: "incidents.resident_id =
@@ -18,11 +21,46 @@
 --                              they turn out to be test incidents you do not
 --                              need, delete those facilities in a second pass.
 --
--- Charise's two facilities ARE in the delete set, since she is your partner
--- and they are test data — but report 2 shows what is in them before you
--- commit. If either holds real work, add her email to the exclusion list.
+-- Your partner's two facilities ARE in the delete set, since they are test
+-- data — but report 2 shows what is in them before you commit. If either
+-- holds real work, add her user id to the keep list in STEP 0.
+
+-- STEP 0 — BUILD THE KEEP LIST. Do this before anything else.
+--
+-- Run this on its own and read it:
+--
+--     select id, email, created_at from auth.users order by email;
+--
+-- Copy the `id` of every account whose facilities must SURVIVE into the
+-- insert below. Copy them — do not type them from memory, and do not guess.
+--
+-- Why ids and not the email addresses that used to be written here: this file
+-- lives in a public repository, and the addresses of five real people were
+-- committed in it. The list does the same job either way; only one of them
+-- publishes a customer's contact details. The reports further down still
+-- print emails at run time, from the database, so you can still check by eye
+-- that the right accounts are being spared.
+--
+-- This file CANNOT be run as it stands — the placeholder below is not a valid
+-- uuid and will fail. That is deliberate on a script that deletes things.
 
 begin;
+
+create temp table t22_keep_owners(user_id uuid primary key) on commit drop;
+
+insert into t22_keep_owners(user_id) values
+  ('PASTE-A-USER-ID-HERE')
+  -- ,('00000000-0000-0000-0000-000000000000')
+;
+
+-- An empty keep list means every account is in scope, which is never what
+-- anyone intended. Refuse rather than find out afterwards.
+do $$
+begin
+  if (select count(*) from t22_keep_owners) = 0 then
+    raise exception 'Keep list is empty. Fill t22_keep_owners in STEP 0 before running this.';
+  end if;
+end $$;
 
 -- The facilities to remove -----------------------------------------------
 
@@ -30,13 +68,7 @@ create temp table t22_doomed on commit drop as
 select f.id, f.name, f.created_at, u.email as owner
   from public.facilities f
   join auth.users u on u.id = f.user_id
- where u.email not in (
-        'jas@thehomewellgroup.com',
-        'danalaanderson@gmail.com',
-        'rsamra2006@gmail.com',
-        'jssocialspark@gmail.com',
-        'tiffanih25@gmail.com'
-      )
+ where u.id not in (select user_id from t22_keep_owners)
    and not exists (
         select 1 from public.incidents i where i.facility_id = f.id
       )
@@ -52,9 +84,7 @@ select f.id, f.name, f.created_at, u.email as owner
 
 select 'KEPT — not yours'      as reason, f.name, u.email as owner, f.created_at
   from public.facilities f join auth.users u on u.id = f.user_id
- where u.email in ('jas@thehomewellgroup.com','danalaanderson@gmail.com',
-                   'rsamra2006@gmail.com','jssocialspark@gmail.com',
-                   'tiffanih25@gmail.com')
+ where u.id in (select user_id from t22_keep_owners)
 union all
 select 'KEPT — holds incidents (LIC 624)', f.name, u.email, f.created_at
   from public.facilities f join auth.users u on u.id = f.user_id
