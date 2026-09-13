@@ -43,6 +43,30 @@ const PRICE_PLANS = {
   'price_1TkINiAH9qPFLg89upIhpYTy': { plan: 'agency',     facilities: Infinity, name: 'Title22 Agency' },
 };
 
+// Product ID -> plan. The SECOND way to name a tier, and it exists because the
+// first way failed in the stupidest possible manner.
+//
+// On 2026-09-13 a live $29 Lite subscription was refused with
+// "Unmapped price: price_1UCIA?AH9qPFLg89?n6eHAVa". The price on the
+// subscription did not byte-match the key in PRICE_PLANS, and the two
+// characters in question are the ones a human cannot tell apart: capital I,
+// lowercase l, and lowercase i render nearly identically in the dashboard's
+// font. Somebody transcribed that ID by eye, and one hand-copied string was
+// the only thing standing between a payment and an account.
+//
+// A product ID is a second, independent hand-copied string. That is the whole
+// point: both being wrong is far less likely than one being wrong, and if both
+// ARE wrong the 422 below now prints what Stripe actually sent, so the next
+// person fixes it from the delivery log in one look instead of four days.
+//
+// Only the two sellable tiers are here. The legacy products are not, and do
+// not need to be — nothing new is sold on them, and an existing subscriber's
+// renewal still resolves on its price ID as it always has.
+const PRODUCT_PLANS = {
+  'prod_VDBXSXDdmtFrmh': 'lite',        // $29 Title22 Lite
+  'prod_VDypF9WL2wmjGO': 'multi-home',  // $79 Title22 Multi-Home
+};
+
 // The plan keys the app actually understands. index.html's TIER_LIMITS and
 // T22_PAID are keyed on exactly these, so a plan written here that is not in
 // this list is worse than writing nothing: T22_PAID would not match it, so the
@@ -192,6 +216,35 @@ async function stripeCustomerEmail(env, customerId) {
   return c.email || null;
 }
 
+// Ask Stripe what a price actually is. Called ONLY when the price ID missed
+// PRICE_PLANS, so the normal path costs nothing: no extra API call on a
+// subscription whose price we already recognise.
+//
+// Two jobs. It can rescue the event, by reading the price's product and
+// matching that instead. And whether or not it rescues anything, what it
+// returns goes into the 422 body, so the delivery log names the real price,
+// the real product and the real amount rather than only the string we failed
+// to match.
+async function stripePrice(env, priceId) {
+  if (!priceId || !env.STRIPE_SECRET_KEY) return null;
+  const res = await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(priceId)}`, {
+    headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY },
+  });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+
+// Human-readable, for the 422 body: "$29.00/month".
+function describePrice(price) {
+  if (!price) return 'price could not be read from Stripe';
+  const amount = typeof price.unit_amount === 'number'
+    ? '$' + (price.unit_amount / 100).toFixed(2)
+    : '(no unit_amount)';
+  const interval = (price.recurring && price.recurring.interval) || 'one-time';
+  const product = typeof price.product === 'string' ? price.product : (price.product && price.product.id) || '(none)';
+  return `${amount}/${interval}, product ${product}`;
+}
+
 function planFromSubscription(sub) {
   const items = (sub.items && sub.items.data) || [];
   for (const it of items) {
@@ -314,6 +367,14 @@ export default {
     try { event = JSON.parse(raw); } catch (e) { return new Response('Bad JSON', { status: 400 }); }
     const obj = (event.data && event.data.object) || {};
 
+    // Set when the event succeeded but something is wrong that a human must
+    // fix. It rides out in the 200 body, because Stripe records the response
+    // body against every delivery and that log is the only thing anybody reads
+    // afterwards — console.error needs `wrangler tail` to have been running at
+    // the moment it happened, which is to say it needs somebody to have already
+    // suspected the problem. The whole lesson of this file is that they won't.
+    let warning = null;
+
     try {
       switch (event.type) {
 
@@ -359,7 +420,7 @@ export default {
         // renewal and payment failure alike.
         case 'customer.subscription.created':
         case 'customer.subscription.updated': {
-          const { plan, priceId } = planFromSubscription(obj);
+          let { plan, priceId } = planFromSubscription(obj);
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           if (!userId) {
@@ -371,11 +432,37 @@ export default {
             return new Response('No matching user for subscription — will retry', { status: 409 });
           }
           if (!plan) {
-            // The failure that started all of this: an unmapped price used to
-            // write nothing at all, silently. Now it is refused loudly enough
-            // to show up in Stripe's delivery log and the Worker's tail.
-            console.error('Unmapped Stripe price', priceId, 'on subscription', obj.id);
-            return new Response('Unmapped price: ' + priceId, { status: 422 });
+            // The price did not match. Before refusing a payment, ask Stripe
+            // what this price IS and try to name the tier from its product —
+            // see PRODUCT_PLANS for why a second identifier exists at all.
+            const price = await stripePrice(env, priceId);
+            const productId = price && (typeof price.product === 'string' ? price.product : price.product && price.product.id);
+            const viaProduct = normalisePlan(PRODUCT_PLANS[productId]);
+            if (viaProduct) {
+              // Deliberately loud even though it worked. This is a rescue, not
+              // a normal path: the map is WRONG and somebody has to correct it,
+              // and a silent success is how it would stay wrong forever.
+              const note =
+                `PRICE MAP IS WRONG — this event was rescued via its product. ` +
+                `Stripe sent price ${priceId}, product ${productId} -> ${viaProduct}. ` +
+                `Add ${priceId} to PRICE_PLANS in workers/stripe-webhook/index.js.`;
+              console.error(note);
+              warning = note;
+              plan = viaProduct;
+            } else {
+              // Still no. Refuse — but say everything we know, in the BODY,
+              // because the delivery log is what a human reads afterwards and
+              // "Unmapped price: <id>" cost four days of reading it off a
+              // photograph of a screen.
+              const known = Object.keys(PRICE_PLANS).join(', ');
+              const body =
+                `Unmapped price: ${priceId}\n` +
+                `Stripe says: ${describePrice(price)}\n` +
+                `Known prices: ${known}\n` +
+                `Known products: ${Object.keys(PRODUCT_PLANS).join(', ')}`;
+              console.error('Unmapped Stripe price', priceId, 'on subscription', obj.id, '-', describePrice(price));
+              return new Response(body, { status: 422 });
+            }
           }
           const periodEnd = periodEndOf(obj);
           const active = obj.status === 'active' || obj.status === 'trialing';
@@ -439,7 +526,10 @@ export default {
       return new Response('Handler error on ' + event.type + ': ' + why, { status: 500 });
     }
 
-    return new Response(JSON.stringify({ received: true }), {
+    // 200 either way — the event WAS handled and Stripe must not retry it. The
+    // warning is cargo, not a status: it puts the problem on the delivery log
+    // where a person will meet it, instead of in a console nobody is tailing.
+    return new Response(JSON.stringify(warning ? { received: true, warning } : { received: true }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
     });
   },
