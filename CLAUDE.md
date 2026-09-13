@@ -46,7 +46,7 @@ a customer notices:
   What runs is the Cloudflare Worker `stripe-webhook`, deployed 2026-09-07
   against the `memorable-wonder` Stripe destination, with its source in
   `workers/stripe-webhook/`. It verifies the signature with Web Crypto, maps
-  `price_1UCIAiAH9qPFLg89ln6eHAVa` → `lite` (the missing entry that charged a
+  `price_1UClAiAH9qPFLg89ln6eHAVa` → `lite` (the missing entry that charged a
   card on 2026-09-06 and left the customer on "Free Trial"), and writes both
   `profiles.title22_*` and `public.subscriptions`.
 
@@ -149,7 +149,7 @@ Pro payment link under a new name.
 
 Stripe wiring, as of 2026-09-08:
 
-- Lite $29 — `prod_VDBXSXDdmtFrmh`, `price_1UCIAiAH9qPFLg89ln6eHAVa`. Payment
+- Lite $29 — `prod_VDBXSXDdmtFrmh`, `price_1UClAiAH9qPFLg89ln6eHAVa`. Payment
   Link live, webhook maps the price. Done.
 - Multi-Home $79 — `prod_VDypF9WL2wmjGO`, `price_1UDWroAH9qPFLg89kAs9h49C`,
   Payment Link `https://buy.stripe.com/9B6fZg5U64gS17lfwag360m`. Wired
@@ -875,23 +875,31 @@ the fix is confirmed against the live database, and the **200 on
 that handler does both a `patchProfile` and an `upsertSubscription` and neither
 threw.
 
-But `customer.subscription.created` then returned **422**:
+But `customer.subscription.created` then returned **422 Unmapped price**. The
+price on a real live $29 subscription did not byte-match `PRICE_PLANS`.
 
-    "Unmapped price: price_1UCIA?AH9qPFLg89?n6eHAVa"
+**RESOLVED. It was one character, at index 9.**
 
-The price on a real live $29 subscription does not byte-match
-`PRICE_PLANS`. The two characters in doubt are `I` / `l` / `i`, which render
-nearly identically in the dashboard font — so this looks exactly like an ID
-transcribed by eye. **DO NOT guess which character it is.** The correct ID must
-be pasted as text, from the dashboard's Copy button or `stripe prices list`;
-a screenshot cannot settle it, which is a fact established the hard way.
+    was:  price_1UC I AiAH9qPFLg89ln6eHAVa     LATIN CAPITAL LETTER I
+    is:   price_1UC l AiAH9qPFLg89ln6eHAVa     LATIN SMALL LETTER L
 
-The likely history, still a hypothesis until the ID is in hand: the $29 price
-was ABSENT from the map on 2026-09-06 (the original bug), was added on
-2026-09-07/08 by reading it off the screen, and the copy was wrong. Nobody
-could tell, because until 2026-09-13 the Worker died on `SUPABASE_URL` long
-before it reached the price lookup. Two bugs in series, the outer one hiding
-the inner one.
+That is the whole bug. The $29 price was ABSENT from the map on 2026-09-06 (the
+original bug), was added on 2026-09-07/08 by reading it off the screen, and one
+capital `I` was written where a lowercase `l` belonged. Nobody could tell,
+because until 2026-09-13 the Worker died on `SUPABASE_URL` long before it
+reached the price lookup. Two bugs in series, the outer one hiding the inner
+one, for a week.
+
+**Read this part before ever eyeballing an identifier again.** Working from a
+photograph of the 422 message, the difference looked like it was at indexes 11
+and 22 — `Ai` read as `AI`, and `ln6` read as `In6`. Both of those were
+CORRECT already. Had anyone "fixed" what the screenshot appeared to show, they
+would have changed two right characters, left the one wrong character in place,
+and still had a 422 — with the map now differing from Stripe in three positions
+instead of one. The ID was settled by pasting it as TEXT and diffing it
+programmatically, which found exactly one difference and named the Unicode
+codepoints on both sides. Do that. A screenshot of an identifier is not
+evidence about the identifier.
 
 Note what the 422 IS, though: the Worker refusing a payment it cannot name,
 loudly, exactly as designed. That is the intended behaviour and it worked.
@@ -923,11 +931,18 @@ mis-cased price with a real product (200, `lite` written, warning in the body);
 unknown price and unknown product (422 naming everything); and Stripe's API
 unreachable (422, degrades, still names the price and the known keys).
 
-**Still open:** the correct price ID, and therefore the one-line `PRICE_PLANS`
-correction. Also worth doing in Stripe, not code: put `plan=lite` /
-`plan=multi` in the Payment Links' SUBSCRIPTION metadata (not the checkout
-session's — `planFromSubscription` reads `sub.metadata`). That is a third
-independent path to the tier, and it already exists in the code unused.
+The corrected ID is in `PRICE_PLANS`, `wrangler.toml`, `workers/README.md`,
+this file and `index.html`'s comment — all five, swept so no stale copy is left
+for somebody to re-transcribe from. Verified: the real price resolves to `lite`
+with ZERO Stripe lookups, which is the proof the map is right rather than the
+fallback quietly carrying it. The old wrong ID, should it ever turn up on a
+legacy subscription, is still rescued via its product with the warning in the
+body.
+
+**Still worth doing in Stripe, not code:** put `plan=lite` / `plan=multi` in
+the Payment Links' SUBSCRIPTION metadata (not the checkout session's —
+`planFromSubscription` reads `sub.metadata`). That is a third independent path
+to the tier, and it already exists in the code unused.
 
 ### The secret names, in full (verified 2026-09-09)
 
