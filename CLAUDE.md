@@ -209,31 +209,36 @@ Stripe wiring, as of 2026-09-08:
   function call away, and `pro` pointed at that nameless product. Only `lite`
   and `multi` are sellable from the app now. Both stay in `STRIPE_PLANS`, so
   historic checkout events still resolve to a name.
-- **Two Map bundles exist in Stripe and the code did not know.** `Lite + Map
+- **Two Map bundles exist in Stripe and they are NOT Title22.** `Lite + Map
   Bundle` $99 (`price_1UEHzFAH9qPFLg89BoNbAPm9`) and `Multi-Home + Map Bundle`
-  $149 (`price_1UEIVpAH9qPFLg89qOs5pvRg`), both created 2026-09-11. They were
-  live and sellable for three days with neither price in `PRICE_PLANS` and
-  neither product in `PRODUCT_PLANS` — a purchase would have been charged,
-  refused with 422, and left the customer on "Free Trial". The 2026-09-06
-  failure again, and it was found by reading a screenshot of the Stripe product
-  list, not by anything in this repo noticing.
+  $149 (`price_1UEIVpAH9qPFLg89qOs5pvRg`), both created 2026-09-11. They belong
+  to a different build; Eli confirmed it on 2026-09-14.
 
-  **They map to their BASE tier**: Lite+Map → `lite`, Multi+Map → `multi-home`
-  → `multi`. There is no Map feature in the app — nothing reads a map
-  entitlement, `TIER_LIMITS` has no row for one — so a dedicated `lite-map` key
-  would behave identically to `lite` while adding two more plan strings to keep
-  in sync across four structures, which is the exact shape of the
-  `multi`/`multi-home` bug `PLAN_ALIASES` exists to clean up after. The bundle
-  buyer gets every entitlement the app can actually grant. Give them their own
-  keys when the Map feature ships; until then a working account beats an
-  accurate label.
+  Recorded here so nobody rediscovers them and "fixes" them. On 2026-09-14 they
+  were briefly mapped to `lite` and `multi` on the assumption that they were
+  Title22 tiers with an add-on — the names mirror the Title22 tiers exactly, and
+  both carry the same $70 delta over the matching plan, which is a persuasive
+  coincidence and nothing more. **Do not map them.** Doing so hands a Title22
+  account to somebody who bought a different product, which is the mirror image
+  of the bug this whole section is about.
 
-  **The general problem this exposes: a product can be created in Stripe and
-  nothing tells the code.** There is no alert, no check, no test — the first
-  signal is a 422 on a real customer's card, and only if someone reads the
-  delivery log. `PRODUCT_PLANS` narrows it (a new PRICE on a known product is
-  rescued) but a whole new product is not. Whenever a product is created in
-  Stripe, add its price here in the same sitting.
+  **The real problem they exposed is the Stripe account, not the bundles.** It
+  is shared across several businesses — 85 products, including Postpilots,
+  Rekey Locks, TV Mount, Smart Lock Install and the rest — and a Stripe webhook
+  endpoint subscribes to event TYPES, not to products. So `memorable-wonder`
+  receives `customer.subscription.created` for every one of them. Each arrives
+  at a Worker that cannot name its price and answers 422, or cannot match a
+  user and answers 409 with three days of retries.
+
+  That is permanent expected red in the delivery log, and it is not cosmetic: a
+  log that always has red in it is a log nobody reads, which is precisely how
+  the 2026-09-13 outage survived four days in plain sight. The fix is to teach
+  the Worker "this is not a Title22 product at all" (200, acknowledged, dropped)
+  apart from "this IS a Title22 product whose price we failed to map" (422,
+  loud). That needs the full list of Title22 `prod_` ids. Two are known —
+  `prod_VDBXSXDdmtFrmh` and `prod_VDypF9WL2wmjGO`; the legacy tiers' products
+  are not. Not built yet.
+
 - Agency — no price anywhere, and that now includes the code. The billing card
   is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
   and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to

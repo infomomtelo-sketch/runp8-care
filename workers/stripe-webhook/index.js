@@ -42,33 +42,22 @@ const PRICE_PLANS = {
   'price_1TkIMaAH9qPFLg89SPFZH0aG': { plan: 'specialist', facilities: 5,        name: 'Title22 Specialist' },  // archived, legacy subs only
   'price_1TkINiAH9qPFLg89upIhpYTy': { plan: 'agency',     facilities: Infinity, name: 'Title22 Agency' },
 
-  // The two Map bundles, created in Stripe on 2026-09-11 and unknown to this
-  // file until 2026-09-14. Both were live and sellable for three days while the
-  // Worker had never heard of either price — a purchase of one would have been
-  // charged, refused with 422, and left the customer reading "Free Trial".
-  // That is the 2026-09-06 failure exactly, and it was found by reading a
-  // screenshot of the Stripe product list, not by anything in this repo
-  // noticing.
+  // NOT MAPPED, ON PURPOSE. The two Map bundles — Lite + Map $99
+  // (price_1UEHzFAH9qPFLg89BoNbAPm9) and Multi-Home + Map $149
+  // (price_1UEIVpAH9qPFLg89qOs5pvRg), both created 2026-09-11 — belong to a
+  // DIFFERENT BUILD, not to Title22. Eli confirmed that on 2026-09-14.
   //
-  // THEY MAP TO THEIR BASE TIER ON PURPOSE, and this is a decision worth
-  // understanding before anyone "corrects" it. There is no Map feature in the
-  // app: nothing in index.html reads a map entitlement, TIER_LIMITS has no row
-  // for one, and T22_PAID does not know the word. A dedicated 'lite-map' key
-  // would therefore behave identically to 'lite' while adding two more plan
-  // strings to keep in sync across TIER_LIMITS, T22_PAID, T22_LABEL and
-  // KNOWN_PLANS — which is precisely the shape of the 'multi' vs 'multi-home'
-  // bug that PLAN_ALIASES exists to clean up after.
+  // They are listed here so nobody has to rediscover them, and so nobody adds
+  // them as a "missing price" the next time a 422 shows up in the delivery log.
+  // Mapping them would be the opposite of the bug this file exists to fix: it
+  // would hand a Title22 account to somebody who bought a different product.
   //
-  // So the bundle buyer gets every entitlement the app can actually grant:
-  // Lite+Map gets one facility and Tello, Multi+Map gets five and Tello. What
-  // they do NOT get is a Map feature, which is equally true of every other
-  // outcome available today, the 422 included. The difference is that this way
-  // their account works.
-  //
-  // When the Map feature ships, give these their own keys and add the rows.
-  // Until then a working account beats an accurate label.
-  'price_1UEHzFAH9qPFLg89BoNbAPm9': { plan: 'lite',       facilities: 1,        name: 'Title22 Lite + Map Bundle' },        // $99,  created 2026-09-11
-  'price_1UEIVpAH9qPFLg89qOs5pvRg': { plan: 'multi-home', facilities: 5,        name: 'Title22 Multi-Home + Map Bundle' },  // $149, created 2026-09-11
+  // They still reach this Worker, because the Stripe account is shared across
+  // several businesses and a webhook endpoint subscribes to event TYPES, not to
+  // products. So do expect 422s from them, and from Postpilots, Rekey Locks and
+  // the rest of the 85 products on that account. See the note on the 422 branch
+  // below: a delivery log with permanent expected red in it is a log nobody
+  // reads, which is exactly how the 2026-09-13 outage survived four days.
 };
 
 // Product ID -> plan. The SECOND way to name a tier, and it exists because the
