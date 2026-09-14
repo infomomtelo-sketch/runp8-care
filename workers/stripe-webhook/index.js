@@ -41,6 +41,23 @@ const PRICE_PLANS = {
   'price_1TkILaAH9qPFLg8923rgvHHb': { plan: 'pro',        facilities: 5,        name: 'Title22 Pro' },         // $79, the old link Multi-Home was sold on
   'price_1TkIMaAH9qPFLg89SPFZH0aG': { plan: 'specialist', facilities: 5,        name: 'Title22 Specialist' },  // archived, legacy subs only
   'price_1TkINiAH9qPFLg89upIhpYTy': { plan: 'agency',     facilities: Infinity, name: 'Title22 Agency' },
+
+  // NOT MAPPED, ON PURPOSE. The two Map bundles — Lite + Map $99
+  // (price_1UEHzFAH9qPFLg89BoNbAPm9) and Multi-Home + Map $149
+  // (price_1UEIVpAH9qPFLg89qOs5pvRg), both created 2026-09-11 — belong to a
+  // DIFFERENT BUILD, not to Title22. Eli confirmed that on 2026-09-14.
+  //
+  // They are listed here so nobody has to rediscover them, and so nobody adds
+  // them as a "missing price" the next time a 422 shows up in the delivery log.
+  // Mapping them would be the opposite of the bug this file exists to fix: it
+  // would hand a Title22 account to somebody who bought a different product.
+  //
+  // They still reach this Worker, because the Stripe account is shared across
+  // several businesses and a webhook endpoint subscribes to event TYPES, not to
+  // products. So do expect 422s from them, and from Postpilots, Rekey Locks and
+  // the rest of the 85 products on that account. See the note on the 422 branch
+  // below: a delivery log with permanent expected red in it is a log nobody
+  // reads, which is exactly how the 2026-09-13 outage survived four days.
 };
 
 // Product ID -> plan. The SECOND way to name a tier, and it exists because the

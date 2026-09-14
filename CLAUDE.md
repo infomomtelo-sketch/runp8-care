@@ -209,6 +209,36 @@ Stripe wiring, as of 2026-09-08:
   function call away, and `pro` pointed at that nameless product. Only `lite`
   and `multi` are sellable from the app now. Both stay in `STRIPE_PLANS`, so
   historic checkout events still resolve to a name.
+- **Two Map bundles exist in Stripe and they are NOT Title22.** `Lite + Map
+  Bundle` $99 (`price_1UEHzFAH9qPFLg89BoNbAPm9`) and `Multi-Home + Map Bundle`
+  $149 (`price_1UEIVpAH9qPFLg89qOs5pvRg`), both created 2026-09-11. They belong
+  to a different build; Eli confirmed it on 2026-09-14.
+
+  Recorded here so nobody rediscovers them and "fixes" them. On 2026-09-14 they
+  were briefly mapped to `lite` and `multi` on the assumption that they were
+  Title22 tiers with an add-on — the names mirror the Title22 tiers exactly, and
+  both carry the same $70 delta over the matching plan, which is a persuasive
+  coincidence and nothing more. **Do not map them.** Doing so hands a Title22
+  account to somebody who bought a different product, which is the mirror image
+  of the bug this whole section is about.
+
+  **The real problem they exposed is the Stripe account, not the bundles.** It
+  is shared across several businesses — 85 products, including Postpilots,
+  Rekey Locks, TV Mount, Smart Lock Install and the rest — and a Stripe webhook
+  endpoint subscribes to event TYPES, not to products. So `memorable-wonder`
+  receives `customer.subscription.created` for every one of them. Each arrives
+  at a Worker that cannot name its price and answers 422, or cannot match a
+  user and answers 409 with three days of retries.
+
+  That is permanent expected red in the delivery log, and it is not cosmetic: a
+  log that always has red in it is a log nobody reads, which is precisely how
+  the 2026-09-13 outage survived four days in plain sight. The fix is to teach
+  the Worker "this is not a Title22 product at all" (200, acknowledged, dropped)
+  apart from "this IS a Title22 product whose price we failed to map" (422,
+  loud). That needs the full list of Title22 `prod_` ids. Two are known —
+  `prod_VDBXSXDdmtFrmh` and `prod_VDypF9WL2wmjGO`; the legacy tiers' products
+  are not. Not built yet.
+
 - Agency — no price anywhere, and that now includes the code. The billing card
   is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
   and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to
@@ -690,12 +720,34 @@ a decision that was taken, not an open question.
 
 What is genuinely open:
 
-- **The $29 path RAN end to end on 2026-09-13, and it failed.** It is still
-  open, but it is no longer untested — see "How the $29 path actually failed"
-  below for the cause, which was not in any of the code this bullet used to
-  worry about. The webhook price map and `welcomeIsPaid` were both correct and
-  both irrelevant: the Worker never reached them. It stays open until a live
-  Stripe event is written all the way through to a paid account.
+- **The $29 path is CLOSED. It completed end to end on 2026-09-14.** A live
+  purchase went through and the account activated — reported by Eli, and
+  consistent with the state of the system at that moment: Worker run #11
+  (version `046b4577`, commit `355c565`) carried the restored `SUPABASE_URL`
+  and the corrected Lite price. This entry had been open since 2026-09-06 and
+  was the longest-standing item in this file.
+
+  Getting there took finding two bugs in series, the outer one hiding the
+  inner: a CI deploy had deleted `SUPABASE_URL` so every event 500'd before
+  reaching any business logic, and underneath that the Lite price in
+  `PRICE_PLANS` was one character wrong. Both are written up below. Neither was
+  in the code this bullet spent a week worrying about — the price map and
+  `welcomeIsPaid` were correct and irrelevant.
+
+  **What is still not done on that path: the post-payment redirect.** Stripe's
+  checkout does not return the customer to title22.app, because a Payment
+  Link's "After payment" setting is dashboard configuration and nothing in this
+  repo can set it. The app half is built and waiting — `index.html:3014` routes
+  any hash containing `welcome` to `handleWelcome()`, which polls
+  `welcomeIsPaid()` for 30s and shows "You're in." Set each Payment Link to
+  **Don't show confirmation page → Redirect to `https://title22.app#welcome`**.
+  Both links need it, Lite and Multi-Home.
+
+  Do NOT "fix" this by changing `openStripe`'s `window.open(..., '_blank')` to
+  a same-tab navigation. The new tab is deliberate: `index.html:1755` carries a
+  `visibilitychange` listener that re-runs `refreshAccess()` when the customer
+  returns to the original tab, so both tabs end up correct. That was nearly
+  removed on 2026-09-13 by someone reading `_blank` as a bug.
 
   `docs/test-the-29-path.md` is the runbook: what to check at each of the three
   hops and what each failure means. Two things it establishes that are worth
