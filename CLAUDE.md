@@ -209,6 +209,31 @@ Stripe wiring, as of 2026-09-08:
   function call away, and `pro` pointed at that nameless product. Only `lite`
   and `multi` are sellable from the app now. Both stay in `STRIPE_PLANS`, so
   historic checkout events still resolve to a name.
+- **Two Map bundles exist in Stripe and the code did not know.** `Lite + Map
+  Bundle` $99 (`price_1UEHzFAH9qPFLg89BoNbAPm9`) and `Multi-Home + Map Bundle`
+  $149 (`price_1UEIVpAH9qPFLg89qOs5pvRg`), both created 2026-09-11. They were
+  live and sellable for three days with neither price in `PRICE_PLANS` and
+  neither product in `PRODUCT_PLANS` — a purchase would have been charged,
+  refused with 422, and left the customer on "Free Trial". The 2026-09-06
+  failure again, and it was found by reading a screenshot of the Stripe product
+  list, not by anything in this repo noticing.
+
+  **They map to their BASE tier**: Lite+Map → `lite`, Multi+Map → `multi-home`
+  → `multi`. There is no Map feature in the app — nothing reads a map
+  entitlement, `TIER_LIMITS` has no row for one — so a dedicated `lite-map` key
+  would behave identically to `lite` while adding two more plan strings to keep
+  in sync across four structures, which is the exact shape of the
+  `multi`/`multi-home` bug `PLAN_ALIASES` exists to clean up after. The bundle
+  buyer gets every entitlement the app can actually grant. Give them their own
+  keys when the Map feature ships; until then a working account beats an
+  accurate label.
+
+  **The general problem this exposes: a product can be created in Stripe and
+  nothing tells the code.** There is no alert, no check, no test — the first
+  signal is a 422 on a real customer's card, and only if someone reads the
+  delivery log. `PRODUCT_PLANS` narrows it (a new PRICE on a known product is
+  rescued) but a whole new product is not. Whenever a product is created in
+  Stripe, add its price here in the same sitting.
 - Agency — no price anywhere, and that now includes the code. The billing card
   is a `mailto:`, `planPrices` says "Contact Sales", the site shows no figure,
   and `agency` has been REMOVED from `T22_PLAN_LINKS`. It was still mapped to
