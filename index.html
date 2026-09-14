@@ -1776,7 +1776,17 @@ document.addEventListener('visibilitychange',()=>{
     } catch (e) { /* default trial length applies */ }
   }
   const plan = (params.get('plan')||'').toLowerCase();
-  if (['starter','pro','specialist','agency'].includes(plan)) sessionStorage.setItem('title22_signup_plan', plan);
+  // lite and multi FIRST, because they are the only two tiers that are
+  // actually sellable — and until 2026-09-14 neither was in this list. A
+  // marketing CTA of ?plan=lite therefore stored nothing, which means two
+  // things went wrong at once: the visitor landed on the landing page instead
+  // of signup (see the showPage call that reads title22_signup_plan), and
+  // profiles.title22_signup_plan recorded no attribution for them.
+  //
+  // Meanwhile ?plan=pro still worked, for a tier deliberately removed from
+  // T22_PLAN_LINKS because it pointed at a nameless $79 product. The legacy
+  // four stay accepted so old links and old attribution keep resolving.
+  if (['lite','multi','starter','pro','specialist','agency'].includes(plan)) sessionStorage.setItem('title22_signup_plan', plan);
   const src = params.get('utm_source');
   if (src) sessionStorage.setItem('title22_utm_source', src.slice(0,100));
   const camp = params.get('utm_campaign');
