@@ -282,8 +282,21 @@ function planFromSubscription(sub) {
   // subscriber out of the tier they had just bought. An unrecognised value is
   // now null, which the caller already handles — it refuses the event loudly
   // with the price ID in the log, instead of writing a plan nothing matches.
-  const metaPlan = normalisePlan(sub.metadata && sub.metadata.plan);
-  return { plan: metaPlan, priceId: items[0] && items[0].price && items[0].price.id };
+  // Metadata is NOT returned as the plan, and that is the point of this
+  // function's shape. It used to be, and doing so quietly disarmed the one
+  // alarm that catches a mistyped price: a hand-typed plan=multi on the
+  // Payment Link resolves the event, so the PRODUCT_PLANS rescue never runs,
+  // never warns, and the map stays wrong forever. Which is exactly the bug
+  // this whole file was rewritten for, re-entering by the back door of its
+  // own fix.
+  //
+  // So the caller tries price -> product -> metadata, in falling order of how
+  // far we trust the source, and says so out loud on both fallbacks.
+  return {
+    plan: null,
+    priceId: items[0] && items[0].price && items[0].price.id,
+    metaPlan: normalisePlan(sub.metadata && sub.metadata.plan),
+  };
 }
 
 function isoOrNull(unixSeconds) {
@@ -437,7 +450,7 @@ export default {
         // renewal and payment failure alike.
         case 'customer.subscription.created':
         case 'customer.subscription.updated': {
-          let { plan, priceId } = planFromSubscription(obj);
+          let { plan, priceId, metaPlan } = planFromSubscription(obj);
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           if (!userId) {
@@ -466,6 +479,26 @@ export default {
               console.error(note);
               warning = note;
               plan = viaProduct;
+            } else if (metaPlan) {
+              // Third and last path, and the weakest: a plan typed by hand
+              // into the Payment Link's subscription metadata in the Stripe
+              // dashboard. It is checked against KNOWN_PLANS by normalisePlan
+              // before it gets here, so it cannot write a tier the app is not
+              // keyed on — but it is still somebody's typing, and reaching it
+              // at all means neither identifier matched.
+              //
+              // Loud for the same reason the product rescue is loud: the
+              // account is granted, so nothing visibly breaks, and a silent
+              // success is how a wrong price map survives to the next customer.
+              const note =
+                `PRICE MAP IS WRONG — this event was rescued from hand-typed ` +
+                `subscription metadata, after BOTH the price and the product ` +
+                `failed to match. Stripe sent price ${priceId}, product ` +
+                `${productId || '(unknown)'}; metadata says ${metaPlan}. ` +
+                `Add ${priceId} to PRICE_PLANS in workers/stripe-webhook/index.js.`;
+              console.error(note);
+              warning = note;
+              plan = metaPlan;
             } else {
               // Still no. Refuse — but say everything we know, in the BODY,
               // because the delivery log is what a human reads afterwards and
@@ -476,7 +509,9 @@ export default {
                 `Unmapped price: ${priceId}\n` +
                 `Stripe says: ${describePrice(price)}\n` +
                 `Known prices: ${known}\n` +
-                `Known products: ${Object.keys(PRODUCT_PLANS).join(', ')}`;
+                `Known products: ${Object.keys(PRODUCT_PLANS).join(', ')}\n` +
+                `Subscription metadata plan: ${(obj.metadata && obj.metadata.plan) || '(none)'}` +
+                `${obj.metadata && obj.metadata.plan && !metaPlan ? ' (not a known plan)' : ''}`;
               console.error('Unmapped Stripe price', priceId, 'on subscription', obj.id, '-', describePrice(price));
               return new Response(body, { status: 422 });
             }
