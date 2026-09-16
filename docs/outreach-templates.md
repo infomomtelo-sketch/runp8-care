@@ -18,9 +18,18 @@ Every line is checked against the rules this product already holds itself to:
 
 ## Three things to fix before sending any of these
 
-1. **`[MAILING ADDRESS]` is a placeholder. Fill it in, and not with your house.**
-   The old footer carried 5287 N Tisha Ave to 92 cold contacts. CAN-SPAM takes a
-   PO Box or RunP8 LLC's registered agent address just as happily.
+1. **The footer address is settled — 2026-09-16.** EC Rental Property Management
+   LLC, 5287 North Tisha Ave, Fresno, CA 93723. I twice recommended a PO Box or
+   a registered agent instead, because the street address is also where Eli
+   lives; he chose this deliberately with the LLC name in front of it, which is
+   what makes it read as a business address. Settled, not an oversight — do not
+   re-open it.
+
+   **The entity is EC Rental Property Management LLC. RunP8 LLC is gone.**
+   These templates carried RunP8 for a few hours on 2026-09-16 because it was
+   substituted from stale notes after the correct name had been given. It was
+   also still in `trainers.html`'s public footer, which is how that got caught.
+   Swept from the repo the same day.
 2. **Send from `hello@title-22.com`.** The Log says the one recorded send went
    from the personal Gmail. Pick one address and keep it.
 3. **Two rows on the list will never buy this.** WISTERIA WARNER CENTER (capacity
@@ -69,7 +78,7 @@ Every line is checked against the rules this product already holds itself to:
 > Eli
 >
 > —
-> Title22 · RunP8 LLC · [MAILING ADDRESS]
+> Title22 · EC Rental Property Management LLC · 5287 North Tisha Ave, Fresno, CA 93723
 > Don't want these? Reply "unsubscribe" and I'll take you off the list.
 
 # OPERATOR — FOLLOW-UP 1 (day 7)
@@ -96,7 +105,7 @@ part operators recognise fastest.
 > Eli
 >
 > —
-> Title22 · RunP8 LLC · [MAILING ADDRESS]
+> Title22 · EC Rental Property Management LLC · 5287 North Tisha Ave, Fresno, CA 93723
 > Don't want these? Reply "unsubscribe" and I'll take you off the list.
 
 # OPERATOR — FOLLOW-UP 2 / FINAL (day 14)
@@ -118,7 +127,7 @@ Last one. No ask, no link-stuffing, no third email ever.
 > Eli
 >
 > —
-> Title22 · RunP8 LLC · [MAILING ADDRESS]
+> Title22 · EC Rental Property Management LLC · 5287 North Tisha Ave, Fresno, CA 93723
 > Don't want these? Reply "unsubscribe" and I'll take you off the list.
 
 ---
@@ -160,7 +169,7 @@ for an RCFE/ARF trainer.
 > Eli
 >
 > —
-> Title22 · RunP8 LLC · [MAILING ADDRESS]
+> Title22 · EC Rental Property Management LLC · 5287 North Tisha Ave, Fresno, CA 93723
 > Don't want these? Reply "unsubscribe" and I'll take you off the list.
 
 ---
