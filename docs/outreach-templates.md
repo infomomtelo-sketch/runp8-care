@@ -192,9 +192,12 @@ saw it. Facebook applies the same kind of filter.
 
 ---
 
-# One line to verify before you send anything
+# The one line that needed her permission — approved 2026-09-16
 
-"I built it with a certified RCFE administrator" — check the wording matches what
-your wife is comfortable having said in a cold email to strangers in her own
-industry. It is the strongest line in the whole sequence and it is about her, not
-you. Her call, not mine.
+"I built it with a certified RCFE administrator." Checked with her and cleared.
+Recorded here so nobody re-opens it: it is the strongest line in the sequence, it
+is about her rather than about Eli, and it goes to strangers in her own industry.
+Asked, answered, settled.
+
+If the wording of that line ever changes materially, ask again. Consent was given
+for this sentence, not for the idea in general.
