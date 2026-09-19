@@ -197,6 +197,51 @@
   .hero p{font-size:1.1rem;color:var(--text2);margin-bottom:36px;max-width:540px;margin-left:auto;margin-right:auto}
   .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
   .hero-note{font-size:13px;color:var(--text2);margin-top:16px}
+/* ── Landing page, ported 2026-09-19 from the entry-page design ──────────
+   Tighter h1 tracking than .hero h1 because this headline is two short
+   lines rather than a sentence, and the default -1px leaves it loose at
+   display size. Everything else reuses the app's own tokens. */
+.hero h1{letter-spacing:-.03em;line-height:1.02}
+.lp-lede{font-size:1.15rem;color:var(--text2);max-width:24ch;margin:0 auto}
+.lp-ring-wrap{margin:38px auto 0;width:clamp(170px,44vw,220px)}
+.lp-ring{display:block;width:100%;height:auto}
+.lp-track{fill:none;stroke:var(--border);stroke-width:13}
+/* Fills once on load. 534 is the circumference at r=85; 171 leaves 68%. */
+.lp-arc{fill:none;stroke:var(--teal);stroke-width:13;stroke-linecap:round;
+  stroke-dasharray:534;stroke-dashoffset:534;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+  animation:lpFill 1.5s cubic-bezier(.25,.8,.3,1) .25s forwards}
+@keyframes lpFill{to{stroke-dashoffset:171}}
+.lp-num{font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:58px;fill:var(--text);text-anchor:middle}
+.lp-cap{font-weight:600;font-size:12px;letter-spacing:.12em;fill:var(--text2);text-anchor:middle}
+
+.lp-band{border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:52px 2rem;margin-top:56px}
+.lp-states{display:grid;gap:13px;max-width:420px;margin:0 auto}
+.lp-row{display:flex;align-items:center;gap:14px;background:var(--white);
+  border:1px solid var(--border);border-radius:13px;padding:15px 17px}
+.lp-av{width:38px;height:38px;border-radius:50%;flex:none;background:var(--teal-light);
+  display:grid;place-items:center;font-family:'Fraunces',Georgia,serif;
+  font-weight:700;font-size:15px;color:var(--teal)}
+.lp-name{font-weight:600;font-size:15px;color:var(--text)}
+.lp-pill{margin-left:auto;font-size:12.5px;font-weight:600;padding:6px 13px;
+  border-radius:999px;white-space:nowrap;background:var(--teal-light);color:var(--teal)}
+.lp-pill.lp-due{background:var(--amber-light);color:var(--amber)}
+.lp-under{text-align:center;margin:26px auto 0;font-size:15px;color:var(--text2);max-width:30ch}
+
+.lp-refuse{text-align:center;padding:72px 2rem;max-width:720px;margin:0 auto}
+.lp-refuse h2{font-size:clamp(1.7rem,5.5vw,2.6rem);font-weight:700;line-height:1.1;
+  letter-spacing:-.025em;color:var(--text);margin:0}
+.lp-refuse p{font-size:1rem;color:var(--text2);max-width:32ch;margin:18px auto 0}
+
+.lp-close{text-align:center;padding:48px 2rem 56px;border-top:1px solid var(--border)}
+.lp-price{font-family:'Fraunces',Georgia,serif;font-weight:700;
+  font-size:clamp(1.9rem,6vw,2.6rem);letter-spacing:-.02em;color:var(--text);margin:0}
+.lp-price small{font-family:inherit;font-weight:500;font-size:15px;color:var(--text2);letter-spacing:0}
+
+@media (prefers-reduced-motion:reduce){
+  .lp-arc{animation:none;stroke-dashoffset:171}
+}
   .features{padding:60px 2rem;background:var(--gray-bg)}
   .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;max-width:1000px;margin:0 auto}
   .feature-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem}
@@ -548,48 +593,69 @@
 
 <!-- LANDING -->
 <div id="page-landing" class="page active">
-   <div class="hero" style="padding-bottom:0">
-    <div class="hero-badge">Built for RCFE &amp; CBRC · California Title 22 · Fresno, CA</div>
-    <h1>Run a facility <span>DSS is proud to inspect</span></h1>
-    <p>Genuine compliance every day — not just inspection day. Title22 Lite keeps your staff certified, your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
-    <div class="hero-actions">
-      <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Start 14-day free trial</button>
-      <!-- The third door. Until 2026-09-19 this page offered exactly two
-           actions, "sign up" and "log in", and BOTH of them mean "I run or am
-           opening a care home": signup leads to a two-button choice (licensed /
-           starting one) and then a form that hard-requires a facility name. A
-           trainer, a consultant, a caregiver who wants to learn the forms, or
-           anyone evaluating a partnership had no way in at all except to invent
-           a facility they do not have.
+  <!-- Ported 2026-09-19 from the entry-page design. The page this replaced
+       opened with a 62-word paragraph and then seven feature cards of prose —
+       Eli's description was "like an old testament bible", and he was right.
 
-           Nine of the 32 accounts signed up and never created one — the largest
-           single group in the funnel, and this is the likeliest reason.
+       What carries the page now is scale, colour and one piece of motion, not
+       sentences: a ring that fills to the readiness score, and three staff rows
+       where exactly one is amber. An operator understands expiry tracking from
+       that row faster than from any paragraph about it.
 
-           The sandbox is NOT new. /?demo=1 has always loaded a populated,
-           read-only demo facility with no auth, and &tour=1 runs the guided
-           tour. It was simply unreachable: every link to it lived inside
-           title22-walkthrough.html, a page nobody arrives at. This is a link to
-           something already built and already working. -->
-      <a class="btn btn-ghost btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="/?demo=1&amp;tour=1">See it first — no signup</a>
-      <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
-    </div>
-    <p class="hero-note">No credit card required · Cancel anytime · Setup in 5 minutes</p>
-  </div>
-  <div class="features" style="margin-top:40px">
-    <div style="text-align:center;margin-bottom:36px">
-      <div class="section-title">Everything Title 22 requires — for RCFE &amp; CBRC</div>
-      <div class="section-sub">Built with a certified RCFE administrator who has lived every inspection</div>
-    </div>
-    <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>Title 22 compliance checklist</h3><p>Every requirement pre-loaded and tied to the exact CCR regulation code.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--red-light)"><svg class="ic"><use href="#i-chart"/></svg></div><h3>Inspection readiness score</h3><p>Real-time score shows exactly where your facility stands before DSS arrives.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-clock"/></svg></div><h3>Expiration alerts</h3><p>Alerts 90, 30, and 7 days before anything expires — CPR, First Aid, TB, LiveScan, admin cert.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-clipboard"/></svg></div><h3>40-hour training tracking</h3><p>The initial 40 hours tracked per caregiver, with the continuing hours after it. See who is short before an analyst does.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--teal-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Staff certification tracking</h3><p>CPR, First Aid, LiveScan, TB tests, mandated reporter — tracked per employee.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--amber-light)"><svg class="ic"><use href="#i-folder"/></svg></div><h3>Non-PHI document vault</h3><p>Licences, policies, TB clearances, certificates — each attached to the person or facility it belongs to. Resident documents are not accepted, by design.</p></div>
-      <div class="feature-card"><div class="feature-icon" style="background:var(--green-light)"><svg class="ic"><use href="#i-users"/></svg></div><h3>Your whole team, by role</h3><p>Invite caregivers to log incidents and work the checklist on shift. Each role sees only what it needs — and a read-only invite is what you hand an inspector.</p></div>
-    </div>
-  </div>
+       Two claims died with the cards and should not come back:
+         - "tied to the exact CCR regulation code" — checklist citations are
+           NULL on purpose. See CLAUDE.md, "How to complete this" guidance.
+         - "Alerts 90, 30, and 7 days before anything expires" — that string
+           existed only in this copy. Nothing in the app implements it.
+
+       When there is a photograph of a real compliance binder, it goes above
+       the h1 and this page gets shorter again, not longer. -->
+  <div class="hero" style="padding-bottom:0">
+        <div class="hero-badge">Built for RCFE &amp; CBRC · California Title 22 · Fresno, CA</div>
+        <h1>The binder,<br/><span>on your phone.</span></h1>
+        <p class="lp-lede">Every certificate, every expiry, every incident. One place.</p>
+
+        <div class="lp-ring-wrap">
+          <svg class="lp-ring" viewBox="0 0 200 200" role="img" aria-label="Readiness score, sixty-eight per cent">
+            <circle class="lp-track" cx="100" cy="100" r="85"></circle>
+            <circle class="lp-arc" cx="100" cy="100" r="85"></circle>
+            <text class="lp-num" x="100" y="103">68%</text>
+            <text class="lp-cap" x="100" y="128">READY</text>
+          </svg>
+        </div>
+
+        <div class="hero-actions">
+          <!-- See it first is FIRST and primary. Looking without signing up is
+               the action this page wants most: nine of 32 accounts signed up
+               and never created a facility. -->
+          <a class="btn btn-primary btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="/?demo=1&amp;tour=1">See it first</a>
+          <button class="btn btn-ghost btn-lg" onclick="showPage('signup')">Start free</button>
+          <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
+        </div>
+        <p class="hero-note">No signup to look · No card to start</p>
+      </div>
+
+      <!-- The argument, made in colour instead of prose. One row amber. -->
+      <div class="lp-band">
+        <div class="lp-states">
+          <div class="lp-row"><div class="lp-av">A</div><div class="lp-name">Ana R.</div><span class="lp-pill">Clear</span></div>
+          <div class="lp-row"><div class="lp-av">J</div><div class="lp-name">Joel M.</div><span class="lp-pill lp-due">TB · 12 days</span></div>
+          <div class="lp-row"><div class="lp-av">R</div><div class="lp-name">Rosa L.</div><span class="lp-pill">Clear</span></div>
+        </div>
+        <p class="lp-under">You see amber before an inspector does.</p>
+      </div>
+
+      <div class="lp-refuse">
+        <h2>No resident records.<br/>Nothing to breach.</h2>
+        <p>No medications. No medication log. That was a decision, not a gap.</p>
+      </div>
+
+      <div class="lp-close">
+        <p class="lp-price">$29<small> / month · one home</small></p>
+        <div class="hero-actions" style="margin-top:18px">
+          <a class="btn btn-primary btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="/?demo=1&amp;tour=1">See it first</a>
+        </div>
+      </div>
   <div style="text-align:center;padding:24px;font-size:13px;color:var(--text2);border-top:1px solid var(--border)">
     © Title22 · California RCFE compliance software · Powered by EC RENTAL PROPERTY MANAGEMENT LLC<br/>
     <a href="https://title-22.com" style="color:var(--teal);text-decoration:none">title-22.com</a> · <a href="/privacy.html" style="color:var(--teal);text-decoration:none">Privacy Policy</a> · <a href="/terms.html" style="color:var(--teal);text-decoration:none">Terms of Service</a>
