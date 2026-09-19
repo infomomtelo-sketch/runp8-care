@@ -8,6 +8,31 @@ compatibility_date = "2026-08-12"
 #                             caller's JWT before sending mail
 #   RESEND_API_KEY         — Resend API key for https://api.resend.com/emails
 #   EMAIL_FROM             — verified sender, e.g. noreply@send.thejudgy.com
+#   SIGNUP_WEBHOOK_SECRET  — shared secret the Supabase Database Webhook sends
+#                             as the header X-Title22-Signup-Secret
+#   SIGNUP_NOTIFY_TO       — where signup alerts go (the OWNER, not the customer)
 #
-# Public route (configured in the Cloudflare dashboard, not here):
-#   https://title22-email.infomomtelo.workers.dev/api/email
+# Routes (configured in the Cloudflare dashboard, not here):
+#   POST /api/email          — templated mail, requires the caller's Supabase JWT
+#   POST /api/notify-signup  — Supabase Database Webhook on public.profiles,
+#                              subscribed to INSERT **and** UPDATE. Mails the
+#                              owner. No JWT: a database cannot hold one, so it
+#                              authenticates on the shared secret above.
+#   GET  /                   — binding health check
+#   Base: https://title22-email.infomomtelo.workers.dev
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WARNING, and it is not hypothetical. SUPABASE_URL is listed above as a secret.
+# On workers/stripe-webhook the identical comment was WRONG — the value had been
+# typed into the Cloudflare dashboard as a plain-text VAR, and the first
+# `wrangler deploy` from CI DELETED it, because wrangler replaces the complete
+# set of vars with whatever [vars] in this file declares, and this file declares
+# none. Every event 500'd for four days. See CLAUDE.md, "How the $29 path
+# actually failed".
+#
+# This Worker has only ever been deployed by hand, so whatever the dashboard
+# holds is still there. That is luck, not design. BEFORE putting this Worker
+# into CI: check in the Cloudflare dashboard whether SUPABASE_URL is a secret or
+# a var. If it is a var, move it into a [vars] block here first — it is the same
+# public REST host index.html ships to every browser, so it is not a secret, and
+# in the file a deploy is idempotent instead of destructive.

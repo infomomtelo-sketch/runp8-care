@@ -292,6 +292,9 @@
   .badge-gray{background:var(--gray-light);color:var(--gray)}
   .onboard-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--gray-bg)}
   .onboard-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:520px}
+  .ob-own{margin-top:22px;padding-top:18px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;justify-content:center;font-size:13px;color:var(--text2)}
+  .ob-own-link{background:none;border:none;padding:4px 2px;font-family:inherit;font-size:13px;font-weight:600;color:var(--teal);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .ob-own-link:hover{color:var(--text)}
   .onboard-step{font-size:12px;color:var(--teal);font-weight:600;margin-bottom:6px}
   .onboard-card h2{font-size:1.4rem;font-weight:700;margin-bottom:6px}
   .onboard-card p{font-size:14px;color:var(--text2);margin-bottom:24px}
@@ -551,6 +554,23 @@
     <p>Genuine compliance every day — not just inspection day. Title22 Lite keeps your staff certified, your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
       <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Start 14-day free trial</button>
+      <!-- The third door. Until 2026-09-19 this page offered exactly two
+           actions, "sign up" and "log in", and BOTH of them mean "I run or am
+           opening a care home": signup leads to a two-button choice (licensed /
+           starting one) and then a form that hard-requires a facility name. A
+           trainer, a consultant, a caregiver who wants to learn the forms, or
+           anyone evaluating a partnership had no way in at all except to invent
+           a facility they do not have.
+
+           Nine of the 32 accounts signed up and never created one — the largest
+           single group in the funnel, and this is the likeliest reason.
+
+           The sandbox is NOT new. /?demo=1 has always loaded a populated,
+           read-only demo facility with no auth, and &tour=1 runs the guided
+           tour. It was simply unreachable: every link to it lived inside
+           title22-walkthrough.html, a page nobody arrives at. This is a link to
+           something already built and already working. -->
+      <a class="btn btn-ghost btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="/?demo=1&amp;tour=1">See it first — no signup</a>
       <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
     </div>
     <p class="hero-note">No credit card required · Cancel anytime · Setup in 5 minutes</p>
@@ -693,20 +713,33 @@
            a certificate number — the two things they are trying to obtain. The
            tab was unreachable by the only people it was for. -->
       <div id="ob-path-choice">
-        <div class="onboard-step">Step 1 of 2 · Where you are</div>
-        <h2>Do you have a licensed home yet?</h2>
-        <p>Either answer is fine — it just decides what we show you first.</p>
-        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('licensed')">
-          <strong>Yes, I run a licensed home</strong>
-          <span>Track staff, training, documents and DSS readiness.</span>
+        <!-- No question, and no step counter. Read the old version as a stranger:
+             "Step 1 of 2" announced paperwork before anyone had seen a thing;
+             "Do you have a licensed home YET?" asked whether they belonged here;
+             "Either answer is fine" is a sentence you only write when it is not;
+             and "it just decides what we show you first" said the quiet part out
+             loud — what you get to see depended on how you answered.
+        
+             Adding a third button (2026-09-19) did not fix that. It added an
+             answer to a question that should not be asked at this moment. The
+             fix is to stop asking: looking around is the DEFAULT and the primary
+             action, and saying who you are is something you do afterwards, from
+             inside a product you have already seen. Nine of 32 accounts signed
+             up and never created a facility. -->
+        <h2>Come in and have a look.</h2>
+        <p>A practice home is ready — staff, expiry dates, a checklist. Everyone in it is invented.</p>
+        <button class="btn btn-primary ob-path-btn" onclick="chooseOnboardPath('looking')">
+          <strong>Show me around</strong>
+          <span>Nothing to fill in. Tingnan mo muna.</span>
         </button>
-        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('starting')">
-          <strong>Not yet — I'm starting one</strong>
-          <span>Oo, nagsisimula pa lang. Walk through the twelve steps to your licence.</span>
-        </button>
+        <div class="ob-own">
+          <span>Ready to set up your own home?</span>
+          <button class="ob-own-link" onclick="chooseOnboardPath('licensed')">I run a licensed home</button>
+          <button class="ob-own-link" onclick="chooseOnboardPath('starting')">I'm starting one</button>
+        </div>
       </div>
       <div id="ob-form-fields" style="display:none">
-      <div class="onboard-step">Step 2 of 2 · Setup</div>
+      <div class="onboard-step">Your home</div>
       <h2 id="ob-form-title">Tell us about your facility</h2>
       <p id="ob-form-sub">This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
       <div class="form-group"><label>Facility type</label><select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
@@ -2401,6 +2434,12 @@ function chooseOnboardPath(path){
   const fields=document.getElementById('ob-form-fields');
   if(!choice||!fields)return;
   if(!path){choice.style.display='';fields.style.display='none';return;}
+  // 'looking' never sees ob-form-fields at all. Not a pre-filled form, not a
+  // skippable one — none. The person behind this door has no facility to
+  // describe, and being asked to describe one is what made them leave.
+  // seedDemoData creates the facility itself and ends on the dashboard via
+  // initFacility, so there is nothing to route afterwards.
+  if(path==='looking'){startJustLooking();return;}
   choice.style.display='none';
   fields.style.display='';
   const starting=path==='starting';
@@ -2416,6 +2455,23 @@ function chooseOnboardPath(path){
     const el=document.getElementById(id);
     if(el)el.style.display=starting?'none':'';
   });
+}
+
+// The "just looking" path. seedDemoData picks the sample itself: a classroom
+// roster for an edu account, the Lite sample (five staff, no residents) for
+// everyone else — so this one button is right both for a trainer already
+// granted Classroom and for a stranger who has been granted nothing.
+async function startJustLooking(){
+  const btn=document.querySelector('.ob-path-btn[onclick*="looking"]');
+  const original=btn?btn.innerHTML:null;
+  if(btn){btn.disabled=true;btn.innerHTML='<strong>Loading your practice home…</strong>';}
+  try{
+    await seedDemoData();
+  }finally{
+    // seedDemoData ends on the dashboard, so this only matters when it failed
+    // and left them here with a dead button.
+    if(btn&&original!==null){btn.disabled=false;btn.innerHTML=original;}
+  }
 }
 
 async function handleOnboard(){
@@ -5001,7 +5057,19 @@ async function seedDemoData(){
   const forClassroom=!T22_MAR_PRODUCT&&t22EntitlementVerified&&t22Plan==='edu';
   if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData();
   if(seedDemoRunning)return;
-  if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  // The `allFacilities.length` half is what makes a first-run sample possible
+  // at all. currentUserRole is initialised 'readonly' and only becomes
+  // 'administrator' inside initFacility, which cannot run without a facility —
+  // so a brand-new account could never seed its own sample: not an
+  // administrator, because no facility, because it could not seed one. That is
+  // why the "Load sample facility" button only ever worked for people who
+  // already had a facility, which is the people who needed it least.
+  //
+  // Zero facilities means this person is a member of nothing — an invited
+  // caregiver reads their host facility here, so their length is never zero.
+  // Whoever creates the first facility owns it, which is exactly what
+  // initFacility concludes one line later from facilities.user_id.
+  if(allFacilities.length&&currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
   // One sample per account is still the rule: a second click switches to the
   // one already there rather than seeding a duplicate.
@@ -5140,7 +5208,9 @@ async function seedDemoData(){
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
-    alert('Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.');
+    alert(ownedFacilityCount()>1
+   ? 'Demo facility loaded! You\'re now viewing "Sunrise Demo Home (Sample)". Switch back to your own facility any time from the user menu.'
+   : 'Your practice facility is ready — "Sunrise Demo Home (Sample)". Everyone in it is invented; nothing here is a real person. Add your own home any time from the user menu.');
   }catch(e){
     alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
   }
@@ -5164,7 +5234,19 @@ async function seedDemoData(){
 // two people short of their 40 hours.
 async function seedLiteDemoData(){
   if(seedDemoRunning)return;
-  if(currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  // The `allFacilities.length` half is what makes a first-run sample possible
+  // at all. currentUserRole is initialised 'readonly' and only becomes
+  // 'administrator' inside initFacility, which cannot run without a facility —
+  // so a brand-new account could never seed its own sample: not an
+  // administrator, because no facility, because it could not seed one. That is
+  // why the "Load sample facility" button only ever worked for people who
+  // already had a facility, which is the people who needed it least.
+  //
+  // Zero facilities means this person is a member of nothing — an invited
+  // caregiver reads their host facility here, so their length is never zero.
+  // Whoever creates the first facility owns it, which is exactly what
+  // initFacility concludes one line later from facilities.user_id.
+  if(allFacilities.length&&currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
   // Completeness is judged on the compliance checklist — the last bulk insert
   // — not on the facility row, so a run that died half way can be retried
@@ -5252,7 +5334,10 @@ async function seedLiteDemoData(){
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
-    alert('Sample facility loaded. You\'re now viewing "Sunrise Demo Home (Sample)" — five staff, four of them with something out of date, and a checklist to work. Switch back to your own facility any time from the user menu.');
+    alert('Sample facility loaded — "Sunrise Demo Home (Sample)": five staff, four of them with something out of date, and a checklist to work. Nobody in it is real.'
+   + (ownedFacilityCount()>1
+      ? ' Switch back to your own facility any time from the user menu.'
+      : ' Add your own home any time from the user menu — there is no rush.'));
   }catch(e){
     alert('The sample facility could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
   }
