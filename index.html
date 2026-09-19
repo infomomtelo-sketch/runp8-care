@@ -551,6 +551,23 @@
     <p>Genuine compliance every day — not just inspection day. Title22 Lite keeps your staff certified, your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
       <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Start 14-day free trial</button>
+      <!-- The third door. Until 2026-09-19 this page offered exactly two
+           actions, "sign up" and "log in", and BOTH of them mean "I run or am
+           opening a care home": signup leads to a two-button choice (licensed /
+           starting one) and then a form that hard-requires a facility name. A
+           trainer, a consultant, a caregiver who wants to learn the forms, or
+           anyone evaluating a partnership had no way in at all except to invent
+           a facility they do not have.
+
+           Nine of the 32 accounts signed up and never created one — the largest
+           single group in the funnel, and this is the likeliest reason.
+
+           The sandbox is NOT new. /?demo=1 has always loaded a populated,
+           read-only demo facility with no auth, and &tour=1 runs the guided
+           tour. It was simply unreachable: every link to it lived inside
+           title22-walkthrough.html, a page nobody arrives at. This is a link to
+           something already built and already working. -->
+      <a class="btn btn-ghost btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="/?demo=1&amp;tour=1">See it first — no signup</a>
       <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
     </div>
     <p class="hero-note">No credit card required · Cancel anytime · Setup in 5 minutes</p>
