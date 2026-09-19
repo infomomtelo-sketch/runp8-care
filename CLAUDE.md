@@ -767,6 +767,29 @@ What is genuinely open:
   to title22.app and let them buy from inside.
 - **49 test facilities across 32 accounts.** Guarded reset is written and
   dry-run ready: migrations/2026-09-08_title22_reset_test_facilities.sql.
+- **The trainer partner path has never been run end to end by anybody.** Same
+  shape as the $29 path, and the first time it runs there is a partner
+  watching it. Traced through the code on 2026-09-15 and written up in
+  `docs/onboard-a-trainer.md` — the `?ref=` capture, `title22_check_trainer_code`
+  for the trial length, the code riding in `user_metadata.referred_by` through
+  the OAuth redirect, `ensureProfile` writing `profiles.referred_by`, and
+  `title22_trainer_signups` joining on it with the edu exclusion. Three things
+  in it that are not obvious from the tab:
+
+  - **Classroom access and a trainer code are separate**, and neither implies
+    the other. A trainer who teaches WITH the app needs both.
+  - **They must sign up BEFORE the grant.** `title22_grant_classroom_account`
+    looks up an existing auth user and returns `found:false` otherwise —
+    nothing queues, nothing retries, and a mistyped email looks identical to
+    "they have not signed up yet".
+  - **The commission field is pre-filled 20%.** It is written into
+    `title22_trainers` and read at payout, and nothing downstream will ever
+    say it was wrong.
+
+  One live failure mode that reads as a bug and is not: a referral never
+  records for someone who ALREADY had a profile. `ensureProfile` upserts with
+  `ignoreDuplicates`, so an existing row is never re-stamped. Referral capture
+  only works on a genuinely new account.
 
 ## Why a paid account said "Free Trial" through every refresh (2026-09-08)
 
@@ -994,7 +1017,37 @@ body.
 **Still worth doing in Stripe, not code:** put `plan=lite` / `plan=multi` in
 the Payment Links' SUBSCRIPTION metadata (not the checkout session's —
 `planFromSubscription` reads `sub.metadata`). That is a third independent path
-to the tier, and it already exists in the code unused.
+to the tier.
+
+**It is only safe to do that as of 2026-09-15, and the reason is worth reading
+before anyone "simplifies" the resolution order back.** Until then
+`planFromSubscription` returned the metadata plan as its ANSWER, so metadata
+was consulted BEFORE the `PRODUCT_PLANS` rescue and won. Following the advice
+in the paragraph above would therefore have DISARMED the alarm built two
+sections up: a mistyped price with metadata set resolves from metadata, the
+rescue never runs, the warning naming the bad price ID never reaches the
+delivery log, and the map stays wrong until the next identifier is typed badly.
+The account activates, so nothing looks broken. That is the 2026-09-13 bug
+re-entering through the back door of its own fix.
+
+Resolution is now **price → product → metadata**, in falling order of how far
+the source is trusted, and BOTH fallbacks put a warning in the response body.
+Verified by replay against the deployed build, nine cases: Multi-Home $79 on
+all four event types (200, `multi`, zero Stripe lookups), Lite $29 (200,
+`lite`, zero lookups), mistyped price with a real product (200 + warning),
+unknown price with unknown product but valid metadata (200 + warning), and
+422 with no writes for nonsense metadata, absent metadata, a Map bundle and
+an other-business product. A known price still costs zero Stripe API calls,
+which is the proof the map is right rather than the fallback carrying it.
+
+Deployed by run **#12** on 2026-09-15 against commit `9cc2b7d`, conclusion
+success. (Dated on purpose — see the CHECK THE ACTIONS HISTORY note below.
+This is the fourth time this file has had to correct a deploy claim.)
+
+**The $79 path has now been verified in code end to end, but still has never
+been bought by a human.** The webhook writes `multi`; the app's `T22_PAID`
+includes `multi` and `TIER_LIMITS.multi` is `{facilities:5, ai:true}`. Every
+link in the chain is checked. That is not the same as a card being charged.
 
 ### The secret names, in full (verified 2026-09-09)
 

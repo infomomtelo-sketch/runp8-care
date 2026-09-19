@@ -212,7 +212,52 @@ sheet as read-only — it has nowhere to go.
   `trial_warning`, `subscription_confirmed`, and `payment_failed`.
 - Health check returns binding booleans and fails closed when
   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY`, or `EMAIL_FROM`
-  is missing.
+  is missing. It also reports `signup_notify_ready` separately, and that one
+  is deliberately NOT folded into the overall `ok` — a health check that goes
+  red because an unused optional route is unconfigured is a health check
+  people stop reading.
+
+### `POST /api/notify-signup` — owner alert on a new signup
+
+Receives a **Supabase Database Webhook** on `public.profiles` and mails the
+OWNER (never the customer). No JWT, because a database cannot hold one; it
+authenticates on `SIGNUP_WEBHOOK_SECRET`, sent by the webhook as the header
+`X-Title22-Signup-Secret` and compared in constant time.
+
+Subscribe the webhook to **INSERT *and* UPDATE**. Both halves matter:
+
+- `profiles` is SHARED with the other apps on this Supabase project, so a bare
+  INSERT there may be a TheJudgy or Thelo signup rather than a Title22 one.
+- Somebody who already used one of those apps gets an **UPDATE** when they join
+  Title22, never an INSERT. An INSERT-only webhook misses them in silence.
+
+So the ROW TRANSITION decides, not the event type:
+
+| `old_record.title22_plan` → `record.title22_plan` | Result |
+|---|---|
+| (none) → `trial` | `signup` |
+| (none) → a paid plan | `signup_paid` — they paid before they signed up |
+| `trial` → a paid plan | `converted` — the one that matters |
+| (none) → (none) | skipped, 200 |
+| `lite` → `lite` (other column touched) | skipped, 200 |
+| `lite` → `trial` (downgrade) | skipped, 200 |
+
+**The skips answer 200 on purpose.** Most row changes on a shared table are not
+a Title22 signup. Returning an error would make `pg_net` retry a non-event and
+fill the webhook log with permanent red — and a log that is always red is a log
+nobody reads, which is exactly how the 2026-09-13 outage survived four days.
+Distinguishing "not ours" from "ours and broken" is the same split
+`stripe-webhook` makes between 200-and-dropped and 422.
+
+The mail carries email, plan, **`referred_by`**, UTM source and campaign, trial
+end and profile id. `referred_by` is the reason to watch `profiles` rather than
+`auth.users`: it is how a trainer's student is attributed, and finding that out
+at payout instead of on the day is how a partner relationship goes quiet.
+
+Two secrets to set before it works — `wrangler secret put SIGNUP_WEBHOOK_SECRET`
+and `wrangler secret put SIGNUP_NOTIFY_TO`. Missing either returns **500 naming
+the missing binding in the response body**, where the Supabase webhook log
+records it.
 
 ## title22-geo
 

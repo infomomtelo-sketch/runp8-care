@@ -1,6 +1,6 @@
 // title22-ai — worker behind Tello, the Title22 RCFE compliance assistant
 // Entitlement is namespaced to title22_* columns on the shared nwlhs profiles table.
-// This worker NEVER reads or writes profiles.plan (shared across RunP8 products).
+// This worker NEVER reads or writes profiles.plan (shared across the other apps on this Supabase project).
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
