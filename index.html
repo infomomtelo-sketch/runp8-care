@@ -292,6 +292,9 @@
   .badge-gray{background:var(--gray-light);color:var(--gray)}
   .onboard-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--gray-bg)}
   .onboard-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:520px}
+  .ob-own{margin-top:22px;padding-top:18px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;justify-content:center;font-size:13px;color:var(--text2)}
+  .ob-own-link{background:none;border:none;padding:4px 2px;font-family:inherit;font-size:13px;font-weight:600;color:var(--teal);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .ob-own-link:hover{color:var(--text)}
   .onboard-step{font-size:12px;color:var(--teal);font-weight:600;margin-bottom:6px}
   .onboard-card h2{font-size:1.4rem;font-weight:700;margin-bottom:6px}
   .onboard-card p{font-size:14px;color:var(--text2);margin-bottom:24px}
@@ -710,32 +713,33 @@
            a certificate number — the two things they are trying to obtain. The
            tab was unreachable by the only people it was for. -->
       <div id="ob-path-choice">
-        <div class="onboard-step">Step 1 of 2 · Where you are</div>
-        <h2>Do you have a licensed home yet?</h2>
-        <p>Either answer is fine — it just decides what we show you first.</p>
-        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('licensed')">
-          <strong>Yes, I run a licensed home</strong>
-          <span>Track staff, training, documents and DSS readiness.</span>
-        </button>
-        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('starting')">
-          <strong>Not yet — I'm starting one</strong>
-          <span>Oo, nagsisimula pa lang. Walk through the twelve steps to your licence.</span>
-        </button>
-        <!-- The third door, added 2026-09-19. Both buttons above mean "I run or am
-             opening a care home", and both lead to a form that hard-requires a
-             facility name. So a trainer, a consultant, a caregiver wanting to learn
-             the forms, or anyone evaluating a partnership had no way in except to
-             invent a facility they do not have.
+        <!-- No question, and no step counter. Read the old version as a stranger:
+             "Step 1 of 2" announced paperwork before anyone had seen a thing;
+             "Do you have a licensed home YET?" asked whether they belonged here;
+             "Either answer is fine" is a sentence you only write when it is not;
+             and "it just decides what we show you first" said the quiet part out
+             loud — what you get to see depended on how you answered.
         
-             Nine of 32 accounts signed up and never created one — the largest group
-             in the funnel. Do not remove this without a different answer for them. -->
-        <button class="btn btn-outline ob-path-btn" onclick="chooseOnboardPath('looking')">
-          <strong>Neither — I'm just looking</strong>
-          <span>Trainers, advisers, and anyone still deciding. We'll load a practice home. Nothing to fill in.</span>
+             Adding a third button (2026-09-19) did not fix that. It added an
+             answer to a question that should not be asked at this moment. The
+             fix is to stop asking: looking around is the DEFAULT and the primary
+             action, and saying who you are is something you do afterwards, from
+             inside a product you have already seen. Nine of 32 accounts signed
+             up and never created a facility. -->
+        <h2>Come in and have a look.</h2>
+        <p>A practice home is ready — staff, expiry dates, a checklist. Everyone in it is invented.</p>
+        <button class="btn btn-primary ob-path-btn" onclick="chooseOnboardPath('looking')">
+          <strong>Show me around</strong>
+          <span>Nothing to fill in. Tingnan mo muna.</span>
         </button>
+        <div class="ob-own">
+          <span>Ready to set up your own home?</span>
+          <button class="ob-own-link" onclick="chooseOnboardPath('licensed')">I run a licensed home</button>
+          <button class="ob-own-link" onclick="chooseOnboardPath('starting')">I'm starting one</button>
+        </div>
       </div>
       <div id="ob-form-fields" style="display:none">
-      <div class="onboard-step">Step 2 of 2 · Setup</div>
+      <div class="onboard-step">Your home</div>
       <h2 id="ob-form-title">Tell us about your facility</h2>
       <p id="ob-form-sub">This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
       <div class="form-group"><label>Facility type</label><select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
