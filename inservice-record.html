@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Staff training record</title>
+<meta name="robots" content="noindex"/>
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<link rel="stylesheet" href="/inservice-shared.css"/>
+</head>
+<body>
+<div class="wrap">
+  <p class="noprint" style="margin-bottom:10px"><a href="/inservice-staff.html" style="font-size:13px;color:var(--teal)">&larr; Roster</a></p>
+  <div id="root"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="/inservice-shared.js"></script>
+<script>
+// Printed in full, because § 87411 requires the record to note which criterion
+// the trainer met — a bare letter is not a record anyone can check.
+const TC_CRITERIA={
+  A:"Bachelor's degree plus 2 years of relevant experience caring for the elderly",
+  B:"A current California health care provider licence",
+  C:"2+ years as an RCFE administrator within the last 8 years, with a record of substantial compliance",
+};
+
+function qsId(){try{return new URLSearchParams(location.search).get('id')||'';}catch(e){return '';}}
+
+async function load(){
+  const root=document.getElementById('root');
+  const id=qsId();
+  if(!id){root.innerHTML='<div class="banner banner-red"><div class="banner-title">No staff member specified</div><p>This page needs an <code>?id=</code>. Open it from the roster.</p></div>';return;}
+
+  const fac=await tcFacilityStaff({});
+  if(fac.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read the staff assignments</div><p>${esc(fac.error.message||'')}</p></div>`;return;}
+  const s=(fac.staff||[]).find(x=>x.id===id);
+  if(!s){root.innerHTML=`<div class="banner banner-amber"><div class="banner-title">Not found at this facility</div><p>No staff member with that id is assigned to ${esc(tc.facility.name||'this facility')}.</p></div>`;return;}
+
+  const [tmap,bucketsR,attR]=await Promise.all([
+    tcTemplates(),
+    sb.from('training_bucket_status').select('*').eq('staff_id',id),
+    sb.from('training_attendance').select('*').eq('staff_id',id),
+  ]);
+  const buckets=(bucketsR.data||[]).slice().sort(tcByUrgency);
+  const att=attR.data||[];
+  const evIds=[...new Set(att.map(a=>a.event_id).filter(Boolean))];
+  let events={},trainers={};
+  if(evIds.length){
+    const {data:evs}=await sb.from('training_event').select('*').in('id',evIds);
+    (evs||[]).forEach(e=>{events[e.id]=e;});
+    const tIds=[...new Set((evs||[]).map(e=>e.trainer_id).filter(Boolean))];
+    if(tIds.length){
+      const {data:trs}=await sb.from('training_trainer').select('*').in('id',tIds);
+      (trs||[]).forEach(t=>{trainers[t.id]=t;});
+    }
+  }
+
+  const tf=tc.trainingFacility;
+  const generated=new Date().toLocaleString();
+  const sorted=att.slice().sort((a,b)=>String((events[a.event_id]||{}).held_on||a.completed_at||'').localeCompare(String((events[b.event_id]||{}).held_on||b.completed_at||'')));
+  const usedCriteria=[...new Set(sorted.map(a=>{const e=events[a.event_id]||{};const t=e.trainer_id?trainers[e.trainer_id]:null;return t?String(t.criterion||'').toUpperCase():null;}).filter(Boolean))].sort();
+
+  let html=`
+  <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+    <button class="btn btn-primary" onclick="window.print()">Print this record</button>
+    <a class="btn btn-outline" href="/inservice-staff-detail.html?id=${encodeURIComponent(s.id)}">Back to detail</a>
+  </div>
+
+  <h1 style="margin-bottom:2px">Staff training record</h1>
+  <p style="font-size:13px;color:var(--text2);margin-bottom:18px">
+    ${esc(tf.name||tc.facility.name||'')}${tf.license_number?' · Licence '+esc(tf.license_number):''}${tf.licensed_capacity?' · Licensed capacity '+esc(String(tf.licensed_capacity)):''}${tf.size_band?' ('+esc(tf.size_band)+' facility)':''}<br>
+    Generated ${esc(generated)} · California HSC §§ 1569.625, 1569.626, 1569.69, 1569.696 and 22 CCR § 87411
+  </p>
+
+  <div class="card"><h2>1. Employee</h2>
+    <div class="tscroll"><table class="t"><tbody>
+      <tr><th style="width:290px">Name</th><td><strong>${esc(s.full_name||'(unnamed)')}</strong></td></tr>
+      <tr><th>Role</th><td>${esc(tcRole(s.role))}</td></tr>
+      <tr><th>Assists with medication</th><td>${s.assists_with_medication?'Yes — HSC § 1569.69 requirements apply':'No'}</td></tr>
+      <tr><th>Hire date</th><td>${s.hire_date?esc(tcDate(s.hire_date)):'<strong>NOT ON FILE</strong> — deadlines in this record are not computable without it'}</td></tr>
+      <tr><th>Cleared to work independently</th><td>${s.cleared_independent_at?esc(tcDate(s.cleared_independent_at)):'<strong>Not cleared</strong>'}</td></tr>
+      <tr><th>Medication examination passed</th><td>${s.med_exam_passed_on?esc(tcDate(s.med_exam_passed_on)):'—'}</td></tr>
+      <tr><th>Criminal record clearance</th><td>${s.clearance_on?esc(tcDate(s.clearance_on)):'—'}</td></tr>
+      ${s.terminated_at?`<tr><th>Terminated</th><td>${esc(tcDate(s.terminated_at))}</td></tr>`:''}
+    </tbody></table></div>
+  </div>
+
+  <div class="card"><h2>2. Training completed</h2>`;
+  if(!sorted.length){
+    html+=`<p style="font-size:13px">No training has been logged for this employee.</p>`;
+  }else{
+    html+=`<div class="tscroll"><table class="t">
+      <thead><tr><th>Date</th><th>Title &amp; content covered</th><th style="text-align:right">Hours</th><th>Delivery</th><th>Trainer &amp; § 87411 criterion</th></tr></thead>
+      <tbody>${sorted.map(a=>{
+        const e=events[a.event_id]||{};
+        const t=e.trainer_id?trainers[e.trainer_id]:null;
+        const c=t?String(t.criterion||'').toUpperCase():'';
+        return `<tr>
+          <td>${esc(tcDate(e.held_on||a.completed_at))}</td>
+          <td><strong>${esc(e.title||'(not readable)')}</strong>
+            <div style="font-size:12px;margin-top:3px">${esc(e.content_description||'No statement of content on file')}</div>
+            ${(e.topics||[]).length?`<div style="font-size:11px;color:var(--text2);margin-top:3px">Topics: ${(e.topics||[]).map(x=>esc(tcTopic(x))).join(', ')}</div>`:''}
+            ${e.consultation_source?`<div style="font-size:11px;color:var(--text2)">Consultation source: ${esc(e.consultation_source)}</div>`:''}
+            <div style="font-size:11px;color:var(--text2)">Credited to: ${esc((a.bucket_code&&tmap[a.bucket_code]&&tmap[a.bucket_code].label)||a.bucket_code||'—')}</div>
+          </td>
+          <td style="text-align:right" class="mono">${esc(tcHours(a.hours_credited))}</td>
+          <td>${esc(e.delivery||'—')}</td>
+          <td>${t?`${esc(t.full_name||'')}<div style="font-size:11px;margin-top:2px"><strong>Criterion ${esc(c)}</strong> — ${esc(TC_CRITERIA[c]||'not recorded')}</div>${c==='B'&&t.license_expires_on?`<div style="font-size:11px;color:var(--text2)">Licence expires ${esc(tcDate(t.license_expires_on))}</div>`:''}`
+                :'<strong>No trainer recorded</strong><div style="font-size:11px">This entry does not carry the § 87411 trainer criterion.</div>'}</td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>`;
+  }
+  html+=`</div>
+
+  <div class="card"><h2>3. Requirement ledger</h2>`;
+  if(!buckets.length){
+    html+=`<p style="font-size:13px">No requirements were returned for this employee.</p>`;
+  }else{
+    html+=`<div class="tscroll"><table class="t">
+      <thead><tr><th>Requirement</th><th>Authority</th><th style="text-align:right">Required</th><th style="text-align:right">Completed</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody>${buckets.map(b=>`<tr>
+        <td><strong>${esc(tcBucketLabel(b,tmap))}</strong>${b.is_gate?' <span class="badge badge-gray">Gating</span>':''}</td>
+        <td style="font-size:12px">${esc(tcBucketAuthority(b,tmap))||'—'}</td>
+        <td style="text-align:right" class="mono">${esc(tcHours(b.hours_required))}</td>
+        <td style="text-align:right" class="mono">${esc(tcHours(b.hours_completed))}</td>
+        <td>${b.due_on?esc(tcDate(b.due_on)):'—'}</td>
+        <td>${tcStatusCell(b)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <p style="font-size:11px;color:var(--text2);margin-top:8px">Status and overdue are separate facts: a requirement can be short on a topic minimum and overdue at the same time. Hours are as computed by the system's requirement views; the nested totals (topic minimums counting inside the overall hours, not on top of them) are applied there.</p>`;
+  }
+  html+=`</div>`;
+
+  if(usedCriteria.length){
+    html+=`<div class="card"><h2>4. Trainer criteria referenced in this record</h2>
+      <div class="tscroll"><table class="t"><tbody>${usedCriteria.map(c=>`<tr><th style="width:120px">Criterion ${esc(c)}</th><td>${esc(TC_CRITERIA[c]||'')}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+  }
+
+  html+=`<p style="font-size:10.5px;color:var(--text2);margin-top:18px">
+    Generated by Title22 (title22.app) on ${esc(generated)} for ${esc(tf.name||'')}. This record reflects what has been entered into the system; verify against source documents and certificates held in the personnel file. It records employee training only and contains no resident information. Title22 does not guarantee compliance or any inspection outcome.
+  </p>`;
+
+  root.innerHTML=html;
+  document.title='Training record — '+(s.full_name||'staff');
+}
+
+(async()=>{
+  const boot=await tcBootstrap('staff');
+  if(!boot.ok){document.getElementById('root').innerHTML=boot.html;return;}
+  load();
+})();
+</script>
+</body>
+</html>

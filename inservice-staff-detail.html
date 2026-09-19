@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Staff training detail</title>
+<meta name="robots" content="noindex"/>
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<link rel="stylesheet" href="/inservice-shared.css"/>
+</head>
+<body>
+<div class="wrap">
+  <p style="margin-bottom:10px"><a href="/inservice-staff.html" style="font-size:13px;color:var(--teal)">&larr; Roster</a></p>
+  <div id="root"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="/inservice-shared.js"></script>
+<script>
+let dtStaff=null;
+
+function qsId(){try{return new URLSearchParams(location.search).get('id')||'';}catch(e){return '';}}
+
+// The view may or may not expose per-topic completed hours. If it does, under any
+// of these names, it is rendered. If it does not, the REQUIRED minimums are shown
+// with the view's own verdict and nothing is inferred — summing attendance hours
+// per topic in JS is exactly the nested arithmetic that must not be reimplemented
+// here (an event tagged dementia + medication for 2 hours does not credit 2 to
+// each, and this page has no business deciding what it does credit).
+const TC_SUBMIN_KEYS=['submin_progress','topic_progress','topics_progress','submins','topic_hours','sub_minimums'];
+function exposedSubmins(row){
+  for(const k of TC_SUBMIN_KEYS){
+    const v=row[k];
+    if(v&&typeof v==='object')return v;
+  }
+  return null;
+}
+
+async function load(){
+  const root=document.getElementById('root');
+  const id=qsId();
+  if(!id){root.innerHTML='<div class="banner banner-red"><div class="banner-title">No staff member specified</div><p>This page needs an <code>?id=</code>. Open it from the roster.</p></div>';return;}
+
+  const fac=await tcFacilityStaff({});
+  if(fac.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read the staff assignments</div><p>${esc(fac.error.message||'')}</p></div>`;return;}
+  const s=(fac.staff||[]).find(x=>x.id===id);
+  if(!s){root.innerHTML=`<div class="banner banner-amber"><div class="banner-title">Not found at this facility</div><p>No staff member with that id is assigned to ${esc(tc.facility.name||'this facility')}. They may belong to another facility, or RLS is refusing the row.</p></div>`;return;}
+  dtStaff=s;
+
+  const [tmap,subs,bucketsR,gateR,attR]=await Promise.all([
+    tcTemplates(),tcSubmins(),
+    sb.from('training_bucket_status').select('*').eq('staff_id',id),
+    sb.from('training_gate_blocked').select('*'),
+    sb.from('training_attendance').select('*').eq('staff_id',id),
+  ]);
+  if(bucketsR.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read training_bucket_status</div><p>${esc(bucketsR.error.message||'')}</p></div>`;return;}
+  const buckets=(bucketsR.data||[]).slice().sort(tcByUrgency);
+  const gateRows=(gateR.data||[]).filter(g=>tcStaffId(g)===id);
+
+  // Attendance -> events -> trainers, fetched by id rather than through a
+  // PostgREST embed, so nothing depends on guessing an embed's relationship name.
+  const att=attR.data||[];
+  const evIds=[...new Set(att.map(a=>a.event_id).filter(Boolean))];
+  let events={},trainers={};
+  if(evIds.length){
+    const {data:evs}=await sb.from('training_event').select('*').in('id',evIds);
+    (evs||[]).forEach(e=>{events[e.id]=e;});
+    const tIds=[...new Set((evs||[]).map(e=>e.trainer_id).filter(Boolean))];
+    if(tIds.length){
+      const {data:trs}=await sb.from('training_trainer').select('*').in('id',tIds);
+      (trs||[]).forEach(t=>{trainers[t.id]=t;});
+    }
+  }
+
+  let html='';
+
+  // The gate, stated first and named. "Not cleared" without the reason sends an
+  // administrator hunting through a table for it.
+  if(gateRows.length){
+    const why=gateRows.map(g=>{
+      const code=tcBucketCode(g);
+      const lbl=(code&&tmap[code]&&tmap[code].label)||g.label||code||'a required bucket';
+      const reason=g.reason||g.blocking_reason||g.detail||'';
+      return `<li><strong>${esc(lbl)}</strong>${reason?' — '+esc(reason):''}</li>`;
+    }).join('');
+    html+=`<div class="banner banner-red">
+      <div class="banner-title">Not cleared to work independently</div>
+      <p>This person appears in <code>training_gate_blocked</code>. Until every gating requirement is met they cannot be marked as cleared here — the save is refused, not warned about.</p>
+      <ul style="margin:8px 0 0 20px;font-size:13px">${why}</ul>
+    </div>`;
+  }
+
+  html+=`<div class="page-header">
+    <div>
+      <h1>${esc(s.full_name||'(unnamed)')}</h1>
+      <p class="sub">${esc(tcRole(s.role))}${s.assists_with_medication?' · assists with medication':''}${s.terminated_at?' · terminated '+esc(tcDate(s.terminated_at)):''}</p>
+    </div>
+    <a class="btn btn-outline" href="/inservice-record.html?id=${encodeURIComponent(s.id)}">Printable record</a>
+  </div>`;
+
+  html+=`<div class="card"><div class="card-title">Employment &amp; clearance</div>
+    <div class="tscroll"><table class="t"><tbody>
+      <tr><th style="width:280px">Hire date</th><td>${s.hire_date?esc(tcDate(s.hire_date)):'<span class="badge badge-red">Not on file — no deadline can be computed</span>'}</td></tr>
+      <tr><th>Cleared to work independently</th><td>${s.cleared_independent_at?`<span class="badge badge-green">${esc(tcDate(s.cleared_independent_at))}</span>`:(gateRows.length?'<span class="badge badge-red">Blocked</span>':'<span class="badge badge-gray">Not cleared</span>')}</td></tr>
+      <tr><th>Medication examination passed</th><td>${s.med_exam_passed_on?esc(tcDate(s.med_exam_passed_on)):'<span style="color:var(--text2)">—</span>'}</td></tr>
+      <tr><th>Criminal record clearance</th><td>${s.clearance_on?esc(tcDate(s.clearance_on)):'<span style="color:var(--text2)">—</span>'}</td></tr>
+    </tbody></table></div>`;
+  if(!s.cleared_independent_at){
+    html+=`<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      ${gateRows.length
+        ? `<p class="hint">Clearing is unavailable while a gating requirement is outstanding. Log the missing training and this will open.</p>`
+        : `<label class="fld" for="cl-date">Mark cleared to work independently, effective</label>
+           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+             <input type="date" id="cl-date" value="${esc(tcToday())}" max="2100-12-31" style="max-width:200px"/>
+             <button class="btn btn-primary btn-sm" id="cl-btn" onclick="clearIndependent()" ${tcCanEdit()?'':'disabled'}>Mark cleared</button>
+           </div>
+           <div class="hint" id="cl-note">Re-checked against the gate at the moment you save, not from what this page loaded.</div>`}
+    </div>`;
+  }
+  html+=`</div>`;
+
+  // ---- bucket ledger ----
+  html+=`<div class="card"><div class="card-title">Requirements — ordered most urgent first</div>`;
+  if(!buckets.length){
+    html+=`<div class="empty" style="padding:22px">No requirements returned for this person.${s.hire_date?'':' They have no hire date, so no deadline is computable.'}</div>`;
+  }else{
+    let anyHidden=false;
+    html+=`<div class="tscroll"><table class="t">
+      <thead><tr><th>Requirement</th><th style="text-align:right">Required</th><th style="text-align:right">Completed</th><th style="width:110px">Progress</th><th>Topic minimums</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody>${buckets.map(b=>{
+        const code=tcBucketCode(b);
+        const req=Number(b.hours_required),done=Number(b.hours_completed);
+        const pct=(isFinite(req)&&req>0&&isFinite(done))?Math.min(100,Math.round(done/req*100)):0;
+        const meterCls=b.status==='complete'?'full':(b.status==='short_on_topic'?'short':'');
+        const exposed=exposedSubmins(b);
+        const required=subs[code]||[];
+        let subHtml='';
+        if(exposed){
+          // Rendering the view's own numbers.
+          const entries=Array.isArray(exposed)?exposed:Object.entries(exposed).map(([topic,v])=>({topic,...(typeof v==='object'?v:{hours_completed:v})}));
+          subHtml=entries.map(e=>{
+            const need=e.min_hours??e.required??'';
+            const got=e.hours_completed??e.completed??e.hours??'';
+            const shortfall=isFinite(Number(need))&&isFinite(Number(got))&&Number(got)<Number(need);
+            return `<div style="font-size:12px${shortfall?';color:var(--amber);font-weight:600':''}">${esc(tcTopic(e.topic))}: ${esc(tcHours(got))} / ${esc(tcHours(need))} h</div>`;
+          }).join('')||'<span style="color:var(--text2);font-size:12px">—</span>';
+        }else if(required.length){
+          anyHidden=true;
+          subHtml=required.map(r=>`<div style="font-size:12px">${esc(tcTopic(r.topic))}: ${esc(tcHours(r.min_hours))} h required</div>`).join('');
+        }else{
+          subHtml='<span style="color:var(--text2);font-size:12px">None</span>';
+        }
+        return `<tr>
+          <td><strong>${esc(tcBucketLabel(b,tmap))}</strong><span class="cite">${esc(tcBucketAuthority(b,tmap))}</span></td>
+          <td style="text-align:right" class="mono">${esc(tcHours(b.hours_required))}</td>
+          <td style="text-align:right" class="mono">${esc(tcHours(b.hours_completed))}</td>
+          <td><div class="meter ${meterCls}"><span style="width:${pct}%"></span></div></td>
+          <td>${subHtml}</td>
+          <td>${b.due_on?esc(tcDate(b.due_on)):'<span style="color:var(--text2)">—</span>'}</td>
+          <td>${tcStatusCell(b)}</td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>`;
+    if(anyHidden){
+      html+=`<p class="hint" style="margin-top:10px"><strong>Topic minimums show what is required, not how much of each is done.</strong> <code>training_bucket_status</code> reports the verdict — a status of <em>short on a topic minimum</em> means at least one of these is unmet — but does not expose completed hours per topic. Those are deliberately not added up here: dementia hours count inside the totals rather than on top of them, and an event covering two topics does not credit its full hours to both. Add a per-topic column to the view and this table will render it.</p>`;
+    }
+  }
+  html+=`</div>`;
+
+  // ---- attendance history ----
+  html+=`<div class="card"><div class="card-title">Training attended — ${att.length} ${att.length===1?'record':'records'}</div>`;
+  if(!att.length){
+    html+=`<div class="empty" style="padding:22px">Nothing logged against this person yet.</div>`;
+  }else{
+    const sorted=att.slice().sort((a,b)=>String((events[b.event_id]||{}).held_on||b.completed_at||'').localeCompare(String((events[a.event_id]||{}).held_on||a.completed_at||'')));
+    html+=`<div class="tscroll"><table class="t">
+      <thead><tr><th>Date</th><th>Session</th><th>Topics</th><th style="text-align:right">Hours</th><th>Credited to</th><th>Trainer</th></tr></thead>
+      <tbody>${sorted.map(a=>{
+        const e=events[a.event_id]||{};
+        const t=e.trainer_id?trainers[e.trainer_id]:null;
+        const code=a.bucket_code;
+        return `<tr>
+          <td>${esc(tcDate(e.held_on||a.completed_at))}</td>
+          <td><strong>${esc(e.title||'(session not readable)')}</strong>${e.delivery?'<span class="cite">'+esc(e.delivery)+'</span>':''}</td>
+          <td style="font-size:12px">${(e.topics||[]).map(x=>esc(tcTopic(x))).join(', ')||'—'}</td>
+          <td style="text-align:right" class="mono">${esc(tcHours(a.hours_credited))}</td>
+          <td style="font-size:12px">${esc((code&&tmap[code]&&tmap[code].label)||code||'—')}</td>
+          <td style="font-size:12px">${t?esc(t.full_name||'')+' <span class="badge badge-teal">Crit '+esc(String(t.criterion||'?').toUpperCase())+'</span>':'<span style="color:var(--red)">None recorded</span>'}</td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>`;
+  }
+  html+=`</div>`;
+
+  root.innerHTML=html;
+}
+
+async function clearIndependent(){
+  if(!tcCanEdit()){tcDenyEdit();return;}
+  const note=document.getElementById('cl-note');
+  const btn=document.getElementById('cl-btn');
+  const when=(document.getElementById('cl-date').value||'').trim();
+  if(!when){note.innerHTML='<span style="color:var(--red)">Pick the effective date.</span>';return;}
+  btn.disabled=true;note.textContent='Checking the gate…';
+
+  // Re-read the gate at save time. The page may have been open for an hour, and
+  // a stale render must never be what authorises this. A hard block: refused,
+  // not confirmed-past.
+  const {data:gate,error:gerr}=await sb.from('training_gate_blocked').select('*');
+  if(gerr){
+    btn.disabled=false;
+    note.innerHTML='<span style="color:var(--red)">Could not verify the gate, so nothing was saved: '+esc(gerr.message||'')+'</span>';
+    return;
+  }
+  const blocked=(gate||[]).some(g=>tcStaffId(g)===dtStaff.id);
+  if(blocked){
+    btn.disabled=true;
+    note.innerHTML='<span style="color:var(--red)"><strong>Refused.</strong> This person is gate-blocked — a required training is still outstanding, so they cannot be recorded as cleared to work independently. Nothing was written.</span>';
+    tcToast('Refused: this staff member is gate-blocked and cannot be marked cleared to work independently.');
+    return;
+  }
+  const {error}=await sb.from('training_staff').update({cleared_independent_at:when}).eq('id',dtStaff.id);
+  if(error){
+    btn.disabled=false;
+    note.innerHTML='<span style="color:var(--red)">Not saved: '+esc(error.message||'')+'</span>';
+    return;
+  }
+  tcToast('Recorded as cleared to work independently.');
+  load();
+}
+
+(async()=>{
+  const boot=await tcBootstrap('staff');
+  if(!boot.ok){document.getElementById('root').innerHTML=boot.html;return;}
+  load();
+})();
+</script>
+</body>
+</html>

@@ -242,6 +242,7 @@ function tcChrome(page){
   const nav=[
     {href:'/inservice-staff.html',    key:'staff',    label:'Staff & requirements'},
     {href:'/inservice-trainers.html', key:'trainers', label:'Trainers'},
+    {href:'/inservice-log.html',      key:'log',      label:'Log a session'},
   ];
   return `<header class="top">
     <div class="top-inner">
@@ -318,11 +319,15 @@ async function tcBootstrap(page){
   }
 
   if(!tc.trainingFacility){
+    const capRaw=tc.facility.capacity;
+    const cap=capRaw!==null&&capRaw!==undefined&&Number(capRaw)>0;
     return {ok:false,html:`<div class="banner banner-amber">
       <div class="banner-title">${esc(tc.facility.name||'This facility')} is not enrolled in the training module</div>
       <p>There is no <code>training_facility</code> row whose <code>external_facility_id</code> is this facility, so there is nothing for these screens to report on.</p>
-      <p style="margin-top:8px">Enrolment is a one-off SQL step, not a screen — run <code>select * from training_link_existing_facilities();</code> once in the Supabase SQL editor. It is idempotent, and it skips any facility whose <code>capacity</code> is null or zero rather than guessing: a wrong capacity silently puts staff on the wrong medication-training requirements. If it reports <code>skipped_no_capacity</code> above zero, set a capacity on the existing <code>facilities</code> row first, then run it again.</p>
-      <p class="hint" style="margin-top:8px">This page deliberately does not offer a button for it. The function links <em>every</em> facility in the project, which is the owner's decision to take, not a side effect of opening a page.</p>
+      ${cap?`<p style="margin-top:8px">Enrolment has been run. Re-run <code>select * from training_link_existing_facilities();</code> to pick this facility up.</p>`
+           :`<p style="margin-top:8px"><strong>This facility has no capacity set — that is why it was skipped.</strong> Enrolment reads <code>facilities.capacity</code> into <code>licensed_capacity</code>, and that is what decides the small (≤15) or large (≥16) size band. The band selects which requirements apply, so a guessed capacity would quietly put your staff on the wrong medication-training track — it is left out on purpose rather than defaulted.</p>
+             <p style="margin-top:8px">Set a capacity on this facility in Title22 (Facility → Edit), then re-run <code>select * from training_link_existing_facilities();</code> once in the Supabase SQL editor.</p>`}
+      <p class="hint" style="margin-top:8px">No button for it here on purpose: that function links <em>every</em> facility in the project, which is the owner's call, not a side effect of opening a page.</p>
     </div>`};
   }
   return {ok:true};

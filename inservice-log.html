@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Log a training session</title>
+<meta name="robots" content="noindex"/>
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<link rel="stylesheet" href="/inservice-shared.css"/>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-header">
+    <div>
+      <h1>Log a training session</h1>
+      <p class="sub">One in-service, every attendee, one form. Each person's hours are credited to a requirement — defaulted to whatever is currently open for them, and overridable per person.</p>
+    </div>
+  </div>
+  <div id="root"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="/inservice-shared.js"></script>
+<script>
+const TC_TOPICS=['dementia','postural_hospice','hands_on','shadowing','medication','resident_characteristics'];
+let lgStaff=[],lgBuckets={},lgTrainers=[],lgTmap={};
+
+async function load(){
+  const root=document.getElementById('root');
+  const fac=await tcFacilityStaff({activeOnly:true});
+  if(fac.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read the staff assignments</div><p>${esc(fac.error.message||'')}</p></div>`;return;}
+  if(!fac.ids.length){root.innerHTML=tcNoStaffHTML()+`<p class="hint" style="margin-top:12px"><a href="/inservice-staff.html">Add staff first →</a></p>`;return;}
+  lgStaff=fac.staff;
+
+  const [tmap,bucketsR,trainersR,deliveryR]=await Promise.all([
+    tcTemplates(),
+    sb.from('training_bucket_status').select('*').in('staff_id',fac.ids),
+    sb.from('training_trainer').select('*').eq('facility_id',tc.trainingFacility.id).order('full_name'),
+    // delivery's allowed values are not documented anywhere I can see, so the
+    // options offered are the ones this facility has already used. The field
+    // stays free text underneath rather than guessing at an enum and having
+    // the insert rejected.
+    sb.from('training_event').select('delivery').eq('facility_id',tc.trainingFacility.id).limit(200),
+  ]);
+  if(bucketsR.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read training_bucket_status</div><p>${esc(bucketsR.error.message||'')}</p></div>`;return;}
+  lgTmap=tmap;lgTrainers=trainersR.data||[];
+  lgBuckets={};
+  (bucketsR.data||[]).forEach(r=>{const id=tcStaffId(r);(lgBuckets[id]=lgBuckets[id]||[]).push(r);});
+  Object.keys(lgBuckets).forEach(k=>lgBuckets[k].sort(tcByUrgency));
+  const deliveries=[...new Set((deliveryR.data||[]).map(r=>r.delivery).filter(Boolean))].sort();
+
+  root.innerHTML=`
+  ${tcCanEdit()?'':'<div class="banner banner-gray"><div class="banner-title">Read-only</div><p>Only an administrator or supervisor can log a training session.</p></div>'}
+  <div class="card">
+    <div class="card-title">The session</div>
+    <div class="form-group">
+      <label class="fld" for="e-title">Title <span class="req">*</span></label>
+      <input type="text" id="e-title" autocomplete="off" placeholder="e.g. Annual dementia care in-service"/>
+    </div>
+    <div class="form-group">
+      <label class="fld" for="e-desc">Content covered <span class="req">*</span></label>
+      <textarea id="e-desc" placeholder="What was actually taught — the curriculum, topic by topic."></textarea>
+      <div class="hint"><strong>Required by 22 CCR § 87411</strong>, which asks for a statement of the content covered. Describe the <strong>curriculum</strong> — what was taught and the skills practised. Never a resident, and never an account of a resident's situation: this module holds employee records only.</div>
+    </div>
+    <div class="grid2">
+      <div class="form-group">
+        <label class="fld" for="e-date">Date held <span class="req">*</span></label>
+        <input type="date" id="e-date" value="${esc(tcToday())}" max="2100-12-31"/>
+      </div>
+      <div class="form-group">
+        <label class="fld" for="e-hours">Hours <span class="req">*</span></label>
+        <input type="number" id="e-hours" step="0.25" min="0.25" placeholder="2" oninput="syncHours()"/>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="form-group">
+        <label class="fld" for="e-delivery">Delivery method</label>
+        <input type="text" id="e-delivery" list="dl-delivery" autocomplete="off" placeholder="e.g. in person"/>
+        <datalist id="dl-delivery">${deliveries.map(d=>`<option value="${esc(d)}"></option>`).join('')}</datalist>
+        ${deliveries.length?'':'<div class="hint">No previous values to suggest yet — type how it was delivered.</div>'}
+      </div>
+      <div class="form-group">
+        <label class="fld" for="e-trainer">Trainer</label>
+        <select id="e-trainer" onchange="onTrainer()">
+          <option value="">— none recorded —</option>
+          ${lgTrainers.map(t=>`<option value="${esc(t.id)}">${esc(t.full_name||'(unnamed)')} — criterion ${esc(String(t.criterion||'?').toUpperCase())}</option>`).join('')}
+        </select>
+        <div class="hint" id="trainer-hint"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="fld">Topics covered</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${TC_TOPICS.map(t=>`<label style="display:flex;gap:7px;align-items:center;padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px">
+          <input type="checkbox" class="topic" value="${t}" onchange="onTopics()" style="width:16px;height:16px"/>${esc(tcTopic(t))}</label>`).join('')}
+      </div>
+      <div class="hint">These drive the topic minimums inside the annual and initial totals. The hour arithmetic is nested — dementia hours count <em>inside</em> the 40 and the 20, not on top of them — and it is the database's to do, not this page's.</div>
+    </div>
+    <div class="form-group" id="consult-wrap" style="display:none">
+      <label class="fld" for="e-consult">Consultation source <span class="req">*</span></label>
+      <input type="text" id="e-consult" autocomplete="off" placeholder="Who the postural support / hospice content was obtained from"/>
+      <div class="hint">Shown because <strong>postural supports / hospice</strong> is among the topics — that training is expected to come from an appropriate consultant. Name the source, not a resident.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Who attended</div>
+    <p class="sub" style="margin-bottom:12px">Tick everyone who was there. Each person's hours are credited to one requirement — defaulted to their most urgent open one. Enter the session once, not once per person.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-outline btn-sm" onclick="pickAll(true)">Select all</button>
+      <button class="btn btn-outline btn-sm" onclick="pickAll(false)">Clear</button>
+    </div>
+    <div class="tscroll"><table class="t">
+      <thead><tr><th style="width:40px"></th><th>Name</th><th>Role</th><th>Credit to</th><th style="width:110px">Hours</th></tr></thead>
+      <tbody>${lgStaff.map(s=>{
+        const bs=lgBuckets[s.id]||[];
+        const open=bs.filter(b=>b.status!=='complete');
+        const def=open[0]||bs[0]||null;   // lowest urgency = current open bucket
+        return `<tr>
+          <td><input type="checkbox" class="att" id="a-${esc(s.id)}" value="${esc(s.id)}" style="width:18px;height:18px"/></td>
+          <td><label for="a-${esc(s.id)}"><strong>${esc(s.full_name||'(unnamed)')}</strong></label>${s.assists_with_medication?'<br><span class="badge badge-teal" style="margin-top:3px">Med. assist</span>':''}</td>
+          <td>${esc(tcRole(s.role))}</td>
+          <td>${bs.length?`<select id="b-${esc(s.id)}" style="font-size:13px">${bs.map(b=>{
+                const code=tcBucketCode(b);
+                return `<option value="${esc(code)}"${def&&code===tcBucketCode(def)?' selected':''}>${esc(tcBucketLabel(b,tmap))} — ${esc((TC_STATUS_META[b.status]||{}).label||b.status||'')}${b.is_overdue?' · OVERDUE':''}</option>`;
+              }).join('')}</select>`
+            :'<span style="color:var(--red);font-size:12px">No requirements returned for this person</span>'}</td>
+          <td><input type="number" id="h-${esc(s.id)}" class="ahours" step="0.25" min="0" style="font-size:13px" aria-label="Hours credited to ${esc(s.full_name||'')}"/></td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>
+    <p class="hint" style="margin-top:10px">Hours default to the session length. Lower one if somebody attended only part of it.</p>
+  </div>
+
+  <div class="card">
+    <div id="e-err" style="color:var(--red);font-size:13px;margin-bottom:10px"></div>
+    <button class="btn btn-primary" id="e-save" onclick="saveEvent()" ${tcCanEdit()?'':'disabled'}>Save session and credit attendees</button>
+  </div>`;
+}
+
+function onTrainer(){
+  const sel=document.getElementById('e-trainer');
+  const t=lgTrainers.find(x=>x.id===sel.value);
+  const hint=document.getElementById('trainer-hint');
+  if(!t){hint.innerHTML='<span style="color:var(--amber)">Without a trainer this record does not carry the § 87411 criterion, and the printed staff record will say so.</span>';return;}
+  const c=String(t.criterion||'').toUpperCase();
+  hint.innerHTML='Criterion '+esc(c)+' — printed on every staff record this session appears in.';
+}
+function onTopics(){
+  const sel=[...document.querySelectorAll('.topic:checked')].map(c=>c.value);
+  document.getElementById('consult-wrap').style.display=sel.includes('postural_hospice')?'block':'none';
+}
+function syncHours(){
+  const h=document.getElementById('e-hours').value;
+  document.querySelectorAll('.ahours').forEach(i=>{if(!i.dataset.touched)i.value=h;});
+}
+function pickAll(v){document.querySelectorAll('.att').forEach(c=>{c.checked=v;});}
+
+async function saveEvent(){
+  if(!tcCanEdit()){tcDenyEdit();return;}
+  const err=document.getElementById('e-err');err.textContent='';
+  const title=(document.getElementById('e-title').value||'').trim();
+  const desc=(document.getElementById('e-desc').value||'').trim();
+  const held=(document.getElementById('e-date').value||'').trim();
+  const hours=parseFloat(document.getElementById('e-hours').value);
+  const delivery=(document.getElementById('e-delivery').value||'').trim();
+  const trainer=document.getElementById('e-trainer').value||null;
+  const topics=[...document.querySelectorAll('.topic:checked')].map(c=>c.value);
+  const consult=(document.getElementById('e-consult')?.value||'').trim();
+
+  if(!title){err.textContent='Give the session a title.';return;}
+  if(!desc){err.textContent='A statement of the content covered is required by § 87411 — describe what was taught.';return;}
+  if(!held){err.textContent='Enter the date it was held.';return;}
+  if(!hours||hours<=0){err.textContent='Enter the number of hours.';return;}
+  if(topics.includes('postural_hospice')&&!consult){err.textContent='Name the consultation source for the postural supports / hospice content.';return;}
+
+  const phi=tcPhiBlock([['The title',title],['The content description',desc],['The consultation source',consult]]);
+  if(phi){tcToast(phi);return;}
+
+  const picked=[...document.querySelectorAll('.att:checked')].map(c=>c.value);
+  if(!picked.length){err.textContent='Tick at least one attendee. A session with nobody in it credits nothing.';return;}
+  const missing=picked.filter(id=>!document.getElementById('b-'+id));
+  if(missing.length){err.textContent='Some selected people have no requirement to credit — untick them, or check their hire date is on file.';return;}
+
+  const btn=document.getElementById('e-save');btn.disabled=true;err.textContent='';
+  const ev={facility_id:tc.trainingFacility.id,title,content_description:desc,held_on:held,hours,topics,
+            delivery:delivery||null,trainer_id:trainer||null};
+  if(topics.includes('postural_hospice'))ev.consultation_source=consult;
+
+  const {data:made,error}=await sb.from('training_event').insert(ev).select().single();
+  if(error){btn.disabled=false;err.textContent='Nothing was saved: '+(error.message||'unknown error');return;}
+
+  const rows=picked.map(id=>{
+    const h=parseFloat(document.getElementById('h-'+id).value);
+    return {event_id:made.id,staff_id:id,bucket_code:document.getElementById('b-'+id).value,
+            hours_credited:(isFinite(h)&&h>0)?h:hours,completed_at:held};
+  });
+  const {error:aerr}=await sb.from('training_attendance').insert(rows);
+  if(aerr){
+    // An event with no attendance credits nobody and would sit in the record
+    // looking like a logged session. PostgREST has no cross-table transaction,
+    // so the event just created is removed again rather than left as a lie.
+    const {error:derr}=await sb.from('training_event').delete().eq('id',made.id);
+    btn.disabled=false;
+    err.innerHTML='Nobody was credited, so the session was not kept: '+esc(aerr.message||'')+
+      (derr?'<br>This training_event row could not be rolled back and needs deleting by hand: '+esc(made.id):' The event was rolled back.');
+    return;
+  }
+  document.getElementById('root').innerHTML=`<div class="banner banner-green">
+    <div class="banner-title">Session logged — ${rows.length} ${rows.length===1?'person':'people'} credited</div>
+    <p>${esc(title)} · ${esc(tcDate(held))} · ${esc(tcHours(hours))} hours.</p>
+    <p style="margin-top:10px"><a href="/inservice-log.html">Log another</a> · <a href="/inservice-staff.html">Back to the roster</a></p>
+  </div>`;
+}
+
+document.addEventListener('input',e=>{if(e.target.classList.contains('ahours'))e.target.dataset.touched='1';});
+
+(async()=>{
+  const boot=await tcBootstrap('log');
+  if(!boot.ok){document.getElementById('root').innerHTML=boot.html;return;}
+  load();
+})();
+</script>
+</body>
+</html>

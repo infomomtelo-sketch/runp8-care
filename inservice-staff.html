@@ -16,6 +16,7 @@
       <h1>Staff training &amp; requirements</h1>
       <p class="sub">Every active staff member at this facility with the most urgent requirement outstanding against each, ordered by the views' own urgency key. The top of the roster is the work to do first.</p>
     </div>
+    <a class="btn btn-primary" href="/inservice-log.html">Log a training session</a>
   </div>
   <div id="root"><div class="empty">Loading…</div></div>
 </div>
@@ -96,19 +97,20 @@ async function load(){
     html+=`<div class="card">
       <div class="card-title">Roster — ${rows.length} active</div>
       <div class="tscroll"><table class="t">
-        <thead><tr><th>Name</th><th>Role</th><th>Most urgent requirement</th><th>Status</th><th style="text-align:right">Overdue</th><th>Independent</th></tr></thead>
+        <thead><tr><th>Name</th><th>Role</th><th>Most urgent requirement</th><th>Status</th><th style="text-align:right">Overdue</th><th>Independent</th><th></th></tr></thead>
         <tbody>${rows.map(r=>{
           const s=r.staff;
           const indep=s.cleared_independent_at
             ? `<span class="badge badge-green">Cleared ${esc(tcDate(s.cleared_independent_at))}</span>`
             : (r.blocked?'<span class="badge badge-red">Blocked</span>':'<span class="badge badge-gray">Not cleared</span>');
           return `<tr>
-            <td><strong>${esc(s.full_name||'(unnamed)')}</strong>${s.assists_with_medication?'<br><span class="badge badge-teal" style="margin-top:3px">Assists with medication</span>':''}</td>
+            <td><a href="/inservice-staff-detail.html?id=${encodeURIComponent(s.id)}" style="font-weight:600;color:var(--teal)">${esc(s.full_name||'(unnamed)')}</a>${s.assists_with_medication?'<br><span class="badge badge-teal" style="margin-top:3px">Assists with medication</span>':''}</td>
             <td>${esc(tcRole(s.role))}</td>
             <td>${r.worst?`${esc(tcBucketLabel(r.worst,tmap))}<span class="cite">${esc(tcBucketAuthority(r.worst,tmap))}</span>`:'<span style="color:var(--text2)">No requirements returned</span>'}</td>
             <td>${r.worst?tcStatusCell(r.worst):'—'}</td>
             <td style="text-align:right" class="mono">${r.overdue?`<strong style="color:var(--red)">${r.overdue}</strong>`:'0'}</td>
             <td>${indep}</td>
+            <td style="text-align:right;white-space:nowrap"><a class="btn btn-outline btn-sm" href="/inservice-record.html?id=${encodeURIComponent(s.id)}">Record</a></td>
           </tr>`;}).join('')}</tbody>
       </table></div>
       <p class="hint" style="margin-top:10px">Status and overdue are two separate facts and both are shown. A requirement can be short on a topic minimum <em>and</em> overdue at the same time — that is the common case, and collapsing them would hide one of the two.</p>
