@@ -100,6 +100,10 @@
   .ob-path-btn{display:block;width:100%;text-align:left;min-height:56px;padding:16px 18px;margin-bottom:12px;border-radius:var(--radius);line-height:1.4}
   .ob-path-btn strong{display:block;font-size:16px;font-weight:600}
   .ob-path-btn span{display:block;font-size:13px;color:var(--text2);margin-top:3px}
+/* The choice buttons used to all be .btn-outline, so the grey subtitle was
+   fine. "Show me around" is .btn-primary now — solid green — and grey on
+   green is unreadable. Inherit the button's own colour instead. */
+.btn-primary.ob-path-btn span{color:#fff;opacity:.85}
   .ob-path-btn:hover span{color:var(--teal)}
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
   .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -892,7 +896,7 @@
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div id="team-prompt-title" style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
-          <div id="team-prompt-body" style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+          <div id="team-prompt-body" style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so incidents and checklist work get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button id="team-prompt-cta" class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="dismissTeamPrompt()">Not now</button>
