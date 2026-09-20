@@ -3341,6 +3341,47 @@ async function initFacility(){
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
+  t22FirstLanding();
+}
+
+// Where a trainer and a student each want to be on their first screen, rather
+// than the dashboard both currently get.
+//
+// A trainer is a Classroom (edu) account and wants Lessons: it is the tab they
+// are evaluating and the one that is empty until they load the starter set.
+// A student arrives on a trainer's ?ref= link and wants the sample facility,
+// which is the thing they practise on.
+//
+// Runs once per browser session, after any decision the rest of initFacility
+// makes, and never for demo mode. The flag is set BEFORE acting, because the
+// student branch calls switchFacility, which calls initFacility again --
+// without that ordering this would recurse. Wrapped entirely in try/catch: a
+// convenience that decides the first tab must never be able to stop a facility
+// from loading.
+function t22FirstLanding(){
+  try{
+    if(demoMode||!currentUser||!t22Entitled)return;
+    if(sessionStorage.getItem('title22_first_landing'))return;
+    sessionStorage.setItem('title22_first_landing','1');
+
+    // Trainer: open Lessons. allowedTabs() is the authority on whether they
+    // may, so an expired trial or a role without it is never sent there.
+    if(t22Plan==='edu'){
+      if(allowedTabs().includes('lessons'))switchTab('lessons');
+      return;
+    }
+
+    // Student: stand them in the sample facility if they have one and are not
+    // already in it. Nothing is created here -- seedDemoData writes a facility,
+    // residents and 300 MAR rows behind a confirm(), and that is not something
+    // to trigger from a page load.
+    const referred=currentUser?.user_metadata?.referred_by
+      ||(()=>{try{return sessionStorage.getItem('title22_ref');}catch(e){return null;}})();
+    if(!referred)return;
+    if(currentFacility&&isSampleFacility(currentFacility))return;
+    const sample=(allFacilities||[]).find(f=>f&&isSampleFacility(f));
+    if(sample&&sample.id!==currentFacility?.id)switchFacility(sample.id);
+  }catch(e){/* never let the landing choice break the load */}
 }
 
 function renderFacilitySwitcher(){
