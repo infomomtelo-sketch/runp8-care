@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Staff training &amp; requirements</title>
+<meta name="robots" content="noindex"/>
+<!-- Vendored and pinned, as index.html and training.html do it. -->
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<link rel="stylesheet" href="/inservice-shared.css"/>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-header">
+    <div>
+      <h1>Staff training &amp; requirements</h1>
+      <p class="sub">Every active staff member at this facility with the most urgent requirement outstanding against each, ordered by the views' own urgency key. The top of the roster is the work to do first.</p>
+    </div>
+    <a class="btn btn-primary" href="/inservice-log.html">Log a training session</a>
+  </div>
+  <div id="root"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="/inservice-shared.js"></script>
+<script>
+let stState={staff:[],ids:[],tmap:{},needHire:[],stale:false};
+
+async function load(){
+  const root=document.getElementById('root');
+  const fac=await tcFacilityStaff({activeOnly:true});
+  if(fac.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read the staff assignments</div><p>${esc(fac.error.message||'')}</p></div>`;return;}
+
+  // An enrolled facility with nobody on it is the expected first run, not an
+  // error: training_staff is entered by hand and the add form below is how.
+  const [tmap,bucketsR,gateR,hireR]=await Promise.all([
+    tcTemplates(),
+    fac.ids.length?sb.from('training_bucket_status').select('*').in('staff_id',fac.ids):Promise.resolve({data:[]}),
+    sb.from('training_gate_blocked').select('*'),
+    sb.from('training_needs_hire_date').select('*'),
+  ]);
+  if(bucketsR.error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read training_bucket_status</div><p>${esc(bucketsR.error.message||'')}</p></div>`;return;}
+
+  // Grouping and counting rows the views have already classified. No hour
+  // arithmetic happens here — see the note at the top of inservice-shared.js.
+  const byStaff={};
+  (bucketsR.data||[]).forEach(r=>{const id=tcStaffId(r);(byStaff[id]=byStaff[id]||[]).push(r);});
+  const gateIds=new Set((gateR.data||[]).map(tcStaffId).filter(Boolean));
+  const byId={};fac.staff.forEach(s=>{byId[s.id]=s;});
+  const needHire=(hireR.data||[]).filter(r=>fac.ids.includes(tcStaffId(r))).map(r=>{
+    const id=tcStaffId(r), s=byId[id]||{};
+    return {id,name:tcRowName(r)||tcRowName(s)||'(unnamed)',role:r.role||s.role||null};
+  }).sort((a,b)=>a.name.localeCompare(b.name));
+
+  stState={staff:fac.staff,ids:fac.ids,tmap,needHire,stale:false};
+
+  const rows=fac.staff.map(s=>{
+    const buckets=(byStaff[s.id]||[]).slice().sort(tcByUrgency);
+    return {staff:s, worst:buckets[0]||null,
+            overdue:buckets.filter(b=>b.is_overdue).length,
+            total:buckets.length,
+            complete:buckets.filter(b=>b.status==='complete').length,
+            blocked:gateIds.has(s.id)};
+  }).sort((a,b)=>{
+    if(a.worst&&b.worst)return tcByUrgency(a.worst,b.worst);
+    if(a.worst)return -1;
+    if(b.worst)return 1;
+    return String(a.staff.full_name||'').localeCompare(String(b.staff.full_name||''));
+  });
+
+  let html='';
+
+  // No facility percentage while any hire date is unknown. A percentage over
+  // unknown deadlines is a false number on a compliance screen, so the count of
+  // people blocking it is shown instead.
+  if(needHire.length){
+    html+=`<div class="banner banner-amber">
+      <div class="banner-title">${needHire.length} ${needHire.length===1?'staff member has':'staff members have'} no hire date on file</div>
+      <p>No facility compliance percentage is shown while that is true. Every deadline in this module is counted from a hire date, so a percentage would be counting these people as though one could be computed for them.</p>
+      <p style="margin-top:8px"><a href="#hire-dates">Fill them in below →</a></p>
+    </div>`;
+  }else if(rows.length){
+    const staffClear=rows.filter(r=>r.total&&r.complete===r.total).length;
+    const pct=Math.round(staffClear/rows.length*100);
+    const anyOverdue=rows.reduce((n,r)=>n+r.overdue,0);
+    html+=`<div class="banner ${anyOverdue?'banner-red':(pct===100?'banner-green':'banner-gray')}">
+      <div class="banner-title">${pct}% of staff have every requirement complete</div>
+      <p>${staffClear} of ${rows.length} active staff.${anyOverdue?` <strong>${anyOverdue} overdue requirement${anyOverdue===1?'':'s'}</strong> across the facility.`:' Nothing overdue.'}</p>
+      <p class="hint" style="margin-top:6px">Counted from each requirement's own status in <code>training_bucket_status</code>. Not a guarantee of compliance or of an inspection outcome.</p>
+    </div>`;
+  }
+
+  // ---- roster ----
+  if(!rows.length){
+    html+=`<div class="card"><div class="card-title">Roster</div>
+      <div class="empty">No staff on this facility yet. Add them below — a name and a role is enough, and the hire date can follow.</div></div>`;
+  }else{
+    html+=`<div class="card">
+      <div class="card-title">Roster — ${rows.length} active</div>
+      <div class="tscroll"><table class="t">
+        <thead><tr><th>Name</th><th>Role</th><th>Most urgent requirement</th><th>Status</th><th style="text-align:right">Overdue</th><th>Independent</th><th></th></tr></thead>
+        <tbody>${rows.map(r=>{
+          const s=r.staff;
+          const indep=s.cleared_independent_at
+            ? `<span class="badge badge-green">Cleared ${esc(tcDate(s.cleared_independent_at))}</span>`
+            : (r.blocked?'<span class="badge badge-red">Blocked</span>':'<span class="badge badge-gray">Not cleared</span>');
+          return `<tr>
+            <td><a href="/inservice-staff-detail.html?id=${encodeURIComponent(s.id)}" style="font-weight:600;color:var(--teal)">${esc(s.full_name||'(unnamed)')}</a>${s.assists_with_medication?'<br><span class="badge badge-teal" style="margin-top:3px">Assists with medication</span>':''}</td>
+            <td>${esc(tcRole(s.role))}</td>
+            <td>${r.worst?`${esc(tcBucketLabel(r.worst,tmap))}<span class="cite">${esc(tcBucketAuthority(r.worst,tmap))}</span>`:'<span style="color:var(--text2)">No requirements returned</span>'}</td>
+            <td>${r.worst?tcStatusCell(r.worst):'—'}</td>
+            <td style="text-align:right" class="mono">${r.overdue?`<strong style="color:var(--red)">${r.overdue}</strong>`:'0'}</td>
+            <td>${indep}</td>
+            <td style="text-align:right;white-space:nowrap"><a class="btn btn-outline btn-sm" href="/inservice-record.html?id=${encodeURIComponent(s.id)}">Record</a></td>
+          </tr>`;}).join('')}</tbody>
+      </table></div>
+      <p class="hint" style="margin-top:10px">Status and overdue are two separate facts and both are shown. A requirement can be short on a topic minimum <em>and</em> overdue at the same time — that is the common case, and collapsing them would hide one of the two.</p>
+    </div>`;
+  }
+
+  // ---- hire-date queue ----
+  html+=`<div class="card" id="hire-dates">
+    <div class="card-title">Hire-date queue</div>`;
+  if(!needHire.length){
+    html+=fac.ids.length
+      ?`<div class="empty" style="padding:22px">Every active staff member has a hire date. Deadlines across this facility are computable.</div>`
+      :`<div class="empty" style="padding:22px">Nobody on the roster yet.</div>`;
+  }else{
+    html+=`<p class="sub" style="margin-bottom:12px">Pick a date and it saves as you leave the field — no dialog, no separate save step. Tab moves to the next person.</p>
+      <div class="tscroll"><table class="t">
+        <thead><tr><th>Name</th><th>Role</th><th style="width:200px">Hire date</th><th style="width:170px"></th></tr></thead>
+        <tbody>${needHire.map(r=>`<tr>
+          <td><strong>${esc(r.name)}</strong></td>
+          <td>${esc(tcRole(r.role))}</td>
+          <td><input type="date" id="hd-${esc(r.id)}" max="2100-12-31" onchange="saveHireDate('${esc(r.id)}')" aria-label="Hire date for ${esc(r.name)}" ${tcCanEdit()?'':'disabled'}/></td>
+          <td><span id="hs-${esc(r.id)}" style="font-size:12px;color:var(--text2)"></span></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+    if(!tcCanEdit())html+=`<p class="hint" style="margin-top:10px">Read-only — only an administrator or supervisor can set a hire date.</p>`;
+  }
+  html+=`</div>`;
+
+  // ---- bulk add ----
+  html+=`<div class="card">
+    <div class="card-title">Add staff to this facility</div>
+    <p class="sub" style="margin-bottom:12px">An administrator adds a roster, not one person a week — so this is a repeating row with one save. Each person saved gets a <code>training_staff</code> record <em>and</em> an assignment to ${esc(tc.facility.name||'this facility')} effective today. A staff row without an assignment is invisible to every screen here, so both are always written together.</p>
+    <div id="addrows"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-outline btn-sm" onclick="addRow()">+ Another person</button>
+      <button class="btn btn-primary btn-sm" id="savebtn" onclick="saveStaff()" ${tcCanEdit()?'':'disabled'}>Save all</button>
+    </div>
+    <div id="addnote" class="hint" style="margin-top:10px"></div>
+    ${tcCanEdit()?'':'<p class="hint">Read-only — only an administrator or supervisor can add staff.</p>'}
+    <p class="hint" style="margin-top:8px"><strong>Assists with medication</strong> is a capability, not a role: a direct care worker may also assist with medication. It is what selects whether the HSC § 1569.69 medication requirements apply, so it changes which requirements appear against that person.</p>
+  </div>`;
+
+  root.innerHTML=html;
+  if(!document.querySelectorAll('#addrows .arow').length)addRow();
+}
+
+// ===== hire dates =====
+async function saveHireDate(id){
+  if(!tcCanEdit()){tcDenyEdit();return;}
+  const input=document.getElementById('hd-'+id);
+  const note=document.getElementById('hs-'+id);
+  const val=(input.value||'').trim();
+  if(!val){note.textContent='';return;}
+  // Not refused — a future start date is a real thing to record — but said out
+  // loud, because every deadline in the module counts from this field.
+  const future=val>tcToday();
+  note.textContent='Saving…';note.style.color='var(--text2)';
+  const {error}=await sb.from('training_staff').update({hire_date:val}).eq('id',id);
+  if(error){
+    note.textContent='Not saved';note.style.color='var(--red)';
+    tcToast('Could not save that hire date: '+(error.message||'unknown error'));
+    return;
+  }
+  note.innerHTML=future?'<span style="color:var(--amber)">Saved — starts in future</span>':'<span style="color:var(--green)">Saved</span>';
+  input.style.borderColor='#b7d68e';
+  markStale();
+}
+function markStale(){
+  if(stState.stale)return;
+  stState.stale=true;
+  const n=document.getElementById('addnote');
+  const bar=document.createElement('div');
+  bar.className='banner banner-gray';
+  bar.style.marginTop='16px';
+  bar.innerHTML='<div class="banner-title">Roster is out of date</div><p>Requirements and deadlines above were read before those changes. <a href="#" onclick="location.reload();return false;">Reload to recompute them</a>.</p>';
+  if(n&&n.parentNode)n.parentNode.appendChild(bar);
+}
+
+// ===== bulk add =====
+const TC_ROLES=['direct_care','cna','lvn','rn','supervisor','administrator','support'];
+let rowSeq=0;
+function addRow(){
+  const i=++rowSeq;
+  const div=document.createElement('div');
+  div.className='arow';
+  div.style.cssText='display:grid;grid-template-columns:2fr 1.3fr auto 1.2fr auto;gap:10px;align-items:end;margin-bottom:10px';
+  div.innerHTML=`
+    <div><label class="fld" for="n-${i}">Full name <span class="req">*</span></label><input type="text" id="n-${i}" autocomplete="off" placeholder="Employee name"/></div>
+    <div><label class="fld" for="r-${i}">Role <span class="req">*</span></label><select id="r-${i}">${TC_ROLES.map(r=>`<option value="${r}"${r==='direct_care'?' selected':''}>${esc(tcRole(r))}</option>`).join('')}</select></div>
+    <div><label class="fld" for="m-${i}">Med. assist</label><div style="padding:9px 0"><input type="checkbox" id="m-${i}" style="width:18px;height:18px"/></div></div>
+    <div><label class="fld" for="h-${i}">Hire date</label><input type="date" id="h-${i}" max="2100-12-31"/></div>
+    <div><button class="btn btn-outline btn-sm" onclick="this.closest('.arow').remove()" aria-label="Remove this row" title="Remove">&times;</button></div>`;
+  document.getElementById('addrows').appendChild(div);
+}
+
+async function saveStaff(){
+  if(!tcCanEdit()){tcDenyEdit();return;}
+  const note=document.getElementById('addnote');
+  const btn=document.getElementById('savebtn');
+  const rows=[...document.querySelectorAll('#addrows .arow')];
+  const people=[];
+  for(const el of rows){
+    const name=(el.querySelector('input[type=text]').value||'').trim();
+    const role=el.querySelector('select').value;
+    const med=el.querySelector('input[type=checkbox]').checked;
+    const hire=(el.querySelector('input[type=date]').value||'').trim();
+    if(!name)continue;                      // a blank row is not an error
+    people.push({full_name:name,role,assists_with_medication:med,hire_date:hire||null});
+  }
+  if(!people.length){note.innerHTML='<span style="color:var(--red)">Enter at least one name.</span>';return;}
+
+  btn.disabled=true;note.textContent='Saving '+people.length+'…';
+  // external_staff_id is deliberately left unset — it exists for a future link
+  // that has not been decided, and writing a guess into it now would be the
+  // hardest kind of wrong data to find later.
+  const {data:made,error}=await sb.from('training_staff').insert(people).select();
+  if(error){
+    btn.disabled=false;
+    note.innerHTML='<span style="color:var(--red)">Nothing was saved: '+esc(error.message||'unknown error')+'</span>';
+    return;
+  }
+  const asg=(made||[]).map(s=>({staff_id:s.id,facility_id:tc.trainingFacility.id,effective_from:tcToday()}));
+  const {error:aerr}=await sb.from('training_staff_assignment').insert(asg);
+  if(aerr){
+    // A staff row with no assignment is invisible everywhere in this module —
+    // RLS reaches staff through the assignment and the requirement templates
+    // resolve facility size through it — so a half-write is worse than no
+    // write. PostgREST has no cross-table transaction, so the staff rows just
+    // created are removed again rather than left stranded. If this delete also
+    // fails, the ids are named so they can be cleaned up by hand.
+    const ids=(made||[]).map(s=>s.id);
+    const {error:derr}=await sb.from('training_staff').delete().in('id',ids);
+    btn.disabled=false;
+    note.innerHTML='<span style="color:var(--red)">Nobody was added — the assignment failed: '+esc(aerr.message||'')+'.</span>'+
+      (derr?'<br><span style="color:var(--red)">These orphaned training_staff rows could not be rolled back and need deleting by hand: '+esc(ids.join(', '))+'</span>':' The partial staff records were rolled back.');
+    return;
+  }
+  note.innerHTML='<span style="color:var(--green)">Added '+people.length+' '+(people.length===1?'person':'people')+'.</span>';
+  document.getElementById('addrows').innerHTML='';addRow();
+  markStale();
+}
+
+(async()=>{
+  const boot=await tcBootstrap('staff');
+  if(!boot.ok){document.getElementById('root').innerHTML=boot.html;return;}
+  load();
+})();
+</script>
+</body>
+</html>

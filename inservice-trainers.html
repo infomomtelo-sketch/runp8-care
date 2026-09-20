@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Title22 — Trainer registry</title>
+<meta name="robots" content="noindex"/>
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<link rel="stylesheet" href="/inservice-shared.css"/>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-header">
+    <div>
+      <h1>Trainer registry</h1>
+      <p class="sub">22 CCR § 87411 requires the personnel record to note <em>which</em> criterion the trainer met. A training record without it fails even when the training genuinely happened — so the criterion is captured here and printed on every staff record, never stored as a letter nobody can read back.</p>
+    </div>
+  </div>
+  <div id="root"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="/inservice-shared.js"></script>
+<script>
+// The full text is shown in the form and on the list. A trainer recorded as "B"
+// with nothing else is the failure mode this page exists to prevent.
+const TC_CRITERIA={
+  A:"Bachelor's degree plus 2 years of relevant experience caring for the elderly",
+  B:"A current California health care provider licence",
+  C:"2+ years as an RCFE administrator within the last 8 years, with a record of substantial compliance",
+};
+
+async function load(){
+  const root=document.getElementById('root');
+  const {data,error}=await sb.from('training_trainer').select('*').eq('facility_id',tc.trainingFacility.id).order('full_name');
+  if(error){root.innerHTML=`<div class="banner banner-red"><div class="banner-title">Could not read the trainer registry</div><p>${esc(error.message||'')}</p></div>`;return;}
+  const rows=data||[];
+  const today=tcToday();
+
+  let html='';
+  if(!rows.length){
+    html+=`<div class="card"><div class="card-title">Trainers</div><div class="empty">No trainers recorded yet. Add the first one below — you will need one before a training session can be logged.</div></div>`;
+  }else{
+    html+=`<div class="card"><div class="card-title">Trainers — ${rows.length}</div>
+      <div class="tscroll"><table class="t">
+        <thead><tr><th>Name</th><th>§ 87411 criterion</th><th>Evidence on file</th><th>Licence expiry</th><th>Verified</th></tr></thead>
+        <tbody>${rows.map(t=>{
+          const c=String(t.criterion||'').toUpperCase();
+          const expired=c==='B'&&t.license_expires_on&&String(t.license_expires_on)<today;
+          return `<tr>
+            <td><strong>${esc(t.full_name||'(unnamed)')}</strong></td>
+            <td><span class="badge badge-teal">Criterion ${esc(c||'—')}</span><span class="cite">${esc(TC_CRITERIA[c]||'Criterion not recorded — this record does not satisfy § 87411')}</span></td>
+            <td style="max-width:280px">${t.evidence_note?esc(t.evidence_note):'<span style="color:var(--red)">None recorded</span>'}${t.evidence_file_path?'<span class="cite">File: '+esc(t.evidence_file_path)+'</span>':''}</td>
+            <td>${c==='B'?(expired?`<span class="badge badge-red">Expired ${esc(tcDate(t.license_expires_on))}</span>`:esc(tcDate(t.license_expires_on))):'<span style="color:var(--text2)">n/a</span>'}</td>
+            <td>${t.verified_at?esc(tcDate(t.verified_at)):'<span class="badge badge-gray">Not verified</span>'}</td>
+          </tr>`;}).join('')}</tbody>
+      </table></div></div>`;
+  }
+
+  html+=`<div class="card">
+    <div class="card-title">Add a trainer</div>
+    <div class="form-group">
+      <label class="fld" for="t-name">Full name <span class="req">*</span></label>
+      <input type="text" id="t-name" autocomplete="off" placeholder="Trainer's name"/>
+    </div>
+    <div class="form-group">
+      <label class="fld">Which criterion does this trainer meet? <span class="req">*</span></label>
+      ${Object.entries(TC_CRITERIA).map(([k,v])=>`
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer">
+          <input type="radio" name="crit" value="${k}" onchange="onCrit()" style="margin-top:4px;width:17px;height:17px"/>
+          <span><strong>Criterion ${k}</strong><br><span style="font-size:13px;color:var(--text2)">${esc(v)}</span></span>
+        </label>`).join('')}
+    </div>
+    <div class="form-group" id="lic-wrap" style="display:none">
+      <label class="fld" for="t-lic">Licence expiry date <span class="req">*</span></label>
+      <input type="date" id="t-lic"/>
+      <div class="hint">Required for criterion B — the licence is the qualification, so its expiry is part of the record. The database rejects a criterion B trainer without it.</div>
+    </div>
+    <div class="form-group">
+      <label class="fld" for="t-ev">Evidence note <span class="req">*</span></label>
+      <textarea id="t-ev" placeholder="What is held on file that shows this — e.g. 'Copy of RN licence #123456 in personnel file, verified against BRN lookup 14 Mar'"></textarea>
+      <div class="hint">Describe the document that proves the criterion and where it is kept. This is about the trainer's qualification — not about any resident.</div>
+    </div>
+    <div class="error-msg" id="t-err" style="color:var(--red);font-size:13px;margin-bottom:10px"></div>
+    <button class="btn btn-primary" id="t-save" onclick="saveTrainer()" ${tcCanEdit()?'':'disabled'}>Add trainer</button>
+    ${tcCanEdit()?'':'<p class="hint">Read-only — only an administrator or supervisor can add a trainer.</p>'}
+  </div>`;
+
+  root.innerHTML=html;
+}
+
+function onCrit(){
+  const c=document.querySelector('input[name=crit]:checked');
+  document.getElementById('lic-wrap').style.display=(c&&c.value==='B')?'block':'none';
+}
+
+async function saveTrainer(){
+  if(!tcCanEdit()){tcDenyEdit();return;}
+  const err=document.getElementById('t-err');err.textContent='';
+  const name=(document.getElementById('t-name').value||'').trim();
+  const crit=document.querySelector('input[name=crit]:checked');
+  const ev=(document.getElementById('t-ev').value||'').trim();
+  const lic=(document.getElementById('t-lic').value||'').trim();
+
+  if(!name){err.textContent='Enter the trainer’s name.';return;}
+  if(!crit){err.textContent='Choose the criterion this trainer meets — § 87411 requires the record to say which one.';return;}
+  if(!ev){err.textContent='Enter an evidence note describing what is held on file.';return;}
+  // Surfaced here rather than left to the database, so the form says what is
+  // wrong instead of relaying a constraint violation.
+  if(crit.value==='B'&&!lic){err.textContent='Criterion B is a current licence, so its expiry date is required.';return;}
+
+  const phi=tcPhiBlock([['The evidence note',ev]]);
+  if(phi){err.textContent='';tcToast(phi);return;}
+
+  const row={facility_id:tc.trainingFacility.id,full_name:name,criterion:crit.value,evidence_note:ev};
+  if(crit.value==='B')row.license_expires_on=lic;
+
+  const btn=document.getElementById('t-save');btn.disabled=true;
+  const {error}=await sb.from('training_trainer').insert(row);
+  btn.disabled=false;
+  if(error){err.textContent=error.message||'Could not add that trainer.';return;}
+  tcToast('Trainer added.');
+  load();
+}
+
+(async()=>{
+  const boot=await tcBootstrap('trainers');
+  if(!boot.ok){document.getElementById('root').innerHTML=boot.html;return;}
+  load();
+})();
+</script>
+</body>
+</html>
