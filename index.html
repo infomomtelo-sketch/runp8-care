@@ -3341,6 +3341,47 @@ async function initFacility(){
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
+  t22FirstLanding();
+}
+
+// Where a trainer and a student each want to be on their first screen, rather
+// than the dashboard both currently get.
+//
+// A trainer is a Classroom (edu) account and wants Lessons: it is the tab they
+// are evaluating and the one that is empty until they load the starter set.
+// A student arrives on a trainer's ?ref= link and wants the sample facility,
+// which is the thing they practise on.
+//
+// Runs once per browser session, after any decision the rest of initFacility
+// makes, and never for demo mode. The flag is set BEFORE acting, because the
+// student branch calls switchFacility, which calls initFacility again --
+// without that ordering this would recurse. Wrapped entirely in try/catch: a
+// convenience that decides the first tab must never be able to stop a facility
+// from loading.
+function t22FirstLanding(){
+  try{
+    if(demoMode||!currentUser||!t22Entitled)return;
+    if(sessionStorage.getItem('title22_first_landing'))return;
+    sessionStorage.setItem('title22_first_landing','1');
+
+    // Trainer: open Lessons. allowedTabs() is the authority on whether they
+    // may, so an expired trial or a role without it is never sent there.
+    if(t22Plan==='edu'){
+      if(allowedTabs().includes('lessons'))switchTab('lessons');
+      return;
+    }
+
+    // Student: stand them in the sample facility if they have one and are not
+    // already in it. Nothing is created here -- seedDemoData writes a facility,
+    // residents and 300 MAR rows behind a confirm(), and that is not something
+    // to trigger from a page load.
+    const referred=currentUser?.user_metadata?.referred_by
+      ||(()=>{try{return sessionStorage.getItem('title22_ref');}catch(e){return null;}})();
+    if(!referred)return;
+    if(currentFacility&&isSampleFacility(currentFacility))return;
+    const sample=(allFacilities||[]).find(f=>f&&isSampleFacility(f));
+    if(sample&&sample.id!==currentFacility?.id)switchFacility(sample.id);
+  }catch(e){/* never let the landing choice break the load */}
 }
 
 function renderFacilitySwitcher(){
@@ -3443,6 +3484,23 @@ function applyLiteMode(){
   // wrong: a menu button ships display:flex in its style attribute, and
   // clearing the property took the flex with it.
   document.body.classList.toggle('t22-no-phi',hidePhi);
+
+  // A paying subscriber has no use for a sample facility and every reason to be
+  // confused by one: "Sunrise Demo Home (Sample)" lands beside their real home
+  // with five invented staff in it, and seeding is deliberately NOT gated on
+  // TIER_LIMITS.facilities, so a Lite customer on a one-facility plan ends up
+  // holding two. Offered to a trial, who is still deciding, and to a Classroom
+  // account, for whom the sample IS the lesson. Hidden for everyone who pays.
+  //
+  // Fails closed: hidden until the entitlement is actually verified, so the
+  // moment before it resolves does not flash the button at a subscriber. Set
+  // in both directions, because this function runs again when the plan is
+  // known. The buttons carry no inline display, so clearing the property is
+  // safe here -- unlike the menu entries above, which ship display:flex.
+  const showSeed=t22EntitlementVerified&&!T22_PAID.includes(t22Plan);
+  document.querySelectorAll('[data-seed-demo]').forEach(b=>{
+    b.style.display=showSeed?'':'none';
+  });
   // The tab PANEL is only ever hidden here. switchTab owns showing it, and
   // forcing it visible would put two tabs on screen at once.
   //
@@ -5047,6 +5105,14 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 let seedDemoRunning=false;
 
 async function seedDemoData(){
+  // The layer under the hidden button, same shape as every other control here:
+  // hiding is the product decision, this is what makes it true. A subscriber
+  // who reaches this by any route is told why rather than handed a second
+  // facility full of invented people.
+  if(T22_PAID.includes(t22Plan)){
+    alert('The sample facility is for trials and Classroom accounts.\n\nYour subscription is for your real home, and a practice facility sitting beside it — with invented staff in it — causes more confusion than it saves. Add your own facility instead.');
+    return;
+  }
   // Two sample facilities, one button. The resident-shaped one below is what
   // a Classroom account loads; every paying tier gets the Lite one further
   // down, because a class cannot be taught on records the product does not
@@ -8225,6 +8291,310 @@ async function loadLessons(){
   renderLessonsList();
 }
 
+// Starter lessons a trainer can load into their own facility in one click, then
+// edit or delete. Each teaches how to DO something in this system and leaves
+// what the regulation requires to the trainer -- the promise for-trainers/ makes
+// is "You keep teaching the same regulations", and a lesson shipped by us that
+// asserted a requirement would break both that and the rule DOC_SLOT_HOWTO,
+// Tello's prompt and the Launch Hub all keep.
+//
+// marOnly lessons are offered only where a practice roster exists, so a facility
+// without residents is never handed a lesson about records it cannot open.
+const LESSON_STARTERS=[
+{title:'Recording what you did, so it still counts in six months',
+ body:`Most records are not lost. They are written somewhere nobody looks at later.
+
+Staff documents go on the staff member. A TB clearance, a CPR card, a Live Scan result belong on that person's record. Filed there, the app can tell you before it lapses. Filed anywhere else, it is paper nobody is watching.
+
+Title22 does not renew anything. It warns you that something is about to expire so you can arrange it. The renewal is yours to book and the certificate comes from whoever issues it. A green screen means the record is current, not that the person is certified.
+
+Incidents describe what happened, not who it happened to. This system holds no resident health information, so a description names a room or a shift. "The resident in room 4 fell at 06:40" is a complete entry.
+
+A training session is entered once. Two hours for six people is one session with six attendees, not six entries. That is how the hours keep matching the sign-in sheet.`,
+ questions:[
+  {prompt:'Where does a staff member\u2019s TB clearance belong?',
+   choices:['On that staff member\u2019s record','In the daily log','On a resident record','In an incident report'],correct_index:0},
+  {prompt:'A certification is about to expire. What does Title22 do?',
+   choices:['Renews it automatically','Contacts the issuing body for you','Flags it as expiring so you can arrange it','Nothing until after it has expired'],correct_index:2},
+  {prompt:'You are writing an incident description. What goes in it?',
+   choices:['The resident\u2019s full name and date of birth','What happened, identified by room or shift','Their medical record number','Nothing \u2014 incidents are not recorded here'],correct_index:1},
+  {prompt:'One two-hour in-service, six staff. How many times do you enter it?',
+   choices:['Six times, once per person','Once, marking the six who attended','Only for the newest staff member','It is not recorded in Title22'],correct_index:1}]},
+
+{title:'Hiring and onboarding a new caregiver',
+ body:`This is the administrator task the system supports end to end, so practise the whole of it.
+
+Practise this now: open Staff, add a person, give them a role and a hire date, then look at what the card tells you is missing.\n\nIf Staff or Compliance is not in your menu, ask your trainer for supervisor access \u2014 these steps need it.
+
+The card is a to-do list. Each clearance and certificate has its own place \u2014 TB, Live Scan, CPR, First Aid, Mandated Reporter, the initial training \u2014 and each one you fill in changes what the card says. An empty slot is not an error; it is the next thing to chase.
+
+The hire date is not paperwork. Deadlines are counted from it. A staff member without one cannot have a deadline computed at all, which is why the In-service tab keeps a queue of people missing it and shows no percentage until that queue is empty. A number computed over unknown dates would be a false number on a compliance screen.
+
+Then the hours. Once they are on the roster, training gets logged against them \u2014 the session once, the attendees marked. The record is what proves the hours later.
+
+*Your trainer covers which clearances are required, how long each lasts, and what must be finished before a new hire works alone. This lesson is only about where each one goes.*`,
+ questions:[
+  {prompt:'You have added a new caregiver but left the hire date blank. What happens?',
+   choices:['Nothing \u2014 the date is optional everywhere','No training deadline can be computed for them','They are deleted after 30 days','The app picks today automatically and hides it'],correct_index:1},
+  {prompt:'What is an empty certificate slot on a staff card telling you?',
+   choices:['The record is broken','That item is the next thing to chase','The staff member is not employed','The app failed to load'],correct_index:1},
+  {prompt:'Where do you record that a new hire attended orientation training?',
+   choices:['As a note on the facility record','As a training session with that person marked present','In the daily log','It is not recorded'],correct_index:1},
+  {prompt:'Who issues the certificate that proves a clearance?',
+   choices:['Title22 issues it once the record is complete','Whoever performed the test or the course \u2014 the app files it','The licensing analyst','No certificate is involved'],correct_index:1}]},
+
+{title:'Preparing for your first inspection',
+ body:`Preparing for a visit is not a special activity. It is being able to find things on the day.
+
+Nobody can tell you that you will pass. What preparation changes is how long you spend looking, and whether what you find matches what you said.
+
+Practise this now: open Compliance and read the checklist, then open Documents, then look at Staff. Those three answer most of what gets asked.\n\nIf Staff or Compliance is not in your menu, ask your trainer for supervisor access \u2014 these steps need it.
+
+Each item on the checklist is one thing that can be asked about, with its own state. The score is the proportion that are met \u2014 useful as a worklist, not as a verdict.
+
+The export. An administrator or supervisor can produce a 90-day packet: staff certifications with their dates, incidents with what was done about them, facility details. It prints what has been entered into the system.
+
+What it does not do. It cannot confirm a date is true \u2014 it shows what was typed in. It does not predict what any analyst will ask, and nothing here guarantees compliance or the outcome of a visit. Title22 is an operational tracking tool: it makes your own records findable and current.
+
+*Three habits that do the work:
+
+Fix the thing, not the screen. An expiring clearance is a booking to make, not a field to update. The record follows the action.
+
+Check the gaps weekly, not the week before. Every item on the checklist takes real time to close \u2014 a clearance, a drill, a signature from someone else. A month of small corrections beats a week of panic, and the ones you cannot close in a week are exactly the ones a visit finds.
+
+Write it when it happens. An incident written three days later is a worse record than the same incident written that morning, and it is the version you will have to stand behind.
+
+Your trainer covers what is actually asked for, how a visit runs, and what happens afterwards.*`,
+ questions:[
+  {prompt:'What does the compliance score represent?',
+   choices:['A prediction of whether you will pass','The proportion of checklist items recorded as met','A rating issued by the licensing agency','The number of documents uploaded'],correct_index:1},
+  {prompt:'The 90-day export shows a TB date for every caregiver. What does that prove?',
+   choices:['That every clearance is genuine and current','That those dates were entered into the system','That the analyst has approved them','That the facility passed its last visit'],correct_index:1},
+  {prompt:'Where do you look first for the documents an analyst may ask to see?',
+   choices:['The daily log','The Documents tab, and the staff member\u2019s own record','The billing page','The audit log'],correct_index:1},
+  {prompt:'Does keeping Title22 current guarantee a good inspection outcome?',
+   choices:['Yes, if the score is 100%','No \u2014 it keeps your records findable and current, nothing more','Yes, the export is accepted as proof','Only for facilities under 15 beds'],correct_index:1}]},
+
+{marOnly:true,
+ title:'The admission file \u2014 what you can practise here, and what you cannot',
+ body:`This practice facility has eight residents, and the roster is fixed. You cannot add one, edit one or remove one. That is deliberate: these eight are the lesson, and nobody real goes in here.
+
+So admission is the one administrator task you cannot perform in this classroom. What you can do is learn to *read* a file and see where each part lives.
+
+Practise this now: open a resident and look at how the record is laid out \u2014 which parts are dates, which are documents, which are uploads held against the person.
+
+What to have ready. These are the forms this system links for an admission:
+
+{{ADMISSION_FORMS}}
+
+Open a resident record to see that list with a link to the live copy of each one. The links always point at the issuing agency's own copy, never a stored version, because a form reprinted from somewhere else can be out of date.
+
+The forms themselves are a print list. The app captures nothing off those pages, requires none of them back, and scores no resident on them. It is a place to keep what you completed, not a substitute for completing it.
+
+*Your trainer covers which forms apply to an admission, in what order, and what has to be in place before someone moves in. That is their subject, not the software\u2019s.*`,
+ questions:[
+  {prompt:'Can you admit a new resident in this practice facility?',
+   choices:['Yes, from the Residents tab','No \u2014 the practice roster is fixed on purpose','Only with the trainer\u2019s password','Only on a paid plan'],correct_index:1},
+  {prompt:'Why is the practice roster fixed?',
+   choices:['To keep the app fast','So no real person\u2019s information can be entered','Because the trial is limited to eight','It is a bug'],correct_index:1},
+  {prompt:'Which admission form is completed by a physician rather than by you?',
+   choices:['LIC 601','LIC 602A','LIC 604A','The ISP'],correct_index:1},
+  {prompt:'Which one has no CDSS form at all?',
+   choices:['LIC 613C','LIC 625','The ISP \u2014 your facility writes it','LIC 603A'],correct_index:2},
+  {prompt:'What does Title22 do with the admission forms?',
+   choices:['Fills them in for you','Links to the issuing agency\u2019s copy and stores what you completed','Submits them to the licensing agency','Scores each resident on them'],correct_index:1}]},
+
+{title:'Find the gaps in Sunrise Demo Home',
+ body:`The sample facility is not decoration. Every gap in it was planted on purpose, and each one is a real citation an analyst writes.
+
+Practise this now: open Staff. There are five people. Before reading on, find the one whose TB clearance is already overdue, and the one whose CPR card expires within the month.
+
+The answers are Daniel Reyes and James Carter. Notice how you found them \u2014 not by reading five files end to end, but from the cards, because an expired date and a date a few weeks out do not look the same.
+
+That is the whole skill. An administrator does not audit the roster on a schedule; they glance at it and act on what stands out.
+
+Two more are worth finding. At least one person has not finished their initial training hours, and at least one has a clearance that was never completed at all \u2014 not expired, never done. Those read differently from an expiry, and they take longer to fix, which is why finding them in month one matters more than finding them in month eleven.
+
+Now the incidents. Two are already recorded. Open the fall and read it as a record rather than a story: the time it happened, what was found, what was done about it, and what was changed afterwards. Note what it does not contain.
+
+The order to work in: what is already expired, then what expires soonest, then what was never started. The first costs you today, the last takes longest to put right.
+
+Your trainer covers what each clearance requires and what has to be in place before someone works a shift alone.`,
+ questions:[
+  {prompt:'In the sample facility, whose TB clearance is already overdue?',
+   choices:['Maria Lopez','Daniel Reyes','Sofia Ivanova','Nobody \u2014 all are current'],correct_index:1},
+  {prompt:'Whose CPR card expires within the month?',
+   choices:['James Carter','Priya Patel','Daniel Reyes','Maria Lopez'],correct_index:0},
+  {prompt:'A clearance that was never completed and one that expired last week. Which is usually slower to put right?',
+   choices:['The expired one','The one never completed','They take the same time','Neither can be fixed'],correct_index:1},
+  {prompt:'Reading the seeded fall incident, what does the description NOT contain?',
+   choices:['The time it happened','What was found','The resident\u2019s name and date of birth','What was done afterwards'],correct_index:2},
+  {prompt:'Why are the gaps in the sample facility there?',
+   choices:['The demo data was not finished','They were planted on purpose \u2014 each is a real citation','They are bugs to report','They appear at random'],correct_index:1}]},
+
+{title:'Logging a session for a whole shift at once',
+ body:`Training is the record most often kept badly, because it is kept per person.
+
+Practise this now: open In-service, then Log a session. Enter one session, tick everyone who was there, and save.
+
+One session, many attendees. You taught it once, so you record it once. Each person you tick gets the hours credited to them. Entering the same session six times is how a total stops matching the sign-in sheet, and the sign-in sheet is the thing that gets produced later.
+
+What the session has to say. A title is not enough \u2014 a statement of the content covered is required, and it describes the curriculum. What was taught, what was practised. Never a resident, and never an account of a resident's situation.
+
+Who taught it matters as much as what. The record notes which criterion the trainer met. A session with no trainer recorded carries no criterion, and the printed record says so plainly rather than leaving a gap nobody notices.
+
+Hours are not interchangeable. Some requirements have minimums inside them \u2014 a total can be met while a topic inside it is not. The system shows those as two separate facts, and so should you.
+
+Your trainer covers which training is required, how often, and who is allowed to deliver it.`,
+ questions:[
+  {prompt:'You ran one session for six staff. How is it recorded?',
+   choices:['Six entries, one per person','One session with six attendees marked','One entry for the facility, no names','Only the trainer records it'],correct_index:1},
+  {prompt:'Why is a statement of the content covered required on a session?',
+   choices:['To make the list look complete','So the record shows what was actually taught','To calculate the fee','It is optional'],correct_index:1},
+  {prompt:'A requirement shows its hours met but is still not complete. What is likely?',
+   choices:['A bug in the system','A minimum inside it is unmet','The hours were entered twice','The trainer was not paid'],correct_index:1},
+  {prompt:'A session is logged with no trainer recorded. What happens?',
+   choices:['It is deleted','The printed record says it carries no criterion','It counts double','Nothing is recorded at all'],correct_index:1}]},
+
+{title:'Completing the compliance checklist honestly',
+ body:`The readiness score is one sum: how many checklist items are ticked, divided by how many there are. That is all it is, and knowing that tells you how to use it and how to wreck it.
+
+Practise this now: open Compliance, tick one item, and watch the number move. Then untick it.
+
+A tick is a claim you are making. Tick it when the thing is done, not when you intend to do it. Everything else in this system records something that happened \u2014 a date on a certificate, an uploaded file, an attendance row. The tick is the one place you are trusted on your word, which makes it the one place nobody else can catch you being wrong.
+
+Due dates are yours to set. Set them to when the thing is actually due. A date chosen to make the list look calm this week is a date that ambushes you next month.
+
+Deleting an item raises your score. It leaves the total, so the percentage goes up and nothing has improved. That makes delete the most dangerous button here: use it only when an item genuinely does not apply to your facility, never because it is hard or overdue. An item you cannot complete yet is a worklist entry. A deleted one is a blind spot with a better number over it.
+
+The list does not update itself. It was copied in when the facility was created. If a new item is added to the master list later, an existing facility does not pick it up \u2014 so a full score means everything on your list is done, not that your list is complete.
+
+Your trainer covers which of these apply to your facility and what evidence each one needs.`,
+ questions:[
+  {prompt:'What does the readiness score count?',
+   choices:['How ready an analyst thinks you are','Checklist items ticked, divided by the total','Documents uploaded this month','Staff with current certificates'],correct_index:1},
+  {prompt:'You delete a checklist item you cannot complete. What happens to the score?',
+   choices:['It drops','It goes up \u2014 the item leaves the total','It stays the same','The facility is flagged'],correct_index:1},
+  {prompt:'When should an item be ticked?',
+   choices:['When you plan to do it','When the thing itself is done','At the end of every month','When the due date arrives'],correct_index:1},
+  {prompt:'Your score is 100%. What does that mean?',
+   choices:['You are compliant','Everything on your list is ticked \u2014 which is not the same as your list being complete','An analyst has signed off','No further action is ever needed'],correct_index:1}]},
+
+{title:'Asking Tello, and what she will not tell you',
+ body:`Tello reads your facility's own records. Practise this now: open Tello and ask which staff certificates expire in the next sixty days.
+
+What she can see: staff, training hours, certifications, clearances and expiry dates, your documents, your checklist and your readiness. She does not hold residents, medication records or MARs \u2014 this edition has nowhere to put them \u2014 so a question about a resident gets told that, rather than guessed at.
+
+She tells you when she is reading your records and when she is speaking generally. Those are different kinds of answer and worth noticing which you got.
+
+What she will not do, on purpose: she will not quote a requirement, a section number or a deadline as fact unless it is in your own data. If she is not certain she says so and tells you who to ask. That is not a limitation to work around \u2014 a confident wrong deadline is worse than no answer, because you would act on it.
+
+So do not try to settle a regulatory question with her. Ask your trainer or your licensing analyst. Ask Tello what is in your records and what to do about it.
+
+Do not type identifying details. The question box refuses a Social Security number, an email address, a phone number, a medical record number or a date-of-birth marker. Describe a person by room or by shift instead. It is the only free text here that leaves the database, which is why it is guarded.
+
+Questions that work well: what expires in the next sixty days, who is short of training hours, what a document is and who issues it, how to write up an incident without naming anyone.
+
+Questions that do not: is my facility compliant, will I pass, what will the analyst accept, what should we do about someone's medication.`,
+ questions:[
+  {prompt:'Which of these can Tello see?',
+   choices:['Resident medication records','Staff certificates and their expiry dates','A resident\u2019s diagnosis','The MAR'],correct_index:1},
+  {prompt:'You ask Tello for a deadline and she is not certain. What does she do?',
+   choices:['Gives her best estimate','Says she is not certain and tells you who to ask','Refuses to answer anything further','Quotes the section number anyway'],correct_index:1},
+  {prompt:'You type a date of birth into the question box. What happens?',
+   choices:['It is sent','The save is refused and you are asked to describe by room or shift','Tello answers but forgets it','It is stored on the resident record'],correct_index:1},
+  {prompt:'Which is a good question for Tello?',
+   choices:['Will we pass our next inspection?','Which certificates expire in the next 60 days?','What will the analyst accept as proof?','Should we change a resident\u2019s medication?'],correct_index:1}]},
+
+{title:'Finding every document the app asks for, and getting it on file',
+ body:`An empty document slot is not a blank you fill in. It is a thing you have to go and get from whoever issues it, and the app tells you which.
+
+Practise this now: open Staff, pick someone, and look at their empty slots. Each one names what the document is and where it comes from.
+
+Here is the whole staff set and who issues each:
+
+{{DOC_SLOT_HOWTO}}
+
+Read that list again and notice the pattern: every single one is issued by somebody else. A clinic reads the TB test. A course issues the CPR card. The state runs the LiveScan. Title22 issues none of them \u2014 it holds the copy and watches the date.
+
+So the work is always the same three steps. Get the document from whoever issues it. Upload it against the right person. Set the date, because the date is what the reminder runs on \u2014 a file uploaded with no date is a file nobody is watching.
+
+What the app does not tell you is how long each one lasts, or how often it must be renewed. That is deliberate. Those rules change, they differ by document, and a number shown confidently in software is a number people stop checking. Ask your trainer or your licensing analyst, and put the real date in.
+
+The order that saves you time: anything already expired, then anything with no date at all, then whatever expires soonest. The middle one hides \u2014 an uploaded file with no date looks finished on the card and is invisible to every reminder.
+
+Your trainer covers which documents each role needs and when each is required.`,
+ questions:[
+  {prompt:'Who issues the TB clearance you file against a staff member?',
+   choices:['Title22, once the record is complete','The clinic, physician or pharmacy that read the test','The licensing analyst','The facility administrator'],correct_index:1},
+  {prompt:'You upload a CPR card but leave the date blank. What is the consequence?',
+   choices:['Nothing \u2014 the file is what matters','No reminder can run on it, so nobody is watching it','The upload is rejected','The staff member is marked inactive'],correct_index:1},
+  {prompt:'Why does the app not tell you how long each document stays valid?',
+   choices:['Nobody has written it yet','Those rules change and differ by document \u2014 it would be trusted and stop being checked','To sell a higher plan','It does tell you'],correct_index:1},
+  {prompt:'Which is easiest to miss when reviewing a staff file?',
+   choices:['A clearly expired document','A document uploaded with no date on it','A missing document with an empty slot','A document expiring next week'],correct_index:1}]},
+
+{title:'What you keep after graduation',
+ body:`This classroom is a real system, not a simulation of one. That matters for one practical reason: on your first day running a facility you will not be starting from a blank page.
+
+Practise this now: open your own account, add one real staff member, and upload one real document against them. That is the whole habit.
+
+What carries over is the method, not the data. The practice facility stays here. What you take with you is knowing where a clearance goes, how a session is logged for a shift, what an incident description may and may not contain, and what a readiness score is and is not.
+
+Why that is worth something on day one. The administrator who keeps records as they go spends an inspection finding things. The one who keeps them afterwards spends it reconstructing them. The difference is not software. The difference is the habit, and the software only makes the habit cheaper to keep.
+
+What this system will not do for you. It does not renew a certificate, it does not certify anyone, it does not submit anything on your behalf, and it cannot tell you that you are compliant. It tells you what is recorded, what is missing, and what is about to lapse. Every judgement after that is yours.
+
+Decide for yourself whether that is worth keeping. You have used it for a term \u2014 that is a better basis than anyone's description of it.`,
+ questions:[
+  {prompt:'What carries over from this classroom to your own facility?',
+   choices:['The practice residents and their records','The method \u2014 where things go and how they are kept','Your trainer\u2019s account','Nothing at all'],correct_index:1},
+  {prompt:'What does a readiness score tell you?',
+   choices:['That you are compliant','Which recorded items are met, as a worklist','What an analyst will decide','Your facility\u2019s licence status'],correct_index:1},
+  {prompt:'Which of these does the system do for you?',
+   choices:['Renews certificates','Submits forms to the licensing agency','Tells you what is missing or about to lapse','Confirms that you are compliant'],correct_index:2}]}
+];
+
+// Inserts the starter lessons into the open facility. Offered only on an empty
+// Lessons tab and only to the facility owner, because it writes to their
+// facility. Each lesson's questions go in one insert; if that fails the lesson
+// is removed again rather than left as a reading with nothing to answer --
+// PostgREST has no cross-table transaction, so this is a compensating delete.
+async function loadStarterLesson(){
+  if(!currentFacility||!currentUser)return;
+  if(!canEdit()){alert('You do not have permission to add a lesson.');return;}
+  const set=LESSON_STARTERS.filter(l=>!l.marOnly||showMAR);
+  let added=0;
+  for(let i=0;i<set.length;i++){
+    const l=set[i];
+    const{data:made,error}=await sb.from('title22_lessons').insert({
+      facility_id:currentFacility.id,created_by:currentUser.id,
+      title:l.title,
+      body:(l.body||'')
+        .replace('{{ADMISSION_FORMS}}',
+          ADMISSION_FORMS.map(f=>f.code+' \u2014 '+f.name+(f.note?' ('+f.note+')':'')).join('\n'))
+        .replace('{{DOC_SLOT_HOWTO}}',
+          ['tb_test','cpr_card','first_aid','livescan','mandated_reporter','training_cert']
+            .filter(k=>DOC_SLOT_HOWTO[k])
+            .map(k=>DOC_SLOT_HOWTO[k].label+' \u2014 '+DOC_SLOT_HOWTO[k].text).join('\n\n')),
+      sort_order:i,active:true
+    }).select().single();
+    if(error){alert('Could not add "'+l.title+'": '+error.message);break;}
+    const qs=l.questions.map((q,n)=>({
+      lesson_id:made.id,prompt:q.prompt,choices:q.choices,correct_index:q.correct_index,sort_order:n
+    }));
+    const{error:qErr}=await sb.from('title22_lesson_questions').insert(qs);
+    if(qErr){
+      await sb.from('title22_lessons').delete().eq('id',made.id);
+      alert('Could not add the questions for "'+l.title+'", so it was not kept: '+qErr.message);
+      break;
+    }
+    added++;
+  }
+  track('lesson_starter_loaded',{count:added});
+  await loadLessons();
+}
+
 function renderLessonsList(){
   const el=lessonsEl();
   if(!el)return;
@@ -8232,6 +8602,10 @@ function renderLessonsList(){
   if(!lessonsRows.length){
     el.innerHTML='<div class="empty">'+(owner
       ?'No lessons yet. The reading and the questions are both yours to write.'
+       +'<div style="margin-top:16px"><button class="btn btn-outline" onclick="loadStarterLesson()">Load starter lessons</button></div>'
+       +'<div style="font-size:11px;color:var(--text2);margin-top:10px;max-width:46ch;margin-left:auto;margin-right:auto;line-height:1.5">'
+       +'Working examples added to this facility \u2014 the record-keeping habit, hiring and onboarding, preparing for a visit. Edit or delete any of them. They teach how to use the system, not what the regulations require \u2014 your curriculum stays yours.'
+       +'<br><br>Invite students as <strong>supervisor</strong> so they can follow the practice steps: Staff and Compliance are not on a caregiver\u2019s menu, and a view-only account cannot submit answers.</div>'
       :'Your trainer has not posted a lesson yet.')+'</div>';
     return;
   }
