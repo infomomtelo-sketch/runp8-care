@@ -3484,6 +3484,23 @@ function applyLiteMode(){
   // wrong: a menu button ships display:flex in its style attribute, and
   // clearing the property took the flex with it.
   document.body.classList.toggle('t22-no-phi',hidePhi);
+
+  // A paying subscriber has no use for a sample facility and every reason to be
+  // confused by one: "Sunrise Demo Home (Sample)" lands beside their real home
+  // with five invented staff in it, and seeding is deliberately NOT gated on
+  // TIER_LIMITS.facilities, so a Lite customer on a one-facility plan ends up
+  // holding two. Offered to a trial, who is still deciding, and to a Classroom
+  // account, for whom the sample IS the lesson. Hidden for everyone who pays.
+  //
+  // Fails closed: hidden until the entitlement is actually verified, so the
+  // moment before it resolves does not flash the button at a subscriber. Set
+  // in both directions, because this function runs again when the plan is
+  // known. The buttons carry no inline display, so clearing the property is
+  // safe here -- unlike the menu entries above, which ship display:flex.
+  const showSeed=t22EntitlementVerified&&!T22_PAID.includes(t22Plan);
+  document.querySelectorAll('[data-seed-demo]').forEach(b=>{
+    b.style.display=showSeed?'':'none';
+  });
   // The tab PANEL is only ever hidden here. switchTab owns showing it, and
   // forcing it visible would put two tabs on screen at once.
   //
@@ -5088,6 +5105,14 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 let seedDemoRunning=false;
 
 async function seedDemoData(){
+  // The layer under the hidden button, same shape as every other control here:
+  // hiding is the product decision, this is what makes it true. A subscriber
+  // who reaches this by any route is told why rather than handed a second
+  // facility full of invented people.
+  if(T22_PAID.includes(t22Plan)){
+    alert('The sample facility is for trials and Classroom accounts.\n\nYour subscription is for your real home, and a practice facility sitting beside it — with invented staff in it — causes more confusion than it saves. Add your own facility instead.');
+    return;
+  }
   // Two sample facilities, one button. The resident-shaped one below is what
   // a Classroom account loads; every paying tier gets the Lite one further
   // down, because a class cannot be taught on records the product does not
