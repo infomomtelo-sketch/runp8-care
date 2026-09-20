@@ -8481,6 +8481,34 @@ Questions that do not: is my facility compliant, will I pass, what will the anal
   {prompt:'Which is a good question for Tello?',
    choices:['Will we pass our next inspection?','Which certificates expire in the next 60 days?','What will the analyst accept as proof?','Should we change a resident\u2019s medication?'],correct_index:1}]},
 
+{title:'Finding every document the app asks for, and getting it on file',
+ body:`An empty document slot is not a blank you fill in. It is a thing you have to go and get from whoever issues it, and the app tells you which.
+
+Practise this now: open Staff, pick someone, and look at their empty slots. Each one names what the document is and where it comes from.
+
+Here is the whole staff set and who issues each:
+
+{{DOC_SLOT_HOWTO}}
+
+Read that list again and notice the pattern: every single one is issued by somebody else. A clinic reads the TB test. A course issues the CPR card. The state runs the LiveScan. Title22 issues none of them \u2014 it holds the copy and watches the date.
+
+So the work is always the same three steps. Get the document from whoever issues it. Upload it against the right person. Set the date, because the date is what the reminder runs on \u2014 a file uploaded with no date is a file nobody is watching.
+
+What the app does not tell you is how long each one lasts, or how often it must be renewed. That is deliberate. Those rules change, they differ by document, and a number shown confidently in software is a number people stop checking. Ask your trainer or your licensing analyst, and put the real date in.
+
+The order that saves you time: anything already expired, then anything with no date at all, then whatever expires soonest. The middle one hides \u2014 an uploaded file with no date looks finished on the card and is invisible to every reminder.
+
+Your trainer covers which documents each role needs and when each is required.`,
+ questions:[
+  {prompt:'Who issues the TB clearance you file against a staff member?',
+   choices:['Title22, once the record is complete','The clinic, physician or pharmacy that read the test','The licensing analyst','The facility administrator'],correct_index:1},
+  {prompt:'You upload a CPR card but leave the date blank. What is the consequence?',
+   choices:['Nothing \u2014 the file is what matters','No reminder can run on it, so nobody is watching it','The upload is rejected','The staff member is marked inactive'],correct_index:1},
+  {prompt:'Why does the app not tell you how long each document stays valid?',
+   choices:['Nobody has written it yet','Those rules change and differ by document \u2014 it would be trusted and stop being checked','To sell a higher plan','It does tell you'],correct_index:1},
+  {prompt:'Which is easiest to miss when reviewing a staff file?',
+   choices:['A clearly expired document','A document uploaded with no date on it','A missing document with an empty slot','A document expiring next week'],correct_index:1}]},
+
 {title:'What you keep after graduation',
  body:`This classroom is a real system, not a simulation of one. That matters for one practical reason: on your first day running a facility you will not be starting from a blank page.
 
@@ -8517,8 +8545,13 @@ async function loadStarterLesson(){
     const{data:made,error}=await sb.from('title22_lessons').insert({
       facility_id:currentFacility.id,created_by:currentUser.id,
       title:l.title,
-      body:(l.body||'').replace('{{ADMISSION_FORMS}}',
-        ADMISSION_FORMS.map(f=>f.code+' \u2014 '+f.name+(f.note?' ('+f.note+')':'')).join('\n')),
+      body:(l.body||'')
+        .replace('{{ADMISSION_FORMS}}',
+          ADMISSION_FORMS.map(f=>f.code+' \u2014 '+f.name+(f.note?' ('+f.note+')':'')).join('\n'))
+        .replace('{{DOC_SLOT_HOWTO}}',
+          ['tb_test','cpr_card','first_aid','livescan','mandated_reporter','training_cert']
+            .filter(k=>DOC_SLOT_HOWTO[k])
+            .map(k=>DOC_SLOT_HOWTO[k].label+' \u2014 '+DOC_SLOT_HOWTO[k].text).join('\n\n')),
       sort_order:i,active:true
     }).select().single();
     if(error){alert('Could not add "'+l.title+'": '+error.message);break;}
