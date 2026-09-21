@@ -3439,11 +3439,51 @@ function t22FirstLanding(){
     // an expired trial is never sent somewhere it cannot go. 'lessons' is in
     // every role's tab list, so a student holds it whatever role they were
     // invited as.
+    //
+    // ONLY IF THERE IS A LESSON TO READ. title22_lessons is scoped per
+    // facility (see loadLessons), so a student who signed up through a link
+    // and made their own facility has none — landing them on an empty tab is
+    // worse than leaving them on the dashboard, which at least has their
+    // readiness score and alerts on it. A student invited INTO the trainer's
+    // facility does have lessons, and is the case this is for.
+    //
+    // The trainer path above deliberately does NOT check: an empty Lessons tab
+    // is where a trainer goes to create one, and the New lesson and starter
+    // buttons are sitting on it. Empty means "start here" for them and "dead
+    // end" for a student.
     const referred=currentUser?.user_metadata?.referred_by
       ||(()=>{try{return sessionStorage.getItem('title22_ref');}catch(e){return null;}})();
     if(!referred)return;
-    if(allowedTabs().includes('lessons'))switchTab('lessons');
+    if(!allowedTabs().includes('lessons'))return;
+    t22LandOnLessonsIfAny();
   }catch(e){/* never let the landing choice break the load */}
+}
+
+// Open Lessons for a student only if this facility actually has one they can
+// see. Mirrors loadLessons' scoping exactly: same facility filter, and the
+// active-only filter for anyone who is not the facility owner, so this can
+// never send someone to a tab that will render empty for them.
+//
+// Separate and async because t22FirstLanding is called without await and must
+// stay synchronous for every other path. Fails closed: any error, any empty
+// result, and the student simply stays on the dashboard.
+//
+// One lightweight request, for referred accounts only. It selects a single id
+// and touches no PHI table.
+async function t22LandOnLessonsIfAny(){
+  try{
+    if(!currentFacility)return;
+    let q=sb.from('title22_lessons').select('id').eq('facility_id',currentFacility.id);
+    if(!isFacilityOwner())q=q.eq('active',true);
+    const{data,error}=await q.limit(1);
+    if(error||!data||!data.length)return;
+    // Re-check on the way out: the load is async, so the person may have
+    // clicked somewhere themselves while it was in flight. Only move them if
+    // they are still sitting where initFacility left them.
+    const onDashboard=document.getElementById('tab-dashboard');
+    if(onDashboard&&onDashboard.style.display==='none')return;
+    if(allowedTabs().includes('lessons'))switchTab('lessons');
+  }catch(e){/* stay on the dashboard */}
 }
 
 function renderFacilitySwitcher(){
