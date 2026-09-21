@@ -2112,13 +2112,56 @@ async function planToStamp(userId){
   }catch(e){return null;}
 }
 
+// How many days of trial this account gets, resolved from something that
+// SURVIVES.
+//
+// The referral and the trial length used to travel by different mechanisms,
+// and only one of them made the trip. `referred_by` rides in
+// `user_metadata`, set at signUp, and is still there whenever and wherever
+// the account is next opened. The trial length rode in sessionStorage alone,
+// and sessionStorage is per TAB.
+//
+// So a student who opened a trainer's ?ref= link, signed up, and then clicked
+// the confirmation email — which opens a NEW tab, or another browser
+// entirely — arrived with `referred_by` intact and `title22_ref_trial_days`
+// gone. `||14` did the rest: attributed to the trainer, and stamped with the
+// default 14-day trial instead of their 90. Reported from a real signup on
+// 2026-09-21. The comment on the capture block said sessionStorage "survives
+// the OAuth redirect", which is true and was never the failing path — the
+// email confirmation is.
+//
+// Resolved here from the durable code instead, with sessionStorage kept only
+// as the fast path. Falls back to 14 silently on any failure, exactly as
+// before: a trainer's student never gets LESS than an ordinary signup.
+async function t22RefTrialDays(user){
+  const cached=parseInt(sessionStorage.getItem('title22_ref_trial_days'),10);
+  if(cached>0)return cached;
+  const code=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
+  if(!code)return 14;
+  try{
+    const{data}=await sb.rpc('title22_check_trainer_code',{p_code:code});
+    const row=Array.isArray(data)?data[0]:data;
+    const days=row&&parseInt(row.trial_days,10);
+    if(days>0){
+      // Cache it so a second stamp in the same tab costs no round trip.
+      try{sessionStorage.setItem('title22_ref_trial_days',String(days));}catch(e){}
+      return days;
+    }
+  }catch(e){/* default trial length applies */}
+  return 14;
+}
+
 async function ensureProfile(user){
   // Title22 only touches title22_* entitlement columns on profiles. The shared
   // columns (plan, stripe_subscription_id, plan_expires_at, trial_ends_at,
   // access_granted) belong to other apps on this Supabase project — never
   // read or write them here.
   let isNewProfile=false;
-  const trialDays=parseInt(sessionStorage.getItem('title22_ref_trial_days'),10)||14;
+  // Resolved lazily and once: an account that is not being stamped with a
+  // trial at all must not pay for the lookup, and neither branch below should
+  // ask twice.
+  let _trialDays=null;
+  const trialDays=async()=>(_trialDays==null?(_trialDays=await t22RefTrialDays(user)):_trialDays);
   const readProfile=()=>sb.from('profiles')
     .select('id,created_at,title22_plan,title22_trial_ends_at,title22_is_partner_admin')
     .eq('id',user.id).maybeSingle();
@@ -2136,7 +2179,7 @@ async function ensureProfile(user){
     }else if(!data){
       isNewProfile=true;
       const referredBy=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
-      const trialEnds=new Date(Date.now()+trialDays*86400000).toISOString();
+      const trialEnds=new Date(Date.now()+(await trialDays())*86400000).toISOString();
       // A paid plan carries no trial end date — they never had a trial, and
       // stamping one would hand them an expiry they have already paid past.
       const paid=await planToStamp(user.id);
@@ -2168,7 +2211,7 @@ async function ensureProfile(user){
       // day one however old the row is.
       // Same reason as above: do not date a trial that a paying customer is
       // not on. Left null, readEntitlement reads the paid plan and stops.
-      if(!data.title22_trial_ends_at&&!paid)patch.title22_trial_ends_at=new Date(Date.now()+trialDays*86400000).toISOString();
+      if(!data.title22_trial_ends_at&&!paid)patch.title22_trial_ends_at=new Date(Date.now()+(await trialDays())*86400000).toISOString();
       // Can now be empty — a paid account with a plan already on it and no
       // trial date is missing nothing we are willing to write — and an empty
       // PATCH is a 400, not a no-op.
