@@ -249,6 +249,12 @@
   .stat-value.ok{color:var(--green)}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+  /* Trainer-code form. align-items:end keeps the inputs on one line at the
+     widths where one label wraps and its neighbour does not — at 375px
+     "Trial days for their graduates" takes two lines and used to push its
+     input 25px below the commission field. */
+  .partner-form-grid{display:grid;gap:10px;grid-template-columns:1fr 1fr;max-width:560px;align-items:end}
+  @media(max-width:520px){.partner-form-grid{grid-template-columns:1fr}}
   .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
   .card-title{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
   .alert-item{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
@@ -1262,7 +1268,7 @@
         <div class="card" style="margin-bottom:20px">
           <div class="card-title">Create a trainer code</div>
           <div id="partner-create-error" class="empty" style="display:none;color:var(--red)"></div>
-          <div style="display:grid;gap:10px;grid-template-columns:1fr 1fr;max-width:560px">
+          <div class="partner-form-grid">
             <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2)">Code (used as ?ref=code — letters, numbers, hyphens)</label>
               <input id="partner-code" type="text" placeholder="jsmith" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px"/></div>
             <div><label style="font-size:12px;color:var(--text2)">Trainer name</label>
