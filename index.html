@@ -2670,43 +2670,200 @@ async function enterDemoMode(){
 // events, so every button underneath stays live — you can abandon the tour
 // mid-sentence and start clicking, which is the whole reason to hand someone
 // a sandbox rather than a video.
-const TOUR_STEPS=[
-  {tab:'dashboard', sel:'.score-banner',
-   title:'This is the number that matters',
-   body:'Requirements that are current, out of requirements that exist. Not a grade for effort — an inspector could ask about any of them today.'},
-  {tab:'dashboard', sel:'#dash-alerts, #expiry-banner, .stat-grid',
-   title:'And it tells you whose',
-   body:'An expired TB test is not a red number on a chart. It is a named person, and tapping it opens their record.'},
-  // Both of these stops open a tab Lite does not have. switchTab refuses them,
-  // so left in they would end the tour on a toast.
-  ...(showMAR?[{tab:'residents', sel:'#residents-grid',
-   title:'Every resident, with their paperwork',
-   body:'Open anyone and scroll to Required documents. A requirement ticked "yes" with nothing attached goes amber and says so — because DSS asks for the document, not the answer.'},
-  {tab:'mar', sel:'#tab-mar .page-header',
-   title:'The medication pass',
-   body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'}]:[]),
-  {tab:'documents', sel:'#tab-documents .page-header',
-   title:'One button for inspection day',
-   body:'Every filed document in one place, and a 90-day DSS packet you can print from the dashboard while the analyst is sitting there.'},
-  {tab:'checklist', sel:'#tab-checklist .page-header, #checklist-list',
-   title:'The checklist an analyst works from',
-   body:'Title 22 requirements with dates against them. Overdue rises to the top, because that is the order the questions come in.'},
-  {tab:'team', sel:'#tab-team .page-header',
-   title:'Five roles, and you choose them',
-   body:(showMAR
-     ?'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions.'
-     :'A caregiver logs incidents and files documents. An in-house caregiver also works the checklist; a supervisor sees staff files too.')+
-     ' Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
-  {tab:'ai', sel:'#tab-ai .card',
-   title:'Now ask me something',
-   body:'Try "am I ready for DSS?" or "'+(showMAR?'which residents are missing documents?':'who has expired certs?')+'". I read this facility\u2019s actual records and answer from them.'},
-  {tab:'dashboard', sel:'#user-menu-btn',
-   title:'Everything else is in here',
-   body:(showMAR?'Documents, medications, the audit log, billing.':'Documents, the audit log, billing.')+
-     (typeof demoMode!=='undefined'&&demoMode
-       ?' Have a look around — this is the real app with invented '+(showMAR?'residents':'staff')+', and nothing you press is saved.'
-       :' That is the tour. You can replay it any time from Walkthrough in the menu.')},
-];
+// Who is being shown around, in the app's own terms. Checked in the order a
+// person's identity actually overrides another's: a partner admin is an
+// affiliate wherever they are standing; a classroom account is a trainer even
+// when it owns a real facility; somebody who arrived on a trainer's link is a
+// student before they are anything else; and after that it is simply whether
+// this is your facility or somebody else's.
+function t22TourAudience(){
+  try{
+    if(typeof demoMode!=='undefined'&&demoMode)return 'visitor';
+    if(isPartnerAdmin)return 'affiliate';
+    if(t22Plan==='edu')return 'trainer';
+    const referred=currentUser?.user_metadata?.referred_by
+      ||(()=>{try{return sessionStorage.getItem('title22_ref');}catch(e){return null;}})();
+    if(referred)return 'student';
+    if(typeof isFacilityOwner==='function'&&isFacilityOwner())return 'owner';
+    // currentUserRole, not currentRole. There is no currentRole in this file,
+    // and naming it that threw a ReferenceError straight into the catch below,
+    // which answered 'owner' for every member of staff. Caught by the test,
+    // which is the only reason it is not in the shipped build.
+    if(currentUserRole==='administrator')return 'owner';
+    return 'staff';
+  }catch(e){return 'staff';}
+}
+
+// The steps, per audience.
+//
+// Two rules every list here is written to, and neither is decoration:
+//
+//   * NOTHING STATES A REQUIREMENT AS FACT. Same rule as DOC_SLOT_HOWTO,
+//     Tello's prompt and the Launch Hub: a step says what a thing IS and where
+//     it lives, never how long it lasts, how often it is due or what an
+//     inspector accepts. That belongs to the licensing analyst.
+//   * NO PHI. A step that names a resident, a medication or the MAR is
+//     written inside a showMAR guard, so in Lite it does not exist at all --
+//     not hidden, absent. tourSteps() then filters again on allowedTabs(),
+//     so even a mis-written step could not open a PHI tab.
+function t22TourFor(who){
+  const marSteps=showMAR?[
+    {tab:'residents', sel:'#residents-grid',
+     title:'Every resident, with their paperwork',
+     body:'Open anyone and scroll to Required documents. A requirement ticked "yes" with nothing attached goes amber and says so — because DSS asks for the document, not the answer.'},
+    {tab:'mar', sel:'#tab-mar .page-header',
+     title:'The medication pass',
+     body:'Given, refused or held, logged as it happens. Refuse a dose without writing why and it will not save.'},
+  ]:[];
+
+  // The spine everyone shares: the number, whose it is, and the list an
+  // analyst works from.
+  const score={tab:'dashboard', sel:'.score-banner',
+    title:'This is the number that matters',
+    body:'Requirements that are current, out of requirements that exist. Not a grade for effort — an inspector could ask about any of them today.'};
+  const alerts={tab:'dashboard', sel:'#dash-alerts, #expiry-banner, .stat-grid',
+    title:'And it tells you whose',
+    body:'An expired TB test is not a red number on a chart. It is a named person, and tapping it opens their record.'};
+  const checklist={tab:'checklist', sel:'#tab-checklist .page-header, #checklist-list',
+    title:'The checklist an analyst works from',
+    body:'Title 22 requirements with dates against them. Overdue rises to the top, because that is the order the questions come in.'};
+  const documents={tab:'documents', sel:'#tab-documents .page-header',
+    title:'One button for inspection day',
+    body:'Every filed document in one place, and a 90-day DSS packet you can print from the dashboard while the analyst is sitting there.'};
+  const tello={tab:'ai', sel:'#tab-ai .card',
+    title:'Now ask me something',
+    body:'Try "am I ready for DSS?" or "'+(showMAR?'which residents are missing documents?':'who has expired certs?')+'". I read this facility’s actual records and answer from them.'};
+  const menu={tab:'dashboard', sel:'#user-menu-btn',
+    title:'Everything else is in here',
+    body:(showMAR?'Documents, medications, the audit log, billing.':'Documents, the audit log, billing.')+
+      ' You can replay this tour any time from Walkthrough in the menu.'};
+
+  if(who==='visitor'){
+    return [score, alerts, ...marSteps, documents, checklist,
+      {tab:'team', sel:'#tab-team .page-header',
+       title:'Five roles, and you choose them',
+       body:(showMAR
+         ?'A caregiver sees the medication pass and incidents. An in-house caregiver adds residents and prescriptions.'
+         :'A caregiver logs incidents and files documents. An in-house caregiver also works the checklist; a supervisor sees staff files too.')+
+         ' Read-only is what you hand an inspector. Nobody picks their own — the administrator sets it when the invitation goes out.'},
+      tello,
+      {tab:'dashboard', sel:'#user-menu-btn',
+       title:'Everything else is in here',
+       body:(showMAR?'Documents, medications, the audit log, billing.':'Documents, the audit log, billing.')+
+         ' Have a look around — this is the real app with invented '+(showMAR?'residents':'staff')+', and nothing you press is saved.'},
+    ];
+  }
+
+  if(who==='owner'){
+    return [
+      score, alerts,
+      {tab:'launch', sel:'#tab-launch .page-header, #launch-cards',
+       title:'Not open yet? Start here',
+       body:'Twelve steps from certificate to licence, each answered with a button or a photograph. Nothing to type, and it is in four languages.'},
+      checklist,
+      {tab:'staff', sel:'#tab-staff .page-header, #staff-list',
+       title:'Your people and their dates',
+       body:'One row per person, with their clearances and training against them. The dashboard alerts you saw are built from this, so filling it in is what makes the rest work.'},
+      documents,
+      {tab:'team', sel:'#tab-team .page-header',
+       title:'Five roles, and you choose them',
+       body:'A caregiver logs incidents and files documents. An in-house caregiver also works the checklist; a supervisor sees staff files too. Read-only is what you hand an inspector. Nobody picks their own — you set it when the invitation goes out.'},
+      tello, menu,
+    ];
+  }
+
+  if(who==='staff'){
+    return [
+      {tab:'dashboard', sel:'.score-banner',
+       title:'Where your facility stands',
+       body:'Requirements that are current, out of requirements that exist. You are looking at the same number the administrator sees.'},
+      alerts,
+      checklist,
+      {tab:'incidents', sel:'#tab-incidents .page-header',
+       title:'Where an incident goes',
+       body:'File it here while it is fresh. The form asks for what happened, where, and what was done — and it will not let you save an SSN, a phone number or an email in the description.'},
+      documents,
+      {tab:'lessons', sel:'#tab-lessons .page-header, #lessons-list',
+       title:'Anything your administrator wants you to read',
+       body:'Lessons your facility has published show up here. If it is empty, nobody has added one yet.'},
+      menu,
+    ];
+  }
+
+  if(who==='trainer'){
+    return [
+      {tab:'lessons', sel:'#tab-lessons .page-header, #lessons-list',
+       title:'Your classroom lives here',
+       body:'Write a lesson, or load the starter set and edit it. A lesson you leave inactive is a draft — you see it, your students do not.'},
+      {tab:'lessons', sel:'#lesson-new-btn, #lesson-starters-btn, #tab-lessons .page-header',
+       title:'Ten lessons, ready to change',
+       body:'The starters cover the administrator’s job, admission paperwork, the readiness score and how to ask Tello. Every one is yours to rewrite — they teach how to use this system and leave the regulation to you.'},
+      score, alerts,
+      {tab:'staff', sel:'#tab-staff .page-header, #staff-list',
+       title:'What your students will be filling in',
+       body:'One row per person, with clearances and training against them. Worth walking a class through this screen before they open their own.'},
+      tello, menu,
+    ];
+  }
+
+  if(who==='student'){
+    return [
+      {tab:'lessons', sel:'#tab-lessons .page-header, #lessons-list',
+       title:'Start here',
+       body:'Your trainer’s lessons are on this tab. Open one and work down it — each is about doing something in this system, not about passing a test.'},
+      score,
+      {tab:'checklist', sel:'#tab-checklist .page-header, #checklist-list',
+       title:'The list the score is built from',
+       body:'Title 22 requirements with dates against them. This is what an analyst works through, and what your lessons will keep pointing at.'},
+      {tab:'incidents', sel:'#tab-incidents .page-header',
+       title:'How an incident gets written',
+       body:'What happened, where, and what was done. The form refuses an SSN, a phone number or an email in the description — practise writing one without naming anybody.'},
+      tello, menu,
+    ];
+  }
+
+  if(who==='affiliate'){
+    return [
+      {tab:'partners', sel:'#tab-partners .page-header, #partners-list',
+       title:'Your trainers and their codes',
+       body:'One row per trainer: their link, how many people signed up through it, how many of those are paying, and the commission rate on record.'},
+      {tab:'partners', sel:'#tab-partners .page-header',
+       title:'A code is a longer trial',
+       body:'Somebody arriving on a trainer’s link gets the trial length set on that code instead of the default. The number on the row is the one that applies.'},
+      score, alerts, checklist, tello, menu,
+    ];
+  }
+
+  return [score, alerts, checklist, documents, tello, menu];
+}
+
+// Build the list for whoever is looking, then drop any step whose tab this
+// person cannot open.
+//
+// That filter is not a nicety. renderTour calls switchTab() for a step's tab,
+// and switchTab ALERTS on a tab the role does not have — so before this, the
+// single fixed list threw "You do not have permission to access this section"
+// at every non-administrator who took the tour: once at the Team step for a
+// supervisor, three times for a caregiver, who also lacks Checklist and Tello.
+// The tour then limped on, because tourTarget found nothing and skipped.
+//
+// Nothing downstream changes: TOUR_STEPS stays an array, rebuilt by startTour
+// before the first render, so tourStep, renderTour and placeTour are untouched.
+function tourSteps(){
+  let open=[];
+  try{ open=allowedTabs()||[]; }catch(e){ open=[]; }
+  const steps=t22TourFor(t22TourAudience())
+    .filter(s=>!s.tab||open.includes(s.tab)||s.tab==='partners'&&isPartnerAdmin);
+  // Never hand back an empty tour; the dashboard is the one screen everybody
+  // has, so fall back to the two steps that live on it.
+  return steps.length?steps:[
+    {tab:'dashboard', sel:'.score-banner',
+     title:'Where your facility stands',
+     body:'Requirements that are current, out of requirements that exist.'},
+  ];
+}
+
+let TOUR_STEPS=tourSteps();
 let tourIdx=-1;
 const TOUR_SEEN='title22_tour_done';
 
@@ -2746,8 +2903,13 @@ function tourTarget(step){
 function startTour(i){
   // Was demo-only. A paying customer opening "Walkthrough" was sent out to a
   // marketing page to watch a video of the app they were already standing in.
-  // The same nine steps work on their own facility, so run them there.
+  // The same steps work on their own facility, so run them there.
   if(!currentFacility)return;
+  // Rebuilt at the moment it is asked for, never at parse time: the audience
+  // and the role are not known when this file loads, and both can change
+  // inside one session — switching facility changes the role, and the
+  // entitlement resolves after the script has run.
+  TOUR_STEPS=tourSteps();
   const menu=document.getElementById('user-menu'); if(menu)menu.style.display='none';
   document.getElementById('tour-restart').style.display='none';
   tourIdx=(typeof i==='number')?i:0;
@@ -3423,17 +3585,67 @@ function t22FirstLanding(){
       return;
     }
 
-    // Student: stand them in the sample facility if they have one and are not
-    // already in it. Nothing is created here -- seedDemoData writes a facility,
-    // residents and 300 MAR rows behind a confirm(), and that is not something
-    // to trigger from a page load.
+    // Student: open Lessons, the same place their trainer works from.
+    //
+    // This used to stand them in the sample facility instead. Changed
+    // 2026-09-21: a student arriving through a trainer's link is here to be
+    // taught, and the lesson is the thing to be looking at — the sample
+    // facility is where they go to practise once a lesson sends them there.
+    // The facility they are standing in is not changed at all now, which also
+    // means this can no longer move somebody out of a facility they picked.
+    //
+    // Reverting is this block and the comment: put back the isSampleFacility
+    // lookup and the switchFacility call below it.
+    //
+    // allowedTabs() is the authority, exactly as on the trainer path above, so
+    // an expired trial is never sent somewhere it cannot go. 'lessons' is in
+    // every role's tab list, so a student holds it whatever role they were
+    // invited as.
+    //
+    // ONLY IF THERE IS A LESSON TO READ. title22_lessons is scoped per
+    // facility (see loadLessons), so a student who signed up through a link
+    // and made their own facility has none — landing them on an empty tab is
+    // worse than leaving them on the dashboard, which at least has their
+    // readiness score and alerts on it. A student invited INTO the trainer's
+    // facility does have lessons, and is the case this is for.
+    //
+    // The trainer path above deliberately does NOT check: an empty Lessons tab
+    // is where a trainer goes to create one, and the New lesson and starter
+    // buttons are sitting on it. Empty means "start here" for them and "dead
+    // end" for a student.
     const referred=currentUser?.user_metadata?.referred_by
       ||(()=>{try{return sessionStorage.getItem('title22_ref');}catch(e){return null;}})();
     if(!referred)return;
-    if(currentFacility&&isSampleFacility(currentFacility))return;
-    const sample=(allFacilities||[]).find(f=>f&&isSampleFacility(f));
-    if(sample&&sample.id!==currentFacility?.id)switchFacility(sample.id);
+    if(!allowedTabs().includes('lessons'))return;
+    t22LandOnLessonsIfAny();
   }catch(e){/* never let the landing choice break the load */}
+}
+
+// Open Lessons for a student only if this facility actually has one they can
+// see. Mirrors loadLessons' scoping exactly: same facility filter, and the
+// active-only filter for anyone who is not the facility owner, so this can
+// never send someone to a tab that will render empty for them.
+//
+// Separate and async because t22FirstLanding is called without await and must
+// stay synchronous for every other path. Fails closed: any error, any empty
+// result, and the student simply stays on the dashboard.
+//
+// One lightweight request, for referred accounts only. It selects a single id
+// and touches no PHI table.
+async function t22LandOnLessonsIfAny(){
+  try{
+    if(!currentFacility)return;
+    let q=sb.from('title22_lessons').select('id').eq('facility_id',currentFacility.id);
+    if(!isFacilityOwner())q=q.eq('active',true);
+    const{data,error}=await q.limit(1);
+    if(error||!data||!data.length)return;
+    // Re-check on the way out: the load is async, so the person may have
+    // clicked somewhere themselves while it was in flight. Only move them if
+    // they are still sitting where initFacility left them.
+    const onDashboard=document.getElementById('tab-dashboard');
+    if(onDashboard&&onDashboard.style.display==='none')return;
+    if(allowedTabs().includes('lessons'))switchTab('lessons');
+  }catch(e){/* stay on the dashboard */}
 }
 
 function renderFacilitySwitcher(){
