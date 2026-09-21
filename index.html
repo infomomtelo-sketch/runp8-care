@@ -3423,16 +3423,26 @@ function t22FirstLanding(){
       return;
     }
 
-    // Student: stand them in the sample facility if they have one and are not
-    // already in it. Nothing is created here -- seedDemoData writes a facility,
-    // residents and 300 MAR rows behind a confirm(), and that is not something
-    // to trigger from a page load.
+    // Student: open Lessons, the same place their trainer works from.
+    //
+    // This used to stand them in the sample facility instead. Changed
+    // 2026-09-21: a student arriving through a trainer's link is here to be
+    // taught, and the lesson is the thing to be looking at — the sample
+    // facility is where they go to practise once a lesson sends them there.
+    // The facility they are standing in is not changed at all now, which also
+    // means this can no longer move somebody out of a facility they picked.
+    //
+    // Reverting is this block and the comment: put back the isSampleFacility
+    // lookup and the switchFacility call below it.
+    //
+    // allowedTabs() is the authority, exactly as on the trainer path above, so
+    // an expired trial is never sent somewhere it cannot go. 'lessons' is in
+    // every role's tab list, so a student holds it whatever role they were
+    // invited as.
     const referred=currentUser?.user_metadata?.referred_by
       ||(()=>{try{return sessionStorage.getItem('title22_ref');}catch(e){return null;}})();
     if(!referred)return;
-    if(currentFacility&&isSampleFacility(currentFacility))return;
-    const sample=(allFacilities||[]).find(f=>f&&isSampleFacility(f));
-    if(sample&&sample.id!==currentFacility?.id)switchFacility(sample.id);
+    if(allowedTabs().includes('lessons'))switchTab('lessons');
   }catch(e){/* never let the landing choice break the load */}
 }
 
