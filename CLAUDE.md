@@ -509,6 +509,24 @@ Eli registers a code still count once he does. Registering is one tap on
 `/affiliates/` (a pre-filled email). Self-serve registration would need an RPC
 anyone can call that writes a commission rate — deliberately not built.
 
+## The public sandbox is ONE flagged facility (2026-09-23)
+
+`title22.app/?demo=1` reads the single facility with `is_demo = true`, as the
+anon role. Since 2026-09-23 that is **`970f35b4-ec9d-47a2-be85-2b5e0ee23285`**,
+a "Sunrise Demo Home (Sample)" owned by the company address and seeded by the
+Lite seeder — five invented staff, four with something out of date.
+
+It went missing once: the sandbox answered "isn't available right now" and
+nothing was flagged, most likely because the test-facility reset kept only the
+newest sample home and deleted the older one that was the sandbox. The reset
+now never touches an `is_demo` facility. Restored with
+`migrations/2026-09-23_title22_restore_demo_sandbox.sql`.
+
+Rules: do not delete it, do not clear its flag, and never flag a real home or a
+sample owned by a customer — whatever is flagged is readable by anyone on the
+internet. The 30-Day Proof's executive presentation, the site's "See it first"
+button and `/pilot/` all open this sandbox.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by

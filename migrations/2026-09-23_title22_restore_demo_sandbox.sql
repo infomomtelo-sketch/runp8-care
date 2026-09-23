@@ -1,5 +1,11 @@
 -- Restore the public sandbox (title22.app/?demo=1).
 --
+-- RUN 2026-09-23. Step 1 read flagged=0, policy present, anon SELECT true —
+-- cause (a). Flagged 970f35b4-ec9d-47a2-be85-2b5e0ee23285, the Lite sample
+-- owned by the company address (seeded 2026-09-19 by seedLiteDemoData), and
+-- the sandbox loaded again (reported by the owner). Nothing here needs running
+-- again.
+--
 -- Reported 2026-09-23 from a phone: "The demo sandbox isn't available right
 -- now — start a free trial instead." That message is enterDemoMode() getting
 -- no row back from
