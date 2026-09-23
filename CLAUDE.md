@@ -509,6 +509,12 @@ Eli registers a code still count once he does. Registering is one tap on
 `/affiliates/` (a pre-filled email). Self-serve registration would need an RPC
 anyone can call that writes a commission rate — deliberately not built.
 
+A visitor who arrives on a partner link sees it worked: `renderRefNote` puts
+"You're joining through <code>'s link — a N-day free trial" on the landing and
+signup pages, and the signup card's numbers follow N. N is what
+`t22RefTrialDays` will stamp (the code's length, never below 30). The code is
+escaped and already reduced to letters, digits and hyphens.
+
 ## The public sandbox is ONE flagged facility (2026-09-23)
 
 `title22.app/?demo=1` reads the single facility with `is_demo = true`, as the
