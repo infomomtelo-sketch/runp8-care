@@ -10,6 +10,9 @@
 --
 -- Run in the Supabase SQL editor for project nwlhsshvqmbhemhxcran.
 --
+-- STEP 1 RUN 2026-09-23 against the live database: no rows (reported by the
+-- owner). Nobody was shortchanged, so step 2 was not run and is not needed.
+--
 --
 -- WHY ANY ROW NEEDS REPAIRING
 --
