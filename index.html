@@ -1269,6 +1269,13 @@
       <div id="tab-ai" style="display:none">
         <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.<span id="ai-lite-note" style="display:none"> This edition holds no resident, medication or MAR records, so she cannot see them.</span></div>
+        <!-- Portfolio briefing: one row per home, counts only. See renderPortfolioCard. -->
+        <div class="card" id="ai-portfolio" style="display:none;margin-bottom:16px;">
+          <div class="card-title" style="flex-wrap:wrap;gap:10px;margin-bottom:6px"><span>Portfolio briefing</span>
+            <button class="btn btn-primary" id="ai-portfolio-btn" style="font-size:13px" onclick="runPortfolioBriefing()">Brief me on every home</button></div>
+          <div id="ai-portfolio-note" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+          <div id="ai-portfolio-out"></div>
+        </div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -2055,7 +2062,7 @@ function switchTab(name){
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
-  if(name==='ai'){if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello. Ask me anything — about your facility, or about anything else. I will tell you when I am reading your records and when I am just telling you what I know.','assistant');}
+  if(name==='ai'){renderPortfolioCard();if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello. Ask me anything — about your facility, or about anything else. I will tell you when I am reading your records and when I am just telling you what I know.','assistant');}
   setupVideoHelpButtons();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -2395,6 +2402,7 @@ function clearSession(){
   // at this browser.
   unmountTelloDock();
   telloDockMessages=[];telloDockFacility=null;
+  clearPortfolioCard();
   currentUser=null;currentFacility=null;
   document.getElementById('nav-app').style.display='none';
   document.getElementById('nav-public').style.display='flex';
@@ -6536,6 +6544,239 @@ function addAIMessage(text,role){
   const el=document.createElement('div');
   el.style.cssText=role==='user'?'background:var(--teal-light);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--teal);align-self:flex-end;max-width:88%;margin-left:auto':'background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--text);line-height:1.7;max-width:95%';
   el.textContent=text;msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el;
+}
+
+// ===== PORTFOLIO BRIEFING =====
+//
+// Tello for the person who runs several homes rather than one shift: a row per
+// facility and a plain-language summary across all of them. Built for the
+// "Ghost Audit" pilot (docs/ghost-audit-pilot.md), where the reader is an
+// executive deciding which home to look at first.
+//
+// No-PHI by construction, not by instruction. The only reads are the checklist
+// (completed, due_date), staff certification DATES and flags — never a staff
+// name — and incident dates. No resident, medication, MAR or daily-log table is
+// touched, whatever showMAR says, and no free text is read at all. What reaches
+// the AI Worker is facility names and counts; there is nobody in it to name.
+//
+// The numbers are computed here, deterministically, and the table is drawn
+// from them before Tello is asked anything. She writes the prose from the same
+// counts and is told to add none of her own — an executive acts on the table,
+// so the table must not depend on the model.
+//
+// "Checklist %" is deliberately NOT called the readiness score. The dashboard
+// score also counts each staff record against COMPLIANCE_REQUIREMENTS and the
+// filed documents, which needs every facility's full records loaded. Putting a
+// number beside a facility name that disagrees with the one on its own
+// dashboard is how an executive stops trusting both.
+const PORTFOLIO_MAX=25;        // homes read per briefing; beyond this, say so
+let portfolioOwner=null;       // whose briefing is on screen
+
+function portfolioFacilities(){
+  return (allFacilities||[]).filter(f=>f&&f.id&&!isSampleFacility(f));
+}
+
+// Who sees the card. The sandbox always does — it is the executive
+// presentation — with its one facility beside an illustration. A real account
+// needs two homes of its own to compare, and has to be running the home it is
+// standing in; every read underneath is still scoped by RLS to what this
+// person may see.
+function portfolioAllowed(){
+  try{
+    if(demoMode)return !!currentFacility;
+    if(!currentUser||!currentFacility)return false;
+    if(!allowedTabs().includes('ai'))return false;
+    if(!(isFacilityOwner()||currentUserRole==='administrator'))return false;
+    return portfolioFacilities().length>=2;
+  }catch(e){return false;}
+}
+
+function clearPortfolioCard(){
+  const out=document.getElementById('ai-portfolio-out');if(out)out.innerHTML='';
+  const card=document.getElementById('ai-portfolio');if(card)card.style.display='none';
+  portfolioOwner=null;
+}
+
+function renderPortfolioCard(){
+  const card=document.getElementById('ai-portfolio');if(!card)return;
+  if(!portfolioAllowed()){clearPortfolioCard();return;}
+  const who=demoMode?'demo':currentUser.id;
+  if(portfolioOwner!==who){const out=document.getElementById('ai-portfolio-out');if(out)out.innerHTML='';portfolioOwner=who;}
+  const n=demoMode?1:portfolioFacilities().length;
+  const note=document.getElementById('ai-portfolio-note');
+  if(note)note.textContent=demoMode
+    ?'Sandbox: the sample home as it is recorded, beside the same home with every open item closed. The second row is an illustration, not a facility. Counts only — no resident, and no staff member by name.'
+    :'One row per home, '+Math.min(n,PORTFOLIO_MAX)+' home'+(n===1?'':'s')+', lowest checklist first. Counts only — no resident, and no staff member by name. Tello writes the summary from these numbers and nothing else.';
+  card.style.display='';
+}
+
+async function readPortfolioRow(f){
+  const now=new Date();
+  const today=now.toISOString().slice(0,10);
+  const in30=new Date(now.getTime()+30*864e5).toISOString().slice(0,10);
+  const since30=new Date(now.getTime()-30*864e5).toISOString();
+  const d=v=>v?String(v).slice(0,10):null;
+  const row={id:f.id,name:f.name||'Unnamed facility',failed:[]};
+  const[tk,st,inc]=await Promise.all([
+    sb.from('compliance_tasks').select('completed,due_date').eq('facility_id',f.id),
+    sb.from('staff').select('active,cpr_cert_expiry,first_aid_cert_expiry,tb_test_due,tb_test_expiry,livescan_cleared,mandated_reporter_completed').eq('facility_id',f.id),
+    sb.from('incidents').select('occurred_at').eq('facility_id',f.id).gte('occurred_at',since30),
+  ]).catch(e=>[{error:e},{error:e},{error:e}]);
+  // A read that failed is reported as failed, never as zero. Zero overdue on a
+  // home we could not read is the one line on this card that must not exist.
+  if(tk.error)row.failed.push('checklist');
+  else{
+    const t=tk.data||[];
+    row.total=t.length;
+    row.done=t.filter(x=>x.completed).length;
+    row.overdue=t.filter(x=>!x.completed&&d(x.due_date)&&d(x.due_date)<today).length;
+    row.dueSoon=t.filter(x=>!x.completed&&d(x.due_date)&&d(x.due_date)>=today&&d(x.due_date)<=in30).length;
+    row.pct=row.total?Math.round(row.done/row.total*100):null;
+  }
+  if(st.error)row.failed.push('staff');
+  else{
+    const staff=(st.data||[]).filter(s=>s.active!==false);
+    const dates=s=>[s.cpr_cert_expiry,s.first_aid_cert_expiry,s.tb_test_expiry||s.tb_test_due].map(d).filter(Boolean);
+    row.staff=staff.length;
+    row.certExpired=staff.filter(s=>dates(s).some(x=>x<today)).length;
+    row.certSoon=staff.filter(s=>!dates(s).some(x=>x<today)&&dates(s).some(x=>x<=in30)).length;
+    row.clearances=staff.filter(s=>s.livescan_cleared===false||s.mandated_reporter_completed===false).length;
+  }
+  if(inc.error)row.failed.push('incidents');
+  else row.incidents30=(inc.data||[]).length;
+  row.status=row.failed.length?'unread'
+    :(row.overdue||row.certExpired)?'attention'
+    :(row.dueSoon||row.certSoon||row.clearances)?'watch':'ok';
+  return row;
+}
+
+// The sandbox's second row: the same home with every open item closed. Its
+// incident history is left exactly as it is — closing a checklist does not
+// un-happen an incident, and an illustration that implied it would is a claim.
+function portfolioIllustration(r){
+  if(!r||r.failed.length)return null;
+  return {...r,id:'illustration',illustration:true,name:r.name+' — every open item closed',
+    done:r.total,pct:r.total?100:null,overdue:0,dueSoon:0,certExpired:0,certSoon:0,clearances:0,status:'ok'};
+}
+
+function portfolioSort(rows){
+  const rank={unread:0,attention:1,watch:2,ok:3};
+  return rows.slice().sort((a,b)=>
+    (a.illustration?1:0)-(b.illustration?1:0)
+    ||rank[a.status]-rank[b.status]
+    ||(a.pct??101)-(b.pct??101)
+    ||(b.overdue||0)-(a.overdue||0));
+}
+
+function portfolioTableHTML(rows){
+  const badge={unread:['badge-gray','Could not read'],attention:['badge-red','Needs attention'],watch:['badge-amber','Watch'],ok:['badge-teal','On track']};
+  const n=v=>v==null?'—':String(v);
+  const th='style="text-align:left;padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);font-weight:600;white-space:nowrap"';
+  const td='style="padding:8px;border-top:1px solid var(--border);white-space:nowrap"';
+  const body=rows.map(r=>{
+    const b=badge[r.status];
+    const cells=r.failed.length
+      ?`<td colspan="7" style="padding:8px;border-top:1px solid var(--border);color:var(--text2)">Could not read ${esc(r.failed.join(', '))} — not counted, and not treated as clear.</td>`
+      :`<td ${td}><strong>${r.pct==null?'—':r.pct+'%'}</strong> <span style="color:var(--text2);font-size:11px">${n(r.done)}/${n(r.total)}</span></td>`
+        +`<td ${td}>${n(r.overdue)}</td><td ${td}>${n(r.dueSoon)}</td><td ${td}>${n(r.certExpired)}</td><td ${td}>${n(r.certSoon)}</td><td ${td}>${n(r.clearances)}</td><td ${td}>${n(r.incidents30)}</td>`;
+    return `<tr><td ${td}>${esc(r.name)}${r.illustration?' <span class="badge badge-gray">Illustration</span>':''}</td>${cells}<td ${td}><span class="badge ${b[0]}">${b[1]}</span></td></tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px"><table style="width:100%;border-collapse:collapse;font-size:13px">`
+    +`<thead><tr><th ${th}>Home</th><th ${th}>Checklist</th><th ${th}>Overdue</th><th ${th}>Due ≤30d</th><th ${th}>Staff certs expired</th><th ${th}>Expiring ≤30d</th><th ${th}>Clearances open</th><th ${th}>Incidents 30d</th><th ${th}>Status</th></tr></thead>`
+    +`<tbody>${body}</tbody></table></div>`
+    +`<div style="font-size:11px;color:var(--text2);margin-bottom:12px">Checklist is the share of each home's Title22 checklist marked complete — each home's own dashboard score also counts staff records and filed documents, so the two can differ. Staff columns count people, not certificates.</div>`;
+}
+
+// The sandbox's summary, and the fallback when Tello cannot be reached. Every
+// sentence is a count from the table; nothing here is a prediction.
+function portfolioPlainSummary(rows){
+  const real=rows.filter(r=>!r.illustration);
+  const read=real.filter(r=>!r.failed.length);
+  const lines=[];
+  const unread=real.filter(r=>r.failed.length);
+  if(unread.length)lines.push('[warn] **'+unread.length+'** home'+(unread.length>1?'s':'')+' could not be read ('+unread.map(r=>r.name).join(', ')+') — not counted below, and not clear.');
+  const sum=k=>read.reduce((a,r)=>a+(r[k]||0),0);
+  const overdue=sum('overdue'),expired=sum('certExpired'),soon=sum('certSoon'),clear=sum('clearances');
+  lines.push((overdue||expired?'[urgent] ':'[ok] ')+'Across '+read.length+' home'+(read.length===1?'':'s')+': **'+overdue+'** overdue checklist item'+(overdue===1?'':'s')+' and **'+expired+'** staff member'+(expired===1?'':'s')+' with an expired certification.');
+  if(soon||clear)lines.push('[warn] **'+soon+'** staff certification'+(soon===1?'':'s')+' expiring within 30 days; **'+clear+'** staff member'+(clear===1?'':'s')+' with a LiveScan or mandated-reporter item still open.');
+  const worst=read.filter(r=>r.status==='attention');
+  if(worst.length)lines.push('[warn] Look first at **'+worst[0].name+'**'+(worst[0].pct!=null?' — checklist '+worst[0].pct+'%':'')+', '+worst[0].overdue+' overdue, '+worst[0].certExpired+' expired.');
+  const ill=rows.find(r=>r.illustration);
+  if(ill)lines.push('[ok] The illustration row is the same home with every one of those items closed: checklist **'+(ill.pct??'—')+'%**, nothing overdue. Its incident history is unchanged — closing a checklist does not remove an incident.');
+  return lines.map(l=>'- '+l).join('\n');
+}
+
+const PORTFOLIO_SYSTEM=`You are Tello, writing a portfolio summary for the owner or regional director of several California residential care facilities for the elderly. They are an executive, not a caregiver: write for someone deciding where to look first.
+
+You are given ONLY facility names and counts. There are no residents and no staff names in the data, and you must not invent or ask for any.
+
+Write 3 to 6 lines. Each line starts with "- " and then [ok], [warn] or [urgent]. Line one is the portfolio overall. Then name the homes that need attention first, and say why, using only the numbers given. Use **bold** for facility names and the numbers that matter. Plain language. No preamble, no headings, no tables, no HTML.
+
+Hard rules:
+- Use only the numbers in the data. Do not estimate, total differently, or add any figure of your own.
+- A home listed with "failed" could not be read. Say so. Never describe it as clear or on track.
+- "checklist_pct" is the share of that home's Title22 checklist marked complete. It is not the facility's full readiness score; do not call it one.
+- Do not state any regulation, deadline or inspection requirement as fact, do not predict an inspection outcome, and do not promise compliance.
+- Nothing clinical, on any home.`;
+
+async function runPortfolioBriefing(){
+  const out=document.getElementById('ai-portfolio-out');if(!out)return;
+  if(!portfolioAllowed()){clearPortfolioCard();return;}
+  const btn=document.getElementById('ai-portfolio-btn');
+  if(btn){btn.disabled=true;btn.textContent='Reading every home…';}
+  out.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2);font-size:13px"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Reading every home…</div>';
+  try{
+    const facs=demoMode?[currentFacility]:portfolioFacilities();
+    const take=facs.slice(0,PORTFOLIO_MAX);
+    let rows=[];
+    // Five at a time: an agency's twenty homes is sixty requests, and firing
+    // them at once is how a briefing ends up half-read on a phone.
+    for(let i=0;i<take.length;i+=5)rows=rows.concat(await Promise.all(take.slice(i,i+5).map(readPortfolioRow)));
+    if(demoMode){const ill=portfolioIllustration(rows[0]);if(ill)rows.push(ill);}
+    rows=portfolioSort(rows);
+    const more=facs.length>take.length?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">Showing the first ${take.length} of ${facs.length} homes.</div>`:'';
+    const summary=document.createElement('div');
+    summary.style.cssText='font-size:13px;line-height:1.8;color:var(--text);background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px';
+    out.innerHTML=portfolioTableHTML(rows)+more;
+    out.appendChild(summary);
+    if(demoMode){
+      summary.innerHTML=renderTelloText(portfolioPlainSummary(rows))
+        +'<div style="margin-top:8px;font-size:12px;color:var(--text2)"><em>You\'re in the demo sandbox — this summary is computed from the sample home. On a real account Tello writes it from the same counts.</em></div>';
+      return;
+    }
+    summary.innerHTML='<span style="color:var(--text2)">Tello is writing the summary…</span>';
+    const data={today:new Date().toISOString().slice(0,10),homes:rows.map(r=>r.failed.length
+      ?{facility:r.name,failed:r.failed}
+      :{facility:r.name,checklist_pct:r.pct,checklist_done:r.done,checklist_total:r.total,checklist_overdue:r.overdue,checklist_due_within_30_days:r.dueSoon,
+        active_staff:r.staff,staff_with_expired_certification:r.certExpired,staff_with_certification_expiring_within_30_days:r.certSoon,
+        staff_with_open_livescan_or_mandated_reporter:r.clearances,incidents_last_30_days:r.incidents30})};
+    if(facs.length>take.length)data.note='Only the first '+take.length+' of '+facs.length+' homes were read.';
+    let reply=null;
+    try{
+      const{data:{session}}=await sb.auth.getSession();
+      const res=await fetch(AI_WORKER,{method:'POST',headers:{'Content-Type':'application/json',...(session?{'Authorization':'Bearer '+session.access_token}:{})},body:JSON.stringify({
+        system:PORTFOLIO_SYSTEM+'\n\nPORTFOLIO DATA:\n'+JSON.stringify(data,null,2),
+        messages:[{role:'user',content:'Give me the portfolio summary.'}]
+      })});
+      const j=await res.json();
+      reply=j.content?.[0]?.text||null;
+      if(!reply){
+        summary.innerHTML=renderTelloText(portfolioPlainSummary(rows))
+          +'<div style="margin-top:8px;font-size:12px;color:var(--text2)">'+esc(aiErrorText(j,res.status))+' This summary was computed from the table instead.</div>';
+        return;
+      }
+    }catch(e){
+      summary.innerHTML=renderTelloText(portfolioPlainSummary(rows))
+        +'<div style="margin-top:8px;font-size:12px;color:var(--text2)">Tello could not be reached, so this summary was computed from the table instead.</div>';
+      return;
+    }
+    summary.innerHTML=renderTelloText(reply);
+    track('portfolio_briefing',{homes:take.length});
+  }catch(e){
+    out.innerHTML='<div style="font-size:13px;color:var(--text2)">The portfolio could not be read: '+esc((e&&e.message)||String(e))+'</div>';
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Brief me on every home';}
+  }
 }
 
 // ===== TELLO CHAT DOCK =====
