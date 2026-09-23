@@ -404,8 +404,9 @@ that leaves the database.
 
 `#ai-portfolio` in the Tello tab, `renderPortfolioCard` / `runPortfolioBriefing`
 in `index.html`. One row per home plus a Tello summary for someone who runs
-several homes. Built for the Ghost Audit pilot; runbook in
-`docs/ghost-audit-pilot.md`, public page `title-22.com/pilot/`.
+several homes. Built for the 30-Day Proof (called "Ghost Audit" until
+2026-09-23); runbook in `docs/30-day-proof.md`, public page
+`title-22.com/pilot/`.
 
 - **No-PHI by construction.** Reads only `compliance_tasks(completed,due_date)`,
   staff certification dates/flags (no names) and `incidents(occurred_at)`. No

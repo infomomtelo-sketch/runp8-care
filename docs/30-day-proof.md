@@ -1,4 +1,9 @@
-# The Ghost Audit pilot
+# The 30-Day Proof
+
+Called the "Ghost Audit" pilot until 2026-09-23. Renamed because "ghost" read
+as covert and "audit" as a licensing inspection — the thing CDSS does, and a
+claim this product does not make. The tone of the name is the tone of the
+offer: we show, they judge. Two homes, thirty days, judge it on day 30.
 
 A sales motion for operators with several homes: a regional director, an owner
 with a portfolio, a management company. Three parts, in the order a prospect
@@ -13,7 +18,7 @@ meets them.
 The public page is `title-22.com/pilot/` (title-22-site). This file is the
 runbook behind it.
 
-## What "ghost" means, and the line it must not cross
+## What "beside" means, and the line it must not cross
 
 The pilot runs **beside** whatever the facility uses today. Nothing is
 imported from their systems, nothing is connected to them, and nothing in
