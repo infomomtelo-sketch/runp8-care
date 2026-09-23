@@ -104,6 +104,7 @@
   .ob-explore-btn strong{display:block;font-size:15px;font-weight:600;color:var(--teal)}
   .ob-explore-btn span{display:block;font-size:13px;color:var(--text2);margin-top:2px}
   .signup-nodetails{display:flex;gap:6px;align-items:flex-start;text-align:left;font-size:13px;line-height:1.45;color:var(--teal);background:var(--teal-light);border-radius:var(--radius);padding:9px 12px;margin:-4px 0 16px}
+  .signup-noobligation{text-align:left;font-size:12.5px;line-height:1.5;color:var(--text2);margin:-6px 0 16px}
   .signup-nodetails .ic{flex:0 0 auto;width:15px;height:15px;margin-top:2px}
   .ob-trust{display:flex;gap:6px;align-items:flex-start;margin:-6px 0 16px;font-size:12px;line-height:1.45;color:var(--text2)}
   .ob-trust .ic{flex:0 0 auto;width:14px;height:14px;margin-top:1px;color:var(--teal)}
@@ -639,12 +640,17 @@
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
       <h2>Start your free trial</h2>
-      <p>14 days free · No credit card required</p>
+      <p>30 days free · No credit card · Nothing to cancel</p>
       <!-- The promise title-22.com makes on every trial CTA. True because
            signup asks for nothing else, and the practice home (startJustLooking)
            needs nothing else. Keep them in step: if signup ever asks for a
            facility detail, this line is false. -->
       <p class="signup-nodetails"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Just an email to start. No facility name, license number or address — a practice home with invented staff is ready inside.</p>
+      <!-- Zero obligation, and literally true: no card is ever taken at signup,
+           so there is nothing to charge, and an expired trial turns read-only
+           (t22ReadOnly) with every record kept. If either stops being true,
+           this line has to change with it. -->
+      <p class="signup-noobligation">Take your time. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account simply turns read-only — everything you entered stays.</p>
       <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
@@ -834,12 +840,12 @@
     </div>
     <div class="main-content">
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-star"/></svg> You're on a free trial — <span id="trial-days-left">14</span> days remaining.</div>
+        <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-star"/></svg> Free trial — <span id="trial-days-left">30</span> days left. No card on file, so nothing is charged when it ends.</div>
         <button onclick="switchTab('billing')" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
       </div>
       <div id="demo-banner" style="display:none;background:linear-gradient(90deg,#BA7517,#d99a3d);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-flask"/></svg> You're exploring the Title22 sandbox — read-only sample data.</div>
-        <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 14-day free trial →</button>
+        <button onclick="window.location.href='https://title22.app/?plan=lite&utm_source=sandbox&mode=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 30-day free trial →</button>
       </div>
 
       <!-- DASHBOARD -->
@@ -1836,7 +1842,7 @@ document.addEventListener('visibilitychange',()=>{
   if (ref) {
     sessionStorage.setItem('title22_ref', ref);
     // Validate against real trainer codes so referred signups get the
-    // trainer's trial length (e.g. 90 days) instead of the default 14.
+    // trainer's trial length (e.g. 90 days) instead of the default T22_TRIAL_DAYS.
     // Falls back to the default silently if the code doesn't exist, the
     // RPC isn't deployed yet, or the network call fails.
     try {
@@ -2173,24 +2179,30 @@ async function planToStamp(userId){
 // email confirmation is.
 //
 // Resolved here from the durable code instead, with sessionStorage kept only
-// as the fast path. Falls back to 14 silently on any failure, exactly as
+// as the fast path. Falls back to T22_TRIAL_DAYS silently on any failure, exactly as
 // before: a trainer's student never gets LESS than an ordinary signup.
+// The trial length. 30 days, no card, nothing to cancel (2026-09-23): 14 days
+// read as a deadline — a busy shift on day one and by day five the person
+// feels they have missed it. A trainer code can give MORE (90 by default) and
+// never less: a student is not handed a shorter trial than a stranger.
+const T22_TRIAL_DAYS=30;
 async function t22RefTrialDays(user){
   const cached=parseInt(sessionStorage.getItem('title22_ref_trial_days'),10);
-  if(cached>0)return cached;
+  if(cached>0)return Math.max(cached,T22_TRIAL_DAYS);
   const code=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
-  if(!code)return 14;
+  if(!code)return T22_TRIAL_DAYS;
   try{
     const{data}=await sb.rpc('title22_check_trainer_code',{p_code:code});
     const row=Array.isArray(data)?data[0]:data;
     const days=row&&parseInt(row.trial_days,10);
     if(days>0){
+      const d=Math.max(days,T22_TRIAL_DAYS);
       // Cache it so a second stamp in the same tab costs no round trip.
-      try{sessionStorage.setItem('title22_ref_trial_days',String(days));}catch(e){}
-      return days;
+      try{sessionStorage.setItem('title22_ref_trial_days',String(d));}catch(e){}
+      return d;
     }
   }catch(e){/* default trial length applies */}
-  return 14;
+  return T22_TRIAL_DAYS;
 }
 
 async function ensureProfile(user){
@@ -3278,7 +3290,7 @@ async function resolveMemberEntitlement(){
 async function resolveTierLimits(){
   // Sandbox is entitled by construction: role is readonly and anon RLS
   // blocks writes, so this grants view access only.
-  const own=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
+  const own=demoMode?{entitled:true,plan:'trial',daysLeft:T22_TRIAL_DAYS}:await resolveEntitlement();
   t22CoveredByFacility=null;
   let ent=own;
   if(!demoMode&&!own.entitled){
@@ -6417,7 +6429,7 @@ async function demoComplianceAnswer(query){
       'You can press anything. The sandbox is read-only, so nothing you do is saved — reload and it is exactly as you found it.';
   }else if(q.includes('price')||q.includes('cost')||q.includes('plan')||q.includes('much')||q.includes('subscri')){
     body='<strong>Plans</strong><br><br>'+
-      'Fourteen days free, no card. After that it is priced per facility, and your staff are covered by the facility\u2019s plan — '+
+      'Thirty days free, no card, nothing to cancel. After that it is priced per facility, and your staff are covered by the facility\u2019s plan — '+
       'you are not billed per caregiver.<br><br>Current pricing is on the Billing page, and it is the same page you would see as a customer.';
   }else{
     const n=f.overdue.length+f.certIssues.length+f.docGaps.length;

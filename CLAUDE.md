@@ -426,6 +426,30 @@ looking real, and print a fake licence on the DSS audit packet.
   "never shared with anyone" — it is stored with the database host, and the
   packet exists to be handed to an analyst.
 
+## The trial is 30 days, no card, nothing to cancel (2026-09-23)
+
+`T22_TRIAL_DAYS = 30` in index.html, read by `t22RefTrialDays`. It was 14,
+and 14 read as a deadline: a busy shift on day one and by day five the
+person felt they had missed it. A trainer code can give more (90 by default)
+and never less — `Math.max` with the default, so a student is never handed a
+shorter trial than a stranger.
+
+"Zero obligation" is a claim about the code, and it is true only while both
+halves hold: signup takes no card (so nothing can be charged), and an expired
+trial is read-only with every record kept (`t22ReadOnly`). If either changes,
+the signup card, the trial banner, tello.html and title-22.com all say
+something false.
+
+Trials already running keep the end date they were stamped with.
+`migrations/2026-09-23_title22_trial_30_days.sql` moves them out to 30 —
+preview first, guarded, verified on Postgres 16, NOT run. Its step 3
+(reopen expired trials for 30 days) is a win-back decision, commented out.
+
+The `trial_warning` email template in `workers/title22-email/` no longer says
+"upgrade to keep access to your facility records" — false since expiry became
+read-only. Nothing calls that template today, and the Worker deploys by hand,
+so the source change is not live until someone deploys it.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by
