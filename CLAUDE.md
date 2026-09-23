@@ -428,6 +428,28 @@ several homes. Built for the 30-Day Proof (called "Ghost Audit" until
   `title22_portfolio_announced` in localStorage) when onboarding adds the
   second real home. Never in the sandbox.
 
+## Way-finding motion in the app (2026-09-23)
+
+New accounts stopped on the dashboard not knowing where anything was — on a
+phone every destination is behind the avatar button. `maybeIntroNav()` (called
+from `initFacility` after `mountTelloDock`) runs ONCE per browser
+(`localStorage.title22_nav_intro`): the sidebar slides in item by item, the
+account menu opens itself with its items dropping in, a line at its top says
+everything is in this menu, and one item carries "Start here"
+(`t22StartHereTab`: Staff, else Checklist, Start Your Home or Dashboard —
+Start Your Home first when the person was sent to the Launch Hub). The marks
+go at the first click anywhere.
+
+Not in the sandbox (the guided tour runs there), during the tour, or over an
+open modal; in those cases the flag stays unset and the next arrival tries
+again. Every later open of the menu drops its items in quickly
+(`t22MenuCascade`, ~0.6s at most). `prefers-reduced-motion` gets the open menu
+and the marks, with no movement. Reads and writes nothing but that one flag.
+
+The marketing site's matching piece is `title-22-site/assets/motion.js`: an
+intro the first time someone lands on title-22.com, and the readiness dial on
+every click through to title22.app.
+
 ## Explore without a licence number (2026-09-23)
 
 The onboarding form now has a way out for whoever stops at the licence field:

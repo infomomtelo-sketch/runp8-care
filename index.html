@@ -364,6 +364,21 @@
   .incident-type-behavioral{background:#E1F5EE;color:#0F6E56}
   .incident-type-other{background:#F1EFE8;color:#5F5E5A}
   @keyframes spin{to{transform:rotate(360deg)}}
+  /* Way-finding motion (2026-09-23). The account menu drops its items in one
+     by one every time it opens; on a first arrival the sidebar slides in the
+     same way and "Start here" marks one item. End states are the normal
+     styles, so a missed or disabled animation leaves everything in place. */
+  @keyframes t22Drop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @keyframes t22Slide{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+  @keyframes t22Pulse{0%,100%{box-shadow:0 0 0 2px var(--teal)}50%{box-shadow:0 0 0 5px rgba(15,110,86,.25)}}
+  #user-menu.t22-drop>*{animation:t22Drop .22s ease both;animation-delay:calc(var(--i,0) * 28ms)}
+  .sidebar.t22-cascade>.nav-item{animation:t22Slide .3s ease both;animation-delay:calc(var(--i,0) * 55ms)}
+  .t22-start-here{box-shadow:0 0 0 2px var(--teal);animation:t22Pulse 1.6s ease-in-out 3}
+  #user-menu .t22-start-chip{margin-left:auto;font-size:10px;font-weight:700;color:#fff;background:var(--teal);border-radius:20px;padding:2px 8px;white-space:nowrap}
+  #t22-menu-hint{font-size:12px;color:var(--text2);padding:6px 12px 8px;line-height:1.4}
+  @media (prefers-reduced-motion:reduce){
+    #user-menu.t22-drop>*,.sidebar.t22-cascade>.nav-item,.t22-start-here{animation:none}
+  }
   @media(max-width:768px){
     .app-shell{flex-direction:column}
     .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);padding:.75rem;display:flex;flex-direction:row;align-items:center;gap:0;overflow-x:auto;position:sticky;top:65px;z-index:50;background:var(--gray-bg)}
@@ -873,7 +888,7 @@
         </div>
         <div id="team-invite-prompt" style="display:none;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div id="team-prompt-title" style="font-weight:700;font-size:15px;margin-bottom:6px"><svg class="ic"><use href="#i-users"/></svg> You're the only one here</div>
-          <div id="team-prompt-body" style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so MAR and incidents get logged on shift, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
+          <div id="team-prompt-body" style="font-size:13px;color:var(--text2);margin-bottom:14px">Invite your caregivers so incidents get logged on shift and checklist items get ticked as they are done, instead of you entering it all later. Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what you hand an inspector.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button id="team-prompt-cta" class="btn btn-primary" style="font-size:13px" onclick="switchTab('team')">Invite your team</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="dismissTeamPrompt()">Not now</button>
@@ -2097,7 +2112,80 @@ function setupVideoHelpButtons(){
 
 function toggleUserMenu(){
   const menu=document.getElementById('user-menu');
-  if(menu)menu.style.display=menu.style.display==='none'?'block':'none';
+  if(!menu)return;
+  const opening=menu.style.display==='none';
+  menu.style.display=opening?'block':'none';
+  if(opening)t22MenuCascade(menu);
+}
+
+// Drop the menu's visible items in one after another. Indexes only the
+// visible ones, so the hidden Lite entries do not leave gaps in the rhythm,
+// and caps the delay so a long menu is fully in by ~0.6s.
+function t22MenuCascade(menu){
+  try{
+    if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    let i=0;
+    for(const el of menu.children){if(el.offsetParent!==null)el.style.setProperty('--i',Math.min(i++,16));}
+    menu.classList.remove('t22-drop');void menu.offsetWidth;menu.classList.add('t22-drop');
+  }catch(e){}
+}
+
+// First arrival inside the app. People who had just signed up stopped on the
+// dashboard not knowing where anything was: on a phone every destination is
+// behind the avatar button, and nothing said so. So, once per browser, the
+// sidebar slides in item by item, the account menu opens by itself with its
+// items dropping in, and one item is marked "Start here".
+//
+// Not in the sandbox (the guided tour runs there), not during the tour, not
+// over an open modal — in those cases the flag is left unset and the next
+// arrival tries again. Way-finding only: nothing is read or written but one
+// localStorage flag.
+const NAV_INTRO_SEEN='title22_nav_intro';
+function t22StartHereTab(){
+  let tabs=[];try{tabs=allowedTabs();}catch(e){}
+  const onLaunch=document.getElementById('tab-launch')?.style.display==='block';
+  const order=onLaunch?['launch','staff','checklist','dashboard']:['staff','checklist','launch','dashboard'];
+  return order.find(t=>tabs.includes(t))||null;
+}
+function t22ClearStartHere(){
+  document.querySelectorAll('.t22-start-here').forEach(el=>el.classList.remove('t22-start-here'));
+  document.querySelectorAll('.t22-start-chip,#t22-menu-hint').forEach(el=>el.remove());
+}
+function maybeIntroNav(){
+  if(demoMode||!currentFacility)return;
+  try{if(localStorage.getItem(NAV_INTRO_SEEN))return;}catch(e){return;}
+  setTimeout(()=>{
+    try{
+      const app=document.getElementById('page-app');
+      if(!app||getComputedStyle(app).display==='none')return;
+      if(tourIdx>=0||document.querySelector('.modal-overlay.open'))return;
+      localStorage.setItem(NAV_INTRO_SEEN,'1');
+      const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const side=document.querySelector('.sidebar');
+      if(side&&!reduce){
+        let i=0;
+        for(const el of side.children){if(el.classList.contains('nav-item')&&el.offsetParent!==null)el.style.setProperty('--i',i++);}
+        side.classList.add('t22-cascade');
+        setTimeout(()=>side.classList.remove('t22-cascade'),i*55+500);
+      }
+      const menu=document.getElementById('user-menu');
+      if(!menu)return;
+      const tab=t22StartHereTab();
+      if(!document.getElementById('t22-menu-hint')){
+        const hint=document.createElement('div');hint.id='t22-menu-hint';
+        hint.textContent='New here? Everything in Title22 is in this menu'+(tab?' \u2014 start with the marked one.':'.');
+        menu.insertBefore(hint,menu.children[1]||null);
+      }
+      if(tab){
+        const mi=document.getElementById('menu-'+tab), ni=document.getElementById('nav-'+tab);
+        if(mi){mi.classList.add('t22-start-here');const c=document.createElement('span');c.className='t22-start-chip';c.textContent='Start here';mi.appendChild(c);}
+        if(ni)ni.classList.add('t22-start-here');
+      }
+      if(menu.style.display==='none')toggleUserMenu();
+      // Gone at the first click anywhere, including the one that uses it.
+      setTimeout(()=>document.addEventListener('click',t22ClearStartHere,{once:true,capture:true}),0);
+    }catch(e){}
+  },700);
 }
 
 document.addEventListener('click',function(e){
@@ -3649,6 +3737,7 @@ async function initFacility(){
   // only meaningful once the role and entitlement are resolved. Re-runs on a
   // facility switch, which is where the per-facility history is picked up.
   mountTelloDock();
+  maybeIntroNav();
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
   }else if(t22Plan==='trial'&&!t22CoveredByFacility){
