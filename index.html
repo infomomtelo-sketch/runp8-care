@@ -100,6 +100,11 @@
   .ob-path-btn{display:block;width:100%;text-align:left;min-height:56px;padding:16px 18px;margin-bottom:12px;border-radius:var(--radius);line-height:1.4}
   .ob-path-btn strong{display:block;font-size:16px;font-weight:600}
   .ob-path-btn span{display:block;font-size:13px;color:var(--text2);margin-top:3px}
+  .ob-explore-btn{display:block;width:100%;text-align:left;min-height:56px;padding:12px 16px;margin:0 0 18px;border-radius:var(--radius);line-height:1.4;border-color:var(--teal)}
+  .ob-explore-btn strong{display:block;font-size:15px;font-weight:600;color:var(--teal)}
+  .ob-explore-btn span{display:block;font-size:13px;color:var(--text2);margin-top:2px}
+  .ob-trust{display:flex;gap:6px;align-items:flex-start;margin:-6px 0 16px;font-size:12px;line-height:1.45;color:var(--text2)}
+  .ob-trust .ic{flex:0 0 auto;width:14px;height:14px;margin-top:1px;color:var(--teal)}
   .ob-path-btn:hover span{color:var(--teal)}
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
   .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -749,12 +754,29 @@
       <div class="onboard-step">Your home</div>
       <h2 id="ob-form-title">Tell us about your facility</h2>
       <p id="ob-form-sub">This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
+      <!-- The way out for whoever reached this form and stopped at the licence
+           field. The same practice home as "Show me around" — NOT this form
+           pre-filled with placeholders, which would make a facility the app
+           does not know is a sample: it would count against the trial's
+           facility cap, sit in the switcher looking real, and print its fake
+           licence number on a DSS audit packet. -->
+      <button type="button" class="btn btn-outline ob-explore-btn" id="ob-explore" onclick="startJustLooking(this)">
+        <strong>Just exploring? Open the practice home instead</strong>
+        <span>Nothing to fill in. Everyone in it is invented.</span>
+      </button>
       <div class="form-group"><label>Facility type</label><select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
       <div class="form-group"><label>Facility name</label><input type="text" id="ob-name" autocomplete="organization" placeholder="Sunrise Care Home"/></div>
       <div class="form-row">
-        <div class="form-group" id="ob-row-license"><label>License number</label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX"/></div>
+        <div class="form-group" id="ob-row-license"><label>License number <span style="font-weight:400;color:var(--text2)">(optional)</span></label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX" aria-describedby="ob-license-trust"/></div>
         <div class="form-group"><label>Facility capacity</label><input type="number" id="ob-capacity" autocomplete="off" placeholder="6"/></div>
       </div>
+      <!-- Every sentence here is checked against the code: license_number is
+               read only by the Facility tab and the DSS audit packet the user
+               prints (index.html, grep license_number). It is not in Tello's
+               context, not in track(), and not sent to any worker. Do not add
+               "never shared with anyone": it is stored with our database host,
+               and the packet is printed precisely to hand to an analyst. -->
+      <div class="ob-trust" id="ob-license-trust"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg><span>No PHI, by design. Title22 does not send your license number to CDSS or any state agency. It appears only on your own Facility page and on a DSS audit packet if you choose to print one. Leave it blank and add it later if you prefer.</span></div>
       <div class="form-group"><label>Street address</label><input type="text" id="ob-address-street" autocomplete="off" placeholder="1234 Main St"/></div>
       <div class="form-row">
         <div class="form-group"><label>City</label><input type="text" id="ob-address-city" autocomplete="off" placeholder="Fresno"/></div>
@@ -1816,6 +1838,13 @@ document.addEventListener('visibilitychange',()=>{
       if (row && row.trial_days) sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
     } catch (e) { /* default trial length applies */ }
   }
+  // ?mode=sandbox — title-22.com's trial CTAs. Remembered, not acted on: the
+  // visitor has not signed up yet. localStorage rather than sessionStorage so
+  // it survives the confirmation email opening in a new tab; it expires after
+  // a day and is consumed by maybeAutoExplore, which does the checking.
+  if ((params.get('mode')||'').toLowerCase() === 'sandbox') {
+    try { localStorage.setItem('title22_explore', String(Date.now())); } catch (e) {}
+  }
   const plan = (params.get('plan')||'').toLowerCase();
   // lite and multi FIRST, because they are the only two tiers that are
   // actually sellable — and until 2026-09-14 neither was in this list. A
@@ -2502,7 +2531,7 @@ function chooseOnboardPath(path){
     ?'A working name is enough — you can change it later. Everything else is optional and can wait until you have it.'
     :'This information helps Title22 load the correct Title 22 requirements for your RCFE.';
   if(submit)submit.textContent=starting?'Start my checklist →':'Set up my facility →';
-  ['ob-row-license','ob-row-cert'].forEach(id=>{
+  ['ob-row-license','ob-license-trust','ob-row-cert'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.style.display=starting?'none':'';
   });
@@ -2512,12 +2541,28 @@ function chooseOnboardPath(path){
 // roster for an edu account, the Lite sample (five staff, no residents) for
 // everyone else — so this one button is right both for a trainer already
 // granted Classroom and for a stranger who has been granted nothing.
-async function startJustLooking(){
-  const btn=document.querySelector('.ob-path-btn[onclick*="looking"]');
+// ?mode=sandbox arrived with this visitor (see the URL capture at the top of
+// the script). Presses "Show me around" for them — once, and only where that
+// button is the right answer: signed in, no facility at all, no invitation
+// waiting, a verified trial. A paid account, an invited caregiver or an
+// expired trial is left on the normal screen, and the flag is dropped either
+// way so a later visit never seeds anything by surprise.
+async function maybeAutoExplore(){
+  let at=0;
+  try{at=+localStorage.getItem('title22_explore')||0;localStorage.removeItem('title22_explore');}catch(e){return;}
+  if(!at||Date.now()-at>86400000)return;
+  if(demoMode||!currentUser||(allFacilities||[]).length)return;
+  if(t22PendingInvite||t22ReadOnly||!t22Entitled||!t22EntitlementVerified)return;
+  if(t22Plan!=='trial')return;
+  await startJustLooking();
+}
+
+async function startJustLooking(pressed){
+  const btn=pressed||document.querySelector('.ob-path-btn[onclick*="looking"]');
   const original=btn?btn.innerHTML:null;
   if(btn){btn.disabled=true;btn.innerHTML='<strong>Loading your practice home…</strong>';}
   try{
-    await seedDemoData();
+    await seedDemoData({quick:true});
   }finally{
     // seedDemoData ends on the dashboard, so this only matters when it failed
     // and left them here with a dead button.
@@ -3462,7 +3507,10 @@ async function loadAppInner(){
   // is signed in — initFacility reads currentUser.email on its second line —
   // so stop rather than initialise a facility for nobody.
   if(!currentUser)return;
-  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();applyLiteMode();showPage('onboard');return;}
+  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();applyLiteMode();showPage('onboard');maybeAutoExplore();return;}
+  // Somebody with a facility already: ?mode=sandbox is not for them. Drop it
+  // so it cannot fire on some later visit.
+  try{localStorage.removeItem('title22_explore');}catch(e){}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
 }
@@ -5374,7 +5422,7 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 // alongside the first.
 let seedDemoRunning=false;
 
-async function seedDemoData(){
+async function seedDemoData(opts){
   // The layer under the hidden button, same shape as every other control here:
   // hiding is the product decision, this is what makes it true. A subscriber
   // who reaches this by any route is told why rather than handed a second
@@ -5393,7 +5441,7 @@ async function seedDemoData(){
   // button that creates it. t22SeedingSample below is what lets the inserts
   // through t22Fetch while it is being built.
   const forClassroom=!T22_MAR_PRODUCT&&t22EntitlementVerified&&t22Plan==='edu';
-  if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData();
+  if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData(opts);
   if(seedDemoRunning)return;
   // The `allFacilities.length` half is what makes a first-run sample possible
   // at all. currentUserRole is initialised 'readonly' and only becomes
@@ -5570,8 +5618,14 @@ async function seedDemoData(){
 // an overdue TB test, a CPR card three weeks out, an expired First Aid, a
 // LiveScan that was never cleared, mandated reporter training missing, and
 // two people short of their 40 hours.
-async function seedLiteDemoData(){
+// opts.quick: the onboarding "Show me around" door (or ?mode=sandbox). Only
+// honoured for an account with NO facility at all — then the confirm's whole
+// message ("your real facilities are not touched") has nothing to protect, and
+// two modal dialogs are most of the time between signing up and a dashboard.
+// Anyone who already has a facility still gets both, exactly as before.
+async function seedLiteDemoData(opts){
   if(seedDemoRunning)return;
+  const quick=!!(opts&&opts.quick)&&!(allFacilities||[]).length;
   // The `allFacilities.length` half is what makes a first-run sample possible
   // at all. currentUserRole is initialised 'readonly' and only becomes
   // 'administrator' inside initFacility, which cannot run without a facility —
@@ -5601,7 +5655,7 @@ async function seedLiteDemoData(){
     }
     reuse=existing;
   }
-  if(!confirm((reuse
+  if(!quick&&!confirm((reuse
       ?'A previous attempt at the sample facility did not finish. This clears out what it left behind and loads it again'
       :'This creates a separate sample facility ("Sunrise Demo Home")')
     +' with 5 staff, expiring certifications, unfinished 40-hour training and two incidents to document. No resident data — Lite holds none. Your real facilities are not touched. Continue?'))return;
@@ -5672,6 +5726,7 @@ async function seedLiteDemoData(){
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
+    if(quick){t22Toast('Your practice home is ready. Everyone in it is invented — add your own home from the user menu whenever you like.');return;}
     alert('Sample facility loaded — "Sunrise Demo Home (Sample)": five staff, four of them with something out of date, and a checklist to work. Nobody in it is real.'
    + (ownedFacilityCount()>1
       ? ' Switch back to your own facility any time from the user menu.'

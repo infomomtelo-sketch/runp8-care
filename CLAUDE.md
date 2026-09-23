@@ -400,6 +400,32 @@ compliance answer about one home is wrong for another. The input goes through
 `t22PhiBlock` like the Tello tab's — those two boxes are the only free text
 that leaves the database.
 
+## Explore without a licence number (2026-09-23)
+
+The onboarding form now has a way out for whoever stops at the licence field:
+**"Just exploring? Open the practice home instead"** (`#ob-explore`). It runs
+the same `startJustLooking` as the chooser's "Show me around" — the Lite
+sample facility from `seedLiteDemoData`. It is NOT the form pre-filled with
+placeholders: a placeholder facility is not recognised by `isSampleFacility`,
+so it would count against the trial's 2-facility cap, sit in the switcher
+looking real, and print a fake licence on the DSS audit packet.
+
+- `seedLiteDemoData({quick:true})` skips the confirm and the closing alert
+  (a toast instead) — only when the account has NO facility at all. Anyone
+  with a facility gets both dialogs exactly as before.
+- `?mode=sandbox` (title-22.com's trial CTAs) is stored as
+  `localStorage.title22_explore` and consumed by `maybeAutoExplore` at the
+  zero-facility onboarding exit: it presses "Show me around" once, only for a
+  verified, entitled `trial` with no pending invite. Paid, edu, invited and
+  expired accounts are left on the normal screen; the flag is dropped either
+  way, and after 24h.
+- The licence field says "(optional)" — it always was: `handleOnboard`
+  requires only the name. The lock note under it is written from what
+  `license_number` actually does (Facility tab and the printed DSS packet;
+  not in Tello's context, `track()` or any worker). Do not strengthen it to
+  "never shared with anyone" — it is stored with the database host, and the
+  packet exists to be handed to an analyst.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by
