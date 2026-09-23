@@ -78,7 +78,12 @@ select f.id, f.name, f.created_at, u.email as owner
          where f2.name ilike '%sample%'
          order by f2.created_at desc
          limit 1
-      );
+      )
+   -- The public sandbox (title22.app/?demo=1) reads the is_demo facility. It is
+   -- a sample home too, and this used to keep only the NEWEST sample, so the
+   -- sandbox's facility was in the delete set whenever a newer sample existed.
+   -- Found 2026-09-23 when the sandbox answered "isn't available right now".
+   and not f.is_demo;
 
 -- Report 1: what is being kept, and why ----------------------------------
 
@@ -89,6 +94,10 @@ union all
 select 'KEPT — holds incidents (LIC 624)', f.name, u.email, f.created_at
   from public.facilities f join auth.users u on u.id = f.user_id
  where exists (select 1 from public.incidents i where i.facility_id = f.id)
+union all
+select 'KEPT — the public sandbox (is_demo)', f.name, u.email, f.created_at
+  from public.facilities f join auth.users u on u.id = f.user_id
+ where f.is_demo
 union all
 select 'KEPT — the sample home', f.name, u.email, f.created_at
   from public.facilities f join auth.users u on u.id = f.user_id

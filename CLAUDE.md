@@ -404,8 +404,9 @@ that leaves the database.
 
 `#ai-portfolio` in the Tello tab, `renderPortfolioCard` / `runPortfolioBriefing`
 in `index.html`. One row per home plus a Tello summary for someone who runs
-several homes. Built for the Ghost Audit pilot; runbook in
-`docs/ghost-audit-pilot.md`, public page `title-22.com/pilot/`.
+several homes. Built for the 30-Day Proof (called "Ghost Audit" until
+2026-09-23); runbook in `docs/30-day-proof.md`, public page
+`title-22.com/pilot/`.
 
 - **No-PHI by construction.** Reads only `compliance_tasks(completed,due_date)`,
   staff certification dates/flags (no names) and `incidents(occurred_at)`. No
@@ -482,6 +483,49 @@ The `trial_warning` email template in `workers/title22-email/` no longer says
 "upgrade to keep access to your facility records" — false since expiry became
 read-only. Nothing calls that template today, and the Worker deploys by hand,
 so the source change is not live until someone deploys it.
+
+## Partner links: title-22.com/r/<code> (2026-09-23)
+
+The one link a partner shares is **`title-22.com/r/<code>`**, a Cloudflare
+Pages rule in title-22-site's `_redirects` that sends it to
+`title22.app/?ref=<code>&src=partner-link`. It exists because the old flow lost
+credit in three places:
+
+- `/affiliates/` handed out `title-22.com/?ref=<code>`, and nothing on the
+  site read `?ref=`: the code died on the homepage. The site homepage now
+  carries `?ref=` onto every app link, so links already shared still work.
+- The app saved `?ref=` as typed, but the payout report joins
+  `profiles.referred_by = title22_trainers.code` exactly, and codes are stored
+  lowercase. `?ref=JSmith` got the right trial and no credit. The capture now
+  lowercases and keeps only letters, digits and hyphens — the same rule as
+  `title22_create_trainer`. `migrations/2026-09-23_title22_normalise_referral_codes.sql`
+  fixes rows written before (preview first, verified; RUN 2026-09-23, no errors).
+- `/affiliates/` stripped hyphens, so `oak-hill` became `oakhill` and never
+  matched. It keeps them now.
+
+A code does not have to be registered to be recorded: `referred_by` is saved
+for any code, and the payout report joins at read time, so signups made before
+Eli registers a code still count once he does. Registering is one tap on
+`/affiliates/` (a pre-filled email). Self-serve registration would need an RPC
+anyone can call that writes a commission rate — deliberately not built.
+
+## The public sandbox is ONE flagged facility (2026-09-23)
+
+`title22.app/?demo=1` reads the single facility with `is_demo = true`, as the
+anon role. Since 2026-09-23 that is **`970f35b4-ec9d-47a2-be85-2b5e0ee23285`**,
+a "Sunrise Demo Home (Sample)" owned by the company address and seeded by the
+Lite seeder — five invented staff, four with something out of date.
+
+It went missing once: the sandbox answered "isn't available right now" and
+nothing was flagged, most likely because the test-facility reset kept only the
+newest sample home and deleted the older one that was the sandbox. The reset
+now never touches an `is_demo` facility. Restored with
+`migrations/2026-09-23_title22_restore_demo_sandbox.sql`.
+
+Rules: do not delete it, do not clear its flag, and never flag a real home or a
+sample owned by a customer — whatever is flagged is readable by anyone on the
+internet. The 30-Day Proof's executive presentation, the site's "See it first"
+button and `/pilot/` all open this sandbox.
 
 ## Launch Hub — the "Start Your Home" tab
 
