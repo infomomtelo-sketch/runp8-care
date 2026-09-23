@@ -2659,6 +2659,20 @@ async function handleOnboard(){
   // role or entitlement does not allow — that falls back to the dashboard.
   const wantLaunch=obPath==='starting'&&allowedTabs().includes('launch');
   switchTab(wantLaunch?'launch':'dashboard');
+  maybeAnnouncePortfolio();
+}
+
+// The moment the portfolio briefing starts to exist for someone — their second
+// home of their own (the sample does not count) — is the moment to say so.
+// Once per browser, and only where the card will actually be there when they
+// look: portfolioAllowed() is the same rule the Tello tab uses.
+function maybeAnnouncePortfolio(){
+  try{
+    if(!portfolioAllowed()||demoMode)return;
+    if(localStorage.getItem('title22_portfolio_announced'))return;
+    localStorage.setItem('title22_portfolio_announced','1');
+    t22Toast('Two homes, one account. Tello tab \u2192 Portfolio briefing puts them side by side.');
+  }catch(e){/* a courtesy; nothing depends on it */}
 }
 
 // Copies every checklist_items row into compliance_tasks for one facility.
@@ -6617,6 +6631,12 @@ function renderPortfolioCard(){
   if(note)note.textContent=demoMode
     ?'Sandbox: the sample home as it is recorded, beside the same home with every open item closed. The second row is an illustration, not a facility. Counts only — no resident, and no staff member by name.'
     :'One row per home, '+Math.min(n,PORTFOLIO_MAX)+' home'+(n===1?'':'s')+', lowest checklist first. Counts only — no resident, and no staff member by name. Tello writes the summary from these numbers and nothing else.';
+  // The 30-Day Proof is built on this card: press it on day 1 and day 30 and
+  // compare. Said here because this is where an owner with two homes meets it.
+  let how=document.getElementById('ai-portfolio-how');
+  if(!how&&note){how=document.createElement('div');how.id='ai-portfolio-how';how.style.cssText='font-size:12px;margin:-4px 0 10px';
+    how.innerHTML='Press it on day 1 and again on day 30, and compare \u2014 <a href="https://title-22.com/pilot/" target="_blank" rel="noopener" style="color:var(--teal);font-weight:600">how the 30-Day Proof uses this</a>.';
+    note.insertAdjacentElement('afterend',how);}
   card.style.display='';
 }
 
