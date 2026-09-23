@@ -59,38 +59,28 @@ it as a typical result.
 
 ## 2. Setting up the pilot
 
-**They sign up first.** At <https://title22.app>, with the email of whoever
-will own the pilot account. Every CTA on title-22.com leads there.
+**They sign up first**, with the email of whoever will own the pilot account.
+Send them to <https://title22.app> directly, not through a "Start free trial"
+button on title-22.com: those carry `?mode=sandbox` and drop a new account
+straight into the practice home, which is right for a stranger and wrong for a
+pilot that should start on the prospect's own homes.
 
-- A new account is a **14-day trial** that allows **two facilities** —
-  exactly the one-or-two-homes shape of the pilot, with no code change.
-- They add their one or two lowest-performing homes as facilities, and invite
-  the administrator of each from the Team tab.
-- **Do not** have them press "Load sample facility" in the pilot account. It
-  does not count against the cap, but it sits in the facility switcher next to
-  their real homes and invites exactly the confusion the pilot is meant to
-  remove.
+- **Every new account is already a 30-day trial** (`T22_TRIAL_DAYS`, since
+  2026-09-23), with no card and nothing to cancel. The pilot needs no manual
+  extension, no SQL, no pilot plan, no pilot code and no Stripe product — a
+  pilot is simply a trial that someone is walking with.
+- A trial allows **two facilities** — exactly the one-or-two-homes shape of
+  the pilot.
+- They add their one or two lowest-performing homes as facilities (the license
+  number is optional), and invite the administrator of each from the Team tab.
+- If they do end up in the practice home, nothing is lost: it does not count
+  against the two-facility cap, and the portfolio briefing leaves it out. They
+  add their real homes from the user menu. It is still clearer not to start
+  there, which is why the link above matters.
 
-**Extending the trial to 30 days is a manual step,** run in the Supabase SQL
-editor by someone on the Title22 team, after they have signed in once (the
-first sign-in is what stamps the 14-day trial):
-
-```sql
--- Read first: confirm it is the right account and still on trial.
-select p.id, u.email, p.title22_plan, p.title22_trial_ends_at
-from public.profiles p join auth.users u on u.id = p.id
-where u.email = 'director@example.com';
-
--- Then extend. Only a 'trial' row; never touch a paid plan this way.
-update public.profiles p
-set title22_trial_ends_at = now() + interval '30 days'
-from auth.users u
-where u.id = p.id and u.email = 'director@example.com'
-  and p.title22_plan = 'trial';
-```
-
-The app reads `title22_trial_ends_at` on the next refresh. There is no pilot
-plan, no pilot code and no new Stripe product — a pilot is a longer trial.
+A pilot that needs longer than 30 days is the one case for a manual step: move
+`profiles.title22_trial_ends_at` for that one account in the Supabase SQL
+editor, `where title22_plan = 'trial'` only, never on a paid plan.
 
 When it ends it behaves like any expired trial: **read-only, not locked out**.
 Their checklist, staff files and readiness scores are all still there, and
