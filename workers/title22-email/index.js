@@ -59,10 +59,10 @@ function emailTemplate(template, payload) {
       subject: `Your Title22 trial ends in ${daysLeft} days`,
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
-          <h2 style="margin:0 0 12px">Your trial is almost up.</h2>
+          <h2 style="margin:0 0 12px">A heads-up, nothing more.</h2>
           <p>Hi ${name}, your Title22 trial ends in <strong>${daysLeft} days</strong>.</p>
-          <p>Upgrade to keep access to your facility records, AI help, and billing tools.</p>
-          <p><a href="${payload.upgrade_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Upgrade now</a></p>
+          <p>There is no card on file, so nothing will be charged and there is nothing to cancel. When the trial ends your account turns read-only: everything you entered stays, and you can pick a plan whenever you are ready.</p>
+          <p><a href="${payload.upgrade_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">See the plans</a></p>
         </div>
       `,
     };

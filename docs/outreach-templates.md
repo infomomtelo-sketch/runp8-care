@@ -46,7 +46,7 @@ Every line is checked against the rules this product already holds itself to:
 | "ask 'Am I ready for DSS?'" | Instructs the prospect to ask the one question she is built to decline. |
 | "a demo facility with real (fake) residents … planted compliance gaps" | **False for anyone who signs up normally.** `seedDemoData` gates the resident sample on `t22Plan==='edu'`; everyone else falls through to `seedLiteDemoData()` — no residents, no MAR. |
 | `title-22.com/walkthrough` called a "10-minute self-serve demo" | That page is written steps now, not a player. |
-| "No cost, no catch" | It is free for 14 days and $29/month after. Saying the price builds more trust than hiding it. |
+| "No cost, no catch" | It is free for 30 days and $29/month after. Saying the price builds more trust than hiding it. |
 
 ---
 
@@ -69,7 +69,7 @@ Every line is checked against the rules this product already holds itself to:
 > all. No resident records, no medications, no medication log. That was a design
 > decision, not a gap.
 >
-> Free for 14 days, then $29 a month for one home. No card to start.
+> Free for 30 days, then $29 a month for one home. No card to start, nothing to cancel.
 >
 > title22.app
 >
@@ -100,7 +100,7 @@ part operators recognise fastest.
 > Everything entered is timestamped and the record is append-only — entries are
 > not edited away after the fact.
 >
-> title22.app — free for 14 days.
+> title22.app — free for 30 days.
 >
 > Eli
 >
@@ -192,7 +192,7 @@ If they say no, thank them and mark the row closed. There is no second call.
 
 > Hi — I build Title22, a record-keeping tool for California RCFE and ARF
 > operators. Staff certifications, expiry dates, incident reports and documents
-> in one place, so there's one page to print when DSS asks. Free for 14 days,
+> in one place, so there's one page to print when DSS asks. Free for 30 days,
 > $29 a month after, at title22.app. Happy to answer anything.
 
 Keep it short and put no link in the first message if the account is new —
