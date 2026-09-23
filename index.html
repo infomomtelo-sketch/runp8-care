@@ -1845,7 +1845,12 @@ document.addEventListener('visibilitychange',()=>{
 // https://title22.app/?plan=<tier>&utm_source=<source>&utm_campaign=<campaign>
 (async function () {
   const params = new URLSearchParams(window.location.search);
-  const ref = params.get('ref');
+  // Normalised to what title22_create_trainer stores (lowercase; letters,
+  // digits, hyphens). title22_check_trainer_code lowercases its input, so a
+  // ?ref=JSmith link always got the trainer's trial length; but the payout
+  // report joins profiles.referred_by = title22_trainers.code EXACTLY, so the
+  // same signup was then missing from the trainer's count.
+  const ref = (params.get('ref') || '').toLowerCase().trim().replace(/[^a-z0-9-]/g, '') || null;
   if (ref) {
     sessionStorage.setItem('title22_ref', ref);
     // Validate against real trainer codes so referred signups get the
@@ -8324,7 +8329,7 @@ async function createTrainerCode(){
   const row=Array.isArray(data)?data[0]:data;
   const link=`https://title22.app/?ref=${encodeURIComponent(row.code)}`;
   const firstName=(row.name||'').trim().split(/\s+/)[0]||row.name;
-  const message=`Hi ${firstName} — here's your Title22 link: ${link}\n\nShare it with your students — anyone who signs up through it gets a ${row.trial_days}-day free trial instead of the usual 14. It's reusable, so send the same link to every class, no need for a new one each time.`;
+  const message=`Hi ${firstName} — here's your Title22 link: ${link}\n\nThe short version to say in class or put on a slide: title-22.com/r/${row.code}\n\nShare it with your students — anyone who signs up through it gets a ${row.trial_days}-day free trial instead of the usual 30. It's reusable, so send the same link to every class, no need for a new one each time.`;
   resultEl.innerHTML=`
     <div style="font-weight:600;margin-bottom:6px">Created — message ready to send to ${esc(row.name)}:</div>
     <textarea readonly id="partner-message-box" style="width:100%;min-height:5.5em;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;background:var(--white);resize:vertical">${esc(message)}</textarea>

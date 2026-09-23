@@ -483,6 +483,31 @@ The `trial_warning` email template in `workers/title22-email/` no longer says
 read-only. Nothing calls that template today, and the Worker deploys by hand,
 so the source change is not live until someone deploys it.
 
+## Partner links: title-22.com/r/<code> (2026-09-23)
+
+The one link a partner shares is **`title-22.com/r/<code>`**, a Cloudflare
+Pages rule in title-22-site's `_redirects` that sends it to
+`title22.app/?ref=<code>&src=partner-link`. It exists because the old flow lost
+credit in three places:
+
+- `/affiliates/` handed out `title-22.com/?ref=<code>`, and nothing on the
+  site read `?ref=`: the code died on the homepage. The site homepage now
+  carries `?ref=` onto every app link, so links already shared still work.
+- The app saved `?ref=` as typed, but the payout report joins
+  `profiles.referred_by = title22_trainers.code` exactly, and codes are stored
+  lowercase. `?ref=JSmith` got the right trial and no credit. The capture now
+  lowercases and keeps only letters, digits and hyphens — the same rule as
+  `title22_create_trainer`. `migrations/2026-09-23_title22_normalise_referral_codes.sql`
+  fixes rows written before (preview first, verified, NOT run).
+- `/affiliates/` stripped hyphens, so `oak-hill` became `oakhill` and never
+  matched. It keeps them now.
+
+A code does not have to be registered to be recorded: `referred_by` is saved
+for any code, and the payout report joins at read time, so signups made before
+Eli registers a code still count once he does. Registering is one tap on
+`/affiliates/` (a pre-filled email). Self-serve registration would need an RPC
+anyone can call that writes a commission rate — deliberately not built.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by
