@@ -499,7 +499,7 @@ credit in three places:
   lowercase. `?ref=JSmith` got the right trial and no credit. The capture now
   lowercases and keeps only letters, digits and hyphens — the same rule as
   `title22_create_trainer`. `migrations/2026-09-23_title22_normalise_referral_codes.sql`
-  fixes rows written before (preview first, verified, NOT run).
+  fixes rows written before (preview first, verified; RUN 2026-09-23, no errors).
 - `/affiliates/` stripped hyphens, so `oak-hill` became `oakhill` and never
   matched. It keeps them now.
 

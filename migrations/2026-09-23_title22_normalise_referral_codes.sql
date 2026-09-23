@@ -1,5 +1,8 @@
 -- Make stored referral codes match the codes they refer to.
 --
+-- RUN 2026-09-23, steps 1 and 2, no errors (reported by the owner; row count
+-- not recorded). Safe to re-run: a second run matches no rows.
+--
 -- The payout report (title22_trainer_signups) joins
 --   profiles.referred_by = title22_trainers.code
 -- EXACTLY. title22_create_trainer stores codes lowercase, with only letters,
