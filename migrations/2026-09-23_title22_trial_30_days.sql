@@ -18,8 +18,10 @@
 --   NO   expired trials. Reopening them is a separate decision; see step 3.
 --   NO   paid, edu, anything not 'trial'.
 --
--- RUN: steps 1 and 2 applied to the live database 2026-09-23, after
--- runp8-care#127 merged, no errors. Nothing here needs running again.
+-- RUN: steps 1, 2 AND 3 applied to the live database 2026-09-23, after
+-- runp8-care#127 merged, no errors. Every expired trial was reopened for 30
+-- days. Nothing here needs running again, and step 3 has no guard — a second
+-- run reopens whatever has expired by then.
 --
 -- Run step 1, read it, then step 2. Re-running step 2 is a no-op: its guard
 -- (ends within 14 days of now) excludes every row the first run moved.

@@ -445,9 +445,15 @@ Trials already running keep the end date they were stamped with.
 preview first, guarded, verified on Postgres 16. **Steps 1 and 2 were RUN
 against the live database on 2026-09-23, after #127 merged, with no errors**
 (reported by the owner). Do not run step 2 again expecting it to do anything:
-its guard makes a second run a no-op. Step 3 (reopen expired trials for 30
-days) is a separate win-back decision — check with the owner before assuming
-it ran or did not.
+its guard makes a second run a no-op.
+
+**Step 3 was RUN too, the same day**: every expired Title22 trial was
+reopened with `title22_trial_ends_at = now() + 30 days`, so every past trial
+account is live again until about 2026-10-23. That is the win-back window —
+the people who met the broken first sessions described in the history can
+come back to a working app with their records intact. Step 3 has NO guard:
+running it again would reopen whatever has expired by then. Do not re-run it
+without a decision.
 
 The `trial_warning` email template in `workers/title22-email/` no longer says
 "upgrade to keep access to your facility records" — false since expiry became
