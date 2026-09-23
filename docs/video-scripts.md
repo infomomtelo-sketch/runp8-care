@@ -1,6 +1,6 @@
 # Video scripts
 
-Written 2026-09-23. Nine short videos, one per person who arrives at Title22,
+Written 2026-09-23. Eleven short videos, one per person who arrives at Title22 or question they arrive with,
 plus the rules every one of them has to keep. Nothing here has been recorded.
 
 Every earlier walkthrough clip was deleted on 2026-09-07/08 because it showed
@@ -281,10 +281,96 @@ Never show a raw Stripe payment link in any video.
 
 ---
 
+## 10. The 30-day free trial — "What happens when I sign up?"
+
+**For:** anyone hovering over "Start free trial" and wondering what the catch
+is. **Length:** 45–60 s. **Where:** `/pricing/`, the signup page, the FAQ
+answer "Will I be charged?", and as the ad people see most.
+**The job of this video is to remove the catch.** Every line is something the
+code does today (`T22_TRIAL_DAYS = 30`, no card at signup, `t22ReadOnly` on
+expiry). If any of those change, this video is wrong.
+
+| # | On screen | Voice / caption |
+|---|---|---|
+| 1 | Text card: **What's the catch?** | "Thirty days free. So what's the catch?" |
+| 2 | Signup form: email and password, or Google. No card field anywhere. Hold on it. | "Sign up with an email or Google. There's no card field — there's nothing to charge." |
+| 3 | The welcome chooser. Tap "Show me around". | "Not ready to type in your facility? Open a practice home first." |
+| 4 | Practice home dashboard, readiness score, staff with amber/red dates. | "It's a sample home with invented staff, so you can see exactly what Title22 does." |
+| 5 | Onboarding form: the licence field says **(optional)**, with the lock note under it. | "When you're ready, add your own home. The licence number is optional." |
+| 6 | Trial banner: "30 days left". | "The banner counts down, so nothing sneaks up on you." |
+| 7 | An expired account: dashboard visible, buttons disabled, Billing open. Label: *After day 30*. | "On day thirty nothing is deleted. Your records stay — read-only — until you choose a plan." |
+| 8 | Billing: Lite $29 · Multi-Home $79. | "If you stay: twenty-nine a month for one home, seventy-nine for up to five." |
+| 9 | Text card: **No card. Nothing to cancel. Nothing deleted.** | "No card. Nothing to cancel. Nothing deleted." |
+| 10 | End card: **title22.app** | "Start with the practice home." |
+
+End link: `https://title22.app/?src=video-trial&mode=sandbox`
+
+Do not say "cancel anytime" — there is nothing to cancel, and saying so
+implies a subscription started. Do not say the trial "converts". A partner's
+link can give more than 30 days; this video says 30 and nothing about links.
+
+Record shot 7 on a recording account whose trial end date was moved into the
+past, never on a customer's expired account.
+
+---
+
+## 11. Trainers and students — the guided tour
+
+**For:** a CE / ICTP instructor deciding whether to teach with Title22, and
+the class they bring. One video in two halves, so the trainer can send the
+second half to students on its own. **Length:** trainer half 75 s, student
+half 75 s. **Where:** `/for-trainers/`, `/classroom/`; the student half is
+what the trainer forwards with the invite link.
+
+### Part A — for the trainer
+
+| # | On screen | Voice / caption |
+|---|---|---|
+| 1 | Classroom footage (`videos/title22-trainer-pitch.mp4` b-roll). | "Your students learn the paperwork in class. Their first shift is the real thing." |
+| 2 | Text card: **Two things, set up separately.** "Classroom access" · "Your partner link". | "Teaching with Title22 is two things. Classroom access is how you teach. Your link is how students keep going after class." |
+| 3 | Signup screen. | "Step one: create your own account at title22.app." |
+| 4 | Text card: *We switch on Classroom access for the email you signed up with.* | "Then tell us the email you used. We switch on Classroom access — it has to be the same address." |
+| 5 | Dashboard → **Load sample facility**. Label: *Practice home — eight invented residents.* | "Load the practice home. Eight invented residents, invented staff." |
+| 6 | Try to add a resident → refused. | "The roster is fixed. No one can type a real name into it." |
+| 7 | Lessons → **New lesson**: title, reading, "Show this lesson to students". | "Write your own lessons and knowledge checks. Title22 supplies no lesson content — it's your course." |
+| 8 | Team access → Invite → copy the link. | "Invite each student. Each one practises under their own name." |
+| 9 | `title-22.com/r/yourname` on screen. | "And your own link gives every student a longer free trial for their workplace — ninety days instead of thirty." |
+| 10 | End card: **hello@title-22.com** | "Write to us and we'll set up both." |
+
+### Part B — for the student
+
+| # | On screen | Voice / caption |
+|---|---|---|
+| 1 | Phone: a text with the invite link. | "Your instructor sent you a link. Tap it." |
+| 2 | Create account. | "Make an account with your own email." |
+| 3 | The class's practice home; the menu drops in with "Start here". Label: *Practice home — invented people.* | "This is your class's practice home. Everyone in it is invented. Everything is in this menu." |
+| 4 | **[BLOCKED — see note]** MAR: record a practice pass. | "Practise recording a medication pass the way your instructor shows you." |
+| 5 | Lessons: read, answer the check. | "Your instructor's lessons are here. Read, then answer the check." |
+| 6 | Incidents: a practice report, no name. | "Practise an incident report. A real one never names the resident." |
+| 7 | Checklist: tick an item; the score moves. | "Tick a checklist item and watch the readiness score move — that's the job on a real shift." |
+| 8 | Text card: **It's practice. You can't break anything.** | "It's practice. Nothing here is a real record." |
+| 9 | End card: *Starting a job? Your instructor's link gives your workplace a longer free trial.* | "Starting a job? Ask your instructor for their link." |
+
+**Shot B4 is blocked today.** A student who signs up from an invite gets their
+own 30-day trial, and `resolveTierLimits` only falls back to the facility's
+plan when the student's own account is NOT entitled — so their plan reads
+`trial`, `t22MarAllowed` is false, and the MAR tab does not appear for them
+in the practice home. Either fix that first, or cut B4 and record the rest.
+
+Rules for both halves: the MAR appears ONLY in the practice home, always with
+the invented-residents label, and no MAR frame is reused in any other video.
+Tello is not asked anything about a medication or a dose. Say no commission
+figure (agreed one to one) and make no claim that Title22 counts toward any
+CE or ICTP hours.
+
+---
+
 ## Which to make first
 
+0. **Made 2026-09-23:** the 30-Day Proof (script 7) — on `/pilot/`, recorded
+   from the sandbox by `title-22-site/videos/pilot/record/record.js`.
 1. **Undecided visitor** — it is the homepage, and it is the one most people
-   will ever see.
+   will ever see. Script 10 (the 30-day trial) is its natural pair.
 2. **Administrator "first evening"** — it replaces the walkthrough clips that
    were deleted, and it is what a new account needs on day 1.
 3. **Trainer** and **student**, together — a trainer will not share the app
