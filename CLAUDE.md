@@ -423,6 +423,10 @@ several homes. Built for the 30-Day Proof (called "Ghost Audit" until
   unchanged. That row is labelled as an illustration and must stay so.
 - One AI call per press, never automatic. Cleared from the DOM by
   `clearSession`.
+- Found from two places: a line under the card's note linking to
+  title-22.com/pilot/, and a one-time toast (`maybeAnnouncePortfolio`,
+  `title22_portfolio_announced` in localStorage) when onboarding adds the
+  second real home. Never in the sandbox.
 
 ## Explore without a licence number (2026-09-23)
 
