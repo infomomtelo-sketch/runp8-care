@@ -442,8 +442,12 @@ something false.
 
 Trials already running keep the end date they were stamped with.
 `migrations/2026-09-23_title22_trial_30_days.sql` moves them out to 30 —
-preview first, guarded, verified on Postgres 16, NOT run. Its step 3
-(reopen expired trials for 30 days) is a win-back decision, commented out.
+preview first, guarded, verified on Postgres 16. **Steps 1 and 2 were RUN
+against the live database on 2026-09-23, after #127 merged, with no errors**
+(reported by the owner). Do not run step 2 again expecting it to do anything:
+its guard makes a second run a no-op. Step 3 (reopen expired trials for 30
+days) is a separate win-back decision — check with the owner before assuming
+it ran or did not.
 
 The `trial_warning` email template in `workers/title22-email/` no longer says
 "upgrade to keep access to your facility records" — false since expiry became
