@@ -100,6 +100,14 @@
   .ob-path-btn{display:block;width:100%;text-align:left;min-height:56px;padding:16px 18px;margin-bottom:12px;border-radius:var(--radius);line-height:1.4}
   .ob-path-btn strong{display:block;font-size:16px;font-weight:600}
   .ob-path-btn span{display:block;font-size:13px;color:var(--text2);margin-top:3px}
+  .ob-explore-btn{display:block;width:100%;text-align:left;min-height:56px;padding:12px 16px;margin:0 0 18px;border-radius:var(--radius);line-height:1.4;border-color:var(--teal)}
+  .ob-explore-btn strong{display:block;font-size:15px;font-weight:600;color:var(--teal)}
+  .ob-explore-btn span{display:block;font-size:13px;color:var(--text2);margin-top:2px}
+  .signup-nodetails{display:flex;gap:6px;align-items:flex-start;text-align:left;font-size:13px;line-height:1.45;color:var(--teal);background:var(--teal-light);border-radius:var(--radius);padding:9px 12px;margin:-4px 0 16px}
+  .signup-noobligation{text-align:left;font-size:12.5px;line-height:1.5;color:var(--text2);margin:-6px 0 16px}
+  .signup-nodetails .ic{flex:0 0 auto;width:15px;height:15px;margin-top:2px}
+  .ob-trust{display:flex;gap:6px;align-items:flex-start;margin:-6px 0 16px;font-size:12px;line-height:1.45;color:var(--text2)}
+  .ob-trust .ic{flex:0 0 auto;width:14px;height:14px;margin-top:1px;color:var(--teal)}
   .ob-path-btn:hover span{color:var(--teal)}
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
   .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -632,13 +640,23 @@
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
       <h2>Start your free trial</h2>
-      <p>14 days free · No credit card required</p>
+      <p>30 days free · No credit card · Nothing to cancel</p>
+      <!-- The promise title-22.com makes on every trial CTA. True because
+           signup asks for nothing else, and the practice home (startJustLooking)
+           needs nothing else. Keep them in step: if signup ever asks for a
+           facility detail, this line is false. -->
+      <p class="signup-nodetails"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Just an email to start. No facility name, license number or address — a practice home with invented staff is ready inside.</p>
+      <!-- Zero obligation, and literally true: no card is ever taken at signup,
+           so there is nothing to charge, and an expired trial turns read-only
+           (t22ReadOnly) with every record kept. If either stops being true,
+           this line has to change with it. -->
+      <p class="signup-noobligation">Take your time. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account simply turns read-only — everything you entered stays.</p>
       <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
       <div class="auth-divider"><span>or</span></div>
       <form onsubmit="return false;">
-        <div class="form-group"><label>Email address</label><input type="email" id="signup-email" autocomplete="username" placeholder="admin@yourfacility.com"/></div>
+        <div class="form-group"><label>Email address</label><input type="email" id="signup-email" autocomplete="username" placeholder="you@example.com"/></div>
         <div class="form-group"><label>Password</label><div class="pw-field"><input type="password" id="signup-password" autocomplete="new-password" placeholder="Create a password"/><button type="button" class="pw-toggle" onclick="togglePasswordField('signup-password',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
       </form>
@@ -749,12 +767,29 @@
       <div class="onboard-step">Your home</div>
       <h2 id="ob-form-title">Tell us about your facility</h2>
       <p id="ob-form-sub">This information helps Title22 load the correct Title 22 requirements for your RCFE.</p>
+      <!-- The way out for whoever reached this form and stopped at the licence
+           field. The same practice home as "Show me around" — NOT this form
+           pre-filled with placeholders, which would make a facility the app
+           does not know is a sample: it would count against the trial's
+           facility cap, sit in the switcher looking real, and print its fake
+           licence number on a DSS audit packet. -->
+      <button type="button" class="btn btn-outline ob-explore-btn" id="ob-explore" onclick="startJustLooking(this)">
+        <strong>Just exploring? Open the practice home instead</strong>
+        <span>Nothing to fill in. Everyone in it is invented.</span>
+      </button>
       <div class="form-group"><label>Facility type</label><select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
       <div class="form-group"><label>Facility name</label><input type="text" id="ob-name" autocomplete="organization" placeholder="Sunrise Care Home"/></div>
       <div class="form-row">
-        <div class="form-group" id="ob-row-license"><label>License number</label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX"/></div>
+        <div class="form-group" id="ob-row-license"><label>License number <span style="font-weight:400;color:var(--text2)">(optional)</span></label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX" aria-describedby="ob-license-trust"/></div>
         <div class="form-group"><label>Facility capacity</label><input type="number" id="ob-capacity" autocomplete="off" placeholder="6"/></div>
       </div>
+      <!-- Every sentence here is checked against the code: license_number is
+               read only by the Facility tab and the DSS audit packet the user
+               prints (index.html, grep license_number). It is not in Tello's
+               context, not in track(), and not sent to any worker. Do not add
+               "never shared with anyone": it is stored with our database host,
+               and the packet is printed precisely to hand to an analyst. -->
+      <div class="ob-trust" id="ob-license-trust"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg><span>No PHI, by design. Title22 does not send your license number to CDSS or any state agency. It appears only on your own Facility page and on a DSS audit packet if you choose to print one. Leave it blank and add it later if you prefer.</span></div>
       <div class="form-group"><label>Street address</label><input type="text" id="ob-address-street" autocomplete="off" placeholder="1234 Main St"/></div>
       <div class="form-row">
         <div class="form-group"><label>City</label><input type="text" id="ob-address-city" autocomplete="off" placeholder="Fresno"/></div>
@@ -805,12 +840,12 @@
     </div>
     <div class="main-content">
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-star"/></svg> You're on a free trial — <span id="trial-days-left">14</span> days remaining.</div>
+        <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-star"/></svg> Free trial — <span id="trial-days-left">30</span> days left. No card on file, so nothing is charged when it ends.</div>
         <button onclick="switchTab('billing')" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
       </div>
       <div id="demo-banner" style="display:none;background:linear-gradient(90deg,#BA7517,#d99a3d);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-flask"/></svg> You're exploring the Title22 sandbox — read-only sample data.</div>
-        <button onclick="window.location.href='https://title22.app/?plan=starter&utm_source=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 14-day free trial →</button>
+        <button onclick="window.location.href='https://title22.app/?plan=lite&utm_source=sandbox&mode=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 30-day free trial →</button>
       </div>
 
       <!-- DASHBOARD -->
@@ -1814,7 +1849,7 @@ document.addEventListener('visibilitychange',()=>{
   if (ref) {
     sessionStorage.setItem('title22_ref', ref);
     // Validate against real trainer codes so referred signups get the
-    // trainer's trial length (e.g. 90 days) instead of the default 14.
+    // trainer's trial length (e.g. 90 days) instead of the default T22_TRIAL_DAYS.
     // Falls back to the default silently if the code doesn't exist, the
     // RPC isn't deployed yet, or the network call fails.
     try {
@@ -1822,6 +1857,13 @@ document.addEventListener('visibilitychange',()=>{
       const row = Array.isArray(data) ? data[0] : data;
       if (row && row.trial_days) sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
     } catch (e) { /* default trial length applies */ }
+  }
+  // ?mode=sandbox — title-22.com's trial CTAs. Remembered, not acted on: the
+  // visitor has not signed up yet. localStorage rather than sessionStorage so
+  // it survives the confirmation email opening in a new tab; it expires after
+  // a day and is consumed by maybeAutoExplore, which does the checking.
+  if ((params.get('mode')||'').toLowerCase() === 'sandbox') {
+    try { localStorage.setItem('title22_explore', String(Date.now())); } catch (e) {}
   }
   const plan = (params.get('plan')||'').toLowerCase();
   // lite and multi FIRST, because they are the only two tiers that are
@@ -2144,24 +2186,30 @@ async function planToStamp(userId){
 // email confirmation is.
 //
 // Resolved here from the durable code instead, with sessionStorage kept only
-// as the fast path. Falls back to 14 silently on any failure, exactly as
+// as the fast path. Falls back to T22_TRIAL_DAYS silently on any failure, exactly as
 // before: a trainer's student never gets LESS than an ordinary signup.
+// The trial length. 30 days, no card, nothing to cancel (2026-09-23): 14 days
+// read as a deadline — a busy shift on day one and by day five the person
+// feels they have missed it. A trainer code can give MORE (90 by default) and
+// never less: a student is not handed a shorter trial than a stranger.
+const T22_TRIAL_DAYS=30;
 async function t22RefTrialDays(user){
   const cached=parseInt(sessionStorage.getItem('title22_ref_trial_days'),10);
-  if(cached>0)return cached;
+  if(cached>0)return Math.max(cached,T22_TRIAL_DAYS);
   const code=user?.user_metadata?.referred_by||sessionStorage.getItem('title22_ref')||null;
-  if(!code)return 14;
+  if(!code)return T22_TRIAL_DAYS;
   try{
     const{data}=await sb.rpc('title22_check_trainer_code',{p_code:code});
     const row=Array.isArray(data)?data[0]:data;
     const days=row&&parseInt(row.trial_days,10);
     if(days>0){
+      const d=Math.max(days,T22_TRIAL_DAYS);
       // Cache it so a second stamp in the same tab costs no round trip.
-      try{sessionStorage.setItem('title22_ref_trial_days',String(days));}catch(e){}
-      return days;
+      try{sessionStorage.setItem('title22_ref_trial_days',String(d));}catch(e){}
+      return d;
     }
   }catch(e){/* default trial length applies */}
-  return 14;
+  return T22_TRIAL_DAYS;
 }
 
 async function ensureProfile(user){
@@ -2510,7 +2558,7 @@ function chooseOnboardPath(path){
     ?'A working name is enough — you can change it later. Everything else is optional and can wait until you have it.'
     :'This information helps Title22 load the correct Title 22 requirements for your RCFE.';
   if(submit)submit.textContent=starting?'Start my checklist →':'Set up my facility →';
-  ['ob-row-license','ob-row-cert'].forEach(id=>{
+  ['ob-row-license','ob-license-trust','ob-row-cert'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.style.display=starting?'none':'';
   });
@@ -2520,12 +2568,31 @@ function chooseOnboardPath(path){
 // roster for an edu account, the Lite sample (five staff, no residents) for
 // everyone else — so this one button is right both for a trainer already
 // granted Classroom and for a stranger who has been granted nothing.
-async function startJustLooking(){
-  const btn=document.querySelector('.ob-path-btn[onclick*="looking"]');
+// ?mode=sandbox arrived with this visitor (see the URL capture at the top of
+// the script). Presses "Show me around" for them — once, and only where that
+// button is the right answer: signed in, no facility at all, no invitation
+// waiting, a verified trial. A paid account, an invited caregiver or an
+// expired trial is left on the normal screen, and the flag is dropped either
+// way so a later visit never seeds anything by surprise.
+async function maybeAutoExplore(){
+  let at=0;
+  try{at=+localStorage.getItem('title22_explore')||0;localStorage.removeItem('title22_explore');}catch(e){return;}
+  if(!at||Date.now()-at>86400000)return;
+  if(demoMode||!currentUser||(allFacilities||[]).length)return;
+  if(t22PendingInvite||t22ReadOnly||!t22Entitled||!t22EntitlementVerified)return;
+  if(t22Plan!=='trial')return;
+  await startJustLooking(null,'link');
+}
+
+async function startJustLooking(pressed,via){
+  // Which door, for the funnel: 'link' (?mode=sandbox), 'form' (the way out on
+  // the facility form) or 'chooser' ("Show me around"). Counts only.
+  track('explore_started',{via:via||(pressed&&pressed.id==='ob-explore'?'form':'chooser')});
+  const btn=pressed||document.querySelector('.ob-path-btn[onclick*="looking"]');
   const original=btn?btn.innerHTML:null;
   if(btn){btn.disabled=true;btn.innerHTML='<strong>Loading your practice home…</strong>';}
   try{
-    await seedDemoData();
+    await seedDemoData({quick:true});
   }finally{
     // seedDemoData ends on the dashboard, so this only matters when it failed
     // and left them here with a dead button.
@@ -3231,7 +3298,7 @@ async function resolveMemberEntitlement(){
 async function resolveTierLimits(){
   // Sandbox is entitled by construction: role is readonly and anon RLS
   // blocks writes, so this grants view access only.
-  const own=demoMode?{entitled:true,plan:'trial',daysLeft:14}:await resolveEntitlement();
+  const own=demoMode?{entitled:true,plan:'trial',daysLeft:T22_TRIAL_DAYS}:await resolveEntitlement();
   t22CoveredByFacility=null;
   let ent=own;
   if(!demoMode&&!own.entitled){
@@ -3470,7 +3537,10 @@ async function loadAppInner(){
   // is signed in — initFacility reads currentUser.email on its second line —
   // so stop rather than initialise a facility for nobody.
   if(!currentUser)return;
-  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();applyLiteMode();showPage('onboard');return;}
+  if(!allFacilities.length){await resolveTierLimits();renderInviteWaiting();applyLiteMode();showPage('onboard');maybeAutoExplore();return;}
+  // Somebody with a facility already: ?mode=sandbox is not for them. Drop it
+  // so it cannot fire on some later visit.
+  try{localStorage.removeItem('title22_explore');}catch(e){}
   if(!currentFacility||!allFacilities.find(f=>f.id===currentFacility.id)){currentFacility=allFacilities[0];}
   await initFacility();
 }
@@ -5382,7 +5452,7 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 // alongside the first.
 let seedDemoRunning=false;
 
-async function seedDemoData(){
+async function seedDemoData(opts){
   // The layer under the hidden button, same shape as every other control here:
   // hiding is the product decision, this is what makes it true. A subscriber
   // who reaches this by any route is told why rather than handed a second
@@ -5401,7 +5471,7 @@ async function seedDemoData(){
   // button that creates it. t22SeedingSample below is what lets the inserts
   // through t22Fetch while it is being built.
   const forClassroom=!T22_MAR_PRODUCT&&t22EntitlementVerified&&t22Plan==='edu';
-  if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData();
+  if(!T22_MAR_PRODUCT&&!forClassroom)return seedLiteDemoData(opts);
   if(seedDemoRunning)return;
   // The `allFacilities.length` half is what makes a first-run sample possible
   // at all. currentUserRole is initialised 'readonly' and only becomes
@@ -5578,8 +5648,14 @@ async function seedDemoData(){
 // an overdue TB test, a CPR card three weeks out, an expired First Aid, a
 // LiveScan that was never cleared, mandated reporter training missing, and
 // two people short of their 40 hours.
-async function seedLiteDemoData(){
+// opts.quick: the onboarding "Show me around" door (or ?mode=sandbox). Only
+// honoured for an account with NO facility at all — then the confirm's whole
+// message ("your real facilities are not touched") has nothing to protect, and
+// two modal dialogs are most of the time between signing up and a dashboard.
+// Anyone who already has a facility still gets both, exactly as before.
+async function seedLiteDemoData(opts){
   if(seedDemoRunning)return;
+  const quick=!!(opts&&opts.quick)&&!(allFacilities||[]).length;
   // The `allFacilities.length` half is what makes a first-run sample possible
   // at all. currentUserRole is initialised 'readonly' and only becomes
   // 'administrator' inside initFacility, which cannot run without a facility —
@@ -5609,7 +5685,7 @@ async function seedLiteDemoData(){
     }
     reuse=existing;
   }
-  if(!confirm((reuse
+  if(!quick&&!confirm((reuse
       ?'A previous attempt at the sample facility did not finish. This clears out what it left behind and loads it again'
       :'This creates a separate sample facility ("Sunrise Demo Home")')
     +' with 5 staff, expiring certifications, unfinished 40-hour training and two incidents to document. No resident data — Lite holds none. Your real facilities are not touched. Continue?'))return;
@@ -5680,6 +5756,7 @@ async function seedLiteDemoData(){
     currentFacility=fac;
     await initFacility();
     switchTab('dashboard');
+    if(quick){t22Toast('Your practice home is ready. Everyone in it is invented — add your own home from the user menu whenever you like.');return;}
     alert('Sample facility loaded — "Sunrise Demo Home (Sample)": five staff, four of them with something out of date, and a checklist to work. Nobody in it is real.'
    + (ownedFacilityCount()>1
       ? ' Switch back to your own facility any time from the user menu.'
@@ -6360,7 +6437,7 @@ async function demoComplianceAnswer(query){
       'You can press anything. The sandbox is read-only, so nothing you do is saved — reload and it is exactly as you found it.';
   }else if(q.includes('price')||q.includes('cost')||q.includes('plan')||q.includes('much')||q.includes('subscri')){
     body='<strong>Plans</strong><br><br>'+
-      'Fourteen days free, no card. After that it is priced per facility, and your staff are covered by the facility\u2019s plan — '+
+      'Thirty days free, no card, nothing to cancel. After that it is priced per facility, and your staff are covered by the facility\u2019s plan — '+
       'you are not billed per caregiver.<br><br>Current pricing is on the Billing page, and it is the same page you would see as a customer.';
   }else{
     const n=f.overdue.length+f.certIssues.length+f.docGaps.length;

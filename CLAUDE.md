@@ -423,6 +423,66 @@ several homes. Built for the Ghost Audit pilot; runbook in
 - One AI call per press, never automatic. Cleared from the DOM by
   `clearSession`.
 
+## Explore without a licence number (2026-09-23)
+
+The onboarding form now has a way out for whoever stops at the licence field:
+**"Just exploring? Open the practice home instead"** (`#ob-explore`). It runs
+the same `startJustLooking` as the chooser's "Show me around" — the Lite
+sample facility from `seedLiteDemoData`. It is NOT the form pre-filled with
+placeholders: a placeholder facility is not recognised by `isSampleFacility`,
+so it would count against the trial's 2-facility cap, sit in the switcher
+looking real, and print a fake licence on the DSS audit packet.
+
+- `seedLiteDemoData({quick:true})` skips the confirm and the closing alert
+  (a toast instead) — only when the account has NO facility at all. Anyone
+  with a facility gets both dialogs exactly as before.
+- `?mode=sandbox` (title-22.com's trial CTAs) is stored as
+  `localStorage.title22_explore` and consumed by `maybeAutoExplore` at the
+  zero-facility onboarding exit: it presses "Show me around" once, only for a
+  verified, entitled `trial` with no pending invite. Paid, edu, invited and
+  expired accounts are left on the normal screen; the flag is dropped either
+  way, and after 24h.
+- The licence field says "(optional)" — it always was: `handleOnboard`
+  requires only the name. The lock note under it is written from what
+  `license_number` actually does (Facility tab and the printed DSS packet;
+  not in Tello's context, `track()` or any worker). Do not strengthen it to
+  "never shared with anyone" — it is stored with the database host, and the
+  packet exists to be handed to an analyst.
+
+## The trial is 30 days, no card, nothing to cancel (2026-09-23)
+
+`T22_TRIAL_DAYS = 30` in index.html, read by `t22RefTrialDays`. It was 14,
+and 14 read as a deadline: a busy shift on day one and by day five the
+person felt they had missed it. A trainer code can give more (90 by default)
+and never less — `Math.max` with the default, so a student is never handed a
+shorter trial than a stranger.
+
+"Zero obligation" is a claim about the code, and it is true only while both
+halves hold: signup takes no card (so nothing can be charged), and an expired
+trial is read-only with every record kept (`t22ReadOnly`). If either changes,
+the signup card, the trial banner, tello.html and title-22.com all say
+something false.
+
+Trials already running keep the end date they were stamped with.
+`migrations/2026-09-23_title22_trial_30_days.sql` moves them out to 30 —
+preview first, guarded, verified on Postgres 16. **Steps 1 and 2 were RUN
+against the live database on 2026-09-23, after #127 merged, with no errors**
+(reported by the owner). Do not run step 2 again expecting it to do anything:
+its guard makes a second run a no-op.
+
+**Step 3 was RUN too, the same day**: every expired Title22 trial was
+reopened with `title22_trial_ends_at = now() + 30 days`, so every past trial
+account is live again until about 2026-10-23. That is the win-back window —
+the people who met the broken first sessions described in the history can
+come back to a working app with their records intact. Step 3 has NO guard:
+running it again would reopen whatever has expired by then. Do not re-run it
+without a decision.
+
+The `trial_warning` email template in `workers/title22-email/` no longer says
+"upgrade to keep access to your facility records" — false since expiry became
+read-only. Nothing calls that template today, and the Worker deploys by hand,
+so the source change is not live until someone deploys it.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by

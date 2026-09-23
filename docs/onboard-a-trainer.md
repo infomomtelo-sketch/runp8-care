@@ -45,7 +45,7 @@ nothing is queued, nothing retries. Run it again after they sign up.
 | Trainer name | Used in the ready-to-send message. First name is taken from it. |
 | Email | Optional. Not the same as the Classroom grant email and not linked to it. |
 | **Commission rate %** | **Defaults to 20.** Type the rate you actually agreed. Nobody is going to catch this later — it is written into `title22_trainers` and read at payout. |
-| Trial days | Defaults to 90. Their students get this instead of 14. |
+| Trial days | Defaults to 90. Their students get this instead of the standard 30 — and never less than 30. |
 
 The code must be unique. A duplicate surfaces the raw Postgres unique-violation
 message in the error line — ugly, but it did not create anything.
@@ -58,7 +58,7 @@ longer trial, which is the part that makes the link worth sharing.
 1. Visitor lands on `https://title22.app/?ref=<code>`.
 2. The code goes into `sessionStorage.title22_ref`, and
    `title22_check_trainer_code` is called to fetch the trial length. **If that
-   call fails the signup still works** — they just get the default 14 days
+   call fails the signup still works** — they just get the default 30 days
    instead of 90. Silent by design.
 3. On signup the code rides in `user_metadata.referred_by`, which survives the
    Google OAuth redirect.
@@ -76,7 +76,7 @@ longer trial, which is the part that makes the link worth sharing.
 | "No account found for \<email\>" | They have not signed up, or the email differs from the one they signed up with. Not a bug. |
 | "not authorized" on Create code | Your profile lacks `title22_is_partner_admin`. Set it in the database; the Partners tab is Owner-only and reads the same flag. |
 | "Partner report unavailable" | `migrations/2026-08-03_title22_trainers.sql` has not been run. |
-| Referred signup got 14 days, not 90 | `title22_check_trainer_code` failed or the code does not exist. Check the code was created BEFORE the link was shared. |
+| Referred signup got 30 days, not 90 | `title22_check_trainer_code` failed or the code does not exist. Check the code was created BEFORE the link was shared. |
 | Signup does not appear under their code | `profiles.referred_by` was not written. Most likely they already had a profile — the upsert uses `ignoreDuplicates`, so an existing row is never re-stamped. Referral capture only works for a genuinely new account. |
 | They see no MAR in the sample facility | The MAR is on only for plan `edu` **standing in the sample facility**. Their own real facility correctly has no MAR. That is not a bug — see the `showMAR` section in CLAUDE.md. |
 
