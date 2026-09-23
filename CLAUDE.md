@@ -400,6 +400,29 @@ compliance answer about one home is wrong for another. The input goes through
 `t22PhiBlock` like the Tello tab's — those two boxes are the only free text
 that leaves the database.
 
+## Portfolio briefing — Tello for the executive (2026-09-23)
+
+`#ai-portfolio` in the Tello tab, `renderPortfolioCard` / `runPortfolioBriefing`
+in `index.html`. One row per home plus a Tello summary for someone who runs
+several homes. Built for the Ghost Audit pilot; runbook in
+`docs/ghost-audit-pilot.md`, public page `title-22.com/pilot/`.
+
+- **No-PHI by construction.** Reads only `compliance_tasks(completed,due_date)`,
+  staff certification dates/flags (no names) and `incidents(occurred_at)`. No
+  PHI table, whatever `showMAR` says. Tello is sent facility names and counts.
+- **Numbers are computed in the browser; Tello only writes prose from them.**
+  If she is unavailable the summary is computed from the table and says so.
+- **"Checklist %" is NOT the readiness score** and must not be relabelled one —
+  the dashboard score also counts staff records and documents.
+- A home that fails to read is shown as unread and left out of totals, never
+  counted as zero.
+- Shown to the owner/administrator with 2+ non-sample homes and `ai` in
+  `allowedTabs()`. In the sandbox it shows the demo home beside an
+  *Illustration* row — the same home with every open item closed, incidents
+  unchanged. That row is labelled as an illustration and must stay so.
+- One AI call per press, never automatic. Cleared from the DOM by
+  `clearSession`.
+
 ## Launch Hub — the "Start Your Home" tab
 
 `#tab-launch`, `nav-launch`/`menu-launch`, rendered from `LAUNCH_CARDS` by
