@@ -866,8 +866,9 @@ no schema and no pinned search_path. Supabase Auth runs with
 succeeds from the SQL editor, which is why it looks fine when tested by hand.
 Fix: `migrations/2026-09-25_fix_handle_new_user_search_path.sql` (pins
 `search_path = ''`, qualifies `public.`, same behaviour otherwise). Verified
-against a local Postgres 16 stand-in; not yet confirmed as RUN on the live
-database — check `proconfig` before saying so.
+against a local Postgres 16 stand-in, then RUN on the live database on
+2026-09-25 and reported fixed by the owner. Re-running it is harmless
+(`create or replace`), but there is no reason to.
 
 Any trigger on `auth.users` runs inside EVERY sign-up for EVERY app on this
 project, and one failing statement blocks them all. Anything added there must
