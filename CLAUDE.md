@@ -855,6 +855,28 @@ and start over free, which is most of the 32 accounts and 49 facilities this
 project accumulated. Nothing stops a second signup; what changed is that
 staying is now worth more than starting over.
 
+## Sign-up 500 / "{}" — a trigger from another app (2026-09-25)
+
+Every new account, email and Google alike, failed with 500 from
+`/auth/v1/signup` and the sign-up box showed "{}". The cause is
+`on_auth_user_created` → `public.handle_new_user()` on `auth.users`, installed
+by ANOTHER app on this shared project: `insert into credit_balances ...` with
+no schema and no pinned search_path. Supabase Auth runs with
+`search_path = auth`, so the name meant `auth.credit_balances` → 42P01. It
+succeeds from the SQL editor, which is why it looks fine when tested by hand.
+Fix: `migrations/2026-09-25_fix_handle_new_user_search_path.sql` (pins
+`search_path = ''`, qualifies `public.`, same behaviour otherwise). Verified
+against a local Postgres 16 stand-in; not yet confirmed as RUN on the live
+database — check `proconfig` before saying so.
+
+Any trigger on `auth.users` runs inside EVERY sign-up for EVERY app on this
+project, and one failing statement blocks them all. Anything added there must
+pin its search_path and schema-qualify every name.
+
+"{}" itself: supabase-js 2.110 builds a 5xx auth error from the Response
+object, not its body. `t22Fetch` now captures the body and `authErrorText()`
+shows it; never render `error.message` from auth directly.
+
 ## Known open bugs
 
 None outstanding in the app itself. Everything this list carried has been
