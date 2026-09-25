@@ -1789,6 +1789,7 @@ function t22Toast(msg){
 // the browser: a read answers with an empty set, so a dashboard that still
 // asks renders "none" instead of an error banner, and a write is refused with
 // the message above. Everything else is passed straight through, untouched.
+let t22LastAuthFailure=null;   // written by t22Fetch, read by authErrorText
 function t22Fetch(input,init){
   try{
     if(!showMAR){
@@ -1825,7 +1826,33 @@ function t22Fetch(input,init){
       }
     }
   }catch(e){/* a guard that throws must not take the request with it */}
-  return fetch(input,init);
+  let authPath='';
+  try{
+    const url=typeof input==='string'?input:(input&&input.url)||'';
+    const p=new URL(url,window.location.origin).pathname;
+    if(p.includes('/auth/v1/'))authPath=p;
+  }catch(e){}
+  if(!authPath)return fetch(input,init);
+  // supabase-js 2.110 treats every 5xx from the auth server as retryable and
+  // builds the error from the Response object, never its body. The message
+  // that reaches the page is JSON.stringify(response) — the literal "{}" — and
+  // the server's own words ("Database error saving new user", "Error sending
+  // confirmation email") are thrown away. Read the body here, BEFORE handing
+  // the response back, so authErrorText can say what actually happened.
+  return fetch(input,init).then(async r=>{
+    if(r.status>=500){
+      let text='';
+      try{
+        const raw=await r.clone().text();
+        try{const j=JSON.parse(raw);text=j.msg||j.message||j.error_description||(typeof j.error==='string'?j.error:'')||'';}
+        catch(e){text=raw;}
+      }catch(e){}
+      t22LastAuthFailure={at:Date.now(),path:authPath,status:r.status,
+        text:String(text||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,200)};
+      console.error('Auth server '+r.status+' on '+authPath+':',t22LastAuthFailure.text||'(empty body)');
+    }
+    return r;
+  });
 }
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -2220,6 +2247,27 @@ function authMsgClear(id){
   el.classList.remove('show','is-ok');
   el.textContent='';
 }
+// Never put a raw object on the page. A Supabase auth error can arrive with
+// message "{}" (see t22Fetch) or with no message at all, and the sign-up box
+// used to show exactly that. Prefer the auth server's own text captured by
+// t22Fetch, then the error's fields, then a sentence a person can act on.
+function t22UsableText(v){
+  if(typeof v!=='string')return '';
+  const t=v.trim();
+  return !t||/^(\{\s*\}|\[\s*\]|null|undefined|\[object \w+\])$/i.test(t)?'':t;
+}
+function authErrorText(err,fallback){
+  const f=t22LastAuthFailure&&Date.now()-t22LastAuthFailure.at<60000?t22LastAuthFailure:null;
+  t22LastAuthFailure=null;
+  console.error('Auth error:',err,f?{serverStatus:f.status,serverPath:f.path,serverText:f.text}:'');
+  const server=f&&t22UsableText(f.text);
+  if(server)return server.replace(/\.$/,'')+' — please try again or email hello@title-22.com';
+  return t22UsableText(err&&err.message)
+    ||t22UsableText(err&&err.error_description)
+    ||t22UsableText(err&&err.msg)
+    ||fallback
+    ||'Something went wrong — please try again or email hello@title-22.com';
+}
 function showResend(which,on){
   const el=document.getElementById(which+'-resend');
   if(el)el.style.display=on?'block':'none';
@@ -2227,7 +2275,7 @@ function showResend(which,on){
 
 async function handleGoogleAuth(errId){
   const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:'https://title22.app',queryParams:{access_type:'offline',prompt:'consent'}}});
-  if(error)authMsg(errId,error.message);
+  if(error)authMsg(errId,authErrorText(error,'Google sign-in failed — please try again or email hello@title-22.com'));
 }
 
 // ignoreDuplicates means a profiles row that already exists — a signup trigger
@@ -2419,7 +2467,12 @@ async function handleSignup(){
   // shared with other apps, so without it the confirmation link falls back to
   // the project-wide Site URL and lands the new caregiver on someone else's
   // app. Hardcoded like every other redirect — never window.location.origin.
-  const{data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy}}});
+  const SIGNUP_FAILED='Sign-up failed — please try again or email hello@title-22.com';
+  t22LastAuthFailure=null;
+  let data,error;
+  try{
+    ({data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy}}}));
+  }catch(e){error=e;}
   if(btn){btn.textContent='Create account';btn.disabled=false;}
   if(error){
     const m=(error.message||'').toLowerCase();
@@ -2427,7 +2480,7 @@ async function handleSignup(){
       authMsg('signup-error','You already have an account with this email. Please sign in.');
       setTimeout(function(){showPage('login');},1800);return;
     }
-    authMsg('signup-error',error.message);return;
+    authMsg('signup-error',authErrorText(error,SIGNUP_FAILED));return;
   }
   if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){
     authMsg('signup-error','You already have an account with this email. Please sign in.');
@@ -2444,8 +2497,12 @@ async function handleSignup(){
     showResend('signup',true);
     return;
   }
-  currentUser=data.user;
-  await ensureProfile(currentUser);
+  try{
+    currentUser=data.user;
+    await ensureProfile(currentUser);
+  }catch(e){
+    console.error('Sign-up: profile setup failed:',e);
+  }
   // Always through loadApp, never straight to onboarding. loadApp is the only
   // path that redeems an invitation, and it cannot be conditional on holding a
   // token: the invitation may be findable by email alone. Its zero-facility
@@ -2464,7 +2521,7 @@ async function handleResendConfirmation(which){
   if(!email){authMsg(errId,'Enter your email address first.');return;}
   authMsg(errId,'Sending…','ok');
   const{error}=await sb.auth.resend({type:'signup',email,options:{emailRedirectTo:'https://title22.app'}});
-  if(error){authMsg(errId,error.message);return;}
+  if(error){authMsg(errId,authErrorText(error,'Could not send the email — please try again or email hello@title-22.com'));return;}
   authMsg(errId,'Confirmation email sent to '+email+'. It can take a minute — check spam too.','ok');
 }
 
@@ -2485,7 +2542,7 @@ async function handleLogin(){
       pendingConfirmEmail=email;
       authMsg('login-error','Please confirm your email first — check your inbox for the confirmation link.');
       showResend('login',true);
-    } else { authMsg('login-error',error.message); }
+    } else { authMsg('login-error',authErrorText(error,'Log-in failed — please try again or email hello@title-22.com')); }
     return;
   }
   currentUser=data.user;
@@ -2584,7 +2641,7 @@ async function handlePasswordReset(){
   if(btn){btn.textContent='Sending…';btn.disabled=true;}
   const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://title22.app'});
   if(btn){btn.textContent='Send reset link';btn.disabled=false;}
-  if(error){authMsg('reset-error',error.message);return;}
+  if(error){authMsg('reset-error',authErrorText(error,'Could not send the reset email — please try again or email hello@title-22.com'));return;}
   authMsg('reset-error','✓ Reset link sent! Check your email — it can take a minute, and it may land in spam.','ok');
 }
 
@@ -2606,7 +2663,7 @@ async function handleSetNewPassword(){
     if(m.includes('session')||m.includes('jwt')||m.includes('logged in')){
       showResetLinkProblem('That reset link is no longer valid. Enter your email below for a fresh one.');
     }else{
-      authMsg('reset-newpass-error',error.message);
+      authMsg('reset-newpass-error',authErrorText(error,'Could not save the new password — please try again or email hello@title-22.com'));
     }
     return;
   }
@@ -10269,7 +10326,20 @@ function showSetNewPassword(){
   // often pre-clicked by email security scanners). Show a way forward.
   const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
   if(hashParams.get('error')||hashParams.get('error_code')){
-    showResetLinkProblem();
+    // A Google sign-in that failed on the server (a signup trigger, a
+    // provider problem) comes back here too, as error=server_error with the
+    // reason in error_description. That is not a reset link, so say what
+    // happened on the login page instead of offering a password reset.
+    // An expired or already-used email link keeps the old path.
+    const code=hashParams.get('error_code')||'', kind=hashParams.get('error')||'';
+    if(code==='otp_expired'||kind==='access_denied'){showResetLinkProblem();return;}
+    const why=t22UsableText(hashParams.get('error_description')||'').replace(/\.$/,'');
+    console.error('Auth redirect error:',kind,code,why);
+    history.replaceState(null,'',window.location.pathname);
+    document.body.style.visibility='visible';
+    document.getElementById('nav-public').style.display='flex';
+    showPage('login');
+    authMsg('login-error',(why?'Sign-in failed: '+why+'. ':'Sign-in failed. ')+'Please try again or email hello@title-22.com');
     return;
   }
   const qs=new URLSearchParams(window.location.search);
