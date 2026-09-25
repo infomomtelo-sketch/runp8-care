@@ -446,6 +446,13 @@ again. Every later open of the menu drops its items in quickly
 (`t22MenuCascade`, ~0.6s at most). `prefers-reduced-motion` gets the open menu
 and the marks, with no movement. Reads and writes nothing but that one flag.
 
+The menu has separate `openUserMenu()` / `closeUserMenu()` (2026-09-25). Every
+menu item used to run `switchTab(x);toggleUserMenu()`, and `switchTab` already
+closes the menu, so the toggle reopened it: on a phone, tapping a tab left the
+menu covering the page. Menu items call `closeUserMenu()`, which can only
+close. The panel slides down on open and up on close (~0.2s); reduced motion
+gets neither. Do not put `toggleUserMenu()` back on a menu item.
+
 The marketing site's matching piece is `title-22-site/assets/motion.js`: an
 intro the first time someone lands on title-22.com, and the readiness dial on
 every click through to title22.app.
