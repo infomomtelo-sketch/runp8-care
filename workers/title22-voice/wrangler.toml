@@ -15,13 +15,15 @@ preview_urls = false
 [observability]
 enabled = true
 
-# Tello's voice. B1 step 0: a PREVIEW route only, so the match test against
-# tello-voice-reference.wav runs on Cloudflare with the real key. The signed-in
-# briefing route (/api/tello/briefing-voice), R2 cache and rate limit come after
-# the voice is approved; nothing in index.html calls this Worker yet.
+# Tello's voice.
+#   GET  /api/tello/voice-preview   the match test (B1 step 0): one fixed
+#                                   sentence, no text taken from the caller.
+#   POST /api/tello/briefing-voice  the daily briefing, read aloud (B1 step 1).
+#                                   Signed-in title22.app users only.
+#   GET  /health                    which bindings are missing, by name.
 #
-# Public route (workers.dev, enabled on first deploy):
-#   https://title22-voice.infomomtelo.workers.dev/api/tello/voice-preview
+# Public route (workers.dev):
+#   https://title22-voice.infomomtelo.workers.dev
 #
 # Secrets (set via `wrangler secret put <NAME>` or the dashboard — never here):
 #   DEEPINFRA_API_KEY  — DeepInfra API key. Read by one function, sent only as
@@ -35,3 +37,19 @@ enabled = true
 [vars]
 VOICE_MODEL = "hexgrad/Kokoro-82M"
 VOICE_ID = "af_heart"
+# Who may call the briefing route from a browser.
+ALLOWED_ORIGIN = "https://title22.app"
+# Used ONLY to ask Supabase "whose sign-in token is this?" (GET /auth/v1/user).
+# Both are public: they are the same two strings index.html ships to every
+# browser. Not secrets, so they live here, where a deploy cannot erase them.
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8"
+
+# One bucket, two prefixes, both removed by a 7-day lifecycle rule set on the
+# bucket in the dashboard (R2 -> title22-voice-cache -> Settings):
+#   voice/<sha256>.mp3        a rendered briefing, keyed by hash(text + voice)
+#   rate/<day>/<user id>      that user's count of new renders that day
+# The bucket must exist before this deploys, or the deploy fails.
+[[r2_buckets]]
+binding = "VOICE_CACHE"
+bucket_name = "title22-voice-cache"
