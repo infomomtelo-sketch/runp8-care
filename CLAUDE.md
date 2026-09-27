@@ -441,6 +441,36 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
+## Forms library — blank forms, and how to use them (2026-09-27)
+
+The Forms tab (`#tab-forms`, `T22_FORMS`, `renderFormsTab`) and Tello's
+"print LIC ___" (`telloFormsIntent`, answered in the page with no AI call).
+One of three highlights with certification tracking and Tello: what a new
+administrator or new hire needs, for whom, and how.
+
+- **BLANK FORMS ONLY — the owner's rule.** Every Print opens the empty, current
+  form on the CDSS site. Never pre-fill a form from Title22's data, never print
+  one filled, never save, upload or scan a completed resident form. A blank
+  form is not PHI; a filled one is, and it stays on paper at the home.
+- **A link goes in only after someone opened it and saw the right form** (the
+  ADMISSION_FORMS rule). Entries without `url` show "Link being checked" and
+  Tello says so rather than guessing. As of 2026-09-27 only the six RCFE
+  admission links are checked; this environment could not reach cdss.ca.gov.
+- Cards say what a form is, who fills it in, when, and where the finished copy
+  goes. Never how often it is due, how long it lasts, or what an inspector
+  accepts.
+- License type (RCFE / ARF / Adult Day Program) is picked on the tab and kept
+  per browser, NOT written to `facilities.facility_type`: no schema change,
+  no risk to a check constraint nobody has read. Adult Day participant forms
+  are not listed yet, and the tab says so.
+- The printable new-hire and admission checklists were written from the
+  owner's own checklists (a real home's). Home-specific names (the facility,
+  its doctor, pharmacies, other software, house contracts) are left out on
+  purpose; the source documents are not committed.
+- OPEN: "Staff files (LIC 622)" appears on the site, the app and in
+  `tello/title22-knowledge.js`. LIC 622 is very likely the centrally stored
+  medication record, not a staff form. Confirm from the CDSS form, then fix.
+
 ## Portfolio briefing — Tello for the executive (2026-09-23)
 
 `#ai-portfolio` in the Tello tab, `renderPortfolioCard` / `runPortfolioBriefing`
