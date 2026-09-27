@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
 <meta name="description" content="Title22 Lite — No PHI by design. Warns you before a staff certification lapses, keeps your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
@@ -147,6 +147,43 @@
      off every other screen for free — there is no landing page, no onboarding
      screen and no signed-out state where a chat button can appear, and nothing
      has to remember to hide it. position:fixed still pins it to the viewport. */
+  /* Tello's voice bar — drawn from the Tello intro video (2026-09-27): cream
+     #f9f5ed, deep green #123a30, gold #e8a23d, the "T" avatar with a gold
+     inner ring, faint gold rings that pulse while she speaks, Zilla Slab for
+     what she is doing and IBM Plex Mono for the small caps label. */
+  #tello-voice-bar{--tv-cream:#f9f5ed;--tv-green:#123a30;--tv-gold:#e8a23d;
+    display:none;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;
+    background:var(--tv-cream);border:1px solid rgba(18,58,48,.12);border-radius:14px}
+  #tello-voice-bar.on{display:flex}
+  .tv-avatar{position:relative;width:46px;height:46px;flex-shrink:0}
+  .tv-avatar svg{position:relative;z-index:1;width:46px;height:46px;display:block;border-radius:50%;
+    box-shadow:0 0 0 5px rgba(232,162,61,.12),0 0 0 6px rgba(232,162,61,.35)}
+  .tv-avatar::before,.tv-avatar::after{content:"";position:absolute;inset:0;border-radius:50%;
+    border:2px solid rgba(232,162,61,.55);opacity:0;pointer-events:none}
+  #tello-voice-bar.speaking .tv-avatar::before{animation:tvPulse 2.2s ease-out infinite}
+  #tello-voice-bar.speaking .tv-avatar::after{animation:tvPulse 2.2s ease-out 1.1s infinite}
+  @keyframes tvPulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.75);opacity:0}}
+  .tv-words{flex:1;min-width:150px}
+  .tv-kicker{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;
+    letter-spacing:.14em;text-transform:uppercase;color:rgba(18,58,48,.62)}
+  .tv-status{font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:17px;line-height:1.25;color:var(--tv-green)}
+  .tv-actions{display:flex;gap:8px}
+  .tv-btn{min-height:44px;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;
+    border:1.5px solid var(--tv-green);background:#fff;color:var(--tv-green);font-family:inherit}
+  .tv-btn.primary{background:var(--tv-green);color:var(--tv-cream);border-color:var(--tv-green)}
+  .tv-btn.gold{background:var(--tv-gold);color:var(--tv-green);border-color:var(--tv-gold)}
+  .tv-dots{display:inline-block;width:1.2em;text-align:left}
+  .tv-dots::after{content:"";animation:tvDots 1.2s steps(4,end) infinite}
+  @keyframes tvDots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+  /* The line she is on, marked like the video's captions. Timing is estimated
+     from each line's share of the text — close, not word-exact. */
+  #dash-ai-briefing .tv-line{transition:background .3s,box-shadow .3s;border-radius:6px}
+  #dash-ai-briefing .tv-line.tv-now{background:rgba(232,162,61,.16);box-shadow:-6px 0 0 rgba(232,162,61,.16),inset 3px 0 0 var(--tv-gold,#e8a23d)}
+  @media (prefers-reduced-motion:reduce){
+    #tello-voice-bar.speaking .tv-avatar::before,#tello-voice-bar.speaking .tv-avatar::after{animation:none}
+    .tv-dots::after{animation:none;content:"..."}
+    #dash-ai-briefing .tv-line{transition:none}
+  }
   #tello-dock-btn{position:fixed;right:20px;bottom:20px;z-index:900;width:60px;height:60px;border-radius:50%;border:none;background:var(--teal);color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
   #tello-dock-btn:hover{background:#0a5442}
   #tello-dock-btn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -925,6 +962,9 @@
           <div id="dash-ai-briefing" style="font-size:13px;color:var(--text2);line-height:1.8">
             <div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Loading briefing...</div>
           </div>
+          <!-- Tello's voice for THIS card only (B1). Filled by telloVoiceRender;
+               empty and hidden when the voice is off, unavailable or in demo. -->
+          <div id="tello-voice-bar" role="group" aria-label="Tello's voice"></div>
         </div>
         <div style="margin-top:20px" class="card">
           <div class="card-title">Quick actions</div>
@@ -1294,6 +1334,17 @@
       <div id="tab-ai" style="display:none">
         <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.<span id="ai-lite-note" style="display:none"> This edition holds no resident, medication or MAR records, so she cannot see them.</span></div>
+        <!-- Tello settings. One switch today: the daily briefing's voice (B1).
+             Saved on the account (user_metadata), so it follows the person
+             across devices; see setTelloVoiceEnabled. -->
+        <div class="card" id="tello-settings" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:6px"><span>Tello settings</span></div>
+          <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;min-height:44px">
+            <input type="checkbox" id="tello-voice-toggle" onchange="setTelloVoiceEnabled(this.checked)" style="width:22px;height:22px;margin-top:1px;accent-color:var(--teal);flex-shrink:0">
+            <span style="line-height:1.5"><strong style="font-size:14px">Read my briefing aloud</strong><br>
+            <span style="font-size:12px;color:var(--text2)">Only the daily briefing on your dashboard, in Tello's AI voice. Every other answer stays text. The briefing text is sent to our voice provider, DeepInfra, to make the audio.</span></span>
+          </label>
+        </div>
         <!-- Portfolio briefing: one row per home, counts only. See renderPortfolioCard. -->
         <div class="card" id="ai-portfolio" style="display:none;margin-bottom:16px;">
           <div class="card-title" style="flex-wrap:wrap;gap:10px;margin-bottom:6px"><span>Portfolio briefing</span>
@@ -2116,6 +2167,10 @@ function switchTab(name){
   if(name==='mar')loadMAR();
   if(name==='team')loadTeam();
   if(name==='lessons')loadLessons();
+  // The voice belongs to the dashboard card; leaving it stops the voice rather
+  // than leaving it talking with its Stop button out of sight.
+  if(name!=='dashboard'&&telloVoiceAudio&&!telloVoiceAudio.paused)telloVoiceStopClick();
+  if(name==='ai')renderTelloVoiceSetting();
   if(name==='billing')loadBilling();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
@@ -2588,6 +2643,7 @@ function clearSession(){
   // at this browser.
   unmountTelloDock();
   telloDockMessages=[];telloDockFacility=null;
+  telloVoiceReset();
   clearPortfolioCard();
   currentUser=null;currentFacility=null;
   document.getElementById('nav-app').style.display='none';
@@ -6426,13 +6482,283 @@ function writeCachedBriefing(html){
   }catch(e){/* private mode or full: the briefing just re-generates */}
 }
 
+// ===== TELLO'S VOICE — the daily briefing only (B1, 2026-09-27) =====
+// The dashboard briefing, and nothing else, is read aloud by the title22-voice
+// Worker (Kokoro af_heart via DeepInfra, approved by the owner). Every other
+// Tello reply stays text with no speaker button — do not wire this into the
+// chat, the dock or the portfolio briefing.
+//
+// Autoplay on iPhone. Safari only lets audio start inside a tap, and the
+// briefing arrives seconds after any tap, from an AI call. So the FIRST tap
+// anywhere in the app plays a 0.16 s silent clip through the one shared
+// <audio> element; after that Safari lets that same element play later. If the
+// browser still refuses, play() rejects and the bar offers "Tap to listen" —
+// it never fails silently, and it never falls back to the browser's built-in
+// voice (speechSynthesis), by the owner's rule.
+//
+// Once per briefing per day: the text's hash is remembered for the day, so
+// coming back to the dashboard shows "Listen again" instead of speaking again.
+// A Refresh that produces a different briefing is a new briefing.
+const VOICE_WORKER='https://title22-voice.infomomtelo.workers.dev/api/tello/briefing-voice';
+const TELLO_SILENT_MP3='data:audio/mpeg;base64,//NAxAAAAANIAAAAAExBTUUDAAkIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80LEAAAAA0gAAAAATEFNRQMACQgABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRQMACQgABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQsQAAAADSAAAAABMQU1FAwAJCAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQMQAAAADSAAAAABMQU1FAwAJCAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NCxAAAAANIAAAAAExBTUUDAAkIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+let telloVoiceAudio=null, telloVoiceUrl=null, telloVoiceText='', telloVoiceSeq=0;
+
+function telloVoiceEl(){
+  if(telloVoiceAudio)return telloVoiceAudio;
+  const a=new Audio();
+  a.preload='auto';
+  a.setAttribute('playsinline','');
+  a.addEventListener('playing',()=>{if(a.dataset.real)telloVoiceRender('playing');});
+  a.addEventListener('pause',()=>{if(a.dataset.real&&!a.ended&&a.currentTime>0)telloVoiceRender('paused');});
+  a.addEventListener('ended',()=>{if(a.dataset.real)telloVoiceRender('again');});
+  a.addEventListener('timeupdate',telloVoiceTick);
+  telloVoiceAudio=a;
+  return a;
+}
+
+(function telloVoiceUnlockOnFirstTap(){
+  const unlock=()=>{
+    ['touchend','click','keydown'].forEach(t=>document.removeEventListener(t,unlock,true));
+    const a=telloVoiceEl();
+    if(a.dataset.real)return;             // already carrying a briefing
+    a.src=TELLO_SILENT_MP3;
+    const p=a.play();
+    if(p&&p.then)p.then(()=>a.pause(),()=>{});
+  };
+  ['touchend','click','keydown'].forEach(t=>document.addEventListener(t,unlock,true));
+})();
+
+function telloVoiceEnabled(){
+  // Default ON. The account value wins; the per-browser copy only covers the
+  // moment before currentUser is loaded.
+  const m=currentUser&&currentUser.user_metadata;
+  if(m&&typeof m.title22_briefing_voice==='boolean')return m.title22_briefing_voice;
+  try{const v=localStorage.getItem('title22_briefing_voice');if(v!==null)return v==='1';}catch(e){}
+  return true;
+}
+
+async function setTelloVoiceEnabled(on){
+  on=!!on;
+  try{localStorage.setItem('title22_briefing_voice',on?'1':'0');}catch(e){}
+  if(currentUser){
+    currentUser.user_metadata={...(currentUser.user_metadata||{}),title22_briefing_voice:on};
+    // updateUser merges `data` into user_metadata; nothing else there changes.
+    const{error}=await sb.auth.updateUser({data:{title22_briefing_voice:on}});
+    if(error)t22Toast('Saved on this device only — your account could not be updated.');
+  }
+  track('briefing_voice_setting',{on});
+  if(!on){telloVoiceStop();telloVoiceRender('off');}
+  // Switching ON never starts talking — the person is on the Tello tab, away
+  // from the bar that could stop it. It only offers the briefing on the card.
+  else{const el=document.getElementById('dash-ai-briefing');if(el&&el.dataset.voice==='1')telloVoiceOffer(el,{offerOnly:true});}
+}
+
+function renderTelloVoiceSetting(){
+  const t=document.getElementById('tello-voice-toggle');
+  if(t)t.checked=telloVoiceEnabled();
+  const card=document.getElementById('tello-settings');
+  if(card)card.style.display=demoMode?'none':'';
+}
+
+function telloVoiceHash(s){
+  let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;
+  return (h>>>0).toString(36);
+}
+function telloVoicePlayedKey(){
+  return 'title22_voice_played_'+(currentFacility?.id||'none')+'_'+new Date().toISOString().slice(0,10);
+}
+function telloVoiceAlreadyPlayed(text){
+  try{return localStorage.getItem(telloVoicePlayedKey())===telloVoiceHash(text);}catch(e){return false;}
+}
+function telloVoiceMarkPlayed(text){
+  try{
+    const keep=telloVoicePlayedKey();
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('title22_voice_played_')&&k!==keep)localStorage.removeItem(k);
+    }
+    localStorage.setItem(keep,telloVoiceHash(text));
+  }catch(e){}
+}
+
+// state: loading | playing | paused | tap | again | off
+// Tello's "T", measured off the 1080x1920 intro video (units are video pixels
+// around the disc's centre): disc r=166, gold ring r=125, an 18-unit crossbar
+// with serifs hanging to -19 at both ends, a 22-unit stem, a slab foot. A path,
+// not text, so it is sharp at any density and never falls back to Georgia.
+const TELLO_AVATAR_SVG='<svg viewBox="-166 -166 332 332" aria-hidden="true">'
+  +'<circle r="166" fill="#123a30"/>'
+  +'<circle r="125" fill="none" stroke="#e8a23d" stroke-width="7.5"/>'
+  +'<path fill="#f9f5ed" d="M-46 -54H45L48 -19H29V-36H10V34H27V51H-27V34H-11V-36H-29V-19H-48Z"/>'
+  +'</svg>';
+function telloVoiceRender(state){
+  const bar=document.getElementById('tello-voice-bar');if(!bar)return;
+  if(state!=='playing'&&state!=='paused')telloVoiceMark(-1);
+  if(state==='off'){bar.className='';bar.innerHTML='';return;}
+  const btn=(label,fn,kind)=>`<button type="button" class="tv-btn ${kind||''}" onclick="${fn}">${label}</button>`;
+  const V={
+    loading:{kicker:'Tello · AI voice',status:'Getting ready<span class="tv-dots"></span>',actions:''},
+    playing:{kicker:'Tello \u00b7 daily briefing',status:'Tello is speaking (AI voice)',actions:btn('❚❚ Pause','telloVoicePause()','primary')+btn('■ Stop','telloVoiceStopClick()')},
+    paused:{kicker:'Tello · AI voice',status:'Paused',actions:btn('▶ Resume','telloVoiceResume()','gold')+btn('■ Stop','telloVoiceStopClick()')},
+    tap:{kicker:'Tello · AI voice',status:'Tello can read this to you',actions:btn('▶ Tap to listen','telloVoiceListen()','gold')},
+    again:{kicker:'Tello · AI voice',status:'Your briefing, in Tello’s voice',actions:btn('▶ Listen again','telloVoiceListen()','gold')},
+  }[state];
+  bar.innerHTML=`<div class="tv-avatar">${TELLO_AVATAR_SVG}</div>`
+    +`<div class="tv-words"><div class="tv-kicker">${V.kicker}</div><div class="tv-status" aria-live="polite">${V.status}</div></div>`
+    +(V.actions?`<div class="tv-actions">${V.actions}</div>`:'');
+  bar.className='on'+(state==='playing'?' speaking':'');
+}
+
+// Follow-along: marks the briefing line Tello is on. No word timings exist,
+// so each line gets its share of the audio by length, plus a little for the
+// pause at its end. Close, not exact — lines are short.
+let telloVoiceLines=[], telloVoiceBounds=[];
+function telloVoicePrepLines(){
+  const el=document.getElementById('dash-ai-briefing');
+  telloVoiceLines=el?[...el.querySelectorAll('li, :scope > div > div')].filter(n=>(n.innerText||'').trim()):[];
+  const w=telloVoiceLines.map(n=>n.innerText.trim().length+14);
+  const total=w.reduce((a,b)=>a+b,0)||1;
+  let acc=0;telloVoiceBounds=w.map(x=>(acc+=x)/total);
+  telloVoiceLines.forEach(n=>n.classList.add('tv-line'));
+}
+function telloVoiceMark(idx){
+  telloVoiceLines.forEach((n,i)=>n.classList.toggle('tv-now',i===idx));
+}
+function telloVoiceTick(){
+  // Only while she is actually speaking: Stop rewinds to 0, and that rewind
+  // fires one more timeupdate that would otherwise re-mark the first line.
+  const a=telloVoiceAudio;if(!a||!a.dataset.real||a.paused||!a.duration||!telloVoiceLines.length)return;
+  const f=a.currentTime/a.duration;
+  let i=telloVoiceBounds.findIndex(b=>f<b);if(i<0)i=telloVoiceLines.length-1;
+  telloVoiceMark(i);
+}
+
+function telloVoiceStop(){
+  telloVoiceSeq++;                       // cancels any fetch still in flight
+  telloVoiceDisarm();
+  const a=telloVoiceAudio;
+  if(a){a.pause();try{a.currentTime=0;}catch(e){}}
+}
+function telloVoiceStopClick(){telloVoiceStop();telloVoiceRender('again');}
+function telloVoicePause(){if(telloVoiceAudio)telloVoiceAudio.pause();}
+function telloVoiceResume(){
+  const a=telloVoiceAudio;if(!a)return;
+  a.play().catch(()=>telloVoiceRender('tap'));
+}
+// Drops the audio entirely — sign-out, facility switch.
+function telloVoiceReset(){
+  telloVoiceStop();
+  if(telloVoiceAudio){delete telloVoiceAudio.dataset.real;telloVoiceAudio.removeAttribute('src');}
+  if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
+  telloVoiceText='';
+  telloVoiceRender('off');
+  telloVoiceLines.forEach(n=>n.classList.remove('tv-line','tv-now'));telloVoiceLines=[];
+}
+
+async function telloVoiceFetch(text){
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session)throw Object.assign(new Error('not signed in'),{status:401});
+  const res=await fetch(VOICE_WORKER,{method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({text})});
+  if(!res.ok){
+    let msg='';try{msg=(await res.json()).error||'';}catch(e){}
+    throw Object.assign(new Error(msg||('HTTP '+res.status)),{status:res.status});
+  }
+  return URL.createObjectURL(await res.blob());
+}
+
+// Plays the current briefing. Called from a tap ("Tap to listen", "Listen
+// again") or automatically when a new briefing arrives.
+async function telloVoiceListen(){
+  const text=telloVoiceText;if(!text)return;
+  const a=telloVoiceEl();
+  const seq=++telloVoiceSeq;
+  if(!telloVoiceUrl){
+    telloVoiceRender('loading');
+    try{telloVoiceUrl=await telloVoiceFetch(text);}
+    catch(e){
+      // Owner's rule: the text is already on screen; log it and go quiet.
+      console.warn('[tello voice] unavailable:',e.status||'',e.message);
+      track('briefing_voice_failed',{status:e.status||0});
+      if(seq===telloVoiceSeq)telloVoiceRender('off');
+      return;
+    }
+    if(seq!==telloVoiceSeq)return;       // stopped, refreshed or signed out meanwhile
+  }
+  a.dataset.real='1';
+  if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+  try{a.currentTime=0;}catch(e){}
+  try{
+    await a.play();
+    telloVoiceDisarm();
+    telloVoiceMarkPlayed(text);
+    track('briefing_voice_played',{});
+  }catch(e){
+    // NotAllowedError: the browser wants a tap. Show the button, AND start by
+    // itself on the person's first touch anywhere on the dashboard — the owner
+    // wants the briefing to autoplay, and a first touch is the earliest moment
+    // iPhone Safari allows sound. Never fails silently.
+    if(seq===telloVoiceSeq){telloVoiceRender('tap');telloVoiceArmFirstTouch();}
+  }
+}
+
+let telloVoiceArmed=null;
+function telloVoiceDisarm(){
+  if(!telloVoiceArmed)return;
+  ['touchend','click','keydown'].forEach(t=>document.removeEventListener(t,telloVoiceArmed,true));
+  telloVoiceArmed=null;
+}
+function telloVoiceArmFirstTouch(){
+  if(telloVoiceArmed)return;
+  telloVoiceArmed=e=>{
+    if(!telloVoiceText||!telloVoiceUrl){telloVoiceDisarm();return;}
+    const t=e.target&&e.target.closest?e.target:null;
+    // Its own buttons do their own thing.
+    if(t&&t.closest('#tello-voice-bar'))return;
+    // A tap that is leaving the dashboard must not start her talking.
+    if(t&&t.closest('.nav-item,#user-menu,#user-menu-btn,[onclick*="switchTab"],a[href],.modal-overlay'))return;
+    const dash=document.getElementById('tab-dashboard');
+    if(!dash||dash.style.display==='none')return;
+    const a=telloVoiceEl();
+    a.dataset.real='1';
+    if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+    try{a.currentTime=0;}catch(err){}
+    // play() is called synchronously inside the touch — that is what Safari
+    // requires. If it still refuses (a scroll is not a tap), stay armed.
+    a.play().then(()=>{telloVoiceDisarm();telloVoiceMarkPlayed(telloVoiceText);track('briefing_voice_played',{via:'first_touch'});},()=>{});
+  };
+  ['touchend','click','keydown'].forEach(t=>document.addEventListener(t,telloVoiceArmed,true));
+}
+
+// Called once a REAL briefing is on screen (fresh or cached) — never for an
+// error, a warning, the "could not be read" note or the demo sandbox.
+function telloVoiceOffer(el,opts){
+  if(!el)return;
+  el.dataset.voice='1';
+  if(demoMode||!currentUser||!telloVoiceEnabled()){telloVoiceRender('off');return;}
+  const text=(el.innerText||'').replace(/\s+\n/g,'\n').trim();
+  if(!text){telloVoiceRender('off');return;}
+  if(text!==telloVoiceText){
+    telloVoiceStop();
+    if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
+    telloVoiceText=text;
+  }
+  telloVoicePrepLines();
+  if(opts&&opts.offerOnly){telloVoiceRender('tap');return;}
+  if(telloVoiceAlreadyPlayed(text)){telloVoiceRender('again');return;}
+  telloVoiceListen();
+}
+
 async function loadDashboardAIBriefing(force){
   if(dashBriefingLoaded&&!force)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
+  // A new briefing (refresh, other facility) must not keep reading the old one.
+  telloVoiceReset();delete el.dataset.voice;
   if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
   if(!force){
     const cached=readCachedBriefing();
-    if(cached){el.innerHTML=cached;dashBriefingLoaded=true;return;}
+    if(cached){el.innerHTML=cached;dashBriefingLoaded=true;telloVoiceOffer(el);return;}
   }
   el.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--text2)"><div style="width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div> Analyzing your facility...</div>';
   try{
@@ -6459,7 +6785,7 @@ async function loadDashboardAIBriefing(force){
     el.innerHTML=html;
     // Only a real briefing is worth keeping — caching an error would hide the
     // problem for the rest of the day and spend nothing to fix it.
-    if(data.content?.[0]?.text)writeCachedBriefing(html);
+    if(data.content?.[0]?.text){writeCachedBriefing(html);telloVoiceOffer(el);}
     dashBriefingLoaded=true;
   }catch(e){
     el.innerHTML='<div style="font-size:13px;color:var(--text2)">Tello&#39;s briefing is unavailable. Check your AI Worker deployment.</div>';
