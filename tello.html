@@ -133,11 +133,24 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .tool:hover,.tool.open{border-color:var(--gold);background:#fffaf0}
 .topts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 4px}
 .topts .kicker{width:100%;margin:0}
-.ideas-btn{flex:none;padding:0 12px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);font-weight:600;font-size:14px}
+.ideas-btn{flex:none;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);font-weight:600;font-size:14px}
 .ideas-btn:hover{border-color:var(--gold)}
 .compose-hint{flex:none;font-size:12.5px;color:var(--green);background:var(--gold-soft);border-radius:10px;padding:6px 10px;margin-top:6px}
 .copy{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--line);background:var(--cream);color:var(--green);font-weight:500;white-space:normal}
 .copy:hover{border-color:var(--gold)}
+.turn.me .keep{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid rgba(249,245,237,.35);background:transparent;color:var(--cream);font-weight:500}
+.turn.me .keep[disabled]{opacity:.8;cursor:default}
+.attach-btn{flex:none;width:44px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);display:flex;align-items:center;justify-content:center}
+.attach-btn:hover{border-color:var(--gold)}
+.attach-chip{flex:none;display:flex;align-items:center;gap:8px;font-size:13px;background:var(--white);border:1.5px solid var(--gold);border-radius:12px;padding:6px 10px;margin-top:8px}
+.attach-chip img{width:40px;height:40px;object-fit:cover;border-radius:8px}
+.attach-chip .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-chip .warn{display:block;font-size:11.5px;color:var(--muted);white-space:normal}
+.notes{margin:4px 0 16px}
+.note-row{display:flex;gap:10px;align-items:flex-start;background:var(--white);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px;font-size:14px}
+.note-row .grow{flex:1;min-width:0;overflow-wrap:anywhere}
+.note-row small{display:block;color:var(--muted);font-size:11.5px}
+.note-row button{flex:none;font-size:12px;border:1px solid var(--line);background:var(--cream);border-radius:12px;padding:3px 9px;color:var(--bad)}
 
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
@@ -154,6 +167,8 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
   #gate{padding:28px 0 36px} #gate h1{font-size:31px}
   .turn{max-width:90%} .bar .kicker{display:none} .hello h2{font-size:22px}
   #mem,#fresh{padding:6px 2px}
+  .ideas-btn{padding:0;width:44px;justify-content:center} .ideas-btn .lbl{display:none}
+  .composer{gap:7px}
 }
 @media(prefers-reduced-motion:reduce){.turn.her.thinking span{animation:none}}
 </style>
@@ -222,8 +237,11 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <div class="tools" id="starters" hidden></div>
     </div>
     <div class="compose-hint" id="compose-hint" hidden></div>
+    <div class="attach-chip" id="attach-chip" hidden></div>
     <div class="composer">
-      <button class="ideas-btn" id="ideas-btn" onclick="openIdeas()" title="What can I ask Tello?">Ideas</button>
+      <button class="ideas-btn" id="ideas-btn" onclick="openIdeas()" title="What can I ask Tello?" aria-label="Ideas: what can I ask Tello?"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg><span class="lbl">Ideas</span></button>
+      <button class="attach-btn" id="attach-btn" onclick="$('file').click()" title="Share a photo or PDF" aria-label="Share a photo or PDF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
+      <input type="file" id="file" accept="image/*,application/pdf" hidden onchange="onFile(this)"/>
       <textarea id="say" rows="1" placeholder="Ask Tello anything…" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
       <button id="send" onclick="ask()">Ask</button>
     </div>
@@ -238,8 +256,12 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <strong>What Tello remembers</strong>
       <button class="linkbtn dark" onclick="closeMemory()">Close</button>
     </div>
+    <div id="notes-box" hidden>
+      <p class="sheet-note"><b>Things you asked her to remember.</b> She uses these in every answer. Delete any that are out of date.</p>
+      <div class="notes" id="notes-list"></div>
+    </div>
     <p class="sheet-note" id="mem-count"></p>
-    <p class="sheet-note">What she keeps is the conversation itself — what you said and what she said, word for word. She does not store anything she worked out about you, and nobody else can read it. "New" starts a fresh page without deleting anything; only the button below deletes.</p>
+    <p class="sheet-note">What she keeps is the conversation itself — what you said and what she said, word for word. She does not store anything she worked out about you, and nobody else can read it. "New" starts a fresh page without deleting anything; only the button below deletes, and it deletes everything, notes included.</p>
     <div class="msg" id="mem-msg"></div>
     <button class="btn btn-danger" onclick="forgetAll()" id="forget-btn">Forget everything</button>
   </div>
@@ -388,7 +410,24 @@ async function newConversation(){
   try{await api('/new',{method:'POST'})}catch(e){}
   $('thread').innerHTML='';divider();greet();
 }
+async function loadNotesList(){
+  const box=$('notes-box'),list=$('notes-list');
+  if(mode!=='partner'){box.hidden=true;return}
+  box.hidden=false;list.textContent='Loading…';
+  const{data,error}=await sb.from('tello_founder_messages').select('id,content,created_at').eq('kind','note').order('created_at',{ascending:true});
+  list.innerHTML='';
+  if(error||!data||!data.length){list.textContent=error?'Notes are not switched on yet.':'Nothing yet. Start a message with "Remember:" or tap Remember this under something you said.';return}
+  data.forEach(n=>{
+    const row=document.createElement('div');row.className='note-row';
+    const g=document.createElement('div');g.className='grow';g.textContent=n.content;
+    const sm=document.createElement('small');sm.textContent=new Date(n.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});g.appendChild(sm);
+    const del=document.createElement('button');del.type='button';del.textContent='Delete';
+    del.onclick=async()=>{del.disabled=true;const{error}=await sb.from('tello_founder_messages').delete().eq('id',n.id);if(error){del.disabled=false;del.textContent='Try again'}else row.remove()};
+    row.append(g,del);list.appendChild(row);
+  });
+}
 function openMemory(){
+  loadNotesList();
   $('mem-count').textContent=held?`She is holding ${held} message${held===1?'':'s'} from your conversations with her${mode==='partner'?' as your partner':''}.`:'She is not holding anything yet.';
   $('forget-btn').hidden=!held;$('mem-msg').className='msg';$('sheet').classList.add('open');
 }
@@ -410,7 +449,17 @@ function say(text,cls,noCopy){
     const b=document.createElement('button');b.className='copy';b.type='button';b.textContent='Copy';
     b.onclick=()=>copyText(text,b);d.appendChild(b);
   }
+  if(cls==='me'&&mode==='partner'&&!noCopy&&text&&!text.startsWith('[')){
+    const k=document.createElement('button');k.className='keep';k.type='button';k.textContent='Remember this';
+    k.onclick=()=>keepNote(text,k);d.appendChild(k);
+  }
   $('thread').appendChild(d);return d;
+}
+async function keepNote(text,btn){
+  btn.disabled=true;btn.textContent='Saving…';
+  try{const r=await api('/remember',{method:'POST',body:{text:text.replace(/^\s*remember(?:\s+this)?\s*[:,\-–—]\s*/i,'')}});
+    btn.textContent=r.duplicate?'Already remembered':'Remembered ✓';
+  }catch(e){btn.disabled=false;btn.textContent=(e.data&&e.data.message)||'Could not save — try again'}
 }
 async function copyText(text,btn){
   let ok=false;
@@ -419,6 +468,53 @@ async function copyText(text,btn){
     try{ok=document.execCommand('copy')}catch(_){} t.remove();
   }
   btn.textContent=ok?'Copied':'Select the text to copy';setTimeout(()=>{btn.textContent='Copy'},1800);
+}
+
+/* ------------------------------------------------------ attachments -- */
+// A photo or PDF goes with ONE message and is never kept: not here, not in
+// her memory, not in the database. Photos are shrunk in the browser first
+// (long side 1568px, JPEG), which is also what keeps phone photos small.
+let attachment=null;
+async function onFile(input){
+  const f=input.files&&input.files[0];input.value='';
+  if(!f)return;
+  try{
+    if(f.type==='application/pdf'){
+      if(f.size>5*1024*1024)throw new Error('That PDF is over 5 MB. Try a shorter one.');
+      attachment={media_type:'application/pdf',data:await fileB64(f),name:f.name,kind:'PDF'};
+    }else if(f.type.startsWith('image/')){
+      attachment={...(await shrinkImage(f)),name:f.name||'photo',kind:'photo'};
+    }else throw new Error('Tello can read a photo or a PDF.');
+    showAttachment();
+  }catch(e){say(e.message||'Could not read that file.','her err',true);scrollEnd()}
+}
+function fileB64(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=()=>no(new Error('Could not read that file.'));r.readAsDataURL(f)})}
+function shrinkImage(f){
+  return new Promise((ok,no)=>{
+    const url=URL.createObjectURL(f),img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1,1568/Math.max(img.naturalWidth,img.naturalHeight));
+      const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+      const d=c.toDataURL('image/jpeg',0.85);ok({media_type:'image/jpeg',data:d.split(',')[1],preview:d});
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);no(new Error('Could not open that photo. Try a screenshot or a JPEG.'))};
+    img.src=url;
+  });
+}
+function showAttachment(){
+  const c=$('attach-chip');c.innerHTML='';
+  if(!attachment){c.hidden=true;return}
+  if(attachment.preview){const im=document.createElement('img');im.src=attachment.preview;im.alt='';c.appendChild(im)}
+  const g=document.createElement('div');g.className='grow';
+  g.textContent=(attachment.kind==='PDF'?'PDF: ':'Photo: ')+attachment.name;
+  const w=document.createElement('span');w.className='warn';
+  w.textContent=mode==='partner'?'Read for this answer only, never kept.':'Read for this answer only, never kept. Don\'t share anything with a resident\'s name or health details.';
+  g.appendChild(w);c.appendChild(g);
+  const x=document.createElement('button');x.type='button';x.className='linkbtn dark';x.textContent='Remove';x.onclick=()=>{attachment=null;showAttachment()};c.appendChild(x);
+  c.hidden=false;
+  const i=$('say');if(!i.value){i.placeholder='What should I do with it?';}
+  i.focus();
 }
 
 /* ----------------------------------------------------------- tools -- */
@@ -433,6 +529,7 @@ const TOOLS=[
     {label:'Rewrite it',hint:'Same message, said better.',options:['Clearer','Friendlier','More professional','Shorter'],start:o=>`Rewrite this so it is ${o.toLowerCase()}. My text:\n\n`,paste:'Paste the text to rewrite, then tap Ask.'},
     {label:'Translate',hint:'For caregivers, families or posts.',options:['Spanish','Tagalog','Punjabi','English'],start:o=>`Translate this into ${o}. My text:\n\n`,paste:'Paste the text to translate, then tap Ask. Have a native speaker check anything important.'},
     {label:'Reply to a message',hint:'Paste what they sent; I draft your answer.',start:'Help me reply to this message. What they sent:\n\n',paste:'Paste the message you received. Leave out anyone\'s health details.'},
+    {label:'Read a photo or PDF',hint:'A letter, a flyer, a screenshot, a form.',pick:true},
     {label:'Write an email',hint:'Tell me who it is for and what to say.',start:'Write a short email. Who it is for and what I want to say:\n\n',paste:'Say who it is for and what you want to say, in your own words.'},
   ]},
   {group:'Social posts',partner:true,items:[
@@ -442,6 +539,7 @@ const TOOLS=[
     {label:'Check a post before I publish',hint:'Anything untrue, risky or unclear?',start:'Check this post before I publish it: anything untrue, not legal, or unclear? Then give me the fixed version.\n\n',paste:'Paste the post.'},
   ]},
   {group:'The business',partner:true,items:[
+    {label:'Remember something',hint:'A date, a decision, a customer. Kept until you delete it.',start:'Remember: ',paste:'Type what she should remember, then tap Ask. See or delete it under Memory.'},
     {label:'Should I…?',hint:'Recommendation, risk, cheapest test.',start:'Should I ',paste:'Finish the question, then tap Ask.'},
     {label:'One next step today',hint:'When there is too much going on.',ask:'What is the one next step for me today, and what should I drop?'},
     {label:'Where are signups stuck?',hint:'From the live numbers.',ask:'Where are new accounts getting stuck, and what is the one fix you would try first?'},
@@ -494,6 +592,7 @@ function useTool(t,btn,grid){
 }
 function runTool(t,o){
   closeIdeas();
+  if(t.pick){$('file').click();return}
   if(t.ask){ask(t.ask);return}
   const text=typeof t.start==='function'?t.start(o):t.start;
   if(t.send){ask(text);return}
@@ -539,19 +638,24 @@ async function ask(text){
   if(busy)return;
   const input=$('say');
   const q=(text||input.value).trim();
-  if(!q)return;
+  const att=text?null:attachment;
+  if(!q&&!att)return;
   const phi=phiCheck(q);
   if(phi){say(phi,'her err');scrollEnd();return}
   input.value='';input.style.height='auto';
   $('starters').hidden=true;$('compose-hint').hidden=true;
-  say(q,'me');
+  if(att){attachment=null;showAttachment()}
+  say(att?`[${att.kind==='PDF'?'PDF':'Photo'}: ${att.name}]${q?'\n'+q:''}`:q,'me',!!att);
   const thinking=say('','her thinking');thinking.innerHTML='<span>●</span> <span>●</span> <span>●</span>';
   scrollEnd();
   busy=true;$('send').disabled=true;
   try{
-    const d=await api('',{method:'POST',body:{message:q}});
+    const body={message:q};
+    if(att)body.attachment={media_type:att.media_type,data:att.data,name:att.name};
+    const d=await api('',{method:'POST',body});
     thinking.remove();
     say(d.reply,'her');
+    if(d.noted){const n=document.createElement('div');n.className='divider';n.textContent=d.noted.ok?'Tello will remember that':'Not saved: '+(d.noted.message||'try again');$('thread').appendChild(n)}
     if(d.memory)held+=2;
     showCredits(d);
   }catch(e){
