@@ -184,18 +184,41 @@
     .tv-dots::after{animation:none;content:"..."}
     #dash-ai-briefing .tv-line{transition:none}
   }
-  #tello-dock-btn{position:fixed;right:20px;bottom:20px;z-index:900;width:60px;height:60px;border-radius:50%;border:none;background:var(--teal);color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
-  #tello-dock-btn:hover{background:#0a5442}
-  #tello-dock-btn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  /* ONE Tello, everywhere in the app, drawn from the Tello intro video
+     (2026-09-27): cream #f9f5ed, green #123a30, gold #e8a23d, the vector "T"
+     measured off the 1080x1920 frame, Zilla Slab for her name, IBM Plex Mono
+     small caps for labels. .t-mark is the avatar at any size; the -sm
+     variant thickens the gold ring so it survives at 18-28px. */
+  :root{--tello-mark:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-166 -166 332 332%22%3E%3Ccircle r=%22166%22 fill=%22%23123a30%22/%3E%3Ccircle r=%22125%22 fill=%22none%22 stroke=%22%23e8a23d%22 stroke-width=%227.5%22/%3E%3Cpath fill=%22%23f9f5ed%22 d=%22M-46 -54H45L48 -19H29V-36H10V34H27V51H-27V34H-11V-36H-29V-19H-48Z%22/%3E%3C/svg%3E");--tello-mark-sm:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-166 -166 332 332%22%3E%3Ccircle r=%22166%22 fill=%22%23123a30%22/%3E%3Ccircle r=%22125%22 fill=%22none%22 stroke=%22%23e8a23d%22 stroke-width=%2216%22/%3E%3Cpath fill=%22%23f9f5ed%22 d=%22M-46 -54H45L48 -19H29V-36H10V34H27V51H-27V34H-11V-36H-29V-19H-48Z%22/%3E%3C/svg%3E")}
+  .t-mark{display:inline-block;flex-shrink:0;width:28px;height:28px;border-radius:50%;
+    background:var(--tello-mark-sm) center/contain no-repeat;vertical-align:middle}
+  .t-mark.lg{background-image:var(--tello-mark);box-shadow:0 0 0 4px rgba(232,162,61,.14),0 0 0 5px rgba(232,162,61,.4)}
+  .t-kicker{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:rgba(18,58,48,.62)}
+  .t-name{font-family:'Zilla Slab',Georgia,serif;font-weight:700;color:#123a30}
+  /* Tello's replies: white bubble, her mark beside it (as in the video's
+     chat). CSS-only, so every caller of addAIMessage / renderTelloDock that
+     later rewrites the bubble keeps its mark. */
+  .t-say{position:relative;margin-left:36px !important}
+  .t-say::before{content:"";position:absolute;left:-36px;top:2px;width:28px;height:28px;border-radius:50%;
+    background:var(--tello-mark-sm) center/contain no-repeat}
+  #tello-dock-btn{position:fixed;right:20px;bottom:20px;z-index:900;width:62px;height:62px;border-radius:50%;border:none;padding:0;
+    background:var(--tello-mark) center/contain no-repeat;cursor:pointer;
+    box-shadow:0 0 0 5px rgba(232,162,61,.16),0 0 0 6px rgba(232,162,61,.45),0 8px 22px rgba(18,58,48,.28);
+    transition:transform .15s ease,box-shadow .15s ease}
+  #tello-dock-btn:hover,#tello-dock-btn:focus-visible{transform:translateY(-2px);
+    box-shadow:0 0 0 6px rgba(232,162,61,.2),0 0 0 7px rgba(232,162,61,.6),0 10px 26px rgba(18,58,48,.32)}
+  @media (prefers-reduced-motion:reduce){#tello-dock-btn{transition:none}#tello-dock-btn:hover{transform:none}}
   #tello-dock{position:fixed;right:20px;bottom:92px;z-index:901;width:min(380px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 130px));max-height:min(560px,calc(100dvh - 130px));display:none;flex-direction:column;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden}
   #tello-dock.open{display:flex}
-  .td-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--teal-light);color:var(--teal);font-weight:600;font-size:15px}
-  .td-head .td-sub{font-weight:400;font-size:12px;color:var(--text2)}
+  .td-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(18,58,48,.12);background:#f9f5ed;color:#123a30}
+  .td-head .t-name{font-size:18px;line-height:1.1}
+  .td-head .td-sub{display:block;margin-top:2px}
   .td-close{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text2);padding:0 4px}
   .td-msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px;display:flex;flex-direction:column;gap:10px}
   .td-msg{border-radius:var(--radius);padding:9px 12px;font-size:13.5px;line-height:1.65;max-width:92%}
-  .td-msg.user{background:var(--teal-light);color:var(--teal);align-self:flex-end;margin-left:auto}
-  .td-msg.assistant{background:var(--gray-bg);border:1px solid var(--border);color:var(--text)}
+  .td-msg.user{background:#123a30;color:#f9f5ed;align-self:flex-end;margin-left:auto}
+  .td-msg.assistant{background:#fff;border:1px solid rgba(18,58,48,.14);color:var(--text)}
   .td-foot{border-top:1px solid var(--border);padding:10px;display:flex;gap:8px}
   .td-foot textarea{flex:1;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;resize:none;outline:none}
   .td-foot button{align-self:flex-end;min-height:40px}
@@ -956,7 +979,7 @@
         <div style="margin-top:20px" class="card" id="dash-mar-card"><div class="card-title">Today's MAR</div><div id="dash-mar-stats"><div class="empty">Loading...</div></div></div>
         <div style="margin-top:20px" class="card" id="dash-ai-briefing-card">
           <div class="card-title">
-            <span><svg class="ic"><use href="#i-spark"/></svg> Tello's daily briefing</span>
+            <span style="display:flex;align-items:center;gap:10px"><span class="t-mark" aria-hidden="true"></span><span><span class="t-kicker" style="display:block">Tello · every morning</span><span class="t-name" style="font-size:17px">Your daily briefing</span></span></span>
             <button onclick="loadDashboardAIBriefing(true)" style="font-size:11px;background:var(--teal-light);color:var(--teal);border:none;border-radius:20px;padding:4px 12px;cursor:pointer;font-weight:600">Refresh</button>
           </div>
           <div id="dash-ai-briefing" style="font-size:13px;color:var(--text2);line-height:1.8">
@@ -1332,13 +1355,13 @@
 
       <!-- AI -->
       <div id="tab-ai" style="display:none">
-        <div class="page-header"><h1>Tello</h1><span class="badge badge-teal">Included in your plan</span></div>
+        <div class="page-header"><div style="display:flex;align-items:center;gap:14px"><span class="t-mark lg" aria-hidden="true" style="width:48px;height:48px"></span><div><div class="t-kicker">Title22 · AI assistant</div><h1 class="t-name" style="margin:0;font-size:30px">Tello</h1></div></div><span class="badge badge-teal">Included in your plan</span></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.<span id="ai-lite-note" style="display:none"> This edition holds no resident, medication or MAR records, so she cannot see them.</span></div>
         <!-- Tello settings. One switch today: the daily briefing's voice (B1).
              Saved on the account (user_metadata), so it follows the person
              across devices; see setTelloVoiceEnabled. -->
         <div class="card" id="tello-settings" style="margin-bottom:16px;">
-          <div class="card-title" style="margin-bottom:6px"><span>Tello settings</span></div>
+          <div class="card-title" style="margin-bottom:6px"><span style="display:flex;align-items:center;gap:10px"><span class="t-mark" aria-hidden="true"></span><span class="t-name" style="font-size:17px">Tello settings</span></span></div>
           <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;min-height:44px">
             <input type="checkbox" id="tello-voice-toggle" onchange="setTelloVoiceEnabled(this.checked)" style="width:22px;height:22px;margin-top:1px;accent-color:var(--teal);flex-shrink:0">
             <span style="line-height:1.5"><strong style="font-size:14px">Read my briefing aloud</strong><br>
@@ -7068,7 +7091,8 @@ async function sendAIQuery(btn){
 function addAIMessage(text,role){
   const msgs=document.getElementById('ai-chat-messages');if(!msgs)return null;
   const el=document.createElement('div');
-  el.style.cssText=role==='user'?'background:var(--teal-light);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--teal);align-self:flex-end;max-width:88%;margin-left:auto':'background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;color:var(--text);line-height:1.7;max-width:95%';
+  el.style.cssText=role==='user'?'background:#123a30;border-radius:var(--radius);padding:9px 14px;font-size:13px;color:#f9f5ed;align-self:flex-end;max-width:88%;margin-left:auto':'background:#fff;border:1px solid rgba(18,58,48,.14);border-radius:var(--radius);padding:10px 14px;font-size:13px;line-height:1.7;color:var(--text);max-width:calc(95% - 36px)';
+  if(role!=='user')el.classList.add('t-say');
   el.textContent=text;msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el;
 }
 
@@ -7401,7 +7425,8 @@ function mountTelloDock(){
     btn.setAttribute('aria-label','Ask Tello');
     btn.title='Ask Tello';
     btn.onclick=toggleTelloDock;
-    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-4-.9L3 21l1.9-4.9A8.4 8.4 0 013 11.5a8.4 8.4 0 018.5-8.4h.5a8.4 8.4 0 019 8.4z"/></svg>';
+    // The button IS Tello's avatar (CSS background), the same mark as the
+    // briefing's voice bar and the intro video.
     host.appendChild(btn);
   }
   if(!document.getElementById('tello-dock')){
@@ -7410,8 +7435,8 @@ function mountTelloDock(){
     panel.setAttribute('role','dialog');
     panel.setAttribute('aria-label','Ask Tello');
     panel.innerHTML=
-      '<div class="td-head"><svg class="ic"><use href="#i-spark"/></svg>'+
-      '<span>Tello<span class="td-sub" id="td-scope"></span></span>'+
+      '<div class="td-head"><span class="t-mark lg" aria-hidden="true" style="width:36px;height:36px"></span>'+
+      '<span><span class="t-name">Tello</span><span class="t-kicker td-sub" id="td-scope"></span></span>'+
       '<button class="td-close" type="button" aria-label="Close" onclick="toggleTelloDock()">&times;</button></div>'+
       '<div class="td-msgs" id="td-msgs"></div>'+
       '<div class="td-foot">'+
@@ -7425,7 +7450,7 @@ function mountTelloDock(){
     });
   }
   const scope=document.getElementById('td-scope');
-  if(scope)scope.textContent=' · '+(currentFacility.name||'this facility');
+  if(scope)scope.textContent='AI assistant \u00b7 '+(currentFacility.name||'this facility');
   renderTelloDock();
 }
 
@@ -7434,13 +7459,13 @@ function renderTelloDock(){
   box.innerHTML='';
   if(!telloDockMessages.length){
     const el=document.createElement('div');
-    el.className='td-msg assistant';
+    el.className='td-msg assistant t-say';
     el.textContent='Hi, I’m Tello. Ask me about staff, training, certificates, documents or DSS readiness. This edition holds no resident records, so there is nothing about a resident for me to look up.';
     box.appendChild(el);
   }
   telloDockMessages.forEach(m=>{
     const el=document.createElement('div');
-    el.className='td-msg '+(m.role==='user'?'user':'assistant');
+    el.className='td-msg '+(m.role==='user'?'user':'assistant t-say');
     // Tello's replies come back as light markdown; a question is shown as
     // typed. Never innerHTML on the user's own text.
     if(m.role==='user')el.textContent=m.content;
