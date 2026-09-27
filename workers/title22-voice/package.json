@@ -1,0 +1,12 @@
+{
+  "name": "title22-voice",
+  "private": true,
+  "type": "module",
+  "description": "Tello's voice: Kokoro-82M via DeepInfra, peak-normalised and encoded to 160 kbps MP3 in the Worker.",
+  "dependencies": {
+    "@breezystack/lamejs": "1.2.7"
+  },
+  "scripts": {
+    "test": "node test.mjs"
+  }
+}
