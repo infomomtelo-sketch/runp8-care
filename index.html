@@ -111,6 +111,24 @@
   .ob-path-btn:hover span{color:var(--teal)}
   /* On the filled green button the grey subtitle was near-invisible. */
   .btn-primary.ob-path-btn span,.btn-primary.ob-path-btn:hover span{color:rgba(255,255,255,.86)}
+  /* Forms tab */
+  .fm-types{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+  .fm-type{padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-size:14px;font-weight:600;color:var(--text);cursor:pointer}
+  .fm-type.on{background:var(--teal);border-color:var(--teal);color:#fff}
+  .fm-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+  .fm-group{margin:0 0 22px}
+  .fm-group h3{font-size:17px;margin:0 0 4px}
+  .fm-group .fm-sub{font-size:13px;color:var(--text2);margin:0 0 10px}
+  .fm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+  .fm-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+  .fm-code{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--teal)}
+  .fm-name{font-size:15px;font-weight:700;color:var(--text);line-height:1.3}
+  .fm-line{font-size:13px;color:var(--text2);line-height:1.5}
+  .fm-line b{color:var(--text);font-weight:600}
+  .fm-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .fm-btns button,.fm-btns a{font-size:13px;padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--text);cursor:pointer;text-decoration:none;font-weight:600}
+  .fm-btns .fm-print{background:var(--teal);border-color:var(--teal);color:#fff}
+  .fm-pending{font-size:12px;color:#8a6a1f;background:#fdf6e3;border:1px solid #e6c170;border-radius:8px;padding:5px 9px}
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
   .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .lh-lang-btn{min-height:44px;padding:0 16px;border:2px solid var(--border);background:var(--white);color:var(--text);border-radius:999px;font-size:15px;font-family:inherit;cursor:pointer}
@@ -635,6 +653,7 @@
         <div data-menu-group="people" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);padding:10px 12px 4px">People</div>
         <button id="menu-residents" onclick="switchTab('residents');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-home"/></svg> Residents</button>
         <button id="menu-staff" onclick="switchTab('staff');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-users"/></svg> Staff</button>
+        <button id="menu-forms" onclick="switchTab('forms');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-printer"/></svg> Forms</button>
         <button id="menu-inservice" onclick="window.open('/inservice-staff.html','_blank');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-clock"/></svg> In-service</button>
         <button id="menu-training" onclick="switchTab('training');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-cap"/></svg> Training</button>
         <button id="menu-lessons" onclick="switchTab('lessons');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-file"/></svg> Lessons</button>
@@ -940,6 +959,7 @@
       <button class="nav-item" id="nav-launch" onclick="switchTab('launch')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 10v6M9 13h6"/></svg>Start Your Home</button>
       <button class="nav-item" id="nav-checklist" onclick="switchTab('checklist')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Compliance</button>
       <button class="nav-item" id="nav-staff" onclick="switchTab('staff')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Staff</button>
+      <button class="nav-item" id="nav-forms" onclick="switchTab('forms')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 9V3h10v6"/><path d="M7 18H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><rect x="7" y="15" width="10" height="6" rx="1"/></svg>Forms</button>
       <button class="nav-item" id="nav-inservice" onclick="window.open('/inservice-staff.html','_blank')" title="Staff training &amp; in-service compliance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.7 2 6 2s6-1 6-2v-5"/></svg>In-service</button>
       <button class="nav-item" id="nav-residents" onclick="switchTab('residents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Residents</button>
       <button class="nav-item" id="nav-incidents" onclick="switchTab('incidents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Incidents</button>
@@ -1039,6 +1059,15 @@
            licence, and there is no resident anywhere in it. Cards are rendered
            by renderLaunchHub() from LAUNCH_CARDS so the markup cannot drift out
            of step with the data. -->
+      <!-- Forms, and how to use them. Rendered by renderFormsTab() from
+           T22_FORMS. BLANK FORMS ONLY: every link opens the empty, current
+           form on the CDSS site. Title22 never fills in, prints filled, saves
+           or reads a completed form. See CLAUDE.md "Forms library". -->
+      <div id="tab-forms" style="display:none">
+        <div class="page-header"><h1>Forms</h1><span class="badge badge-teal">Blank forms, and how to use them</span></div>
+        <div class="lh-note"><strong>Blank forms only.</strong> Each one opens the current, empty form on the CDSS website for you to print. Title22 never fills a form in and never keeps a completed one: the finished paper stays in the file at your home. This page says what each form is for, who fills it in and where it goes. It does not say how often anything is due or what an inspector accepts; the form's own instructions and your licensing analyst have the final word.</div>
+        <div id="forms-body"></div>
+      </div>
       <div id="tab-launch" style="display:none">
         <div class="page-header"><h1>Start Your Home</h1><span class="badge badge-teal">Simulan ang Bahay</span></div>
         <div class="lh-note">
@@ -2067,16 +2096,16 @@ let currentUserRole = 'readonly';
 let isPartnerAdmin = false; // app-owner flag (title22_is_partner_admin), unrelated to facility roles
 
 const ROLE_ACCESS = {
-  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'] },
-  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','lessons','ai','documents'] },
+  administrator: { canEdit:true, canDelete:true, canBilling:true, canTeam:true, tabs:['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'] },
+  supervisor:    { canEdit:true, canDelete:true, canBilling:false, canTeam:false, tabs:['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','lessons','ai','documents'] },
   // The shift lead who runs the floor. Resident records and their documents,
   // the medications list so a newly arrived prescription can be added and a
   // stopped one discontinued, and the MAR — including voiding an entry that
   // was logged wrong. Not staff files, not facility settings, not billing or
   // the team list, and canDelete stays false: a lead corrects the record, they
   // do not remove things from it.
-  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','medications','mar','incidents','daily','training','lessons','documents'] },
-  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','mar','incidents','daily','lessons','documents'] },
+  in_house_caregiver:{ canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','forms','residents','medications','mar','incidents','daily','training','lessons','documents'] },
+  caregiver:     { canEdit:true, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','forms','mar','incidents','daily','lessons','documents'] },
   readonly:      { canEdit:false, canDelete:false, canBilling:false, canTeam:false, tabs:['dashboard','checklist','residents','incidents','daily','mar','lessons','documents'] },
 };
 // What each role means, in the words of the job rather than the words of the
@@ -2140,7 +2169,7 @@ function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'
 // Without it the tour cannot open Tello or Team — readonly's tab list has
 // neither — and switchTab would put a "you do not have permission" alert in
 // front of someone who is still deciding whether to sign up.
-const DEMO_TABS=['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
+const DEMO_TABS=['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
 function allowedTabs(){
   const lite=t=>showMAR||!T22_PHI_TABS.includes(t);
   // Verified expired: they keep every tab their role allows, so the work they
@@ -2257,7 +2286,7 @@ function switchTab(name){
   closeUserMenu();
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
+  ['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -2269,6 +2298,7 @@ function switchTab(name){
   if(selNav)selNav.classList.add('active');
   if(name==='dashboard'){refreshDashboard();loadComplianceDocs().then(refreshDashboard);loadDashboardMARStats();maybeShowOnboarding();maybeShowTeamPrompt();setTimeout(()=>loadDashboardAIBriefing(false),500);}
   if(name==='launch')loadLaunchHub();
+  if(name==='forms')renderFormsTab();
   if(name==='checklist'){renderExpiryBanner();renderChecklist(activeFilter);}
   if(name==='residents')loadResidents();
   if(name==='staff')loadStaff();
@@ -4131,7 +4161,7 @@ async function switchFacility(facilityId){
 
 function applyRoleUI(){
   const allowed=allowedTabs();
-  ['dashboard','launch','checklist','staff','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'].forEach(t=>{
+  ['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','documents'].forEach(t=>{
     const nav=document.getElementById('nav-'+t);
     if(nav)nav.style.display=allowed.includes(t)?'':'none';
     // The dropdown entries had no ids, so this never reached them: a caregiver
@@ -6560,11 +6590,13 @@ async function buildFacilityContext(opts){
     // file?" is answered from verified text rather than from whatever the
     // model believes about California licensing.
     const document_guidance=Object.values(DOC_SLOT_HOWTO).map(g=>({document:g.label,how_to_obtain:g.text}));
+    // The Forms tab's own words, for "how do I use LIC 501?". Blank forms only.
+    const forms_library=t22FormsFor(t22FormsType()).map(f=>({form:f.code,name:f.name,who_fills_it_in:f.who,when:f.when,where_it_goes:f.keep,printable_now:!!f.url}));
     // The resident and MAR keys are omitted entirely in Lite rather than sent
     // empty, for the reason above.
     const payload=withPhi
-      ?{today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance}
-      :{today,facility:currentFacility?.name,staff,compliance_tasks,recent_incidents,document_guidance};
+      ?{today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance,forms_library}
+      :{today,facility:currentFacility?.name,staff,compliance_tasks,recent_incidents,document_guidance,forms_library};
     return{json:JSON.stringify(payload,null,2)};
   }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
@@ -7156,11 +7188,13 @@ If user asks about residents, MARs, meds, say: "Title22 Lite is No-PHI and doesn
 
 Tone: Short, practical, Fresno 6-bed owner.
 
-Two things that hold whatever the question is:
+Three things that hold whatever the question is:
 
 1. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Being fairly sure is not the same as it being written down. Say what you are unsure of and send them to their licensing analyst.
 
 2. When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
+
+3. When they ask about a form ("how do I use LIC 501?"), answer from forms_library in the facility data: what it is, who fills it in, when, and where the finished copy goes. Blank forms only: never offer to fill one in, and never put anyone's details on one. If printable_now is false, say its link is still being checked and point them to the CDSS forms page or their licensing office; do not give a web address. To print, they can type "print LIC" and the number, or use the Forms tab.
 `;
 
 async function sendAIQuery(btn){
@@ -7175,6 +7209,8 @@ async function sendAIQuery(btn){
   if(askPhi){alert(askPhi);return;}
   if(input)input.value='';
   addAIMessage(query,'user');
+  const printed=telloFormsIntent(query);
+  if(printed){addAIMessage(printed,'assistant');return;}
   if(demoMode){const _t=addAIMessage('Analyzing the sample facility…','assistant');try{_t.innerHTML=await demoComplianceAnswer(query);}catch(e){_t.textContent='Could not analyze the sample data.';}return;}
   aiMessages.push({role:'user',content:query});
   const thinking=addAIMessage('Checking your facility data...','assistant');
@@ -7615,6 +7651,8 @@ async function sendTelloDock(){
   const askPhi=t22PhiBlock([['Your question',query]]);
   if(askPhi){alert(askPhi);return;}
   inp.value='';
+  const printed=telloFormsIntent(query);
+  if(printed){telloDockMessages.push({role:'user',content:query},{role:'assistant',content:printed});renderTelloDock();return;}
   telloDockBusy=true;
   telloDockMessages.push({role:'user',content:query});
   renderTelloDock();
@@ -7689,6 +7727,166 @@ async function sendTelloDock(){
 // 3. Nobody types. Every step is answered with a button or a photograph, in
 //    two languages, at 56px. The customers this is for are on a phone, often
 //    in a second language, and a form is where they stop.
+// ------------------------------------------------------------------ Forms --
+// Forms, and how to use them. BLANK FORMS ONLY — the rule the owner set on
+// 2026-09-27: print the empty, current form; never one filled from Title22's
+// records, and never keep a completed one here.
+//
+// url is set ONLY for a link someone opened and saw the right form (the
+// ADMISSION_FORMS rule: CDSS paths vary in case and shape, so never derive
+// one). Every other entry shows "being checked" and no print button. Titles
+// without a url come from the owner's own new-hire and admission checklists
+// and are confirmed against the form when its link is checked.
+//
+// types: which license types use it. 'adp' is Adult Day Program. The type is
+// chosen on this tab (defaulted from the facility), not stored on the
+// facility, so no facility row is written.
+const T22_FORMS=[
+  // Staff file: employment records, not PHI.
+  {code:'LIC 501',name:'Personnel Record',group:'staff',types:['rcfe','arf','adp'],who:'The administrator, with details from the new staff member.',when:'When someone is hired.',keep:'The staff member\'s file, at the home.'},
+  {code:'LIC 503',name:'Health Screening',group:'staff',types:['rcfe','arf','adp'],who:'The health professional who does the screening.',when:'When someone is hired. The TB test result and physical go with it.',keep:'The staff member\'s file, at the home.'},
+  {code:'LIC 9163',name:'Request for Live Scan (fingerprints for the background check)',group:'staff',types:['rcfe','arf','adp'],who:'The administrator starts it; the new staff member takes it to a Live Scan site.',when:'When someone is hired.',keep:'The staff member\'s file, at the home.'},
+  {code:'LIC 508',name:'Criminal Record Statement',group:'staff',types:['rcfe','arf','adp'],who:'The new staff member signs it.',when:'When someone is hired.',keep:'The staff member\'s file, at the home.'},
+  {code:'LIC 9052',name:'Employee Rights',group:'staff',types:['rcfe','arf','adp'],who:'Given to the new staff member.',when:'When someone is hired.',keep:'The staff member\'s file, at the home.'},
+  {code:'SOC 341',name:'Elder and dependent adult abuse reporting form',group:'staff',types:['rcfe','arf','adp'],who:'Staff learn it at hiring; it is the form used to report.',when:'Shown at hiring; used whenever abuse is suspected.',keep:'A blank copy where staff can reach it.'},
+  {code:'LIC 9182',name:'Transfer of a criminal record clearance from another facility',group:'staff',types:['rcfe','arf','adp'],who:'The administrator fills it in and sends it to licensing.',when:'Hiring someone already cleared at another facility.',keep:'A copy in the staff member\'s file.'},
+  // DSP: not a CDSS form but a training certificate. For direct-care staff
+  // in homes serving Regional Center clients. No timeline stated: that is the
+  // Regional Center's and the licensing office's to give.
+  {code:'DSP',name:'Direct Support Professional training, Year 1 and Year 2',group:'staff',types:['arf'],who:'Direct-care staff in a home serving Regional Center clients take the training; the training program issues the certificate.',when:'After hiring. Ask your Regional Center or licensing office for the timeline.',keep:'A copy of each certificate in the staff file. Log it on the Training tab with the certificate attached, so it shows on the staff member\'s record.',note:'Not a CDSS form, so there is nothing to print.'},
+  {code:'I-9',name:'Employment Eligibility Verification (federal)',group:'staff',types:['rcfe','arf','adp'],who:'The new staff member and the employer.',when:'When someone is hired.',keep:'Your employment records.'},
+  {code:'W-4',name:'Employee\'s Withholding Certificate (federal)',group:'staff',types:['rcfe','arf','adp'],who:'The new staff member.',when:'When someone is hired.',keep:'Your payroll records.'},
+  // Admission: blank forms for the paper resident file. Nothing about any
+  // resident is ever recorded in Title22.
+  {code:'LIC 601',name:'Identification and Emergency Information',group:'admission',types:['rcfe','arf'],url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC601.PDF',who:'The home, with the resident or their representative.',when:'Day of admission.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 602A',name:'Medical Assessment',group:'admission',types:['rcfe'],url:'https://www.cdss.ca.gov/cdssweb/entres/forms/english/lic602a.pdf',who:'The resident\'s physician.',when:'Before admission.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 602',name:'Physician\'s Report',group:'admission',types:['arf'],who:'The resident\'s physician.',when:'Before admission, and again once they are settled.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 603A',name:'Resident Appraisal',group:'admission',types:['rcfe'],url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC603A.pdf',who:'The home.',when:'Before admission.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 603',name:'Preplacement Appraisal',group:'admission',types:['arf'],who:'The home, drawing on the physician\'s report.',when:'Before admission.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 604A',name:'Admission Agreement',group:'admission',types:['rcfe'],url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC604A.PDF',who:'The home and the resident or their representative.',when:'Day of admission.',keep:'The resident\'s paper file, at the home.',note:'A template you adapt for your home.'},
+  {code:'LIC 613C',name:'Personal Rights',group:'admission',types:['rcfe'],url:'https://www.cdss.ca.gov/cdssweb/entres/forms/English/LIC613C-2.pdf',who:'Given to the resident; they sign that they received it.',when:'Day of admission.',keep:'The resident\'s paper file, at the home.',note:'The version for a privately operated RCFE.'},
+  {code:'LIC 613',name:'Personal Rights',group:'admission',types:['arf'],who:'Given to the resident; they sign that they received it.',when:'Day of admission.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 627',name:'Consent to Emergency Medical Treatment',group:'admission',types:['arf'],who:'The resident or their representative signs it.',when:'Day of admission.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 621',name:'Personal Property and Valuables Inventory',group:'admission',types:['arf'],who:'The home, counting belongings with the resident.',when:'Day of admission, and whenever belongings change.',keep:'The resident\'s paper file, at the home.'},
+  {code:'LIC 625',name:'Appraisal / Needs and Services Plan',group:'admission',types:['rcfe','arf'],url:'https://www.cdss.ca.gov/Portals/9/Additional-Resources/Forms-and-Brochures/2020/I-L/LIC625.pdf?ver=2024-10-28-160201-770',who:'The home, with the resident and their representative.',when:'After admission, once needs are known.',keep:'The resident\'s paper file, at the home.'},
+  // Running the home.
+  {code:'LIC 624',name:'Unusual Incident/Injury Report',group:'facility',types:['rcfe','arf','adp'],who:'The administrator or staff member who knows what happened.',when:'When something unusual happens.',keep:'Your incident file at the home. Title22\'s Incidents tab keeps your log, with no resident named.'},
+];
+const T22_FORM_GROUPS={
+  staff:{title:'New hire: the staff file',sub:'Employment records. The certification dates also go on the Staff tab, which warns you before anything lapses.'},
+  admission:{title:'Admission: the resident\'s paper file',sub:'Blank forms for the paper file at the home. Title22 records nothing about any resident.'},
+  facility:{title:'Running the home',sub:''},
+};
+const T22_FORM_TYPES={rcfe:'RCFE',arf:'ARF',adp:'Adult Day Program'};
+function t22FormsType(){
+  try{const v=localStorage.getItem('title22_forms_type');if(T22_FORM_TYPES[v])return v;}catch(e){}
+  return currentFacility&&currentFacility.facility_type==='arf'?'arf':'rcfe';
+}
+function setFormsType(t){try{localStorage.setItem('title22_forms_type',t);}catch(e){}renderFormsTab();}
+function t22FormsFor(type){return T22_FORMS.filter(f=>f.types.includes(type));}
+function renderFormsTab(){
+  const host=document.getElementById('forms-body');if(!host)return;
+  const type=t22FormsType();
+  let h='<div class="fm-types" role="group" aria-label="License type">'+Object.entries(T22_FORM_TYPES).map(([k,v])=>
+    `<button type="button" class="fm-type${k===type?' on':''}" onclick="setFormsType('${k}')">${esc(v)}</button>`).join('')+'</div>';
+  h+='<div class="fm-actions"><button class="btn btn-secondary" onclick="printFormsChecklist(\'staff\')">Print a blank new-hire checklist</button>'
+    +(type==='adp'?'':'<button class="btn btn-secondary" onclick="printFormsChecklist(\'admission\')">Print a blank admission checklist</button>')+'</div>';
+  ['staff','admission','facility'].forEach(g=>{
+    const list=t22FormsFor(type).filter(f=>f.group===g);
+    const G=T22_FORM_GROUPS[g];
+    h+=`<div class="fm-group"><h3>${esc(G.title)}</h3>${G.sub?`<p class="fm-sub">${esc(G.sub)}</p>`:''}`;
+    if(!list.length){h+=`<p class="fm-sub">The ${esc(T22_FORM_TYPES[type])} list for this section is still being put together. Ask your licensing office which forms apply.</p></div>`;return;}
+    h+='<div class="fm-grid">'+list.map(f=>`<div class="fm-card">
+      <div class="fm-code">${esc(f.code)}</div><div class="fm-name">${esc(f.name)}</div>
+      <div class="fm-line"><b>Who fills it in:</b> ${esc(f.who)}</div>
+      <div class="fm-line"><b>When:</b> ${esc(f.when)}</div>
+      <div class="fm-line"><b>Where it goes:</b> ${esc(f.keep)}</div>
+      ${f.note?`<div class="fm-line">${esc(f.note)}</div>`:''}
+      <div class="fm-btns">${f.url
+        ?`<a class="fm-print" href="${esc(f.url)}" target="_blank" rel="noopener" onclick="track('form_print',{code:'${esc(f.code)}'})">Print blank</a>`
+        :'<span class="fm-pending">Link being checked</span>'}
+        <button type="button" onclick="askTelloAboutForm('${esc(f.code)}')">Ask Tello</button></div>
+    </div>`).join('')+'</div></div>';
+  });
+  host.innerHTML=h;
+}
+function askTelloAboutForm(code){
+  const f=T22_FORMS.find(x=>x.code===code);if(!f)return;
+  switchTab('ai');
+  const i=document.getElementById('ai-query-input');
+  if(i){i.value=`How do I use ${f.code} (${f.name})? Who fills it in, when, and where does it go?`;i.focus();}
+}
+// A blank, printable checklist. Written from the owner's own new-hire and
+// admission checklists with every home-specific name taken out. A line to
+// write a name on is blank paper, not a record: nothing here is saved.
+function printFormsChecklist(kind){
+  const type=t22FormsType(),T=T22_FORM_TYPES[type];
+  const forms=t22FormsFor(type);
+  const code=c=>{const f=forms.find(x=>x.code===c);return f?`${f.code} — ${f.name}`:null;};
+  const pick=(...cs)=>cs.map(code).filter(Boolean);
+  let title,sections;
+  if(kind==='staff'){
+    title='New hire checklist';
+    sections=[
+      ['Staff file',[...pick('LIC 501','LIC 503','LIC 9163','LIC 508','LIC 9052','SOC 341'),'Photo ID (copy)','CPR and First Aid cards (copies)','Initial training record','New hire orientation','Policies and procedures, signed']],
+      ['Payroll',[...pick('I-9','W-4'),'Direct deposit form']],
+      ['Already cleared at another facility?',pick('LIC 9182')],
+      ...(type==='arf'?[['Serving Regional Center clients?',['DSP training, Year 1: certificate copy in the file, logged on the Training tab','DSP training, Year 2: certificate copy in the file, logged on the Training tab']]]:[]),
+      ['First two weeks',['Training checklist handed out, with the date it should be finished','Schedule given: which home, which hours, the address','Certification dates entered on the Title22 Staff tab']],
+    ];
+  }else{
+    title='Admission checklist';
+    const f=(a,b)=>pick(type==='arf'?b:a);
+    sections=[
+      ['Before admission',[...(type==='arf'?['Placement documents from the referring agency (for a Regional Center client, the CDER and IPP)']:[]),...f('LIC 602A','LIC 602'),...f('LIC 603A','LIC 603'),'Primary care doctor confirmed','Insurance and benefits confirmed','Pharmacy arranged','Room ready: furniture and the right bed','Supplies arranged']],
+      ['Day of admission',[...f('LIC 604A',null),'Your home\'s own admission agreement and any addenda',...pick('LIC 601'),...f('LIC 613C','LIC 613'),...pick('LIC 627','LIC 621'),'Copies of ID and insurance cards','Advance directives, POLST or power of attorney, if any','Resident roster updated','Caregivers told about food allergies']],
+      ['The week after',[...pick('LIC 625'),'Updated physician\'s report signed','Home health or therapy paperwork, if any','Reliever list updated']],
+    ];
+  }
+  const e=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const body=sections.filter(([,items])=>items.length).map(([h,items])=>`<h2>${e(h)}</h2><ul>${items.map(i=>`<li><span class="box"></span>${e(i)}</li>`).join('')}</ul>`).join('');
+  const w=window.open('','_blank');
+  if(!w){alert('Your browser blocked the checklist window. Allow pop-ups for title22.app and try again.');return;}
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${e(title)} — ${e(T)}</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:28px;max-width:720px}
+    h1{font-size:22px;margin:0 0 4px}.meta{font-size:13px;color:#444;margin:0 0 14px}
+    .line{display:flex;gap:24px;margin:10px 0 18px;font-size:14px}.line span{flex:1;border-bottom:1px solid #333;padding-bottom:2px}
+    h2{font-size:15px;margin:18px 0 6px;border-bottom:2px solid #123a30;padding-bottom:3px}
+    ul{list-style:none;padding:0;margin:0}li{display:flex;gap:10px;align-items:flex-start;font-size:14px;padding:5px 0;border-bottom:1px solid #e5e5e5}
+    .box{flex:none;width:14px;height:14px;border:1.5px solid #111;margin-top:2px}
+    .foot{font-size:11px;color:#555;margin-top:20px;line-height:1.5}
+    @media print{body{margin:14mm}button{display:none}}
+  </style></head><body>
+    <h1>${e(title)}</h1><p class="meta">${e(T)} · blank checklist from Title22</p>
+    <div class="line"><span>${kind==='staff'?'Name':'Name'}:</span><span>${kind==='staff'?'Start date':'Admission date'}:</span></div>
+    ${body}
+    <p class="foot">A blank checklist to fill in by hand. Keep the completed copy in the ${kind==='staff'?'staff':'resident\'s'} file at the home; Title22 does not keep it. Forms and steps vary by license type. The forms' own instructions and your licensing analyst have the final word.</p>
+    <button onclick="print()" style="margin-top:14px;padding:10px 18px;font-size:15px">Print</button>
+  </body></html>`);
+  w.document.close();
+  try{w.focus();w.print();}catch(e){}
+  track('form_checklist_print',{kind,type});
+}
+// "Tello, print LIC 500" — answered here, instantly, with no AI call: open the
+// blank form (or say honestly that its link is still being checked). Also
+// "print the new hire checklist" / "admission checklist". Returns the reply,
+// or null when the question is not a print request.
+function telloFormsIntent(query){
+  const q=String(query||'');
+  if(!/\bprint\b/i.test(q))return null;
+  if(/new[\s-]*hire|onboarding|staff checklist/i.test(q)){printFormsChecklist('staff');return 'Opening a blank new-hire checklist. Tap Print.';}
+  if(/admission/i.test(q)&&/checklist/i.test(q)){printFormsChecklist('admission');return 'Opening a blank admission checklist. Tap Print.';}
+  const m=q.match(/\b(lic|soc)\s*-?\s*(\d{3,4})\s*([a-z](?:-\d)?)?\b/i);
+  if(!m)return null;
+  const want=(m[1]+' '+m[2]+(m[3]||'')).toUpperCase();
+  const f=T22_FORMS.find(x=>x.code.toUpperCase()===want)||T22_FORMS.find(x=>x.code.toUpperCase().startsWith(m[1].toUpperCase()+' '+m[2]));
+  if(!f)return `I don't have ${want} in the forms list yet. The Forms tab shows the ones I can open.`;
+  if(!f.url)return `${f.code} (${f.name}) is on the list, but its link is still being checked, so I won't guess where it is. You can find it on the CDSS forms page, or ask your licensing office.`;
+  window.open(f.url,'_blank','noopener');
+  track('form_print',{code:f.code,via:'tello'});
+  return `Opening a blank ${f.code} (${f.name}). Tap Print. It's the empty form from CDSS; nothing from Title22 goes on it.`;
+}
+
 const LAUNCH_CARDS=[
   {key:'certify', title:'Get Certified', tr:{tl:'Kumuha ng Sertipiko',es:'Obtenga su certificación',pa:'ਸਰਟੀਫਿਕੇਟ ਲਵੋ'},
    blurb:'The part that is about you. None of it needs a house.',
@@ -11012,7 +11210,7 @@ const TA_SEEDS = {
   allergy: ['Amoxicillin','Aspirin','Bee stings','Codeine','Dust mites','Eggs','Ibuprofen','Iodine','Latex','Milk / dairy','Morphine','NSAIDs','No known allergies','Peanuts','Penicillin','Pollen','Seasonal allergies','Shellfish','Soy','Sulfa drugs','Tree nuts','Wheat / gluten'],
   medication: ['Acetaminophen','Albuterol','Amlodipine','Aspirin','Atorvastatin','Carvedilol','Donepezil','Escitalopram','Finasteride','Furosemide','Gabapentin','Hydrochlorothiazide','Ibuprofen','Insulin glargine','Latanoprost','Levothyroxine','Lisinopril','Losartan','Memantine','Metformin','Metoprolol','Mirtazapine','Omeprazole','Ondansetron','Oxybutynin','Pantoprazole','Prednisone','Quetiapine','Rosuvastatin','Sertraline','Simvastatin','Tamsulosin','Trazodone','Vitamin D','Warfarin'],
   pharmacy: ['CVS Pharmacy','Costco Pharmacy','Kaiser Permanente Pharmacy','Longs Drugs','Omnicare','PharMerica','Raley’s Pharmacy','Rite Aid','Safeway Pharmacy','Save Mart Pharmacy','Vons Pharmacy','Walgreens','Walmart Pharmacy'],
-  training: ['Abuse reporting','Assistance with self-administration of medication','CPR and First Aid','Dementia care','Disaster and emergency preparedness','Fall prevention','Food handling and nutrition','Infection control','Medication management','Personal care and hygiene assistance','Postural supports and restraints','Psychosocial needs','Resident admission and assessment','Resident rights','Safety and supervision','Universal precautions'],
+  training: ['Abuse reporting','DSP training, Year One (Direct Support Professional)','DSP training, Year Two (Direct Support Professional)','Assistance with self-administration of medication','CPR and First Aid','Dementia care','Disaster and emergency preparedness','Fall prevention','Food handling and nutrition','Infection control','Medication management','Personal care and hygiene assistance','Postural supports and restraints','Psychosocial needs','Resident admission and assessment','Resident rights','Safety and supervision','Universal precautions'],
   city: ['Anaheim','Bakersfield','Chico','Clovis','Concord','Elk Grove','Fremont','Fresno','Hanford','Irvine','Kingsburg','Long Beach','Los Angeles','Madera','Merced','Modesto','Oakland','Oxnard','Porterville','Reedley','Riverside','Sacramento','Salinas','San Bernardino','San Diego','San Francisco','San Jose','Santa Ana','Selma','Stockton','Tulare','Turlock','Visalia'],
   prn: ['Agitation','Anxiety','Constipation','Cough','Diarrhea','Fever','Headache','Heartburn','Indigestion','Insomnia','Itching','Muscle spasm','Nausea','Pain','Shortness of breath','Vomiting'],
   corrective: ['Care plan updated','Family notified','Fall mat placed at bedside','First aid administered','Incident reported to DSS','Physician notified','Resident assessed for injury','Resident repositioned and monitored','Room checked for hazards','Staff re-trained on procedure','Vital signs taken and monitored'],
