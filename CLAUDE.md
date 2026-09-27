@@ -421,6 +421,26 @@ compliance answer about one home is wrong for another. The input goes through
 `t22PhiBlock` like the Tello tab's — those two boxes are the only free text
 that leaves the database.
 
+## Tello's own page and partner mode (2026-09-27)
+
+title22.app/tello (`tello.html`) talks to `/api/tello/*` on `title22-ai`
+(`workers/title22-ai/tello.js`). Tello is the core; Title22 is the first
+business plugged into her (`TELLO_CLIENTS`). Rules:
+
+- **The server decides who she is.** The page sends only `{message}`. Partner
+  mode = the signed-in user id is in `public.tello_founders` (service-role
+  only). Never add a button, URL flag or request field that changes the mode.
+- **Partner instructions are private and NOT in git** (this repo is public):
+  `public.tello_private`, loaded by a SQL paste the owner keeps.
+- **Partner mode sees, it does not act.** `business_snapshot` is read-only and
+  counts only. Do not give it a write tool.
+- Her memory works again. The owner's 2026-08-26 edit to `tello.html` dropped
+  the line that saved messages; the Worker now writes memory itself.
+- Customer-mode knowledge is `tello/title22-knowledge.js`, the owner's file —
+  edit there, not in the page.
+- The comment on line 2 of `tello.html` is the owner's and private. Never
+  surface it in any UI or copy, and do not repeat it anywhere else.
+
 ## Portfolio briefing — Tello for the executive (2026-09-23)
 
 `#ai-portfolio` in the Tello tab, `renderPortfolioCard` / `runPortfolioBriefing`

@@ -1,0 +1,98 @@
+# Deploy the title22-ai Worker (Tello: in-app, title22.app/tello, partner mode).
+# Actions -> "Deploy title22-ai Worker" -> Run workflow.
+#
+# Manual only, like the other two Workers. Same token and account: the ONLY
+# repository secret read here is CLOUDFLARE_API_TOKEN.
+#
+# This Worker was deployed by pasting into the dashboard until 2026-09-27, so
+# the first CI deploy is the dangerous one — the 2026-09-13 stripe-webhook
+# outage was exactly that: `wrangler deploy` replaces plain-text vars with
+# wrangler.toml's [vars] and deleted one that lived only in the dashboard.
+# So before deploying, this reads the live Worker's bindings (NAMES AND TYPES
+# ONLY — no values) and STOPS if:
+#   - SUPABASE_URL, SUPABASE_SERVICE_KEY or ANTHROPIC_API_KEY is missing, or is
+#     a plain-text var (a deploy would erase it) rather than a secret;
+#   - any other plain-text var exists that wrangler.toml does not declare.
+# Fix what it names in the dashboard (re-add the value as type Secret), then
+# run it again. Secrets are never read and never touched by a deploy.
+name: Deploy title22-ai Worker
+
+on:
+  workflow_dispatch:
+
+env:
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  WRANGLER_VERSION: '4.130.0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the token is set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions, then run this again."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test
+        working-directory: workers/title22-ai
+        run: node test.mjs
+
+      - name: Would this deploy erase a binding?
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/title22-ai/settings" \
+            | jq '{success, bindings: [.result.bindings[]? | {name, type}]}' > live.json
+          echo "Live bindings (names and types only):"
+          jq -r '.bindings[] | "  \(.name)  \(.type)"' live.json
+          if [ "$(jq -r .success live.json)" != "true" ]; then
+            echo "::error::Could not read the live Worker's bindings, so this cannot prove a deploy is safe. Nothing was deployed."
+            exit 1
+          fi
+          fail=0
+          for s in SUPABASE_URL SUPABASE_SERVICE_KEY ANTHROPIC_API_KEY; do
+            t=$(jq -r --arg n "$s" '.bindings[] | select(.name==$n) | .type' live.json)
+            if [ "$t" != "secret_text" ]; then
+              echo "::error::$s is '${t:-missing}' on the live Worker. It must be a Secret, or this deploy would erase it. Dashboard: Workers & Pages -> title22-ai -> Settings -> Variables and Secrets -> re-add it as type Secret."
+              fail=1
+            fi
+          done
+          declared=$(sed -n '/^\[vars\]/,/^\[/p' workers/title22-ai/wrangler.toml | grep -oE '^[A-Z_]+' || true)
+          for v in $(jq -r '.bindings[] | select(.type=="plain_text") | .name' live.json); do
+            if ! grep -qx "$v" <<< "$declared"; then
+              echo "::error::Plain-text var $v exists on the live Worker but not in wrangler.toml. A deploy would delete it. Add it to [vars] (if it is not secret) or re-add it as a Secret."
+              fail=1
+            fi
+          done
+          [ "$fail" = 0 ] && echo "Safe: a deploy keeps every binding."
+          exit $fail
+
+      - name: Build check (no deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-ai
+          command: deploy --dry-run
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-ai
+          command: deploy
