@@ -28,7 +28,48 @@ Deploy a change with `wrangler deploy` from inside `workers/<name>/`.
 
 ## title22-ai
 
+**2026-09-27: now deployed from this repo** — Actions → "Deploy title22-ai
+Worker" (`deploy-title22-ai.yml`). Before deploying it reads the live Worker's
+binding names and types and stops if a deploy would erase one (the
+stripe-webhook outage). Its three secrets stay secrets; `[vars]` in
+`wrangler.toml` carries only the two model names. `node test.mjs` runs the
+real Worker against a stubbed Supabase and Anthropic.
+
+### Tello's own routes (title22.app/tello) — `tello.js`
+
+- `GET /api/tello/me`, `POST /api/tello`, `POST /api/tello/new`,
+  `GET /api/tello/snapshot`, `POST /api/tello/brief`.
+- **The server chooses who Tello is.** The page sends only `{message}`.
+  Customer mode: `tello/core.js` + `tello/title22-knowledge.js` (the owner's
+  knowledge file). Partner mode: the signed-in user's id is in
+  `public.tello_founders` → the owner's private instructions from
+  `public.tello_private` (key `founder`), the `business_snapshot` tool, Sonnet.
+  Both tables are service-role only; no button, URL or field switches modes,
+  and a failed lookup answers as customer mode.
+- **The partner instructions are not in git** — this repo is public. They are
+  loaded with a private SQL paste the owner keeps. Without them partner mode
+  runs on `PARTNER_FALLBACK` and the page says so.
+- Memory is written by the Worker: customers to `tello_messages`, partner
+  chats to `tello_founder_messages` (owner can read and delete their own rows;
+  only the Worker writes). `ai_usage` app `tello-partner` counts partner calls
+  (1,500/month) apart from any customer plan.
+- `business_snapshot` = `public.tello_business_snapshot()`: counts only, no
+  names. MRR is list price × active rows in `subscriptions`, not Stripe.
+- Briefs: one "today" per LA day and one "weekly" per LA week, cached as rows
+  (`kind`, with the counts in `data`) so tomorrow's can say what changed.
+- Tables and function: `migrations/2026-09-27_tello_partner.sql`.
+- Google sign-in on /tello needs `https://title22.app/tello` in Supabase →
+  Auth → URL Configuration → Redirect URLs.
+
+### /api/chat (the in-app Tello)
+
 - Route: `https://title22-ai.infomomtelo.workers.dev/api/chat`
+- Takes its `system` from the page (it carries that facility's context).
+- 2026-09-27: `lite` (200/mo) and `multi` (500/mo) added to the limits and
+  paid plans — before, a paying Lite or Multi-Home customer resolved to
+  `trial`. Plan spellings folded like the app's `t22NormalisePlan`. The two
+  input dosage filters are one list (`inputIsBlocked`), and the refusal no
+  longer offers a MAR or resident documentation.
 - Model: `claude-haiku-4-5-20251001`. If a stronger model is added for the
   DSS grader use `claude-sonnet-5` — not `claude-sonnet-4-5`.
 - Writes `ai_usage` rows with `app='title22'`.

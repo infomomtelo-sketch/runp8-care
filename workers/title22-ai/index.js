@@ -1,6 +1,14 @@
 // title22-ai — worker behind Tello, the Title22 RCFE compliance assistant
 // Entitlement is namespaced to title22_* columns on the shared nwlhs profiles table.
 // This worker NEVER reads or writes profiles.plan (shared across the other apps on this Supabase project).
+//
+// Two front doors:
+//   POST /api/chat    the in-app Tello (index.html). Instructions come from the
+//                     page, because they carry that facility's context.
+//   /api/tello/*      Tello's own page (title22.app/tello). The SERVER picks
+//                     her instructions, including partner mode. See tello.js.
+
+import { handleTello } from './tello.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +24,42 @@ function json(data, status = 200) {
 }
 
 const SAFE_DOSAGE_MESSAGE = "I can't advise on medication dosages. Ask your prescriber or pharmacist.";
+
+// What a person is told when their QUESTION is refused. It used to offer to
+// "review your MAR policy" and help with "resident documentation" — things
+// Title22 no longer holds. No PHI, so no offer of either.
+const DOSAGE_REFUSAL = "I'm Tello, and I can't give dosage recommendations or prescribing advice. That needs a licensed prescriber, so please ask the person's physician or a pharmacist. I can help with staff certifications, training, your compliance checklist and getting ready for a DSS visit.";
+
+// Questions refused before any credit is spent or the model is called. Two
+// lists that grew separately, kept whole and checked together; server-side,
+// because a check in the page can be bypassed.
+const INPUT_BLOCK_PATTERNS = [
+  /\bhow much\b.{0,60}\b(give|administer|prescribe|take|dose)\b/i,
+  /\b(recommend|prescribe|calculate|increase|decrease|adjust)\b.{0,60}\b(dose|dosage|mg|mcg|units?|ml)\b/i,
+  /\bwhat (dose|dosage|amount)\b.{0,60}\b(should|can|to)\b/i,
+  /\b(dose|dosage)\b.{0,60}\bfor (a |an )?(resident|patient|elderly|senior)\b/i,
+  /\bmedical (advice|recommendation|opinion)\b/i,
+  /\bpretend (you are|to be).{0,60}\b(doctor|physician|nurse|pharmacist)\b/i,
+  /\bignore (your |all )?(previous |prior )?(instructions?|guidelines?|restrictions?|rules?)\b/i,
+  /\bact as (a |an )?(doctor|physician|nurse|pharmacist|clinician)\b/i,
+  /\bhow much\b.*\b(medication|drug|medicine|pill|tablet|capsule|mg|ml|dose|dosage)\b/i,
+  /\b(increase|decrease|change|adjust|modify|double|halve|cut)\b.*\b(dose|dosage|medication|mg|ml)\b/i,
+  /\bwhat dose\b/i,
+  /\bwhat dosage\b/i,
+  /\bmaximum dose\b/i,
+  /\blethal dose\b/i,
+  /\boverdose\b/i,
+  /\bprescribe\b/i,
+  /\bshould.*take\b.*\b(mg|ml|pill|tablet|capsule)\b/i,
+  /\b(give|administer|prescribing)\b.*\b(how much|amount|quantity)\b/i,
+  /\bdrug interaction\b/i,
+  /\bdiagnos[ei]\b/i,
+];
+
+function inputIsBlocked(text) {
+  const t = String(text || '');
+  return INPUT_BLOCK_PATTERNS.some((re) => re.test(t));
+}
 const DOSAGE_PATTERNS = [
   /\b(?:dosage|dosages|dose|doses|frequency|frequencies|prescription|prescriptions)\b[\s\S]{0,40}\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|mL|units?|tablets?|capsules?|pills?)\b/i,
   /\b(?:how much|how many)\b[\s\S]{0,40}\b(?:medication|medicine|dose|dosage|mg|mcg|g|ml|mL|tablet|capsule|pill|units?)\b/i,
@@ -123,20 +167,33 @@ async function getProfile(userId, env) {
 // 'specialist' was retired from title-22.com pricing (folded into the 3-tier
 // Starter/Pro/Agency ladder) but is kept here as a legacy mapping so any
 // existing or renewing specialist subscription still resolves correctly.
+// Sept 2026: lite ($29) and multi ($79) are the plans on sale. They were
+// missing here, so every paying Lite and Multi-Home customer resolved to
+// 'trial' — 50 calls and isPaid false — on a plan they had paid for.
 const LIMITS = {
   trial: 50,
   edu: 100000,
+  lite: 200,
+  multi: 500,
   starter: 50,
   pro: 200,
   specialist: 200,
   agency: 500,
 };
 
-const PAID_PLANS = ['starter', 'pro', 'specialist', 'agency'];
+const PAID_PLANS = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency'];
+
+// Same folding as the app's t22NormalisePlan and the webhook's PLAN_ALIASES.
+// Known spellings only: anything else stays as written and falls to trial.
+function normalisePlan(raw) {
+  if (typeof raw !== 'string') return raw;
+  const k = raw.trim().toLowerCase().replace(/[\s_]+/g, '-');
+  return ['multi-home', 'multihome', 'multi'].includes(k) ? 'multi' : k;
+}
 
 // Resolve the effective plan: namespaced column, expiry-checked, default deny.
 function resolvePlan(profile) {
-  const raw = profile?.title22_plan;
+  const raw = normalisePlan(profile?.title22_plan);
   if (!raw || !(raw in LIMITS)) return 'trial';
 
   const expires = profile?.title22_plan_expires_at;
@@ -145,11 +202,14 @@ function resolvePlan(profile) {
   return raw;
 }
 
-async function checkAndDeductCredits(userId, plan, env) {
+// opts.app / opts.limit: Tello's partner mode keeps its own counter
+// ('tello-partner'), so the owner's own use never eats a customer plan's.
+async function checkAndDeductCredits(userId, plan, env, opts = {}) {
   const SUPABASE = env.SUPABASE_URL;
   const KEY = env.SUPABASE_SERVICE_KEY;
   const period = currentPeriod();
-  const limit = LIMITS[plan] ?? LIMITS.trial;
+  const app = opts.app || 'title22';
+  const limit = opts.limit ?? LIMITS[plan] ?? LIMITS.trial;
 
   const headers = {
     'apikey': KEY,
@@ -159,7 +219,7 @@ async function checkAndDeductCredits(userId, plan, env) {
   };
 
   const usageUrl =
-    `${SUPABASE}/rest/v1/ai_usage?user_id=eq.${userId}&app=eq.title22` +
+    `${SUPABASE}/rest/v1/ai_usage?user_id=eq.${userId}&app=eq.${app}` +
     `&period_start=eq.${period}&select=id,calls_used,calls_limit`;
 
   const getRes = await fetch(usageUrl, { headers });
@@ -173,7 +233,7 @@ async function checkAndDeductCredits(userId, plan, env) {
       headers: { ...headers, 'Prefer': 'return=representation' },
       body: JSON.stringify({
         user_id: userId,
-        app: 'title22',
+        app,
         calls_used: 1,
         calls_limit: limit,
         period_start: period
@@ -225,18 +285,22 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
+    if (new URL(request.url).pathname.startsWith('/api/tello')) {
+      try {
+        return await handleTello(request, env, {
+          json, getUserFromToken, getProfile, resolvePlan, checkAndDeductCredits, LIMITS,
+          inputIsBlocked, DOSAGE_REFUSAL, containsDosageAdvice, SAFE_DOSAGE_MESSAGE, logDosageRejection,
+        });
+      } catch (err) {
+        console.error('tello', err);
+        return json({ error: 'tello_error', message: String(err?.message || err) }, 500);
+      }
+    }
+
     // Health check — verifies that all required bindings are present.
     // Returns false for each missing binding so misconfiguration is visible
     // immediately instead of surfacing as a cryptic 401/500 on first use.
     if (request.method === 'GET') {
-      return json({
-        status: 'ok',
-        bindings: {
-          SUPABASE_URL: Boolean(env.SUPABASE_URL),
-          SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
-          ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
-        },
-      });
       const bindings = {
         anthropic_api_key: !!env.ANTHROPIC_API_KEY,
         supabase_url: !!env.SUPABASE_URL,
@@ -285,28 +349,14 @@ export default {
             : ''
       ).toLowerCase();
 
-      const DOSAGE_PATTERNS = [
-        /\bhow much\b.{0,60}\b(give|administer|prescribe|take|dose)\b/i,
-        /\b(recommend|prescribe|calculate|increase|decrease|adjust)\b.{0,60}\b(dose|dosage|mg|mcg|units?|ml)\b/i,
-        /\bwhat (dose|dosage|amount)\b.{0,60}\b(should|can|to)\b/i,
-        /\b(dose|dosage)\b.{0,60}\bfor (a |an )?(resident|patient|elderly|senior)\b/i,
-        /\bmedical (advice|recommendation|opinion)\b/i,
-        /\bpretend (you are|to be).{0,60}\b(doctor|physician|nurse|pharmacist)\b/i,
-        /\bignore (your |all )?(previous |prior )?(instructions?|guidelines?|restrictions?|rules?)\b/i,
-        /\bact as (a |an )?(doctor|physician|nurse|pharmacist|clinician)\b/i,
-      ];
-
-      if (DOSAGE_PATTERNS.some(re => re.test(userText))) {
-        // Return in the same shape as a real Anthropic response so the frontend
-        // renders it normally (the safety message appears in the chat).
+      if (inputIsBlocked(userText)) {
+        // Same shape as a real Anthropic response so the frontend renders it
+        // normally (the refusal appears in the chat).
         return json({
           id: 'safety-block',
           type: 'message',
           role: 'assistant',
-          content: [{
-            type: 'text',
-            text: "I'm Tello, a Title 22 RCFE compliance assistant, and I can't provide dosage recommendations or prescribing advice — that requires a licensed prescriber. For medication questions, contact the resident's physician or a licensed pharmacist. I can help you document a physician order, look up compliance requirements, or review your MAR policy.",
-          }],
+          content: [{ type: 'text', text: DOSAGE_REFUSAL }],
           model: 'safety-filter',
           stop_reason: 'safety',
           plan,
@@ -314,37 +364,10 @@ export default {
           remaining: null,
           isPaid,
           isPro,
+          blocked: 'dosage_safety',
         });
       }
       // ── end safety filter ──────────────────────────────────────────────────
-      // Server-side dosage / prescribing safety gate. Patterns mirror the
-      // client-side check so a jailbreak that bypasses the frontend still gets
-      // refused here before any credit is spent or the model is called.
-      const lastUserContent = (messages || []).filter(m => m.role === 'user').slice(-1)[0]?.content || '';
-      const DOSAGE_RE = [
-        /\bhow much\b.*\b(medication|drug|medicine|pill|tablet|capsule|mg|ml|dose|dosage)\b/i,
-        /\b(increase|decrease|change|adjust|modify|double|halve|cut)\b.*\b(dose|dosage|medication|mg|ml)\b/i,
-        /\bwhat dose\b/i,
-        /\bwhat dosage\b/i,
-        /\bmaximum dose\b/i,
-        /\blethal dose\b/i,
-        /\boverdose\b/i,
-        /\bprescribe\b/i,
-        /\bshould.*take\b.*\b(mg|ml|pill|tablet|capsule)\b/i,
-        /\b(give|administer|prescribing)\b.*\b(how much|amount|quantity)\b/i,
-        /\bdrug interaction\b/i,
-        /\bmedical advice\b/i,
-        /\bdiagnos[ei]\b/i,
-      ];
-      if (DOSAGE_RE.some(re => re.test(lastUserContent))) {
-        return json({
-          content: [{ type: 'text', text: "I can't provide dosage recommendations or prescribing advice — that requires a licensed prescriber. I can help with compliance tasks, staff certifications, DSS inspection readiness, and resident documentation." }],
-          plan,
-          limit: 0,
-          remaining: 0,
-          blocked: 'dosage_safety'
-        });
-      }
 
       const credits = await checkAndDeductCredits(user.id, plan, env);
       if (!credits.allowed) {

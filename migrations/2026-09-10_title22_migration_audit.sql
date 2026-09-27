@@ -64,6 +64,7 @@ select * from (
   -- it would be a third store of who has paid. See CLAUDE.md.
   union all select '2026-09-06_lite_users',         'table users (expect FALSE)',          to_regclass('public.users')                     is not null
   union all select '2026-09-09_launch_checklist',   'table launch_checklist',              to_regclass('public.launch_checklist')          is not null
+  union all select '2026-09-27_tello_partner',      'fn tello_business_snapshot',          to_regproc('public.tello_business_snapshot')    is not null
 ) t
 order by migration;
 

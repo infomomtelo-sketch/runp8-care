@@ -2,12 +2,34 @@ name = "title22-ai"
 main = "index.js"
 compatibility_date = "2026-08-03"
 
-# Secrets (set via `wrangler secret put <NAME>` — never stored here):
-#   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
-#   SUPABASE_SERVICE_KEY    — Supabase service_role key (bypasses RLS; used
-#                              server-side only to verify the caller's JWT
-#                              and read title22_* profile columns)
-#   ANTHROPIC_API_KEY       — Anthropic API key for the Messages API call
+# Until 2026-09-27 this Worker was only ever deployed by pasting into the
+# Cloudflare dashboard. The deploy workflow (deploy-title22-ai.yml) now checks
+# the live bindings BEFORE deploying and stops if a deploy would erase one —
+# the 2026-09-13 stripe-webhook outage, where `wrangler deploy` deleted a
+# plain-text var that lived only in the dashboard. See CLAUDE.md.
+workers_dev = true
+preview_urls = false
+
+[observability]
+enabled = true
+
+# Secrets (set via `wrangler secret put <NAME>` or the dashboard — never here).
+# A deploy leaves secrets alone.
+#   SUPABASE_URL           — https://nwlhsshvqmbhemhxcran.supabase.co
+#   SUPABASE_SERVICE_KEY   — Supabase service_role key (bypasses RLS; used
+#                            server-side only: verify the caller's JWT, read
+#                            title22_* profile columns, and for /api/tello the
+#                            partner tables and Tello's memory)
+#   ANTHROPIC_API_KEY      — Anthropic API key for the Messages API call
 #
-# Public route (configured in the Cloudflare dashboard, not here):
-#   https://title22-ai.infomomtelo.workers.dev/api/chat
+# Plain-text vars. `wrangler deploy` REPLACES the Worker's vars with exactly
+# this block, so every var this Worker has must be here.
+[vars]
+# Customer-mode Tello on title22.app/tello, and partner mode. Both have
+# defaults in tello.js; they are here so a model change is a one-line PR.
+TELLO_MODEL = "claude-haiku-4-5-20251001"
+TELLO_PARTNER_MODEL = "claude-sonnet-5"
+
+# Public route (workers.dev):
+#   https://title22-ai.infomomtelo.workers.dev/api/chat     in-app Tello
+#   https://title22-ai.infomomtelo.workers.dev/api/tello/*  title22.app/tello
