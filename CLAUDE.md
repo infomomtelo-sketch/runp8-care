@@ -438,6 +438,12 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   the line that saved messages; the Worker now writes memory itself.
 - Customer-mode knowledge is `tello/title22-knowledge.js`, the owner's file —
   edit there, not in the page.
+- **The screen is the conversation; everything else is in the Cabinet**
+  (2026-09-27, the owner's ask: "too many words"). One `#cab-btn` in the bar
+  opens a right-hand drawer holding the brief, live numbers, tools, New
+  conversation, Memory, Sign out, the plan chip and the full disclaimer. A
+  gold dot on the button means a brief arrived. Do not put cards, tool grids
+  or links back on the main screen.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
