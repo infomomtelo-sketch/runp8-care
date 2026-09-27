@@ -31,8 +31,11 @@ Deploy a change with `wrangler deploy` from inside `workers/<name>/`.
 **2026-09-27: now deployed from this repo** — Actions → "Deploy title22-ai
 Worker" (`deploy-title22-ai.yml`). Before deploying it reads the live Worker's
 binding names and types and stops if a deploy would erase one (the
-stripe-webhook outage). Its three secrets stay secrets; `[vars]` in
-`wrangler.toml` carries only the two model names. `node test.mjs` runs the
+stripe-webhook outage). Its first run did exactly that: `SUPABASE_URL` was a
+plain-text var typed into the dashboard, so it now lives in `[vars]` in
+`wrangler.toml` (it is public) beside the two model names.
+`SUPABASE_SERVICE_KEY` and `ANTHROPIC_API_KEY` are secrets and a deploy
+leaves them alone. `node test.mjs` runs the
 real Worker against a stubbed Supabase and Anthropic.
 
 ### Tello's own routes (title22.app/tello) — `tello.js`
