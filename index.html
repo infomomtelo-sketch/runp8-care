@@ -156,7 +156,8 @@
     background:var(--tv-cream);border:1px solid rgba(18,58,48,.12);border-radius:14px}
   #tello-voice-bar.on{display:flex}
   .tv-avatar{position:relative;width:46px;height:46px;flex-shrink:0}
-  .tv-avatar svg{position:relative;z-index:1;width:46px;height:46px;display:block}
+  .tv-avatar svg{position:relative;z-index:1;width:46px;height:46px;display:block;border-radius:50%;
+    box-shadow:0 0 0 5px rgba(232,162,61,.12),0 0 0 6px rgba(232,162,61,.35)}
   .tv-avatar::before,.tv-avatar::after{content:"";position:absolute;inset:0;border-radius:50%;
     border:2px solid rgba(232,162,61,.55);opacity:0;pointer-events:none}
   #tello-voice-bar.speaking .tv-avatar::before{animation:tvPulse 2.2s ease-out infinite}
@@ -6581,9 +6582,15 @@ function telloVoiceMarkPlayed(text){
 }
 
 // state: loading | playing | paused | tap | again | off
-const TELLO_AVATAR_SVG='<svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="23" fill="#123a30"/>'
-  +'<circle cx="23" cy="23" r="16.5" fill="none" stroke="#e8a23d" stroke-width="1.6"/>'
-  +'<text x="23" y="29.5" text-anchor="middle" font-family="Zilla Slab,Georgia,serif" font-weight="700" font-size="19" fill="#f9f5ed">T</text></svg>';
+// Tello's "T", measured off the 1080x1920 intro video (units are video pixels
+// around the disc's centre): disc r=166, gold ring r=125, an 18-unit crossbar
+// with serifs hanging to -19 at both ends, a 22-unit stem, a slab foot. A path,
+// not text, so it is sharp at any density and never falls back to Georgia.
+const TELLO_AVATAR_SVG='<svg viewBox="-166 -166 332 332" aria-hidden="true">'
+  +'<circle r="166" fill="#123a30"/>'
+  +'<circle r="125" fill="none" stroke="#e8a23d" stroke-width="7.5"/>'
+  +'<path fill="#f9f5ed" d="M-46 -54H45L48 -19H29V-36H10V34H27V51H-27V34H-11V-36H-29V-19H-48Z"/>'
+  +'</svg>';
 function telloVoiceRender(state){
   const bar=document.getElementById('tello-voice-bar');if(!bar)return;
   if(state!=='playing'&&state!=='paused')telloVoiceMark(-1);
@@ -6628,6 +6635,7 @@ function telloVoiceTick(){
 
 function telloVoiceStop(){
   telloVoiceSeq++;                       // cancels any fetch still in flight
+  telloVoiceDisarm();
   const a=telloVoiceAudio;
   if(a){a.pause();try{a.currentTime=0;}catch(e){}}
 }
@@ -6683,12 +6691,44 @@ async function telloVoiceListen(){
   try{a.currentTime=0;}catch(e){}
   try{
     await a.play();
+    telloVoiceDisarm();
     telloVoiceMarkPlayed(text);
     track('briefing_voice_played',{});
   }catch(e){
-    // NotAllowedError: the browser wants a tap. Say so; never fail silently.
-    if(seq===telloVoiceSeq)telloVoiceRender('tap');
+    // NotAllowedError: the browser wants a tap. Show the button, AND start by
+    // itself on the person's first touch anywhere on the dashboard — the owner
+    // wants the briefing to autoplay, and a first touch is the earliest moment
+    // iPhone Safari allows sound. Never fails silently.
+    if(seq===telloVoiceSeq){telloVoiceRender('tap');telloVoiceArmFirstTouch();}
   }
+}
+
+let telloVoiceArmed=null;
+function telloVoiceDisarm(){
+  if(!telloVoiceArmed)return;
+  ['touchend','click','keydown'].forEach(t=>document.removeEventListener(t,telloVoiceArmed,true));
+  telloVoiceArmed=null;
+}
+function telloVoiceArmFirstTouch(){
+  if(telloVoiceArmed)return;
+  telloVoiceArmed=e=>{
+    if(!telloVoiceText||!telloVoiceUrl){telloVoiceDisarm();return;}
+    const t=e.target&&e.target.closest?e.target:null;
+    // Its own buttons do their own thing.
+    if(t&&t.closest('#tello-voice-bar'))return;
+    // A tap that is leaving the dashboard must not start her talking.
+    if(t&&t.closest('.nav-item,#user-menu,#user-menu-btn,[onclick*="switchTab"],a[href],.modal-overlay'))return;
+    const dash=document.getElementById('tab-dashboard');
+    if(!dash||dash.style.display==='none')return;
+    const a=telloVoiceEl();
+    a.dataset.real='1';
+    if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+    try{a.currentTime=0;}catch(err){}
+    // play() is called synchronously inside the touch — that is what Safari
+    // requires. If it still refuses (a scroll is not a tap), stay armed.
+    a.play().then(()=>{telloVoiceDisarm();telloVoiceMarkPlayed(telloVoiceText);track('briefing_voice_played',{via:'first_touch'});},()=>{});
+  };
+  ['touchend','click','keydown'].forEach(t=>document.addEventListener(t,telloVoiceArmed,true));
 }
 
 // Called once a REAL briefing is on screen (fresh or cached) — never for an
