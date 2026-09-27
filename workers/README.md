@@ -286,16 +286,29 @@ records it.
 
 ## title22-voice
 
-Tello's voice (Kokoro-82M `af_heart` via DeepInfra). As of 2026-09-27 it has
-ONE route, the match-test preview; nothing in `index.html` calls it yet.
+Tello's voice (Kokoro-82M `af_heart` via DeepInfra). Voice approved by the
+owner 2026-09-27 from the live preview on a phone.
 
-- `GET /api/tello/voice-preview` — speaks one fixed sentence. Takes no text, so
-  it cannot be used as a free TTS service; edge-cached, so replays are free.
-  `?format=wav` for the same audio as WAV, `?fresh=1` to bypass the cache.
+- `GET /api/tello/voice-preview` — the match test. Speaks one fixed sentence,
+  takes no text; edge-cached. `?format=wav`, `?fresh=1`.
+- `POST /api/tello/briefing-voice` — `{"text": ...}` with the user's Supabase
+  access token as `Authorization: Bearer`. Strips markdown, caps at 1,200
+  characters, applies the pronunciation rules and numbers-as-words
+  (`speech.js`), renders, and caches the MP3 in R2 under
+  `voice/<sha256(text+voice)>.mp3`. 10 new renders per user per Pacific day
+  (`rate/<day>/<user>` in the same bucket); a cached replay does not count and
+  a failed render is given back. CORS: `https://title22.app` only.
+  It proves who is asking and bounds the spend; it cannot prove the text is
+  that user's own briefing (the briefing is written in the browser). Accepted
+  by the owner 2026-09-27.
 - `GET /health` — which bindings are missing (names only).
-- The Worker asks DeepInfra for WAV, refuses anything not 24 kHz, peak-
-  normalises to 0.89 and encodes a 160 kbps MP3 itself (`@breezystack/lamejs`,
-  LGPL-3.0) — DeepInfra sets neither the bitrate nor the level.
-- Secret: `DEEPINFRA_API_KEY`, set on the Worker, never in the repo.
-  Vars in `wrangler.toml`. Deploy: Actions -> "Deploy title22-voice Worker".
-- `node test.mjs [file.wav]` runs every route offline with DeepInfra stubbed.
+- Audio: ask DeepInfra for WAV, refuse anything not 24 kHz, peak-normalise to
+  0.89, encode 160 kbps mono MP3 in the Worker (`@breezystack/lamejs`,
+  LGPL-3.0).
+- Secret: `DEEPINFRA_API_KEY` (set). Everything else is in `wrangler.toml`,
+  including the public Supabase URL and anon key and `preview_urls`/
+  `observability`, because a deploy replaces whatever the dashboard held.
+- R2 bucket `title22-voice-cache` must exist before deploying, with a 7-day
+  lifecycle rule (dashboard: R2 -> bucket -> Settings).
+- Deploy: Actions -> "Deploy title22-voice Worker". `node test.mjs` runs every
+  route offline with DeepInfra, Supabase and R2 stubbed.

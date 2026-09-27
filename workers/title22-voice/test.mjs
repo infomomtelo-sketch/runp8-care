@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import worker, { readWav } from './index.js';
+import { prepare } from './speech.js';
 
 function toneWav({ rate = 24000, seconds = 1, amp = 0.5, float = true }) {
   const n = rate * seconds, bps = float ? 4 : 2;
@@ -24,7 +25,13 @@ function toneWav({ rate = 24000, seconds = 1, amp = 0.5, float = true }) {
 
 const input = process.argv[2] ? new Uint8Array(fs.readFileSync(process.argv[2])) : toneWav({});
 let providerCalls = 0, lastBody = null, lastAuth = null, providerStatus = 200;
+const USERS = { 'good-token': { id: 'user-1' }, 'other-token': { id: 'user-2' } };
 globalThis.fetch = async (url, init) => {
+  if (url === 'https://sb.test/auth/v1/user') {
+    assert.equal(init.headers.apikey, 'anon-key');
+    const u = USERS[(init.headers.Authorization || '').replace('Bearer ', '')];
+    return u ? new Response(JSON.stringify(u)) : new Response('{"msg":"bad jwt"}', { status: 401 });
+  }
   assert.equal(url, 'https://api.deepinfra.com/v1/openai/audio/speech');
   providerCalls++; lastBody = JSON.parse(init.body); lastAuth = init.headers.Authorization;
   if (providerStatus !== 200) return new Response('{"detail":"bad key"}', { status: providerStatus });
@@ -35,7 +42,15 @@ globalThis.caches = { default: {
   match: async (k) => store.get(k.url)?.clone(),
   put: async (k, r) => { store.set(k.url, r); },
 } };
-const env = { DEEPINFRA_API_KEY: 'test-key', VOICE_MODEL: 'hexgrad/Kokoro-82M', VOICE_ID: 'af_heart' };
+const r2 = new Map();
+const R2 = {
+  get: async (k) => (r2.has(k) ? { body: r2.get(k), text: async () => new TextDecoder().decode(r2.get(k)) } : null),
+  put: async (k, v) => { r2.set(k, typeof v === 'string' ? new TextEncoder().encode(v) : v); },
+};
+const env = {
+  DEEPINFRA_API_KEY: 'test-key', VOICE_MODEL: 'hexgrad/Kokoro-82M', VOICE_ID: 'af_heart',
+  SUPABASE_URL: 'https://sb.test', SUPABASE_ANON_KEY: 'anon-key', ALLOWED_ORIGIN: 'https://title22.app', VOICE_CACHE: R2,
+};
 const waits = [];
 const ctx = { waitUntil: (p) => waits.push(p) };
 const get = async (path, e = env) => { const r = await worker.fetch(new Request('https://x' + path), e, ctx); await Promise.all(waits); return r; };
@@ -90,4 +105,64 @@ r = await get('/api/tello/voice-preview?fresh=1&text=anything%20else');
 assert.equal(lastBody.input.startsWith("Hi, I'm Tello"), true); assert.equal(providerCalls, before + 1);
 r = await worker.fetch(new Request('https://x/api/tello/voice-preview', { method: 'POST', body: '{}' }), env, ctx);
 assert.equal(r.status, 405);
+
+// ------------------------------------------------------------ briefing --
+const post = async (body, token = 'good-token', method = 'POST') => {
+  const h = { 'Content-Type': 'application/json', Origin: 'https://title22.app' };
+  if (token) h.Authorization = 'Bearer ' + token;
+  return worker.fetch(new Request('https://x/api/tello/briefing-voice', { method, headers: h, body: method === 'POST' ? JSON.stringify(body) : undefined }), env, ctx);
+};
+const BRIEF = '**Good morning.** 2 staff haven\'t finished *Fire safety*, due Friday. Maria\'s TB test is due 2026-10-03. Title22 checked your RCFE for DSS.';
+
+r = await worker.fetch(new Request('https://x/api/tello/briefing-voice', { method: 'OPTIONS' }), env, ctx);
+assert.equal(r.status, 204); assert.equal(r.headers.get('Access-Control-Allow-Origin'), 'https://title22.app');
+assert.match(r.headers.get('Access-Control-Allow-Headers'), /Authorization/);
+
+r = await post({ text: BRIEF }, null); assert.equal(r.status, 401);
+r = await post({ text: BRIEF }, 'forged'); assert.equal(r.status, 401);
+r = await post({ text: '   ' }); assert.equal(r.status, 400);
+r = await post({ text: 'x'.repeat(20001) }); assert.equal(r.status, 413);
+r = await post({ text: BRIEF }, 'good-token', 'GET'); assert.equal(r.status, 405);
+console.log('briefing auth/validation: 401 no token, 401 forged, 400 empty, 413 huge, 405 GET');
+
+providerCalls = 0;
+r = await post({ text: BRIEF });
+assert.equal(r.status, 200, await r.clone().text());
+assert.equal(r.headers.get('Content-Type'), 'audio/mpeg');
+assert.equal(r.headers.get('X-Voice-Cache'), 'miss');
+assert.equal(r.headers.get('X-Voice-Remaining'), '9');
+assert.equal(lastBody.input, prepare(BRIEF));
+assert.equal(lastBody.input, "Good morning. Two staff haven't finished Fire safety, due Friday. Maria's T B test is due October third, twenty twenty-six. Title twenty-two checked your R C F E for D S S.");
+assert.equal(Object.keys(lastBody).sort().join(), 'input,model,response_format,speed,voice');
+console.log('sent to DeepInfra:', JSON.stringify(lastBody.input));
+
+// same text again, even from another user: cache, no provider call, no count
+r = await post({ text: BRIEF }, 'other-token');
+assert.equal(r.headers.get('X-Voice-Cache'), 'hit'); assert.equal(providerCalls, 1);
+assert.equal(r2.has('rate/' + new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date()) + '/user-2'), false);
+
+// limit: user-1 has used 1; nine more new texts succeed, the eleventh is refused
+for (let i = 2; i <= 10; i++) { r = await post({ text: BRIEF + ' Item ' + i + '.' }); assert.equal(r.status, 200); }
+assert.equal(r.headers.get('X-Voice-Remaining'), '0');
+r = await post({ text: BRIEF + ' Item 11.' }); assert.equal(r.status, 429);
+const before11 = providerCalls;
+r = await post({ text: BRIEF }); assert.equal(r.status, 200); assert.equal(r.headers.get('X-Voice-Cache'), 'hit');
+assert.equal(providerCalls, before11);
+console.log('limit: 10 new renders, 11th -> 429, cached replay still plays');
+
+// provider failure -> 502 with no text in the body; counts against the day
+providerStatus = 500;
+r = await post({ text: 'A different briefing.' }, 'other-token');
+const fb = await r.text(); assert.equal(r.status, 502); assert.ok(!fb.includes('different'));
+const day2 = 'rate/' + new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date()) + '/user-2';
+assert.equal(r2.has(day2) ? new TextDecoder().decode(r2.get(day2)) : '0', '0', 'a failed render is given back');
+providerStatus = 200;
+
+// cap: the spoken text never exceeds the cleaned 1,200 characters' worth
+r = await post({ text: 'Staff file check. '.repeat(200) }, 'other-token');
+assert.equal(r.status, 200); assert.ok(lastBody.input.length <= 1200, lastBody.input.length);
+console.log('502 on provider failure, 1,200-char cap:', lastBody.input.length);
+
+// health names briefing bindings too
+r = await get('/health', { ...env, VOICE_CACHE: undefined }); assert.equal(r.status, 500); assert.match(await r.text(), /VOICE_CACHE/);
 console.log('all checks passed');
