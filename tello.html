@@ -529,7 +529,9 @@ const TOOLS=[
     {label:'Rewrite it',hint:'Same message, said better.',options:['Clearer','Friendlier','More professional','Shorter'],start:o=>`Rewrite this so it is ${o.toLowerCase()}. My text:\n\n`,paste:'Paste the text to rewrite, then tap Ask.'},
     {label:'Translate',hint:'For caregivers, families or posts.',options:['Spanish','Tagalog','Punjabi','English'],start:o=>`Translate this into ${o}. My text:\n\n`,paste:'Paste the text to translate, then tap Ask. Have a native speaker check anything important.'},
     {label:'Reply to a message',hint:'Paste what they sent; I draft your answer.',start:'Help me reply to this message. What they sent:\n\n',paste:'Paste the message you received. Leave out anyone\'s health details.'},
-    {label:'Read a photo or PDF',hint:'A letter, a flyer, a screenshot, a form.',pick:true},
+    // Customers are told what belongs here: staff documents and the home's own
+    // papers, never a resident's. The file is never kept either way.
+    {label:'Read a photo or PDF',hint:'A letter, a flyer, a screenshot, a form.',hintCustomer:'A CPR card, a TB clearance, a policy or a flyer. Never a resident\'s paperwork.',pick:true},
     {label:'Write an email',hint:'Tell me who it is for and what to say.',start:'Write a short email. Who it is for and what I want to say:\n\n',paste:'Say who it is for and what you want to say, in your own words.'},
   ]},
   {group:'Social posts',partner:true,items:[
@@ -569,7 +571,7 @@ function renderTools(el,withTitle){
     const grid=document.createElement('div');grid.className='tgrid';
     g.items.forEach(t=>{
       const b=document.createElement('button');b.type='button';b.className='tool';
-      b.append(document.createTextNode(t.label));const sm=document.createElement('small');sm.textContent=t.hint;b.appendChild(sm);
+      b.append(document.createTextNode(t.label));const sm=document.createElement('small');sm.textContent=(mode!=='partner'&&t.hintCustomer)||t.hint;b.appendChild(sm);
       b.onclick=()=>useTool(t,b,grid);
       grid.appendChild(b);
     });
