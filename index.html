@@ -6591,7 +6591,7 @@ function telloVoiceRender(state){
   const btn=(label,fn,kind)=>`<button type="button" class="tv-btn ${kind||''}" onclick="${fn}">${label}</button>`;
   const V={
     loading:{kicker:'Tello · AI voice',status:'Getting ready<span class="tv-dots"></span>',actions:''},
-    playing:{kicker:'Tello · AI voice',status:'Tello is speaking (AI voice)',actions:btn('❚❚ Pause','telloVoicePause()','primary')+btn('■ Stop','telloVoiceStopClick()')},
+    playing:{kicker:'Tello \u00b7 daily briefing',status:'Tello is speaking (AI voice)',actions:btn('❚❚ Pause','telloVoicePause()','primary')+btn('■ Stop','telloVoiceStopClick()')},
     paused:{kicker:'Tello · AI voice',status:'Paused',actions:btn('▶ Resume','telloVoiceResume()','gold')+btn('■ Stop','telloVoiceStopClick()')},
     tap:{kicker:'Tello · AI voice',status:'Tello can read this to you',actions:btn('▶ Tap to listen','telloVoiceListen()','gold')},
     again:{kicker:'Tello · AI voice',status:'Your briefing, in Tello’s voice',actions:btn('▶ Listen again','telloVoiceListen()','gold')},
