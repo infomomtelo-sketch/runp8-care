@@ -144,7 +144,7 @@ assert.equal(r.body.mode, 'partner');
 assert.equal(r.body.reply, 'You have 2 paying accounts and $108 MRR at list price.', 'markdown stripped');
 assert.equal(snapshotCalls, 1);
 const [first, second] = anthropic.slice(-2);
-assert.equal(first.model, 'claude-opus-5-5');
+assert.equal(first.model, 'claude-sonnet-5');
 assert.equal(first.max_tokens, 8000); assert.deepEqual(first.output_config, { effort: 'medium' });
 assert.ok(first.system.includes('PRIVATE PARTNER INSTRUCTIONS'));
 assert.equal(first.tools[0].name, 'business_snapshot');

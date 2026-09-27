@@ -25,13 +25,14 @@ export const TELLO_CLIENTS = {
 const CLIENT = TELLO_CLIENTS.title22;
 
 const CUSTOMER_MODEL = 'claude-haiku-4-5-20251001';
-// The owner's own partner: the strongest model, because one person uses it
-// and the answers are business decisions. Customers stay on Haiku.
-const PARTNER_MODEL = 'claude-opus-5-5';
-// Opus 5.5 always thinks, and thinking tokens count against max_tokens. The
-// first Sonnet build capped partner answers at 1,500 tokens, which thinking
-// alone can use up, leaving an empty or cut-off reply. Hence the room below,
-// and the effort set explicitly (Opus 5.5's own default is also medium).
+// The owner's own partner. Sonnet 5, the owner's choice (2026-09-27): Opus
+// 5.5 writes better but still cannot act, so it was not worth twice the
+// price. Customers stay on Haiku.
+const PARTNER_MODEL = 'claude-sonnet-5';
+// Sonnet 5 thinks by default, and thinking tokens count against max_tokens.
+// The first build capped partner answers at 1,500 tokens (900 for briefs),
+// which thinking alone can use up, leaving an empty or cut-off reply. Hence
+// the room below, with effort set explicitly.
 const PARTNER_MAX_TOKENS = 8000;
 const PARTNER_EFFORT = 'medium';
 const PARTNER_MONTHLY_LIMIT = 1500;
