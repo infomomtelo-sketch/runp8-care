@@ -32,7 +32,7 @@ SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 # Customer-mode Tello on title22.app/tello, and partner mode. Both have
 # defaults in tello.js; they are here so a model change is a one-line PR.
 TELLO_MODEL = "claude-haiku-4-5-20251001"
-TELLO_PARTNER_MODEL = "claude-sonnet-5"
+TELLO_PARTNER_MODEL = "claude-opus-5-5"
 
 # Public route (workers.dev):
 #   https://title22-ai.infomomtelo.workers.dev/api/chat     in-app Tello

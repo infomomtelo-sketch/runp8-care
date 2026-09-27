@@ -25,7 +25,15 @@ export const TELLO_CLIENTS = {
 const CLIENT = TELLO_CLIENTS.title22;
 
 const CUSTOMER_MODEL = 'claude-haiku-4-5-20251001';
-const PARTNER_MODEL = 'claude-sonnet-5';
+// The owner's own partner: the strongest model, because one person uses it
+// and the answers are business decisions. Customers stay on Haiku.
+const PARTNER_MODEL = 'claude-opus-5-5';
+// Opus 5.5 always thinks, and thinking tokens count against max_tokens. The
+// first Sonnet build capped partner answers at 1,500 tokens, which thinking
+// alone can use up, leaving an empty or cut-off reply. Hence the room below,
+// and the effort set explicitly (Opus 5.5's own default is also medium).
+const PARTNER_MAX_TOKENS = 8000;
+const PARTNER_EFFORT = 'medium';
 const PARTNER_MONTHLY_LIMIT = 1500;
 const MAX_INPUT = 4000;
 const MARKER = '[New conversation.]';
@@ -162,12 +170,13 @@ export async function snapshot(env) {
 
 // Runs the conversation, letting partner-mode Tello look up the numbers.
 // At most three rounds, so a confused model cannot loop on the tool.
-async function converse(env, { model, system, messages, tools, maxTokens }) {
+async function converse(env, { model, system, messages, tools, maxTokens, effort }) {
   const msgs = messages.slice();
   let snap = null, used = false;
   for (let round = 0; round < 3; round++) {
     const body = { model, max_tokens: maxTokens, system, messages: msgs };
     if (tools) body.tools = tools;
+    if (effort) body.output_config = { effort };
     const data = await callModel(env, body);
     if (data.stop_reason !== 'tool_use') return { text: plain(textOf(data)), usedSnapshot: used };
     msgs.push({ role: 'assistant', content: data.content });
@@ -184,7 +193,7 @@ async function converse(env, { model, system, messages, tools, maxTokens }) {
     msgs.push({ role: 'user', content: results });
   }
   // Out of rounds: ask once more with no tools, so there is always an answer.
-  const data = await callModel(env, { model, max_tokens: maxTokens, system, messages: msgs.concat([{ role: 'user', content: 'Answer now from what you have.' }]) });
+  const data = await callModel(env, { model, max_tokens: maxTokens, system, messages: msgs.concat([{ role: 'user', content: 'Answer now from what you have.' }]), ...(effort ? { output_config: { effort } } : {}) });
   return { text: plain(textOf(data)), usedSnapshot: used };
 }
 
@@ -276,7 +285,7 @@ export async function handleTello(request, env, deps) {
     const model = env.TELLO_PARTNER_MODEL || PARTNER_MODEL;
     let text;
     try {
-      ({ text } = await converse(env, { model, system, messages: [{ role: 'user', content: ask }], maxTokens: 900 }));
+      ({ text } = await converse(env, { model, system, messages: [{ role: 'user', content: ask }], maxTokens: PARTNER_MAX_TOKENS, effort: PARTNER_EFFORT }));
     } catch (e) {
       return json({ error: 'model_unavailable', message: 'Tello could not write the brief just now.', snapshot: snap }, 502);
     }
@@ -312,7 +321,8 @@ export async function handleTello(request, env, deps) {
         model: founder ? (env.TELLO_PARTNER_MODEL || PARTNER_MODEL) : (env.TELLO_MODEL || CUSTOMER_MODEL),
         system, messages,
         tools: founder ? [SNAPSHOT_TOOL] : undefined,
-        maxTokens: founder ? 1500 : 800,
+        maxTokens: founder ? PARTNER_MAX_TOKENS : 800,
+        effort: founder ? PARTNER_EFFORT : undefined,   // Haiku 4.5 rejects effort
       }));
     } catch (e) {
       return json({ error: 'model_unavailable', message: 'Tello could not answer just now. Please try again in a moment.' }, 502);

@@ -46,7 +46,7 @@ real Worker against a stubbed Supabase and Anthropic.
   Customer mode: `tello/core.js` + `tello/title22-knowledge.js` (the owner's
   knowledge file). Partner mode: the signed-in user's id is in
   `public.tello_founders` → the owner's private instructions from
-  `public.tello_private` (key `founder`), the `business_snapshot` tool, Sonnet.
+  `public.tello_private` (key `founder`), the `business_snapshot` tool, Opus 5.5 (medium effort, 8,000-token room because it always thinks).
   Both tables are service-role only; no button, URL or field switches modes,
   and a failed lookup answers as customer mode.
 - **The partner instructions are not in git** — this repo is public. They are
