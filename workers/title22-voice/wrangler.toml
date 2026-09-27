@@ -2,6 +2,19 @@ name = "title22-voice"
 main = "index.js"
 compatibility_date = "2026-09-27"
 
+# Both were set in the dashboard, and the first CI deploy (2026-09-27, version
+# 8a5b4e68) overwrote them: wrangler applies this file's settings, and a
+# setting that is absent here falls back to wrangler's default, not to the
+# dashboard's. So they live here now.
+#   preview_urls = false  — no per-version preview hostnames. This Worker holds
+#                           a paid API key; one public route is enough.
+#   observability         — keep Workers Logs on, so a failed DeepInfra call
+#                           (console.error in index.js) is kept for later.
+preview_urls = false
+
+[observability]
+enabled = true
+
 # Tello's voice. B1 step 0: a PREVIEW route only, so the match test against
 # tello-voice-reference.wav runs on Cloudflare with the real key. The signed-in
 # briefing route (/api/tello/briefing-voice), R2 cache and rate limit come after
