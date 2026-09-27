@@ -2,7 +2,7 @@
 // else is the real Worker. Run: node test.mjs
 import assert from 'node:assert/strict';
 import worker from './index.js';
-import { contextFrom, laMonday, laDate, plain } from './tello.js';
+import { contextFrom, laMonday, laDate, plain, rememberFrom } from './tello.js';
 
 const FOUNDER = '11111111-1111-1111-1111-111111111111';
 const CUSTOMER = '22222222-2222-2222-2222-222222222222';
@@ -23,7 +23,7 @@ const db = {
   ai_usage: [],
 };
 const SNAP = { signups: { last_7_days: 3 }, paying_accounts_total: 2, mrr_usd_list_price: 108 };
-let failFounders = false, snapshotCalls = 0;
+let failFounders = false, snapshotCalls = 0, notesOff = false;
 const anthropic = []; // requests seen
 let script = [];      // queued model responses
 const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_turn' });
@@ -70,6 +70,7 @@ globalThis.fetch = async (url, init = {}) => {
   }
   if (method === 'POST') {
     const body = JSON.parse(init.body);
+    if (notesOff && [].concat(body).some((r) => r.kind === 'note')) return new Response('{"code":"23514"}', { status: 400 });
     for (const r of [].concat(body)) db[table].push({ id: String(db[table].length + 1), created_at: new Date(Date.now() + db[table].length).toISOString(), ...r });
     return new Response(init.headers.Prefer?.includes('representation') ? JSON.stringify([].concat(body)) : null, { status: 201 });
   }
@@ -108,7 +109,9 @@ assert.ok(!req.system.includes('EVIL'), 'the browser cannot set her instructions
 assert.ok(!req.system.includes('PRIVATE PARTNER'), 'customers never get partner instructions');
 assert.ok(!req.system.includes('business_snapshot'));
 assert.ok(req.system.includes('You are Tello.') && req.system.includes('Title22 keeps a care home'));
+assert.ok(req.system.includes('WRITING HELP') && req.system.includes('Copy button'), 'writing help reaches her');
 assert.equal(req.tools, undefined);
+assert.equal(req.output_config, undefined, 'no effort sent to Haiku, which rejects it');
 assert.equal(r.body.mode, 'customer');
 assert.equal(db.tello_messages.length, 2);
 assert.ok(db.tello_messages.every((m) => m.user_id === CUSTOMER));
@@ -143,6 +146,7 @@ assert.equal(r.body.reply, 'You have 2 paying accounts and $108 MRR at list pric
 assert.equal(snapshotCalls, 1);
 const [first, second] = anthropic.slice(-2);
 assert.equal(first.model, 'claude-sonnet-5');
+assert.equal(first.max_tokens, 8000); assert.deepEqual(first.output_config, { effort: 'medium' });
 assert.ok(first.system.includes('PRIVATE PARTNER INSTRUCTIONS'));
 assert.equal(first.tools[0].name, 'business_snapshot');
 assert.equal(second.messages.at(-1).content[0].type, 'tool_result');
@@ -245,5 +249,62 @@ assert.equal(r.body.blocked, 'dosage_safety'); assert.ok(!/MAR|resident/i.test(r
 r = await worker.fetch(new Request('https://w/'), { ...env, ANTHROPIC_API_KEY: undefined });
 assert.equal(r.status, 500); assert.equal((await r.json()).bindings.anthropic_api_key, false);
 console.log('ok  /api/chat: lite and Multi-Home are paid plans, refusal has no MAR wording, health names a missing binding');
+
+// ------------------------------------------- history, notes, files ----
+let sys = anthropic.at(-1).system;
+r = await ask('customer-token', 'hello again');
+assert.ok(!anthropic.at(-1).system.includes('WHAT YOU KNOW ABOUT ITS HISTORY'), 'customers never get the history');
+await ask('founder-token', 'hi');
+sys = anthropic.at(-1).system;
+assert.ok(sys.includes('WHAT YOU KNOW ABOUT ITS HISTORY') && sys.includes('one character'), 'partner gets the history');
+console.log('ok  history file: partner only');
+
+assert.equal(rememberFrom('Remember: Raya class is Oct 12'), 'Raya class is Oct 12');
+assert.equal(rememberFrom('remember this - call 6Beds Tuesday'), 'call 6Beds Tuesday');
+assert.equal(rememberFrom('Do you remember: nothing'), null);
+assert.equal((await call('/api/tello/remember', { token: 'customer-token', method: 'POST', body: { text: 'x' } })).status, 403);
+r = await call('/api/tello/remember', { token: 'founder-token', method: 'POST', body: { text: 'Raya teaches on Oct 12' } });
+assert.equal(r.body.ok, true);
+r = await call('/api/tello/remember', { token: 'founder-token', method: 'POST', body: { text: 'Raya teaches on Oct 12' } });
+assert.equal(r.body.duplicate, true, 'the same note is not kept twice');
+r = await ask('founder-token', 'Remember: the SBDC meeting moved to Friday');
+assert.equal(r.body.noted.ok, true);
+const notes = db.tello_founder_messages.filter((m) => m.kind === 'note');
+assert.deepEqual(notes.map((n) => n.content), ['Raya teaches on Oct 12', 'the SBDC meeting moved to Friday']);
+await ask('founder-token', 'What is on this week?');
+sys = anthropic.at(-1).system;
+assert.ok(sys.includes('THINGS THE OWNER ASKED YOU TO REMEMBER') && sys.includes('Raya teaches on Oct 12') && sys.includes('SBDC meeting moved'));
+assert.ok(anthropic.at(-1).messages.every((m) => typeof m.content !== 'string' || !m.content.startsWith('Raya teaches')), 'notes are not chat turns');
+notesOff = true;
+r = await call('/api/tello/remember', { token: 'founder-token', method: 'POST', body: { text: 'new one' } });
+assert.equal(r.body.error, 'notes_not_enabled'); assert.match(r.body.message, /2026-09-28_tello_notes\.sql/);
+notesOff = false;
+console.log('ok  notes: Remember button and "Remember:" both keep his words, once; in every partner answer; says so when the migration is missing');
+
+const many = []; for (let i = 0; i < 60; i++) many.push({ role: i % 2 ? 'assistant' : 'user', content: 'm' + i });
+const w40 = JSON.stringify(contextFrom(many, 'q', 40)), w16 = JSON.stringify(contextFrom(many, 'q', 16));
+assert.ok(w40.includes('m20"') && w40.includes('m59"') && w40.includes('"m0"') && !w40.includes('m19"'), 'opening + last 40');
+assert.ok(!w16.includes('m20') && w16.includes('m44') && w16.includes('"m0"'), 'customers: opening + last 16');
+console.log('ok  partner sees the last 40 turns (customers 16), plus the opening');
+
+const IMG = Buffer.from('fakejpeg').toString('base64');
+const beforeMem = db.tello_messages.length;
+r = await call('/api/tello', { token: 'customer-token', method: 'POST', body: { message: 'What does this say?', attachment: { media_type: 'image/jpeg', data: IMG, name: 'flyer.jpg' } } });
+assert.equal(r.status, 200);
+let last = anthropic.at(-1).messages.at(-1);
+assert.equal(last.content[0].type, 'image'); assert.equal(last.content[0].source.data, IMG);
+assert.equal(last.content[1].text.endsWith('What does this say?'), true);
+const keptRow = db.tello_messages.slice(beforeMem).find((m) => m.role === 'user');
+assert.equal(keptRow.content, '[Shared a photo: flyer.jpg] What does this say?');
+assert.ok(!JSON.stringify(db).includes(IMG), 'the file itself is never stored');
+r = await call('/api/tello', { token: 'founder-token', method: 'POST', body: { attachment: { media_type: 'application/pdf', data: IMG } } });
+last = anthropic.at(-1).messages.at(-1);
+assert.equal(last.content[0].type, 'document'); assert.match(last.content[1].text, /Read this PDF/);
+assert.equal((await call('/api/tello', { token: 'customer-token', method: 'POST', body: { attachment: { media_type: 'text/html', data: IMG } } })).status, 400);
+assert.equal((await call('/api/tello', { token: 'customer-token', method: 'POST', body: { attachment: { media_type: 'image/png', data: 'x'.repeat(7_000_001) } } })).status, 413);
+// the next turn after a photo carries only the one-line mention
+await ask('customer-token', 'thanks');
+assert.ok(!JSON.stringify(anthropic.at(-1).messages).includes(IMG));
+console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 400, too big 413');
 
 console.log('all checks passed');
