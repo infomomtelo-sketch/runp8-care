@@ -108,6 +108,7 @@ assert.ok(!req.system.includes('EVIL'), 'the browser cannot set her instructions
 assert.ok(!req.system.includes('PRIVATE PARTNER'), 'customers never get partner instructions');
 assert.ok(!req.system.includes('business_snapshot'));
 assert.ok(req.system.includes('You are Tello.') && req.system.includes('Title22 keeps a care home'));
+assert.ok(req.system.includes('WRITING HELP') && req.system.includes('Copy button'), 'writing help reaches her');
 assert.equal(req.tools, undefined);
 assert.equal(r.body.mode, 'customer');
 assert.equal(db.tello_messages.length, 2);

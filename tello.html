@@ -122,6 +122,23 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .small{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.55}
 .setup{background:#fff8ea;border:1px solid rgba(232,162,61,.55);border-radius:12px;padding:10px 12px;font-size:13px;color:#6a4a12;margin-bottom:12px}
 
+/* ---- tools: what to ask ---- */
+.tools{margin-top:12px}
+.tools .kicker{margin:0 0 8px}
+.tgroup{margin-bottom:12px}
+.tgroup-name{font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:16px;color:var(--green);margin:0 0 6px}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.tool{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--white);color:var(--green);font-weight:600;font-size:14px;line-height:1.3}
+.tool small{font-weight:400;font-size:12px;color:var(--muted);line-height:1.4}
+.tool:hover,.tool.open{border-color:var(--gold);background:#fffaf0}
+.topts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 4px}
+.topts .kicker{width:100%;margin:0}
+.ideas-btn{flex:none;padding:0 12px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);font-weight:600;font-size:14px}
+.ideas-btn:hover{border-color:var(--gold)}
+.compose-hint{flex:none;font-size:12.5px;color:var(--green);background:var(--gold-soft);border-radius:10px;padding:6px 10px;margin-top:6px}
+.copy{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--line);background:var(--cream);color:var(--green);font-weight:500;white-space:normal}
+.copy:hover{border-color:var(--gold)}
+
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
@@ -199,23 +216,14 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
           <div class="small" id="codes"></div>
           <div class="small">MRR is list price times active subscriptions in our own records. Stripe is the source of truth for money.</div>
         </div>
-        <div class="starters" id="partner-starters" style="margin-top:12px">
-          <button class="starter" onclick="prefill('Should I ')">Should I…?</button>
-          <button class="starter" onclick="ask(this.textContent)">What's the one next step today?</button>
-          <button class="starter" onclick="ask(this.textContent)">Where are new accounts getting stuck?</button>
-          <button class="starter" onclick="prefill('Check this claim for anything that isn\'t true or legal: ')">Check this claim</button>
-          <button class="starter" onclick="ask(this.textContent)">Which trials end this week, and what should I send them?</button>
-        </div>
+        <div class="tools" id="partner-tools"></div>
       </div>
       <div id="thread"></div>
-      <div class="starters" id="starters" hidden>
-        <button class="starter" onclick="ask(this.textContent)">What does Title22 do?</button>
-        <button class="starter" onclick="ask(this.textContent)">What does it track for my staff?</button>
-        <button class="starter" onclick="ask(this.textContent)">Can I use it for more than one home?</button>
-        <button class="starter" onclick="ask(this.textContent)">What happens when my trial ends?</button>
-      </div>
+      <div class="tools" id="starters" hidden></div>
     </div>
+    <div class="compose-hint" id="compose-hint" hidden></div>
     <div class="composer">
+      <button class="ideas-btn" id="ideas-btn" onclick="openIdeas()" title="What can I ask Tello?">Ideas</button>
       <textarea id="say" rows="1" placeholder="Ask Tello anything…" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
       <button id="send" onclick="ask()">Ask</button>
     </div>
@@ -234,6 +242,17 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
     <p class="sheet-note">What she keeps is the conversation itself — what you said and what she said, word for word. She does not store anything she worked out about you, and nobody else can read it. "New" starts a fresh page without deleting anything; only the button below deletes.</p>
     <div class="msg" id="mem-msg"></div>
     <button class="btn btn-danger" onclick="forgetAll()" id="forget-btn">Forget everything</button>
+  </div>
+</div>
+
+<div class="sheet" id="ideas" onclick="if(event.target===this)closeIdeas()">
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <strong>What can I ask Tello?</strong>
+      <button class="linkbtn dark" onclick="closeIdeas()">Close</button>
+    </div>
+    <p class="sheet-note">Tap one and I'll start the message for you. Add your text where it says, then tap Ask. You can also just type anything in your own words — you don't need these.</p>
+    <div id="ideas-list"></div>
   </div>
 </div>
 
@@ -330,6 +349,7 @@ async function boot(){
     if(!who.memory)notes.push('Partner memory is not switched on yet: run migrations/2026-09-27_tello_partner.sql.');
     $('setup-note').textContent=notes.join(' ');$('setup-note').hidden=!notes.length;
     $('hello').textContent=greeting(false);
+    renderTools($('partner-tools'),true);
     $('hello-kicker').textContent='Tello · your business partner · '+longDate();
     const monday=new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'America/Los_Angeles'})==='Monday';
     loadBrief(monday?'weekly':'today');
@@ -360,8 +380,8 @@ async function loadMemory(partner){
   scrollEnd(partner);
 }
 function greet(){
-  if(mode==='partner')say('I\'m here. Ask me anything about the business — I\'ll check the numbers before I answer, and I\'ll tell you when I don\'t know.','her');
-  else{say('Hi, I\'m Tello. Ask me anything about running your home, or about Title22. I\'ll tell you straight, and I\'ll tell you when I don\'t know.','her');$('starters').hidden=false}
+  if(mode==='partner')say('I\'m here. Ask me anything about the business — I\'ll check the numbers before I answer, and I\'ll tell you when I don\'t know. Not sure what to ask? Tap one of the tools above, or Ideas any time.','her',true);
+  else{say('Hi, I\'m Tello. Ask me anything about running your home, or about Title22. I\'ll tell you straight, and I\'ll tell you when I don\'t know. Not sure what to ask? Tap one below, or Ideas any time.','her',true);renderTools($('starters'),true);$('starters').hidden=false}
 }
 async function newConversation(){
   if(busy)return;
@@ -382,13 +402,121 @@ async function forgetAll(){
 }
 
 /* ------------------------------------------------------------ chat -- */
-function say(text,cls){
+function say(text,cls,noCopy){
   const d=document.createElement('div');d.className='turn '+cls;d.textContent=text;
+  // Every real answer can be copied with one tap: rewrites, translations and
+  // captions are meant to be pasted somewhere else.
+  if(cls==='her'&&!noCopy&&text&&text.length>40){
+    const b=document.createElement('button');b.className='copy';b.type='button';b.textContent='Copy';
+    b.onclick=()=>copyText(text,b);d.appendChild(b);
+  }
   $('thread').appendChild(d);return d;
 }
+async function copyText(text,btn){
+  let ok=false;
+  try{await navigator.clipboard.writeText(text);ok=true}catch(e){
+    const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();
+    try{ok=document.execCommand('copy')}catch(_){} t.remove();
+  }
+  btn.textContent=ok?'Copied':'Select the text to copy';setTimeout(()=>{btn.textContent='Copy'},1800);
+}
+
+/* ----------------------------------------------------------- tools -- */
+// What you can ask her, shown instead of assumed. A tool either asks at once
+// (ask) or starts the message and waits for your text (start). Tools with
+// options show them first (tone, language, platform). Nothing here is a
+// separate feature on the server: each one is a plain request she answers
+// with the same rules as anything else typed in the box.
+const TOOLS=[
+  {group:'Write and fix',items:[
+    {label:'Fix my grammar',hint:'Spelling and grammar fixed, your voice kept.',start:'Fix my grammar and spelling. Keep my voice. My text:\n\n',paste:'Paste or type your text under the first line, then tap Ask.'},
+    {label:'Rewrite it',hint:'Same message, said better.',options:['Clearer','Friendlier','More professional','Shorter'],start:o=>`Rewrite this so it is ${o.toLowerCase()}. My text:\n\n`,paste:'Paste the text to rewrite, then tap Ask.'},
+    {label:'Translate',hint:'For caregivers, families or posts.',options:['Spanish','Tagalog','Punjabi','English'],start:o=>`Translate this into ${o}. My text:\n\n`,paste:'Paste the text to translate, then tap Ask. Have a native speaker check anything important.'},
+    {label:'Reply to a message',hint:'Paste what they sent; I draft your answer.',start:'Help me reply to this message. What they sent:\n\n',paste:'Paste the message you received. Leave out anyone\'s health details.'},
+    {label:'Write an email',hint:'Tell me who it is for and what to say.',start:'Write a short email. Who it is for and what I want to say:\n\n',paste:'Say who it is for and what you want to say, in your own words.'},
+  ]},
+  {group:'Social posts',partner:true,items:[
+    {label:'Post caption',hint:'Ready to paste, with a few hashtags.',options:['Facebook','Instagram','TikTok','LinkedIn'],start:o=>`Write a ${o} caption for Title22. What the post shows:\n\n`,paste:'Describe the photo or video in a few words, then tap Ask.'},
+    {label:'Post ideas for this week',hint:'Five ideas, one line each.',ask:'Give me 5 post ideas for Title22 this week, one line each, and say which platform suits each.'},
+    {label:'Turn my notes into a post',hint:'Rough notes in, a clean post out.',start:'Turn these notes into a short social post for Title22:\n\n',paste:'Paste your notes, however rough.'},
+    {label:'Check a post before I publish',hint:'Anything untrue, risky or unclear?',start:'Check this post before I publish it: anything untrue, not legal, or unclear? Then give me the fixed version.\n\n',paste:'Paste the post.'},
+  ]},
+  {group:'The business',partner:true,items:[
+    {label:'Should I…?',hint:'Recommendation, risk, cheapest test.',start:'Should I ',paste:'Finish the question, then tap Ask.'},
+    {label:'One next step today',hint:'When there is too much going on.',ask:'What is the one next step for me today, and what should I drop?'},
+    {label:'Where are signups stuck?',hint:'From the live numbers.',ask:'Where are new accounts getting stuck, and what is the one fix you would try first?'},
+    {label:'Trial follow-up message',hint:'For a home whose trial is ending.',ask:'Write a short, personal follow-up message for a home whose trial ends this week. Leave blanks for the name and what they set up.'},
+    {label:'Check this claim',hint:'Is it true and legal to say?',start:'Check this claim for anything that is not true or not legal to say:\n\n',paste:'Paste the sentence or page text.'},
+    {label:'Explain a business word',hint:'In plain words, with an example.',options:['MRR','Churn','CAC','Trial-to-paid','Payback'],start:o=>`Explain ${o} in plain words, with an example from Title22.`,send:true},
+  ]},
+  {group:'Title22',customer:true,items:[
+    {label:'What does Title22 do?',hint:'The short version.',ask:'What does Title22 do?'},
+    {label:'Getting ready for a DSS visit',hint:'Where to start.',ask:'I have a DSS visit coming. Where should I start?'},
+    {label:'More than one home?',hint:'How it works across homes.',ask:'Can I use Title22 for more than one home?'},
+    {label:'When my trial ends',hint:'What happens to my records.',ask:'What happens when my trial ends?'},
+  ]},
+  {group:'Running a home',items:[
+    {label:'Caregiver job post',hint:'For Indeed, Facebook or a flyer.',start:'Write a job post for a caregiver at a small care home. Details (shift, pay, town):\n\n',paste:'Add the shift, pay and town, then tap Ask.'},
+    {label:'Message to my staff',hint:'Clear and kind, ready to send.',start:'Write a short message to my staff about:\n\n',paste:'Say what it is about.'},
+    {label:'Explain a word or form',hint:'RCFE, LIC 622, Live Scan…',start:'Explain in plain words: ',paste:'Type the word or form number, then tap Ask.'},
+  ]},
+];
+function toolsFor(){return TOOLS.filter(g=>mode==='partner'?!g.customer:!g.partner)}
+function renderTools(el,withTitle){
+  el.innerHTML='';
+  if(withTitle){const k=document.createElement('div');k.className='kicker';k.textContent='What I can do for you · tap one';el.appendChild(k)}
+  toolsFor().forEach(g=>{
+    const box=document.createElement('div');box.className='tgroup';
+    const h=document.createElement('div');h.className='tgroup-name';h.textContent=g.group;box.appendChild(h);
+    const grid=document.createElement('div');grid.className='tgrid';
+    g.items.forEach(t=>{
+      const b=document.createElement('button');b.type='button';b.className='tool';
+      b.append(document.createTextNode(t.label));const sm=document.createElement('small');sm.textContent=t.hint;b.appendChild(sm);
+      b.onclick=()=>useTool(t,b,grid);
+      grid.appendChild(b);
+    });
+    box.appendChild(grid);el.appendChild(box);
+  });
+}
+function useTool(t,btn,grid){
+  if(t.options){
+    const open=btn.classList.contains('open');
+    grid.querySelectorAll('.topts').forEach(x=>x.remove());grid.querySelectorAll('.tool.open').forEach(x=>x.classList.remove('open'));
+    if(open)return;
+    btn.classList.add('open');
+    const row=document.createElement('div');row.className='topts';
+    const k=document.createElement('div');k.className='kicker';k.textContent=t.label+' · choose one';row.appendChild(k);
+    t.options.forEach(o=>{const c=document.createElement('button');c.type='button';c.className='pill';c.textContent=o;
+      c.onclick=()=>{row.remove();btn.classList.remove('open');runTool(t,o)};row.appendChild(c)});
+    btn.after(row);return;
+  }
+  runTool(t);
+}
+function runTool(t,o){
+  closeIdeas();
+  if(t.ask){ask(t.ask);return}
+  const text=typeof t.start==='function'?t.start(o):t.start;
+  if(t.send){ask(text);return}
+  prefill(text,t.paste);
+}
+function openIdeas(){renderTools($('ideas-list'),false);$('ideas').classList.add('open')}
+function closeIdeas(){$('ideas').classList.remove('open')}
+
+// The box shows what she can do while it is empty, one example at a time.
+const EXAMPLES={
+  partner:['Try: Fix my grammar: …','Try: Write an Instagram caption about…','Try: Should I raise the price?','Try: Translate this into Tagalog: …','Try: How are we doing this week?'],
+  customer:['Try: What does Title22 do?','Try: Fix my grammar: …','Try: Translate this into Spanish: …','Try: Write a caregiver job post','Try: Where do I start for a DSS visit?'],
+};
+let exI=0;
+setInterval(()=>{const i=$('say');if(!mode||i.value||document.activeElement===i)return;
+  const list=EXAMPLES[mode]||EXAMPLES.customer;i.placeholder=list[exI++%list.length]},3500);
 function divider(){const d=document.createElement('div');d.className='divider';d.textContent='New conversation';$('thread').appendChild(d)}
 function scrollEnd(keepTop){const s=$('scroll');if(!keepTop)s.scrollTop=s.scrollHeight}
-function prefill(t){const i=$('say');i.value=t;i.focus();grow(i)}
+function prefill(t,hint){
+  const i=$('say');i.value=t;grow(i);i.focus();
+  try{i.setSelectionRange(t.length,t.length)}catch(e){}
+  const h=$('compose-hint');h.textContent=hint||'';h.hidden=!hint;
+}
 
 // Identifiers only, never names — the same rule as the app's t22PhiScan, and
 // for the same reason (see CLAUDE.md). In partner mode an email or phone
@@ -415,7 +543,7 @@ async function ask(text){
   const phi=phiCheck(q);
   if(phi){say(phi,'her err');scrollEnd();return}
   input.value='';input.style.height='auto';
-  $('starters').hidden=true;
+  $('starters').hidden=true;$('compose-hint').hidden=true;
   say(q,'me');
   const thinking=say('','her thinking');thinking.innerHTML='<span>●</span> <span>●</span> <span>●</span>';
   scrollEnd();
