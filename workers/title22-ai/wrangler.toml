@@ -15,7 +15,6 @@ enabled = true
 
 # Secrets (set via `wrangler secret put <NAME>` or the dashboard — never here).
 # A deploy leaves secrets alone.
-#   SUPABASE_URL           — https://nwlhsshvqmbhemhxcran.supabase.co
 #   SUPABASE_SERVICE_KEY   — Supabase service_role key (bypasses RLS; used
 #                            server-side only: verify the caller's JWT, read
 #                            title22_* profile columns, and for /api/tello the
@@ -25,6 +24,11 @@ enabled = true
 # Plain-text vars. `wrangler deploy` REPLACES the Worker's vars with exactly
 # this block, so every var this Worker has must be here.
 [vars]
+# NOT a secret: the same public REST host index.html ships to every browser.
+# On 2026-09-27 the deploy check found it on the live Worker as a plain-text
+# var typed into the dashboard — exactly what the first CI deploy of
+# stripe-webhook erased on 2026-09-13. Declared here, a deploy keeps it.
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 # Customer-mode Tello on title22.app/tello, and partner mode. Both have
 # defaults in tello.js; they are here so a model change is a one-line PR.
 TELLO_MODEL = "claude-haiku-4-5-20251001"

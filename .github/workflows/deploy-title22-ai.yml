@@ -62,14 +62,15 @@ jobs:
             exit 1
           fi
           fail=0
+          declared=$(sed -n '/^\[vars\]/,/^\[/p' workers/title22-ai/wrangler.toml | grep -oE '^[A-Z_]+' || true)
+          # Each must survive the deploy: a live secret, or declared in [vars].
           for s in SUPABASE_URL SUPABASE_SERVICE_KEY ANTHROPIC_API_KEY; do
             t=$(jq -r --arg n "$s" '.bindings[] | select(.name==$n) | .type' live.json)
-            if [ "$t" != "secret_text" ]; then
-              echo "::error::$s is '${t:-missing}' on the live Worker. It must be a Secret, or this deploy would erase it. Dashboard: Workers & Pages -> title22-ai -> Settings -> Variables and Secrets -> re-add it as type Secret."
+            if [ "$t" != "secret_text" ] && ! grep -qx "$s" <<< "$declared"; then
+              echo "::error::$s is '${t:-missing}' on the live Worker and not in wrangler.toml [vars], so this deploy would leave the Worker without it. Re-add it as type Secret (Workers & Pages -> title22-ai -> Settings -> Variables and Secrets), or declare it in [vars] if it is not secret."
               fail=1
             fi
           done
-          declared=$(sed -n '/^\[vars\]/,/^\[/p' workers/title22-ai/wrangler.toml | grep -oE '^[A-Z_]+' || true)
           for v in $(jq -r '.bindings[] | select(.type=="plain_text") | .name' live.json); do
             if ! grep -qx "$v" <<< "$declared"; then
               echo "::error::Plain-text var $v exists on the live Worker but not in wrangler.toml. A deploy would delete it. Add it to [vars] (if it is not secret) or re-add it as a Secret."
