@@ -88,6 +88,27 @@ Do not re-audit this; it was done frame by frame.
   returns. `ROLE_BRIEF` has the same `liteCan`/`liteCannot` pattern, read
   through `roleBrief()`.
 
+## title22.app stopped publishing for two days (2026-09-25 → 27)
+
+The Cloudflare Pages project `runp8-care` (and very likely `title-22-site`)
+became **disconnected from GitHub** after the last good deploy, `3be5dd1` on
+2026-09-25 19:55 UTC. Every merge after that — #137, #139, #140, including the
+Lite copy fixes, the starter-lesson guard and the briefing voice — sat on
+`main` and never reached title22.app, with nothing anywhere saying so. The
+Workers were unaffected: they deploy through GitHub Actions, not Pages.
+
+Found from GitHub, not Cloudflare: every merge to `main` up to 3be5dd1 carries
+a **"Cloudflare Pages"** check run; the three after it have none. The dashboard
+showed "This project is disconnected from your Git account". The owner
+reconnected it on 2026-09-27. "Retry deployment" on the old entry only
+republishes the old commit — a fresh push to `main` is what builds the new one.
+
+**After any merge to `main`, confirm the merge commit gets a "Cloudflare Pages"
+check** (`GET /repos/infomomtelo-sketch/runp8-care/commits/<sha>/check-runs`).
+No check within a few minutes means nothing was published, whatever the PR
+says. This environment's egress blocks title22.app itself, so that check is the
+only way to verify a deploy from here.
+
 ## Repo shape
 
 Single-file vanilla JS/HTML SPA (index.html, ~490KB)
