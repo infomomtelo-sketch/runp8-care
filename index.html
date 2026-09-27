@@ -6727,13 +6727,17 @@ function telloVoiceRender(state){
 // Follow-along: marks the briefing line Tello is on. No word timings exist,
 // so each line gets its share of the audio by length, plus a little for the
 // pause at its end. Close, not exact — lines are short.
-let telloVoiceLines=[], telloVoiceBounds=[];
+let telloVoiceLines=[], telloVoiceBounds=[], telloVoiceGreetEnd=0;
 function telloVoicePrepLines(){
   const el=document.getElementById('dash-ai-briefing');
   telloVoiceLines=el?[...el.querySelectorAll('li, :scope > div > div')].filter(n=>(n.innerText||'').trim()):[];
   const w=telloVoiceLines.map(n=>n.innerText.trim().length+14);
-  const total=w.reduce((a,b)=>a+b,0)||1;
-  let acc=0;telloVoiceBounds=w.map(x=>(acc+=x)/total);
+  // The greeting comes first and marks no line; its share of the audio is
+  // counted so the first line lights up when she actually reaches it.
+  const g=telloVoiceGreetingText?telloVoiceGreetingText.length+14:0;
+  const total=(g+w.reduce((a,b)=>a+b,0))||1;
+  telloVoiceGreetEnd=g/total;
+  let acc=g;telloVoiceBounds=w.map(x=>(acc+=x)/total);
   telloVoiceLines.forEach(n=>n.classList.add('tv-line'));
 }
 function telloVoiceMark(idx){
@@ -6744,6 +6748,7 @@ function telloVoiceTick(){
   // fires one more timeupdate that would otherwise re-mark the first line.
   const a=telloVoiceAudio;if(!a||!a.dataset.real||a.paused||!a.duration||!telloVoiceLines.length)return;
   const f=a.currentTime/a.duration;
+  if(f<telloVoiceGreetEnd){telloVoiceMark(-1);return;}
   let i=telloVoiceBounds.findIndex(b=>f<b);if(i<0)i=telloVoiceLines.length-1;
   telloVoiceMark(i);
 }
@@ -6765,17 +6770,36 @@ function telloVoiceReset(){
   telloVoiceStop();
   if(telloVoiceAudio){delete telloVoiceAudio.dataset.real;telloVoiceAudio.removeAttribute('src');}
   if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
-  telloVoiceText='';
+  telloVoiceText='';telloVoiceGreetingText='';
   telloVoiceRender('off');
   telloVoiceLines.forEach(n=>n.classList.remove('tv-line','tv-now'));telloVoiceLines=[];
 }
+
+// Spoken only, before the briefing: "Good morning, Eli! Today is Saturday,
+// September 27, 2026. Here's your briefing." From this device's own clock and
+// calendar, so it is the person's local day. The voice Worker's speech.js turns
+// the date into words ("September twenty-seventh, twenty twenty-six"). The
+// first name comes from the account (Google or sign-up), letters only; with no
+// name it is simply "Good morning!". Not shown on screen and not part of the
+// once-a-day check, which keys on the briefing text alone.
+function telloGreeting(now){
+  now=now||new Date();
+  const h=now.getHours();
+  const part=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  const m=(currentUser&&currentUser.user_metadata)||{};
+  const first=String(m.first_name||m.full_name||m.name||'').trim().split(/\s+/)[0]||'';
+  const name=/^[A-Za-z\u00C0-\u024F'-]{1,30}$/.test(first)?first:'';
+  const date=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  return `${part}${name?', '+name:''}! Today is ${date}. Here\u2019s your briefing.`;
+}
+let telloVoiceGreetingText='';
 
 async function telloVoiceFetch(text){
   const{data:{session}}=await sb.auth.getSession();
   if(!session)throw Object.assign(new Error('not signed in'),{status:401});
   const res=await fetch(VOICE_WORKER,{method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-    body:JSON.stringify({text})});
+    body:JSON.stringify({text:telloVoiceGreetingText+'\n'+text})});
   if(!res.ok){
     let msg='';try{msg=(await res.json()).error||'';}catch(e){}
     throw Object.assign(new Error(msg||('HTTP '+res.status)),{status:res.status});
@@ -6790,6 +6814,8 @@ async function telloVoiceListen(){
   const a=telloVoiceEl();
   const seq=++telloVoiceSeq;
   if(!telloVoiceUrl){
+    telloVoiceGreetingText=telloGreeting();
+    telloVoicePrepLines();
     telloVoiceRender('loading');
     try{telloVoiceUrl=await telloVoiceFetch(text);}
     catch(e){
