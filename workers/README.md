@@ -283,3 +283,19 @@ records it.
   it must never be pointed at resident, medication or staff data.
 - Health check (`GET` with no `q`) returns binding booleans and fails closed
   when a secret is missing.
+
+## title22-voice
+
+Tello's voice (Kokoro-82M `af_heart` via DeepInfra). As of 2026-09-27 it has
+ONE route, the match-test preview; nothing in `index.html` calls it yet.
+
+- `GET /api/tello/voice-preview` — speaks one fixed sentence. Takes no text, so
+  it cannot be used as a free TTS service; edge-cached, so replays are free.
+  `?format=wav` for the same audio as WAV, `?fresh=1` to bypass the cache.
+- `GET /health` — which bindings are missing (names only).
+- The Worker asks DeepInfra for WAV, refuses anything not 24 kHz, peak-
+  normalises to 0.89 and encodes a 160 kbps MP3 itself (`@breezystack/lamejs`,
+  LGPL-3.0) — DeepInfra sets neither the bitrate nor the level.
+- Secret: `DEEPINFRA_API_KEY`, set on the Worker, never in the repo.
+  Vars in `wrangler.toml`. Deploy: Actions -> "Deploy title22-voice Worker".
+- `node test.mjs [file.wav]` runs every route offline with DeepInfra stubbed.

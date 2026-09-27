@@ -1,0 +1,24 @@
+name = "title22-voice"
+main = "index.js"
+compatibility_date = "2026-09-27"
+
+# Tello's voice. B1 step 0: a PREVIEW route only, so the match test against
+# tello-voice-reference.wav runs on Cloudflare with the real key. The signed-in
+# briefing route (/api/tello/briefing-voice), R2 cache and rate limit come after
+# the voice is approved; nothing in index.html calls this Worker yet.
+#
+# Public route (workers.dev, enabled on first deploy):
+#   https://title22-voice.infomomtelo.workers.dev/api/tello/voice-preview
+#
+# Secrets (set via `wrangler secret put <NAME>` or the dashboard — never here):
+#   DEEPINFRA_API_KEY  — DeepInfra API key. Read by one function, sent only as
+#                        the Authorization header to api.deepinfra.com, never
+#                        logged and never echoed in a response.
+#
+# Plain-text vars. Everything this Worker needs that is not a secret is HERE,
+# because `wrangler deploy` replaces the Worker's vars with exactly this block —
+# a value typed into the dashboard is deleted by the next deploy. That is the
+# 2026-09-13 stripe-webhook outage; see CLAUDE.md.
+[vars]
+VOICE_MODEL = "hexgrad/Kokoro-82M"
+VOICE_ID = "af_heart"

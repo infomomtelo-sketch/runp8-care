@@ -1153,12 +1153,12 @@
         </div>
         <div class="card" style="margin-top:20px" id="demo-data-card">
           <div class="card-title">Demo data</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — 8 residents, 5 staff, medications, 30 days of MAR history, and incident reports — to explore Title22 without touching your real records.</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — invented staff, their training and certificates, a compliance checklist and incident reports — to explore Title22 without touching your real records.</div>
           <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load demo data</button>
         </div>
         <div class="card" style="margin-top:20px;border-color:#e8a0a0" id="facility-danger-card">
           <div class="card-title" style="color:var(--red)">Delete this facility</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Permanently removes this facility and everything filed under it — residents, staff, medications, MAR history, incidents, daily logs, documents and the audit log. There is no undo, and Title22 keeps no backup you can be restored from.</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Permanently removes this facility and everything filed under it — staff, training records, incidents, documents, the compliance checklist and the audit log. There is no undo, and Title22 keeps no backup you can be restored from.</div>
           <button class="btn btn-outline" style="font-size:13px;color:var(--red);border-color:var(--red-light)" onclick="openDeleteFacility()"><svg class="ic"><use href="#i-trash"/></svg> Delete facility…</button>
         </div>
       </div>
@@ -8475,7 +8475,7 @@ async function loadAuditLog(){
     el.innerHTML=`<div class="empty">Audit log unavailable (${esc(error.message)}).<br/>Run migrations/2026-07-23_title22_audit_log.sql in the Supabase SQL editor to enable it.</div>`;
     return;
   }
-  if(!data||!data.length){el.innerHTML='<div class="empty">No audit entries yet. Changes to residents, medications, MAR, staff, and incidents will appear here.</div>';return;}
+  if(!data||!data.length){el.innerHTML='<div class="empty">No audit entries yet. Changes to staff, incidents and documents will appear here.</div>';return;}
   const tableLabels={residents:'Resident',medications:'Medication',mar_entries:'MAR entry',staff:'Staff',incidents:'Incident'};
   const actionBadge={INSERT:'<span class="badge badge-green">Created</span>',UPDATE:'<span class="badge badge-amber">Updated</span>',DELETE:'<span class="badge badge-red">Deleted</span>'};
   const summarize=r=>{
@@ -8752,7 +8752,7 @@ const HANDS_ON_TOPICS=[
   'Emergency procedures and evacuation',
   'Infection control in practice',
   'Communicating with residents, including dementia',
-  'Documentation — MAR, daily log, incident reports',
+  'Documentation — daily log, incident reports',
 ];
 
 // Hours logged per category for one staff member in the given year, plus the
@@ -9107,7 +9107,7 @@ Incidents describe what happened, not who it happened to. This system holds no r
 A training session is entered once. Two hours for six people is one session with six attendees, not six entries. That is how the hours keep matching the sign-in sheet.`,
  questions:[
   {prompt:'Where does a staff member\u2019s TB clearance belong?',
-   choices:['On that staff member\u2019s record','In the daily log','On a resident record','In an incident report'],correct_index:0},
+   choices:['On that staff member\u2019s record','In an incident report','On the compliance checklist','In Start Your Home'],correct_index:0},
   {prompt:'A certification is about to expire. What does Title22 do?',
    choices:['Renews it automatically','Contacts the issuing body for you','Flags it as expiring so you can arrange it','Nothing until after it has expired'],correct_index:2},
   {prompt:'You are writing an incident description. What goes in it?',
@@ -9292,7 +9292,7 @@ Questions that work well: what expires in the next sixty days, who is short of t
 Questions that do not: is my facility compliant, will I pass, what will the analyst accept, what should we do about someone's medication.`,
  questions:[
   {prompt:'Which of these can Tello see?',
-   choices:['Resident medication records','Staff certificates and their expiry dates','A resident\u2019s diagnosis','The MAR'],correct_index:1},
+   choices:['Your card and billing details','Staff certificates and their expiry dates','Who changed what in the audit log','Your account password'],correct_index:1},
   {prompt:'You ask Tello for a deadline and she is not certain. What does she do?',
    choices:['Gives her best estimate','Says she is not certain and tells you who to ask','Refuses to answer anything further','Quotes the section number anyway'],correct_index:1},
   {prompt:'You type a date of birth into the question box. What happens?',
@@ -9354,14 +9354,34 @@ Decide for yourself whether that is worth keeping. You have used it for a term \
 // facility. Each lesson's questions go in one insert; if that fails the lesson
 // is removed again rather than left as a reading with nothing to answer --
 // PostgREST has no cross-table transaction, so this is a compensating delete.
-async function loadStarterLesson(){
+// Three guards against the set going in twice, which it did: the button stayed
+// live for the whole insert loop and nothing checked what was already there, so
+// a second tap (or a second device) copied every starter again.
+//   1. starterLessonsLoading refuses a second call while one is running, and
+//      the button is disabled for the same span.
+//   2. Titles already in this facility are skipped, so a re-run only fills gaps.
+//   3. migrations/2026-09-27_title22_starter_lessons_unique.sql adds a unique
+//      index on (facility_id, title) where starter = true, so two devices
+//      racing each other are refused by the database. 23505 = already there.
+// Until that migration runs the `starter` column does not exist; the insert
+// retries without it (PGRST204 / 42703) rather than failing the whole set.
+let starterLessonsLoading=false;
+async function loadStarterLesson(btn){
   if(!currentFacility||!currentUser)return;
   if(!canEdit()){alert('You do not have permission to add a lesson.');return;}
-  const set=LESSON_STARTERS.filter(l=>!l.marOnly||showMAR);
-  let added=0;
+  if(starterLessonsLoading)return;
+  starterLessonsLoading=true;
+  const label=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Adding lessons\u2026';}
+  try{
+  const{data:have,error:haveErr}=await sb.from('title22_lessons').select('title').eq('facility_id',currentFacility.id);
+  if(haveErr){alert('Could not check the lessons already here: '+haveErr.message);return;}
+  const existing=new Set((have||[]).map(r=>r.title));
+  const set=LESSON_STARTERS.filter(l=>(!l.marOnly||showMAR)&&!existing.has(l.title));
+  let added=0,starterCol=true;
   for(let i=0;i<set.length;i++){
     const l=set[i];
-    const{data:made,error}=await sb.from('title22_lessons').insert({
+    const row={
       facility_id:currentFacility.id,created_by:currentUser.id,
       title:l.title,
       body:(l.body||'')
@@ -9371,8 +9391,15 @@ async function loadStarterLesson(){
           ['tb_test','cpr_card','first_aid','livescan','mandated_reporter','training_cert']
             .filter(k=>DOC_SLOT_HOWTO[k])
             .map(k=>DOC_SLOT_HOWTO[k].label+' \u2014 '+DOC_SLOT_HOWTO[k].text).join('\n\n')),
-      sort_order:i,active:true
-    }).select().single();
+      sort_order:LESSON_STARTERS.indexOf(l),active:true
+    };
+    const ins=r=>sb.from('title22_lessons').insert(r).select().single();
+    let{data:made,error}=await ins(starterCol?{...row,starter:true}:row);
+    if(error&&starterCol&&(error.code==='PGRST204'||error.code==='42703')){
+      starterCol=false;
+      ({data:made,error}=await ins(row));
+    }
+    if(error&&error.code==='23505')continue;   // another device got there first
     if(error){alert('Could not add "'+l.title+'": '+error.message);break;}
     const qs=l.questions.map((q,n)=>({
       lesson_id:made.id,prompt:q.prompt,choices:q.choices,correct_index:q.correct_index,sort_order:n
@@ -9386,6 +9413,10 @@ async function loadStarterLesson(){
     added++;
   }
   track('lesson_starter_loaded',{count:added});
+  }finally{
+    starterLessonsLoading=false;
+    if(btn&&btn.isConnected){btn.disabled=false;btn.textContent=label;}
+  }
   await loadLessons();
 }
 
@@ -9396,7 +9427,7 @@ function renderLessonsList(){
   if(!lessonsRows.length){
     el.innerHTML='<div class="empty">'+(owner
       ?'No lessons yet. The reading and the questions are both yours to write.'
-       +'<div style="margin-top:16px"><button class="btn btn-outline" onclick="loadStarterLesson()">Load starter lessons</button></div>'
+       +'<div style="margin-top:16px"><button class="btn btn-outline" onclick="loadStarterLesson(this)">Load starter lessons</button></div>'
        +'<div style="font-size:11px;color:var(--text2);margin-top:10px;max-width:46ch;margin-left:auto;margin-right:auto;line-height:1.5">'
        +'Working examples added to this facility \u2014 the record-keeping habit, hiring and onboarding, preparing for a visit. Edit or delete any of them. They teach how to use the system, not what the regulations require \u2014 your curriculum stays yours.'
        +'<br><br>Invite students as <strong>supervisor</strong> so they can follow the practice steps: Staff and Compliance are not on a caregiver\u2019s menu, and a view-only account cannot submit answers.</div>'
