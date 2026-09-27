@@ -109,6 +109,8 @@
   .ob-trust{display:flex;gap:6px;align-items:flex-start;margin:-6px 0 16px;font-size:12px;line-height:1.45;color:var(--text2)}
   .ob-trust .ic{flex:0 0 auto;width:14px;height:14px;margin-top:1px;color:var(--teal)}
   .ob-path-btn:hover span{color:var(--teal)}
+  /* On the filled green button the grey subtitle was near-invisible. */
+  .btn-primary.ob-path-btn span,.btn-primary.ob-path-btn:hover span{color:rgba(255,255,255,.86)}
   .lh-note{background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 15px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
   .lh-lang{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .lh-lang-btn{min-height:44px;padding:0 16px;border:2px solid var(--border);background:var(--white);color:var(--text);border-radius:999px;font-size:15px;font-family:inherit;cursor:pointer}
@@ -202,6 +204,20 @@
   .t-say{position:relative;margin-left:36px !important}
   .t-say::before{content:"";position:absolute;left:-36px;top:2px;width:28px;height:28px;border-radius:50%;
     background:var(--tello-mark-sm) center/contain no-repeat}
+  /* Follow Title22: one icon row, used by the Follow sheet, the start screen,
+     the Facility tab's About card and the Partners tab. Plain links: no
+     social SDK, embed or pixel, ever. */
+  .t22f-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .t22f-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:44px;min-height:44px;padding:0 12px;
+    border:1px solid rgba(18,58,48,.18);border-radius:999px;background:#fff;color:#123a30;text-decoration:none;font-size:13px;font-weight:600}
+  .t22f-link:hover{border-color:#123a30}
+  .t22f-link svg{width:18px;height:18px;fill:currentColor;flex-shrink:0}
+  .t22f-row.labels{flex-direction:column;align-items:stretch}
+  .t22f-row.labels .t22f-link{justify-content:flex-start;min-height:52px;padding:0 16px;font-size:15px}
+  #ob-follow{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}
+  #ob-follow.show{display:flex}
+  #ob-follow .t22f-link{min-width:38px;min-height:38px;padding:0 9px}
+  #ob-follow-x{margin-left:auto;background:none;border:none;font-size:20px;line-height:1;color:var(--text2);cursor:pointer;min-width:38px;min-height:38px}
   #tello-dock-btn{position:fixed;right:20px;bottom:20px;z-index:900;width:62px;height:62px;border-radius:50%;border:none;padding:0;
     background:var(--tello-mark) center/contain no-repeat;cursor:pointer;
     box-shadow:0 0 0 5px rgba(232,162,61,.16),0 0 0 6px rgba(232,162,61,.45),0 8px 22px rgba(18,58,48,.28);
@@ -633,6 +649,7 @@
         <button id="menu-billing" onclick="switchTab('billing');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-card"/></svg> Billing</button>
         <button id="menu-partners" onclick="switchTab('partners');closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-users"/></svg> Partners</button>
         <button id="menu-walkthrough" onclick="closeUserMenu();openWalkthrough()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-play"/></svg> Walkthrough</button>
+        <button id="menu-follow" onclick="closeUserMenu();openFollowSheet()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-share"/></svg> Follow Title22</button>
         <a href="https://title-22.com" onclick="closeUserMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text);text-decoration:none;box-sizing:border-box" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-share"/></svg> title-22.com</a>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
           <button onclick="openAccountModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:13px;border-radius:6px;color:var(--text)" onmouseover="this.style.background='var(--gray-bg)'" onmouseout="this.style.background='none'"><svg class="ic"><use href="#i-gear"/></svg> Account settings</button>
@@ -890,7 +907,22 @@
       <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="chooseOnboardPath(null)">← Back</button>
       </div>
       </div>
+      <!-- One quiet line, shown the first time this screen is shown on this
+           device, then never again; x hides it at once. Not a pop-up. When
+           the "Meet Tello" video lands on this screen (B2) it sits above this. -->
+      <div id="ob-follow" role="note"><span>Follow Title22 for 20-second how-to videos</span><span class="t22f-row" data-t22f="icons"></span><button id="ob-follow-x" type="button" aria-label="Hide" onclick="hideFollowHint()">&times;</button></div>
     </div>
+  </div>
+</div>
+
+<!-- Follow Title22 sheet. Opened only by the person (menu, Partners tab);
+     never automatically, never from incident, staff or document screens. -->
+<div class="modal-overlay" id="follow-sheet" onclick="if(event.target===this)closeFollowSheet()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3>Follow Title22</h3><button class="modal-close" onclick="closeFollowSheet()" aria-label="Close">&times;</button></div>
+    <p style="font-size:14px;color:var(--text2);margin:0 0 14px">Short how-to videos and DSS tips.</p>
+    <div class="t22f-row labels" data-t22f="labels"></div>
+    <p style="font-size:12px;color:var(--text2);margin:14px 0 0">Or visit <a href="https://title-22.com/follow/" target="_blank" rel="noopener">title-22.com/follow</a></p>
   </div>
 </div>
 
@@ -922,6 +954,7 @@
       <button class="nav-item" id="nav-audit" onclick="switchTab('audit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Audit Log</button>
       <button class="nav-item" id="nav-partners" onclick="switchTab('partners')" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-1a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Partners</button>
       <button class="nav-item" id="nav-walkthrough" onclick="openWalkthrough()" title="Take the guided tour, or read it through"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Walkthrough</button>
+      <button class="nav-item" id="nav-follow" onclick="openFollowSheet()" title="Short how-to videos and DSS tips"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Follow Title22</button>
     </div>
     <div class="main-content">
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -1218,6 +1251,11 @@
           <div class="card-title">Demo data</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — invented staff, their training and certificates, a compliance checklist and incident reports — to explore Title22 without touching your real records.</div>
           <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load demo data</button>
+        </div>
+        <div class="card" style="margin-top:20px" id="about-title22-card">
+          <div class="card-title">About Title22</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Short how-to videos and DSS tips. <a href="https://title-22.com" target="_blank" rel="noopener">title-22.com</a></div>
+          <div class="t22f-row" data-t22f="icons"></div>
         </div>
         <div class="card" style="margin-top:20px;border-color:#e8a0a0" id="facility-danger-card">
           <div class="card-title" style="color:var(--red)">Delete this facility</div>
@@ -2146,10 +2184,63 @@ function togglePasswordField(id,btn){
 }
 
 // ===== NAVIGATION =====
+// ===== FOLLOW TITLE22 (2026-09-27) =====
+// The owner's accounts, and the ONLY place in this app they are listed.
+// Adding one later is one line: give LinkedIn a url and it appears everywhere.
+// Same accounts as title-22-site's assets/follow.js (T22_SOCIAL).
+const SOCIAL=[
+  {id:'facebook', name:'Facebook', url:'https://www.facebook.com/profile.php?id=61593807941065'},
+  {id:'instagram',name:'Instagram',url:'https://www.instagram.com/title22app/'},
+  {id:'youtube',  name:'YouTube',  url:'https://www.youtube.com/@title22app'},
+  {id:'tiktok',   name:'TikTok',   url:'https://www.tiktok.com/@title22529'},
+  {id:'linkedin', name:'LinkedIn', url:''},            // hidden until there is one
+];
+const SOCIAL_ICON={
+  facebook:'M14 8h3V4h-3c-2.8 0-4.5 1.8-4.5 4.6V11H7v4h2.5v9h4v-9h3l.5-4h-3.5V8.8c0-.5.3-.8.5-.8z',
+  youtube:'M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.8 15.1V8.9L15.5 12l-5.7 3.1z',
+  instagram:'M12 7.3A4.7 4.7 0 1 0 16.7 12 4.7 4.7 0 0 0 12 7.3zm0 7.7a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm4.9-9a1.1 1.1 0 1 0 1.1 1.1 1.1 1.1 0 0 0-1.1-1.1zM12 2.2c-2.7 0-3 0-4 .1a6.6 6.6 0 0 0-2.4.4 4.9 4.9 0 0 0-2.8 2.8 6.6 6.6 0 0 0-.5 2.5c-.1 1-.1 1.3-.1 4s0 3 .1 4a6.6 6.6 0 0 0 .5 2.4 4.9 4.9 0 0 0 2.8 2.8 6.6 6.6 0 0 0 2.4.5c1 0 1.3.1 4 .1s3 0 4-.1a6.6 6.6 0 0 0 2.4-.5 4.9 4.9 0 0 0 2.8-2.8 6.6 6.6 0 0 0 .5-2.4c0-1 .1-1.3.1-4s0-3-.1-4a6.6 6.6 0 0 0-.5-2.4 4.9 4.9 0 0 0-2.8-2.8 6.6 6.6 0 0 0-2.4-.5c-1-.1-1.3-.1-4-.1zm0 1.8c2.6 0 2.9 0 4 .1a4.6 4.6 0 0 1 1.7.3 3 3 0 0 1 1.7 1.7 4.6 4.6 0 0 1 .3 1.7c.1 1 .1 1.3.1 4s0 2.9-.1 4a4.6 4.6 0 0 1-.3 1.7 3 3 0 0 1-1.7 1.7 4.6 4.6 0 0 1-1.7.3c-1 .1-1.3.1-4 .1s-2.9 0-4-.1a4.6 4.6 0 0 1-1.7-.3 3 3 0 0 1-1.7-1.7 4.6 4.6 0 0 1-.3-1.7c-.1-1-.1-1.3-.1-4s0-2.9.1-4a4.6 4.6 0 0 1 .3-1.7 3 3 0 0 1 1.7-1.7 4.6 4.6 0 0 1 1.7-.3c1-.1 1.3-.1 4-.1z',
+  tiktok:'M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.1v12.4a2.6 2.6 0 1 1-2.6-2.6 2.6 2.6 0 0 1 .8.1V9.7a5.8 5.8 0 1 0 4.9 5.7V9.1a7.4 7.4 0 0 0 4.3 1.4V7.4a4.3 4.3 0 0 1-3.2-1.6z',
+  linkedin:'M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.5h4V21H3zM9.5 9.5h3.8v1.6h.1a4.2 4.2 0 0 1 3.8-2c4 0 4.8 2.6 4.8 6.1V21h-4v-5.1c0-1.2 0-2.8-1.7-2.8s-2 1.3-2 2.7V21h-4z',
+};
+// Plain links, new tab, rel=noopener. The only thing recorded is which
+// network was tapped: track('follow_click',{network}).
+function followRowHTML(withLabels){
+  return SOCIAL.filter(a=>a.url).map(a=>
+    `<a class="t22f-link" href="${a.url}" target="_blank" rel="noopener" aria-label="Title22 on ${a.name}" onclick="track('follow_click',{network:'${a.id}'})">`+
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SOCIAL_ICON[a.id]}"/></svg>${withLabels?`<span>${a.name}</span>`:''}</a>`).join('');
+}
+function renderFollowRows(root){
+  (root||document).querySelectorAll('[data-t22f]').forEach(el=>{el.innerHTML=followRowHTML(el.dataset.t22f==='labels');});
+}
+function openFollowSheet(){
+  const m=document.getElementById('follow-sheet');if(!m)return;
+  renderFollowRows(m);m.classList.add('open');
+}
+function closeFollowSheet(){const m=document.getElementById('follow-sheet');if(m)m.classList.remove('open');}
+// The start screen's line: once per device, marked seen the moment it is shown.
+function maybeShowFollowHint(){
+  const el=document.getElementById('ob-follow');if(!el)return;
+  let seen=false;try{seen=!!localStorage.getItem('title22_follow_hint');}catch(e){}
+  if(seen||demoMode){el.classList.remove('show');return;}
+  renderFollowRows(el);el.classList.add('show');
+  try{localStorage.setItem('title22_follow_hint',String(Date.now()));}catch(e){}
+}
+function hideFollowHint(){
+  const el=document.getElementById('ob-follow');if(el)el.classList.remove('show');
+  try{localStorage.setItem('title22_follow_hint',String(Date.now()));}catch(e){}
+}
+async function sharePartnerLink(code,btn){
+  const url='https://title-22.com/r/'+code;
+  try{ if(navigator.share){ await navigator.share({title:'Title22',url}); return; } }catch(e){ if(e&&e.name==='AbortError')return; }
+  try{ await navigator.clipboard.writeText(url); if(btn){const t=btn.textContent;btn.textContent='Link copied';setTimeout(()=>{btn.textContent=t;},1600);} }
+  catch(e){ prompt('Copy this link:',url); }
+}
+
 function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   document.body.style.visibility='visible';
+  if(name==='onboard')maybeShowFollowHint();
 }
 
 function switchTab(name){
@@ -2190,6 +2281,7 @@ function switchTab(name){
   if(name==='mar')loadMAR();
   if(name==='team')loadTeam();
   if(name==='lessons')loadLessons();
+  if(name==='facility')renderFollowRows(document.getElementById('about-title22-card'));
   // The voice belongs to the dashboard card; leaving it stops the voice rather
   // than leaving it talking with its Stop button out of sight.
   if(name!=='dashboard'&&telloVoiceAudio&&!telloVoiceAudio.paused)telloVoiceStopClick();
@@ -8859,6 +8951,11 @@ async function loadPartners(){
     <div>${r.signup_count}</div>
     <div>${r.paid_count}</div>
     <div style="color:var(--text2);font-size:12px">${r.latest_signup?new Date(r.latest_signup).toLocaleDateString():'—'}</div>
+    <div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-outline" style="font-size:12px;padding:6px 12px" onclick="sharePartnerLink('${esc(r.code)}',this)">Share your link</button>
+      <a class="btn btn-outline" style="font-size:12px;padding:6px 12px;text-decoration:none" href="https://title-22.com/partner-kit/?code=${encodeURIComponent(r.code)}" target="_blank" rel="noopener">Partner kit ↗</a>
+      <button class="btn btn-outline" style="font-size:12px;padding:6px 12px" onclick="openFollowSheet()">Follow Title22</button>
+    </div>
   </div>`).join('');
 }
 
@@ -8886,6 +8983,7 @@ async function createTrainerCode(){
     <div style="font-weight:600;margin-bottom:6px">Created — message ready to send to ${esc(row.name)}:</div>
     <textarea readonly id="partner-message-box" style="width:100%;min-height:5.5em;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;background:var(--white);resize:vertical">${esc(message)}</textarea>
     <button class="btn btn-outline" style="font-size:12px;margin-top:8px" onclick="copyPartnerMessage(this)">Copy message</button>
+    <a class="btn btn-outline" style="font-size:12px;margin-top:8px;text-decoration:none" href="https://title-22.com/partner-kit/?code=${encodeURIComponent(row.code)}" target="_blank" rel="noopener">Their partner kit ↗</a>
     <div style="font-size:11px;color:var(--text2);margin-top:10px">For your own tracking, not part of the message above: this link is tagged <code>${esc(row.code)}</code> — every signup through it shows up in Signups by trainer below, and counts toward ${esc(row.commission_rate!=null?Math.round(row.commission_rate*100):20)}% commission if they ever subscribe.</div>
   `;
   resultEl.style.display='block';

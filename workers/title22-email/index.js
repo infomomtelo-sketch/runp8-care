@@ -49,6 +49,7 @@ function emailTemplate(template, payload) {
           <h2 style="margin:0 0 12px">Welcome to Title22, ${name}.</h2>
           <p>Your free trial is ready. Add your facility, invite your team, and start tracking the records an inspector will ask to see.</p>
           <p><a href="${payload.onboarding_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
+          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
         </div>
       `,
     };
@@ -63,6 +64,7 @@ function emailTemplate(template, payload) {
           <p>Hi ${name}, your Title22 trial ends in <strong>${daysLeft} days</strong>.</p>
           <p>There is no card on file, so nothing will be charged and there is nothing to cancel. When the trial ends your account turns read-only: everything you entered stays, and you can pick a plan whenever you are ready.</p>
           <p><a href="${payload.upgrade_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">See the plans</a></p>
+          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
         </div>
       `,
     };
