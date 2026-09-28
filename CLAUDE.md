@@ -461,6 +461,13 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   characters, `playReply`), for customers and partner alike; tap again to
   stop. A longer answer is for reading: no Play button, and in Talk mode it
   stays on the screen, is not spoken, and the mic stops until tapped again.
+- **Marketing drawer in the Cabinet (partner only, 2026-09-28)**, `MKT` and
+  `renderMarketing` in `tello.html`: his four social accounts (same URLs as
+  title-22-site `assets/follow.js`), ready messages (Share / Copy / Text /
+  Email), links to send, the shareable videos, and "Write a new one with
+  Tello". Every fact in it is one the site already states: change a price, a
+  trial length or an account there and here together. Tello cannot sign in to
+  or post on any account; Share hands the text to the phone's share sheet.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
