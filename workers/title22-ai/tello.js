@@ -14,7 +14,7 @@
 // is no button, URL or request field that turns it on. Anything uncertain
 // (table missing, read failed) answers as customer mode.
 
-import { TELLO_CORE, CUSTOMER_PAGE, PARTNER_FALLBACK, PARTNER_TOOLS, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
+import { TELLO_CORE, CUSTOMER_PAGE, PARTNER_FALLBACK, PARTNER_TOOLS, PARTNER_LAST, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
 import { TITLE22_KNOWLEDGE } from './tello/title22-knowledge.js';
 import { TITLE22_HISTORY } from './tello/title22-history.js';
 
@@ -251,6 +251,7 @@ async function systemFor(env, founder, userId) {
     CLIENT.history ? 'WHAT YOU KNOW ABOUT ITS HISTORY (from the owner\'s own records; dated lines may have changed since, and the live numbers win over anything here)\n\n' + CLIENT.history : '',
     notes.length ? 'THINGS THE OWNER ASKED YOU TO REMEMBER (his words, oldest first; he can delete any of them)\n' + notes.map((n) => `- (${laDate(new Date(n.created_at))}) ${n.content}`).join('\n') : '',
     brief ? `THE LAST BRIEF YOU GAVE THEM (${brief.kind}, ${brief.created_at}):\n${brief.content}` : '',
+    PARTNER_LAST,
     now,
   ].filter(Boolean).join('\n\n');
 }

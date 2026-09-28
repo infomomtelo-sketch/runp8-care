@@ -47,7 +47,7 @@ DEPLOYS
 - The Workers behind the app (payments, Tello, her voice) deploy with a button in GitHub Actions, and each deploy is checked so it cannot erase a setting.
 
 PARTNERS AND GROWTH
-- Partner link: title-22.com/r/code. A partner code gives a longer trial (90 days by default, never under 30). Trainers get 20% of every paid month; the owner pays commissions directly. Partners must say they earn a commission.
+- Partner link: title-22.com/r/code. A partner code gives a longer trial (90 days by default, never under 30). Trainers get 20% of every paid month by default (the rate is set per trainer when the owner registers the code). Nothing is paid automatically: the app counts signups and paid months per code, and the owner pays each commission by hand. Partners must say they earn a commission.
 - The trainer partner path (code, signup, credit, payout report) is correct in code but has never been run end to end with a real partner. The first time will have a partner watching it.
 - A classroom account and a trainer code are separate things; a trainer who teaches with the app needs both, and must sign up before being granted classroom access.
 - A referral only records on a brand-new account.
