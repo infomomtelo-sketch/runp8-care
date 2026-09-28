@@ -457,6 +457,10 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   a style, not a mode. Customers do not get the mic: their speech would go to
   Apple or Google before our PHI check sees it. The voice Worker's
   `DAILY_LIMIT` went 10 → 150 for this (about 15 cents a user a day at most).
+- **Play on every answer that is short enough to hear** (`SPEAK_MAX` = 900
+  characters, `playReply`), for customers and partner alike; tap again to
+  stop. A longer answer is for reading: no Play button, and in Talk mode it
+  stays on the screen, is not spoken, and the mic stops until tapped again.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 

@@ -138,6 +138,9 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .compose-hint{flex:none;font-size:12.5px;color:var(--green);background:var(--gold-soft);border-radius:10px;padding:6px 10px;margin-top:6px}
 .copy{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--line);background:var(--cream);color:var(--green);font-weight:500;white-space:normal}
 .copy:hover{border-color:var(--gold)}
+.acts{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;white-space:normal}
+.acts .copy{margin:0}
+.copy.play.on{background:var(--green);border-color:var(--green);color:var(--cream)}
 .turn.me .keep{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid rgba(249,245,237,.35);background:transparent;color:var(--cream);font-weight:500}
 .turn.me .keep[disabled]{opacity:.8;cursor:default}
 .attach-btn{flex:none;width:44px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);display:flex;align-items:center;justify-content:center}
@@ -508,9 +511,19 @@ function say(text,cls,noCopy){
   const d=document.createElement('div');d.className='turn '+cls;d.textContent=text;
   // Every real answer can be copied with one tap: rewrites, translations and
   // captions are meant to be pasted somewhere else.
-  if(cls==='her'&&!noCopy&&text&&text.length>40){
-    const b=document.createElement('button');b.className='copy';b.type='button';b.textContent='Copy';
-    b.onclick=()=>copyText(text,b);d.appendChild(b);
+  // And heard: a Play button reads it aloud, for answers short enough to
+  // listen to (SPEAK_MAX). A long one is for reading, and gets none.
+  if(cls==='her'&&!noCopy&&text&&(text.length>40||text.length<=SPEAK_MAX)){
+    const row=document.createElement('div');row.className='acts';
+    if(text.length<=SPEAK_MAX){
+      const pl=document.createElement('button');pl.className='copy play';pl.type='button';pl.textContent='Play';
+      pl.setAttribute('aria-label','Play this answer aloud');pl.onclick=()=>playReply(text,pl);row.appendChild(pl);
+    }
+    if(text.length>40){
+      const b=document.createElement('button');b.className='copy';b.type='button';b.textContent='Copy';
+      b.onclick=()=>copyText(text,b);row.appendChild(b);
+    }
+    d.appendChild(row);
   }
   if(cls==='me'&&mode==='partner'&&!noCopy&&text&&!text.startsWith('[')){
     const k=document.createElement('button');k.className='keep';k.type='button';k.textContent='Remember this';
@@ -834,6 +847,7 @@ function voiceState(s){
 function vbAction(){if(talkOn){talkEnd();return}if(vState==='tap'){if(!armed&&au.paused)voicePlay();return}voiceToggle()}
 async function voicePlay(){
   if(talkOn)return;
+  playReset();
   const text=greeting(true)+(briefKind==='weekly'?' Here’s your week.':' Here’s your brief.')+'\n'+briefText;
   try{
     if(voiceUrl&&voiceFor===text&&au.src===voiceUrl&&!au.ended&&au.currentTime>0){await au.play();voiceState('playing');return}  // resume
@@ -858,7 +872,30 @@ function voiceToggle(){
   $('speaking').textContent='Tello is speaking (AI voice)';voicePlay();
 }
 function voiceStop(){if(talkOn){talkEnd();return}try{au.pause()}catch(e){}if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}voiceState('idle')}
-au.addEventListener('ended',()=>{if(talkOn&&talkPhase==='speaking'){talkListen();return}voiceState('idle')});
+au.addEventListener('ended',()=>{if(playBtn){playReset();return}if(talkOn&&talkPhase==='speaking'){talkListen();return}voiceState('idle')});
+/* ------------------------------------------------------------ play -- */
+// Longer than this is an answer to read, not to listen to: no Play button,
+// and in Talk mode it stays on the screen instead of being spoken. About
+// a minute of her voice; the voice Worker's own cap is 1,200 characters.
+const SPEAK_MAX=900;
+let playBtn=null,playUrls=new Map();
+function playReset(){if(playBtn){playBtn.textContent='Play';playBtn.classList.remove('on');playBtn=null}}
+async function playReply(text,btn){
+  if(talkOn)return;
+  if(playBtn===btn){au.pause();playReset();return}      // tap again to stop
+  playReset();voiceStop();
+  playBtn=btn;btn.textContent='Loading…';btn.classList.add('on');
+  try{
+    let url=playUrls.get(text);
+    if(!url){url=await voiceFetch(text);playUrls.set(text,url)}
+    if(playBtn!==btn)return;
+    au.src=url;au.currentTime=0;await au.play();btn.textContent='Stop';
+  }catch(e){
+    playReset();btn.textContent=e.name==='NotAllowedError'?'Tap again':'No voice';
+    setTimeout(()=>{if(playBtn!==btn)btn.textContent='Play'},3000);
+  }
+}
+
 /* ------------------------------------------------------------ talk -- */
 // Talk mode (partner only for now): tap the mic, speak, she answers in two to
 // four sentences and says it in her own voice, then listens again until you
@@ -878,6 +915,7 @@ function talkStart(){
   try{au.pause()}catch(e){}
   // This tap is what lets her speak later on an iPhone: play something now.
   unlocked=true;try{au.src=SILENT_MP3;au.play().catch(()=>{})}catch(e){}
+  playReset();
   talkOn=true;talkMisses=0;$('talk-btn').classList.add('on');
   talkListen();
 }
@@ -910,6 +948,11 @@ function talkListen(){
     const reply=await ask(q,{spoken:true});
     if(!talkOn)return;
     if(!reply){talkListen();return}
+    if(reply.length>SPEAK_MAX){
+      talkEnd();talkBar('That answer is long, so it is on the screen. Tap the mic when you are ready.');$('vb-btn').hidden=true;
+      setTimeout(()=>{if(!talkOn&&vState==='idle')$('voice-bar').hidden=true;$('vb-btn').hidden=false},6000);
+      return;
+    }
     talkSpeak(reply);
   };
   try{r.start()}catch(e){talkEnd()}
