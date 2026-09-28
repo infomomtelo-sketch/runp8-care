@@ -179,6 +179,15 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .cab-fine{font-size:12px;color:var(--muted);line-height:1.6}
 @media(prefers-reduced-motion:reduce){.cab,.cab-in,.drawer summary::after{transition:none}}
 
+/* ---- voice bar: the only sign on the main screen that she is talking ---- */
+.voice-bar{flex:none;display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px 8px 8px;border-radius:14px;background:var(--green);color:var(--cream)}
+.voice-bar .t-mark{box-shadow:0 0 0 3px rgba(232,162,61,.45);animation:vbPulse 1.6s ease-in-out infinite}
+@keyframes vbPulse{50%{box-shadow:0 0 0 7px rgba(232,162,61,0)}}
+.vb-text{flex:1;font-size:13.5px}
+.vb-btn{border:none;border-radius:16px;padding:6px 14px;background:var(--gold);color:var(--green);font-weight:600;font-size:13px}
+.vb-x{border:none;background:none;color:rgba(249,245,237,.75);font-size:20px;line-height:1;padding:0 4px}
+@media(prefers-reduced-motion:reduce){.voice-bar .t-mark{animation:none}}
+
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
@@ -235,6 +244,11 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
   <div id="chat" hidden>
     <div id="scroll">
       <div id="thread"></div>
+    </div>
+    <div class="voice-bar" id="voice-bar" hidden>
+      <span class="t-mark"></span><span class="vb-text" id="vb-text">Tello is speaking</span>
+      <button type="button" class="vb-btn" id="vb-btn" onclick="vbAction()">Pause</button>
+      <button type="button" class="vb-x" onclick="voiceStop()" aria-label="Stop">&times;</button>
     </div>
     <div class="compose-hint" id="compose-hint" hidden></div>
     <div class="attach-chip" id="attach-chip" hidden></div>
@@ -789,10 +803,22 @@ async function voiceFetch(text){
   if(!r.ok)throw new Error(r.status===429?'Tello has read aloud enough for today. It resets tomorrow.':'The voice is not available right now.');
   return URL.createObjectURL(await r.blob());
 }
+// The brief's controls live in the Cabinet, so while she is talking (or
+// waiting for the tap an iPhone needs) a bar on the main screen says so and
+// can pause or stop her.
+let vState='idle';
 function voiceState(s){
-  $('listen').textContent=s==='playing'?'Pause':s==='loading'?'Loading…':s==='tap'?'Tap to listen':'Listen';
+  vState=s;
+  $('listen').textContent=s==='playing'?'Pause':s==='loading'?'Loading…':s==='tap'?'Tap to listen':s==='paused'?'Resume':'Listen';
   $('speaking').hidden=s!=='playing';
+  $('voice-bar').hidden=s==='idle';
+  $('vb-text').textContent=s==='playing'?'Tello is reading your brief':s==='loading'?'Tello is getting ready…':s==='tap'?'Tello has your brief ready':'Paused';
+  $('vb-btn').textContent=s==='playing'?'Pause':s==='loading'?'…':s==='tap'?'Listen':'Resume';
+  $('vb-btn').disabled=s==='loading';
 }
+// On an iPhone the first tap anywhere already starts her (armFirstTouch), so
+// the bar's own button must not toggle her straight back off.
+function vbAction(){if(vState==='tap'){if(!armed&&au.paused)voicePlay();return}voiceToggle()}
 async function voicePlay(){
   const text=greeting(true)+(briefKind==='weekly'?' Here’s your week.':' Here’s your brief.')+'\n'+briefText;
   try{
@@ -802,6 +828,8 @@ async function voicePlay(){
   }catch(e){
     if(e.name==='NotAllowedError'){voiceState('tap');armFirstTouch();return}
     voiceState('idle');$('speaking').hidden=false;$('speaking').textContent=e.message;
+    $('voice-bar').hidden=false;$('vb-text').textContent=e.message;$('vb-btn').hidden=true;
+    setTimeout(()=>{if(vState==='idle'){$('voice-bar').hidden=true;$('vb-btn').hidden=false}},6000);
   }
 }
 function armFirstTouch(){
@@ -811,7 +839,7 @@ function armFirstTouch(){
 }
 function voiceToggle(){
   if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}
-  if(!au.paused&&voiceUrl&&au.src===voiceUrl){au.pause();voiceState('idle');return}
+  if(!au.paused&&voiceUrl&&au.src===voiceUrl){au.pause();voiceState('paused');return}
   $('speaking').textContent='Tello is speaking (AI voice)';voicePlay();
 }
 function voiceStop(){try{au.pause()}catch(e){}if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}voiceState('idle')}
