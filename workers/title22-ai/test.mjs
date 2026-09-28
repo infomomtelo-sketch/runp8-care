@@ -260,6 +260,15 @@ assert.ok(sys.includes('WHAT YOU KNOW ABOUT ITS HISTORY') && sys.includes('one c
 assert.ok(sys.includes('ANSWER, THEN STOP') && sys.indexOf('HOW TO END A REPLY') > sys.indexOf('WHAT YOU KNOW ABOUT ITS HISTORY'), 'partner: the no-question-back rule comes last');
 assert.ok(!/End with one question back/.test(sys), 'the old always-ask-back line is gone');
 console.log('ok  history file: partner only; she answers and stops');
+{
+  await call('/api/tello', { token: 'founder-token', method: 'POST', body: { message: 'how are we doing', spoken: true } });
+  const req = anthropic.at(-1);
+  assert.ok(req.system.includes('THIS REPLY WILL BE SPOKEN ALOUD'), 'talk mode asks for a spoken reply');
+  assert.equal(req.output_config && req.output_config.effort, 'low', 'talk mode thinks lightly');
+  await ask('founder-token', 'typed question');
+  assert.ok(!anthropic.at(-1).system.includes('SPOKEN ALOUD'), 'typed questions are unchanged');
+  console.log('ok  talk mode: spoken style and a light think, typed questions unchanged');
+}
 
 assert.equal(rememberFrom('Remember: Raya class is Oct 12'), 'Raya class is Oct 12');
 assert.equal(rememberFrom('remember this - call 6Beds Tuesday'), 'call 6Beds Tuesday');

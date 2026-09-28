@@ -47,7 +47,11 @@ const PIPELINE_VERSION = 'v1';
 const REQUIRED_BINDINGS = ['DEEPINFRA_API_KEY', 'VOICE_MODEL', 'VOICE_ID'];
 const BRIEFING_BINDINGS = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'ALLOWED_ORIGIN', 'VOICE_CACHE'];
 // New renders per user per day. A replay from the cache does not count.
-const DAILY_LIMIT = 10;
+// 150 since 2026-09-28: Talk mode on title22.app/tello reads every reply
+// aloud, and a conversation used up 10 in minutes. At the cap of 1,200
+// characters that is about 15 cents a user a day at DeepInfra's list price;
+// spoken replies are two to four sentences, so real use is far below it.
+export const DAILY_LIMIT = 150;
 // The day a limit resets is the facility's day, not UTC's.
 const LIMIT_TZ = 'America/Los_Angeles';
 
@@ -260,8 +264,8 @@ async function preview(request, env, ctx) {
 //   Authorization: Bearer <the user's Supabase access token>
 //
 // What this can and cannot promise. It proves WHO is asking (Supabase checks
-// the token) and bounds what they can spend: 1,200 characters, 10 new renders
-// a day, about a cent a day at DeepInfra's list price. It does NOT prove the
+// the token) and bounds what they can spend: 1,200 characters, DAILY_LIMIT new
+// renders a day (150, about 15 cents at most at DeepInfra's list price). It does NOT prove the
 // text is that user's own briefing -- the briefing is written in the browser,
 // so no server has it to compare against. Doing that would mean the title22-ai
 // Worker signing each briefing, and that Worker is dashboard-deployed; the
@@ -340,7 +344,7 @@ export async function briefing(request, env) {
   const rateObj = await env.VOICE_CACHE.get(rateKey);
   const used = rateObj ? parseInt(await rateObj.text(), 10) || 0 : 0;
   if (used >= DAILY_LIMIT) {
-    return briefingJson(env, { error: `Tello has read ${DAILY_LIMIT} new briefings aloud today. The text is still here.`, limit: DAILY_LIMIT }, 429);
+    return briefingJson(env, { error: `Tello has spoken ${DAILY_LIMIT} times today. The text is still here, and her voice is back tomorrow.`, limit: DAILY_LIMIT }, 429);
   }
   await env.VOICE_CACHE.put(rateKey, String(used + 1), { httpMetadata: { contentType: 'text/plain' } });
 

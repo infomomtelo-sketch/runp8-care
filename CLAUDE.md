@@ -448,6 +448,15 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   is reading the brief aloud, paused, or waiting for the tap an iPhone needs
   ("Tello has your brief ready · Listen"), with Pause/Resume and a stop.
   She reads the brief once per day per brief kind (`maybeAutoplay`).
+- **Talk mode (partner only, 2026-09-28).** The mic button (`#talk-btn`,
+  `talkStart`/`talkListen`/`talkSpeak`) listens with the browser's speech
+  recognition (Apple's dictation on an iPhone, Google's in Chrome), sends the
+  words through the same PHI check as typing with `spoken:true`, and reads the
+  reply aloud in her Kokoro voice, then listens again; two silent turns end
+  it. `spoken:true` adds `SPOKEN` (2 to 4 sentences) and a `low` effort. It is
+  a style, not a mode. Customers do not get the mic: their speech would go to
+  Apple or Google before our PHI check sees it. The voice Worker's
+  `DAILY_LIMIT` went 10 → 150 for this (about 15 cents a user a day at most).
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
