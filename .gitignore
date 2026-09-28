@@ -6,3 +6,6 @@
 !favicon-32.png
 !icon-192.png
 !icon-512.png
+
+# Tello's home-screen icon is served by the site; *.png above would drop it.
+!tello-apple-touch-icon.png

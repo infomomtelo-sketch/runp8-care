@@ -202,6 +202,20 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .talk-btn.on{background:var(--gold);border-color:var(--gold);color:var(--green)}
 .voice-bar.listening .t-mark{animation-duration:.9s}
 
+/* ---- marketing drawer ---- */
+.mkt-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.mkt-h:first-child{margin-top:2px}
+.mkt-note{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 8px}
+.mkt-accts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.mkt-accts a{display:block;text-align:center;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--cream);color:var(--green);font-weight:600;font-size:14px;text-decoration:none}
+.mkt-row{border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:7px;background:var(--cream)}
+.mkt-row b{display:block;font-size:14px;color:var(--green)}
+.mkt-row small{display:block;font-size:12px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.mkt-row p{font-size:13px;line-height:1.5;margin:4px 0 0;white-space:pre-wrap}
+.mkt-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.mkt-btns button,.mkt-btns a{font-size:12.5px;padding:5px 11px;border-radius:14px;border:1px solid var(--line);background:var(--white);color:var(--green);font-weight:500;text-decoration:none}
+.mkt-btns .pri{background:var(--green);border-color:var(--green);color:var(--cream)}
+
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
@@ -314,6 +328,10 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
     <details class="drawer">
       <summary><span class="kicker">Tap one</span><span class="slab">What Tello can do</span></summary>
       <div class="drawer-body tools" id="cab-tools"></div>
+    </details>
+    <details class="drawer" id="drawer-mkt" hidden>
+      <summary><span class="kicker">Post, send, share</span><span class="slab">Marketing</span></summary>
+      <div class="drawer-body" id="mkt"></div>
     </details>
     <div class="cab-list">
       <button type="button" id="fresh" onclick="closeCabinet();newConversation()">New conversation</button>
@@ -435,6 +453,7 @@ async function boot(){
   const partner=mode==='partner';
   document.body.classList.toggle('is-partner',partner);
   $('cab-partner').hidden=!partner;
+  $('drawer-mkt').hidden=!partner;if(partner)renderMarketing();
   $('talk-btn').hidden=!partner||!SpeechRec;
   $('bar-kicker').textContent=partner?'Your business partner · '+who.client:'AI assistant · '+who.client;
   $('say').placeholder='Ask Tello anything…';
@@ -548,7 +567,9 @@ async function copyText(text,btn){
     const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();
     try{ok=document.execCommand('copy')}catch(_){} t.remove();
   }
-  btn.textContent=ok?'Copied':'Select the text to copy';setTimeout(()=>{btn.textContent='Copy'},1800);
+  if(!btn)return;
+  const was=btn.dataset.label||(btn.dataset.label=btn.textContent);
+  btn.textContent=ok?'Copied':'Select the text to copy';setTimeout(()=>{btn.textContent=was},1800);
 }
 
 /* ------------------------------------------------------ attachments -- */
@@ -881,6 +902,76 @@ function voiceToggle(){
 }
 function voiceStop(){if(talkOn){talkEnd();return}try{au.pause()}catch(e){}if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}voiceState('idle')}
 au.addEventListener('ended',()=>{if(playBtn){playReset();return}if(talkOn&&talkPhase==='speaking'){talkListen();return}voiceState('idle')});
+/* ------------------------------------------------------- marketing -- */
+// The owner's marketing kit, partner mode only: his accounts, the links and
+// videos worth sending, and messages ready to go. Every fact here is one the
+// site already states (title-22.com, assets/follow.js, the partner kit);
+// change a price or a trial length there and here together. Tello cannot
+// sign in to an account or post: Share hands the text to the phone, and the
+// phone's share sheet has Instagram, Facebook, TikTok, Messages and the rest.
+const MKT={
+  accounts:[
+    {name:'Facebook',url:'https://www.facebook.com/profile.php?id=61593807941065'},
+    {name:'Instagram',url:'https://www.instagram.com/title22app/'},
+    {name:'TikTok',url:'https://www.tiktok.com/@title22529'},
+    {name:'YouTube',url:'https://www.youtube.com/@title22app'},
+  ],
+  links:[
+    {name:'Website',note:'Everything, in one place',url:'https://title-22.com/'},
+    {name:'Free trial',note:'30 days, no card',url:'https://title22.app/'},
+    {name:'See it first',note:'The practice home, no sign-up',url:'https://title22.app/?demo=1'},
+    {name:'Pricing',note:'$29 one home, $79 up to five',url:'https://title-22.com/pricing/'},
+    {name:'Readiness check',note:'10 quick questions',url:'https://title-22.com/score/'},
+    {name:'30-Day Proof',note:'For owners with two or more homes',url:'https://title-22.com/pilot/'},
+    {name:'For trainers',note:'Course instructors',url:'https://title-22.com/for-trainers/'},
+    {name:'Partner media kit',note:'Images, QR codes and posts with their code',url:'https://title-22.com/partner-kit/'},
+    {name:'Follow Title22',note:'All the accounts on one page',url:'https://title-22.com/follow/'},
+    {name:'Tello',note:'Her own page',url:'https://title22.app/tello'},
+  ],
+  videos:[
+    {name:'Meet Tello',note:'37 s, vertical: Reels, Shorts, Stories',url:'https://title-22.com/videos/title22-tello-intro.mp4'},
+    {name:'For trainers',note:'34 s, vertical',url:'https://title-22.com/videos/title22-trainer-pitch.mp4'},
+    {name:'Your readiness checklist',note:'19 s how-to',url:'https://title-22.com/videos/howto/checklist.mp4'},
+    {name:'3-minute overview',note:'Title22, plus a tour of the app',url:'https://title-22.com/videos/title22-overview.mp4'},
+  ],
+  messages:[
+    {name:'To a care home owner',text:'Hi [name], I built Title22 for California care homes. It keeps your staff files, training and clearances current, and shows you what DSS will ask for before they do. Try it free for 30 days, no card: https://title22.app'},
+    {name:'Follow-up',text:'Hi [name], just checking in on Title22. If you want to look before you sign up, the practice home is open with no account: https://title22.app/?demo=1 Happy to walk you through it.'},
+    {name:'To a trainer',text:'Hi [name], I built Title22, a staff-records and DSS-readiness app for RCFEs and ARFs. If you teach administrator courses, your students get a 90-day trial through your own link, and you earn 20% of every paid month they stay. You would need to tell students you earn a commission. The details: https://title-22.com/for-trainers/'},
+    {name:'Social post',text:'Your next DSS visit, without guessing. Title22 keeps your staff files, training and clearances current, and Tello tells you each morning what needs attention. $29 a month for one home. Try it free for 30 days, no card. https://title22.app #RCFE #CareHome #California'},
+  ],
+};
+function mktShare(o){
+  const data={title:o.name};if(o.text)data.text=o.text;if(o.url)data.url=o.url;
+  if(navigator.share)return navigator.share(data).catch(()=>{});
+  copyText(o.text||o.url,null);
+}
+function mktBtn(label,fn,pri){const b=document.createElement('button');b.type='button';b.textContent=label;if(pri)b.className='pri';b.onclick=()=>fn(b);return b}
+function mktLink(label,href){const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener';a.textContent=label;return a}
+function renderMarketing(){
+  const el=$('mkt');if(!el||el.dataset.done)return;el.dataset.done='1';
+  const h=t=>{const d=document.createElement('div');d.className='mkt-h';d.textContent=t;el.appendChild(d)};
+  const note=t=>{const p=document.createElement('p');p.className='mkt-note';p.textContent=t;el.appendChild(p)};
+  const row=(o,btns)=>{const r=document.createElement('div');r.className='mkt-row';
+    const b=document.createElement('b');b.textContent=o.name;r.appendChild(b);
+    if(o.note){const s=document.createElement('small');s.textContent=o.note;r.appendChild(s)}
+    if(o.text){const p=document.createElement('p');p.textContent=o.text;r.appendChild(p)}
+    const w=document.createElement('div');w.className='mkt-btns';btns.forEach(x=>w.appendChild(x));r.appendChild(w);el.appendChild(r)};
+  h('Your accounts');
+  note('Opens each account, signed in as you. Tello cannot post for you: tap Share on anything below and pick the app.');
+  const g=document.createElement('div');g.className='mkt-accts';MKT.accounts.forEach(a=>g.appendChild(mktLink(a.name,a.url)));el.appendChild(g);
+  h('Messages, ready to send');
+  note('Change [name] before you send. Keep the facts as they are.');
+  MKT.messages.forEach(m=>row(m,[mktBtn('Share',()=>mktShare(m),true),mktBtn('Copy',b=>copyText(m.text,b)),
+    mktLink('Text','sms:?&body='+encodeURIComponent(m.text)),mktLink('Email','mailto:?subject='+encodeURIComponent('Title22')+'&body='+encodeURIComponent(m.text))]));
+  row({name:'Write a new one with Tello',note:'A caption, an email, a reply, a job post'},[mktBtn('Start',()=>{closeCabinet();prefill('Write a social post about Title22 for ','Say who it is for and where it goes (Facebook, Instagram, TikTok, LinkedIn).')},true)]);
+  h('Links to send');
+  MKT.links.forEach(l=>row({name:l.name,note:l.note+' · '+l.url.replace('https://','')},[mktBtn('Share',()=>mktShare(l),true),mktBtn('Copy',b=>copyText(l.url,b)),mktLink('Open',l.url)]));
+  h('Videos');
+  note('Open one and save it to your phone, then post it with the link in the caption.');
+  MKT.videos.forEach(v=>row(v,[mktBtn('Share',()=>mktShare(v),true),mktBtn('Copy link',b=>copyText(v.url,b)),mktLink('Open',v.url)]));
+}
+
 /* ------------------------------------------------------------ play -- */
 // Longer than this is an answer to read, not to listen to: no Play button,
 // and in Talk mode it stays on the screen instead of being spoken. About
