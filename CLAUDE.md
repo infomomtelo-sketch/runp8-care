@@ -468,6 +468,17 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   Tello". Every fact in it is one the site already states: change a price, a
   trial length or an account there and here together. Tello cannot sign in to
   or post on any account; Share hands the text to the phone's share sheet.
+- **Partners and payouts drawer (partner only, 2026-09-28)**, `loadPartners`
+  / `renderPartners` in `tello.html`, on
+  `migrations/2026-09-28_title22_partner_payouts.sql` (NOT RUN until the owner
+  says so; the drawer says which file to run if it is missing). The owner's
+  own buttons, not a Tello tool: codes (create with type trainer / affiliate /
+  graduate, pause, rate, trial never under 30), students per code as date and
+  status only (no names, no emails), this month's commission at list price x
+  rate on active subscriptions in our table (not Stripe), and a payout record
+  (one per partner per month; delete only a mistake). Nothing here moves
+  money. Every RPC checks `title22_is_partner_admin`. Classroom access sits
+  there too, via the existing `title22_grant_classroom_account`.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 

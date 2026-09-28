@@ -216,6 +216,28 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .mkt-btns button,.mkt-btns a{font-size:12.5px;padding:5px 11px;border-radius:14px;border:1px solid var(--line);background:var(--white);color:var(--green);font-weight:500;text-decoration:none}
 .mkt-btns .pri{background:var(--green);border-color:var(--green);color:var(--cream)}
 
+/* ---- partners drawer ---- */
+.ptn-sum{background:var(--green);color:var(--cream);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.5}
+.ptn-sum b{font-family:'Zilla Slab',Georgia,serif;font-size:22px;color:var(--gold)}
+.ptn-card{border:1px solid var(--line);border-radius:12px;padding:10px 11px;margin-bottom:8px;background:var(--cream)}
+.ptn-card.off{opacity:.65}
+.ptn-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ptn-top b{font-size:15px;color:var(--green)}
+.ptn-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.ptn-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.ptn-nums div{background:var(--white);border:1px solid var(--line);border-radius:9px;padding:5px 6px;text-align:center;font-size:10.5px;color:var(--muted)}
+.ptn-nums b{display:block;font-size:16px;color:var(--green)}
+.ptn-owe{font-size:13px;color:var(--ink)}
+.ptn-owe.due{color:#8a5a12;font-weight:600}
+.ptn-form{display:grid;gap:6px;margin-top:8px}
+.ptn-form input,.ptn-form select{width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--white);font-size:14px}
+.ptn-form .two{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ptn-form label{font-size:11.5px;margin:0 0 -3px;color:var(--muted);font-weight:500}
+.ptn-list{font-size:12.5px;color:var(--muted);margin-top:6px}
+.ptn-list div{display:flex;justify-content:space-between;gap:6px;border-top:1px dashed var(--line);padding:4px 0}
+.ptn-list button{border:none;background:none;color:var(--bad);font-size:12px;padding:0 2px}
+.ptn-err{font-size:12.5px;color:var(--bad);margin-top:6px}
+
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
@@ -328,6 +350,10 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
     <details class="drawer">
       <summary><span class="kicker">Tap one</span><span class="slab">What Tello can do</span></summary>
       <div class="drawer-body tools" id="cab-tools"></div>
+    </details>
+    <details class="drawer" id="drawer-ptn" hidden>
+      <summary><span class="kicker">Trainers, affiliates, graduates</span><span class="slab">Partners and payouts</span></summary>
+      <div class="drawer-body" id="ptn"></div>
     </details>
     <details class="drawer" id="drawer-mkt" hidden>
       <summary><span class="kicker">Post, send, share</span><span class="slab">Marketing</span></summary>
@@ -454,6 +480,7 @@ async function boot(){
   document.body.classList.toggle('is-partner',partner);
   $('cab-partner').hidden=!partner;
   $('drawer-mkt').hidden=!partner;if(partner)renderMarketing();
+  $('drawer-ptn').hidden=!partner;
   $('talk-btn').hidden=!partner||!SpeechRec;
   $('bar-kicker').textContent=partner?'Your business partner · '+who.client:'AI assistant · '+who.client;
   $('say').placeholder='Ask Tello anything…';
@@ -706,6 +733,7 @@ let cabFocus=null;
 function openCabinet(){cabFocus=document.activeElement;$('cab-dot').hidden=true;$('cabinet').classList.add('open');setTimeout(()=>$('cabinet').querySelector('.cab-top button').focus(),50)}
 function closeCabinet(){const c=$('cabinet');if(!c.classList.contains('open'))return;c.classList.remove('open');if(cabFocus&&cabFocus.focus)cabFocus.focus()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCabinet()});
+document.addEventListener('toggle',e=>{if(e.target&&e.target.id==='drawer-ptn'&&e.target.open&&!ptnData)loadPartners()},true);
 function openIdeas(){renderTools($('ideas-list'),false);$('ideas').classList.add('open')}
 function closeIdeas(){$('ideas').classList.remove('open')}
 
@@ -970,6 +998,171 @@ function renderMarketing(){
   h('Videos');
   note('Open one and save it to your phone, then post it with the link in the caption.');
   MKT.videos.forEach(v=>row(v,[mktBtn('Share',()=>mktShare(v),true),mktBtn('Copy link',b=>copyText(v.url,b)),mktLink('Open',v.url)]));
+}
+
+/* -------------------------------------------------------- partners -- */
+// Trainers, affiliates and graduates, and what they are owed. The owner's own
+// buttons, calling the same partner-admin RPCs as the app's Partners tab
+// (2026-08-03) plus 2026-09-28_title22_partner_payouts.sql. Every one checks
+// title22_is_partner_admin on the database side. Tello herself has no tool for
+// any of this: partner mode sees, it does not act.
+// Nothing here pays anyone. The owner pays (Zelle, PayPal, a cheque) and
+// records it, and the commission shown is list price x rate on subscriptions
+// in our own table, not Stripe.
+let ptnData=null,ptnOpen=null;
+const PTN_KINDS={trainer:'Trainer',affiliate:'Affiliate',graduate:'Graduate'};
+const usd=n=>'$'+Number(n||0).toFixed(2).replace(/\.00$/,'');
+function ptnEl(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function ptnSetup(msg){const el=$('ptn');el.innerHTML='';el.appendChild(ptnEl('p','mkt-note',msg))}
+async function loadPartners(){
+  const el=$('ptn');if(!el)return;
+  el.innerHTML='';el.appendChild(ptnEl('p','mkt-note','Loading…'));
+  const{data,error}=await sb.rpc('title22_partner_report');
+  if(error){
+    const m=error.message||'';
+    if(/not authorized/i.test(m))return ptnSetup('Your account is not set as the partner admin. In Supabase run: update public.profiles set title22_is_partner_admin = true where id = \'<your user id>\';');
+    if(error.code==='PGRST202'||/function|does not exist/i.test(m))return ptnSetup('Partners and payouts need one database file. In Supabase, run migrations/2026-09-28_title22_partner_payouts.sql, then open this again.');
+    return ptnSetup('Could not load partners: '+m);
+  }
+  ptnData=data;renderPartners();
+}
+function renderPartners(){
+  const el=$('ptn'),d=ptnData;el.innerHTML='';
+  const act=d.partners.filter(p=>p.active);
+  const owed=act.reduce((a,p)=>a+(p.paid_this_month?0:Number(p.commission_month_usd||0)),0);
+  const due=act.filter(p=>!p.paid_this_month&&Number(p.commission_month_usd)>0).length;
+  const sum=ptnEl('div','ptn-sum');
+  sum.append(ptnEl('b',null,usd(owed)),document.createTextNode(' left to pay for '+d.this_month+(due?' · '+due+' partner'+(due>1?'s':''):' · nobody owed')));
+  el.appendChild(sum);
+  el.appendChild(ptnEl('p','mkt-note',d.note));
+  el.appendChild(ptnEl('div','mkt-h','Partners'));
+  if(!d.partners.length)el.appendChild(ptnEl('p','mkt-note','No codes yet. Give out the first one below.'));
+  d.partners.forEach(p=>el.appendChild(ptnCard(p)));
+  el.appendChild(ptnEl('div','mkt-h','Give out a new code'));
+  el.appendChild(ptnNewForm());
+  if(d.unregistered_codes&&d.unregistered_codes.length){
+    el.appendChild(ptnEl('div','mkt-h','Codes people used, not registered yet'));
+    el.appendChild(ptnEl('p','mkt-note','Their signups count as soon as you register the code.'));
+    d.unregistered_codes.forEach(u=>{const r=ptnEl('div','mkt-row');r.appendChild(ptnEl('b',null,u.code));r.appendChild(ptnEl('small',null,u.signups+' signup'+(u.signups>1?'s':'')));
+      const w=ptnEl('div','mkt-btns');w.appendChild(mktBtn('Register',()=>{const f=$('ptn-code');f.value=u.code;f.scrollIntoView({block:'center'});$('ptn-name').focus()},true));r.appendChild(w);el.appendChild(r)});
+  }
+  el.appendChild(ptnEl('div','mkt-h','Classroom account for a trainer'));
+  el.appendChild(ptnClassroom());
+}
+function ptnInput(id,label,attrs){const w=document.createElement('div');const l=ptnEl('label',null,label);l.htmlFor=id;const i=document.createElement(attrs&&attrs.tag||'input');i.id=id;
+  Object.entries(attrs||{}).forEach(([k,v])=>{if(k==='tag'||k==='options')return;i.setAttribute(k,v)});
+  if(attrs&&attrs.options)Object.entries(attrs.options).forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;i.appendChild(o)});
+  w.append(l,i);return w}
+function ptnNewForm(){
+  const f=ptnEl('div','ptn-form');
+  const two1=ptnEl('div','two');two1.append(ptnInput('ptn-code','Code (their name works)',{placeholder:'e.g. raya',autocapitalize:'none'}),ptnInput('ptn-kind','Type',{tag:'select',options:PTN_KINDS}));
+  const two2=ptnEl('div','two');two2.append(ptnInput('ptn-rate','Commission %',{type:'number',value:'20',min:'0',max:'50',inputmode:'decimal'}),ptnInput('ptn-trial','Trial days',{type:'number',value:'90',min:'30',max:'365',inputmode:'numeric'}));
+  f.append(two1,ptnInput('ptn-name','Their name',{placeholder:'e.g. Raya T'}),ptnInput('ptn-email','Their email (optional)',{type:'email'}),two2);
+  const err=ptnEl('div','ptn-err');err.id='ptn-new-err';const w=ptnEl('div','mkt-btns');w.appendChild(mktBtn('Create code',ptnCreate,true));f.append(w,err);
+  const out=ptnEl('div');out.id='ptn-new-out';f.appendChild(out);
+  return f;
+}
+async function ptnCreate(btn){
+  const err=$('ptn-new-err');err.textContent='';
+  const code=$('ptn-code').value.trim(),name=$('ptn-name').value.trim(),kind=$('ptn-kind').value;
+  const rate=parseFloat($('ptn-rate').value),trial=parseInt($('ptn-trial').value,10);
+  if(!code||!name){err.textContent='A code and their name are needed.';return}
+  if(isNaN(trial)||trial<30){err.textContent='The trial is never shorter than 30 days.';return}
+  if(isNaN(rate)||rate<0||rate>50){err.textContent='Commission is between 0 and 50%.';return}
+  btn.disabled=true;btn.textContent='Creating…';
+  const{data,error}=await sb.rpc('title22_create_trainer',{p_code:code,p_name:name,p_email:$('ptn-email').value.trim()||null,p_commission_rate:rate/100,p_trial_days:trial});
+  if(error){btn.disabled=false;btn.textContent='Create code';err.textContent=/duplicate|unique/i.test(error.message)?'That code is taken. Try another.':error.message;return}
+  const row=Array.isArray(data)?data[0]:data;
+  if(kind!=='trainer')await sb.rpc('title22_update_partner',{p_id:row.id,p_kind:kind});
+  const first=(row.name||'').trim().split(/\s+/)[0]||row.name;
+  const msg=`Hi ${first}, here is your Title22 link: https://title-22.com/r/${row.code}\n\nAnyone who signs up through it gets a ${row.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(row.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nImages, QR codes and posts with your link built in: https://title-22.com/partner-kit/?code=${encodeURIComponent(row.code)}`;
+  await loadPartners();
+  const out=$('ptn-new-out');out.innerHTML='';
+  const r=ptnEl('div','mkt-row');r.appendChild(ptnEl('b',null,'Created. Send this to '+first+':'));r.appendChild(ptnEl('p',null,msg));
+  const w=ptnEl('div','mkt-btns');w.append(mktBtn('Share',()=>mktShare({name:'Your Title22 link',text:msg}),true),mktBtn('Copy',b=>copyText(msg,b)));
+  if(row.email){w.appendChild(mktLink('Email','mailto:'+encodeURIComponent(row.email)+'?subject='+encodeURIComponent('Your Title22 partner link')+'&body='+encodeURIComponent(msg)))}
+  r.appendChild(w);out.appendChild(r);out.scrollIntoView({block:'center'});
+}
+function ptnCard(p){
+  const c=ptnEl('div','ptn-card'+(p.active?'':' off'));
+  const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,p.name),ptnEl('span','ptn-tag',(PTN_KINDS[p.kind]||p.kind)+' · '+p.code+(p.active?'':' · paused')));c.appendChild(top);
+  c.appendChild(ptnEl('div','ptn-tag',Math.round(p.commission_rate*100)+'% · '+p.trial_days+'-day trial'));
+  const n=ptnEl('div','ptn-nums');[['signups',p.signups],['on trial',p.trials],['paying',p.paying],['paid out',usd(p.paid_out_usd)]].forEach(([k,v])=>{const x=ptnEl('div');x.appendChild(ptnEl('b',null,String(v)));x.appendChild(document.createTextNode(k));n.appendChild(x)});c.appendChild(n);
+  const owe=Number(p.commission_month_usd||0);
+  c.appendChild(ptnEl('div','ptn-owe'+(owe>0&&!p.paid_this_month?' due':''),p.paid_this_month?ptnData.this_month+': paid':owe>0?ptnData.this_month+': '+usd(owe)+' owed ('+p.paying+' paying x '+Math.round(p.commission_rate*100)+'%)'+(p.unpriced?' + '+p.unpriced+' on a plan with no list price':''):'Nothing owed this month'));
+  const w=ptnEl('div','mkt-btns');const link='https://title-22.com/r/'+p.code;
+  w.append(mktBtn('Share link',()=>mktShare({name:'Title22',url:link}),true),mktBtn('Copy link',b=>copyText(link,b)));
+  if(!p.paid_this_month&&owe>0)w.appendChild(mktBtn('Record payout',()=>ptnToggle(c,'pay',p)));
+  w.append(mktBtn('Edit',()=>ptnToggle(c,'edit',p)),mktBtn('Students ('+p.signups+')',()=>ptnToggle(c,'stu',p)));
+  if(p.payouts.length)w.appendChild(mktBtn('Payouts ('+p.payouts.length+')',()=>ptnToggle(c,'hist',p)));
+  c.appendChild(w);const box=ptnEl('div');box.className='ptn-box';c.appendChild(box);
+  if(ptnOpen&&ptnOpen.id===p.id)ptnToggle(c,ptnOpen.what,p,true);
+  return c;
+}
+function ptnToggle(card,what,p,force){
+  const box=card.querySelector('.ptn-box');
+  if(!force&&box.dataset.what===what){box.innerHTML='';box.dataset.what='';ptnOpen=null;return}
+  box.innerHTML='';box.dataset.what=what;ptnOpen={id:p.id,what};
+  const err=ptnEl('div','ptn-err');
+  if(what==='pay'){
+    const f=ptnEl('div','ptn-form');const two=ptnEl('div','two');
+    two.append(ptnInput('pay-amt-'+p.id,'Amount paid ($)',{type:'number',value:Number(p.commission_month_usd).toFixed(2),min:'0',step:'0.01',inputmode:'decimal'}),ptnInput('pay-per-'+p.id,'For month',{type:'month',value:ptnData.this_month}));
+    f.append(two,ptnInput('pay-how-'+p.id,'How you paid',{placeholder:'Zelle, PayPal, cheque…'}),ptnInput('pay-note-'+p.id,'Note (optional)',{}));
+    const w=ptnEl('div','mkt-btns');w.appendChild(mktBtn('Save payout',async b=>{
+      const amt=Math.round(parseFloat($('pay-amt-'+p.id).value)*100),per=$('pay-per-'+p.id).value;
+      if(isNaN(amt)||amt<0){err.textContent='Enter the amount you paid.';return}
+      if(!/^\d{4}-\d{2}$/.test(per)){err.textContent='Pick the month it is for.';return}
+      b.disabled=true;const{error}=await sb.rpc('title22_record_payout',{p_trainer_id:p.id,p_period:per,p_amount_cents:amt,p_method:$('pay-how-'+p.id).value,p_note:$('pay-note-'+p.id).value});
+      if(error){b.disabled=false;err.textContent=/already recorded/i.test(error.message)?'That month is already recorded for '+p.name+'.':error.message;return}
+      ptnOpen={id:p.id,what:'hist'};loadPartners();
+    },true));
+    f.append(w,ptnEl('p','mkt-note','This records a payment you made. It does not send money.'),err);box.appendChild(f);
+  }else if(what==='edit'){
+    const f=ptnEl('div','ptn-form');const two=ptnEl('div','two');
+    two.append(ptnInput('ed-rate-'+p.id,'Commission %',{type:'number',value:String(Math.round(p.commission_rate*1000)/10),min:'0',max:'50',inputmode:'decimal'}),ptnInput('ed-trial-'+p.id,'Trial days',{type:'number',value:String(p.trial_days),min:'30',max:'365',inputmode:'numeric'}));
+    const k=ptnInput('ed-kind-'+p.id,'Type',{tag:'select',options:PTN_KINDS});k.querySelector('select').value=p.kind;
+    f.append(k,two);
+    const w=ptnEl('div','mkt-btns');
+    w.appendChild(mktBtn('Save',async b=>{
+      const rate=parseFloat($('ed-rate-'+p.id).value),trial=parseInt($('ed-trial-'+p.id).value,10);
+      if(isNaN(trial)||trial<30){err.textContent='The trial is never shorter than 30 days.';return}
+      if(isNaN(rate)||rate<0||rate>50){err.textContent='Commission is between 0 and 50%.';return}
+      b.disabled=true;const{error}=await sb.rpc('title22_update_partner',{p_id:p.id,p_kind:$('ed-kind-'+p.id).value,p_commission_rate:rate/100,p_trial_days:trial});
+      if(error){b.disabled=false;err.textContent=error.message;return}ptnOpen=null;loadPartners();
+    },true));
+    w.appendChild(mktBtn(p.active?'Pause this code':'Turn this code back on',async b=>{
+      if(p.active&&!confirm('Pause '+p.code+'? New signups through it get the standard 30-day trial. Signups so far still count.'))return;
+      b.disabled=true;const{error}=await sb.rpc('title22_update_partner',{p_id:p.id,p_active:!p.active});
+      if(error){b.disabled=false;err.textContent=error.message;return}ptnOpen=null;loadPartners();
+    }));
+    f.append(w,err);box.appendChild(f);
+  }else if(what==='stu'){
+    const l=ptnEl('div','ptn-list');
+    if(!p.students.length)l.appendChild(ptnEl('div',null,'Nobody has signed up through this code yet.'));
+    p.students.forEach(s=>{const r=ptnEl('div');r.append(ptnEl('span',null,new Date(s.signed_up).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})),ptnEl('span',null,s.status+(s.plan?' · '+s.plan:'')));l.appendChild(r)});
+    if(p.signups>p.students.length)l.appendChild(ptnEl('div',null,'Showing the latest '+p.students.length+'.'));
+    box.appendChild(l);box.appendChild(ptnEl('p','mkt-note','Dates and status only. Names and emails stay out of this list.'));
+  }else if(what==='hist'){
+    const l=ptnEl('div','ptn-list');
+    p.payouts.forEach(x=>{const r=ptnEl('div');r.append(ptnEl('span',null,x.period+' · '+usd(x.amount_usd)+(x.method?' · '+x.method:'')+(x.note?' · '+x.note:'')));
+      const del=ptnEl('button',null,'Remove');del.type='button';del.onclick=async()=>{if(!confirm('Remove the '+x.period+' payout of '+usd(x.amount_usd)+'? Only do this if it was recorded by mistake.'))return;
+        const{error}=await sb.rpc('title22_delete_payout',{p_id:x.id});if(error){err.textContent=error.message;return}loadPartners()};
+      r.appendChild(del);l.appendChild(r)});
+    box.append(l,err);
+  }
+}
+function ptnClassroom(){
+  const f=ptnEl('div','ptn-form');f.appendChild(ptnEl('p','mkt-note','For a trainer who teaches with the app. It never expires. They must sign up at title22.app first. A classroom account and a partner code are separate: a trainer who does both needs both.'));
+  f.appendChild(ptnInput('ptn-class-email','Their email',{type:'email'}));
+  const out=ptnEl('div','ptn-err');const w=ptnEl('div','mkt-btns');
+  w.appendChild(mktBtn('Give classroom access',async b=>{
+    const email=$('ptn-class-email').value.trim();if(!email){out.textContent='Enter their email.';return}
+    b.disabled=true;const{data,error}=await sb.rpc('title22_grant_classroom_account',{p_email:email});b.disabled=false;
+    if(error){out.textContent=error.message;return}
+    const row=Array.isArray(data)?data[0]:data;
+    out.style.color=row&&row.found?'var(--green)':'var(--bad)';
+    out.textContent=row&&row.found?'Done. '+email+' has a classroom account.':'No account for '+email+' yet. They need to sign up at title22.app first, then try again.';
+  },true));f.append(w,out);return f;
 }
 
 /* ------------------------------------------------------------ play -- */
