@@ -257,7 +257,9 @@ assert.ok(!anthropic.at(-1).system.includes('WHAT YOU KNOW ABOUT ITS HISTORY'), 
 await ask('founder-token', 'hi');
 sys = anthropic.at(-1).system;
 assert.ok(sys.includes('WHAT YOU KNOW ABOUT ITS HISTORY') && sys.includes('one character'), 'partner gets the history');
-console.log('ok  history file: partner only');
+assert.ok(sys.includes('ANSWER, THEN STOP') && sys.indexOf('HOW TO END A REPLY') > sys.indexOf('WHAT YOU KNOW ABOUT ITS HISTORY'), 'partner: the no-question-back rule comes last');
+assert.ok(!/End with one question back/.test(sys), 'the old always-ask-back line is gone');
+console.log('ok  history file: partner only; she answers and stops');
 
 assert.equal(rememberFrom('Remember: Raya class is Oct 12'), 'Raya class is Oct 12');
 assert.equal(rememberFrom('remember this - call 6Beds Tuesday'), 'call 6Beds Tuesday');
