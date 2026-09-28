@@ -138,6 +138,9 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .compose-hint{flex:none;font-size:12.5px;color:var(--green);background:var(--gold-soft);border-radius:10px;padding:6px 10px;margin-top:6px}
 .copy{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--line);background:var(--cream);color:var(--green);font-weight:500;white-space:normal}
 .copy:hover{border-color:var(--gold)}
+.acts{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;white-space:normal}
+.acts .copy{margin:0}
+.copy.play.on{background:var(--green);border-color:var(--green);color:var(--cream)}
 .turn.me .keep{display:block;margin:8px 0 0 auto;font-size:12px;padding:3px 10px;border-radius:14px;border:1px solid rgba(249,245,237,.35);background:transparent;color:var(--cream);font-weight:500}
 .turn.me .keep[disabled]{opacity:.8;cursor:default}
 .attach-btn{flex:none;width:44px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);display:flex;align-items:center;justify-content:center}
@@ -178,6 +181,21 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .cab-list button:hover{background:var(--cream2)}
 .cab-fine{font-size:12px;color:var(--muted);line-height:1.6}
 @media(prefers-reduced-motion:reduce){.cab,.cab-in,.drawer summary::after{transition:none}}
+
+/* ---- voice bar: the only sign on the main screen that she is talking ---- */
+.voice-bar{flex:none;display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px 8px 8px;border-radius:14px;background:var(--green);color:var(--cream)}
+.voice-bar .t-mark{box-shadow:0 0 0 3px rgba(232,162,61,.45);animation:vbPulse 1.6s ease-in-out infinite}
+@keyframes vbPulse{50%{box-shadow:0 0 0 7px rgba(232,162,61,0)}}
+.vb-text{flex:1;font-size:13.5px}
+.vb-btn{border:none;border-radius:16px;padding:6px 14px;background:var(--gold);color:var(--green);font-weight:600;font-size:13px}
+.vb-x{border:none;background:none;color:rgba(249,245,237,.75);font-size:20px;line-height:1;padding:0 4px}
+@media(prefers-reduced-motion:reduce){.voice-bar .t-mark{animation:none}}
+
+#say::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.talk-btn{flex:none;width:44px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);display:flex;align-items:center;justify-content:center}
+.talk-btn:hover{border-color:var(--gold)}
+.talk-btn.on{background:var(--gold);border-color:var(--gold);color:var(--green)}
+.voice-bar.listening .t-mark{animation-duration:.9s}
 
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
@@ -236,12 +254,18 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
     <div id="scroll">
       <div id="thread"></div>
     </div>
+    <div class="voice-bar" id="voice-bar" hidden>
+      <span class="t-mark"></span><span class="vb-text" id="vb-text">Tello is speaking</span>
+      <button type="button" class="vb-btn" id="vb-btn" onclick="vbAction()">Pause</button>
+      <button type="button" class="vb-x" onclick="voiceStop()" aria-label="Stop">&times;</button>
+    </div>
     <div class="compose-hint" id="compose-hint" hidden></div>
     <div class="attach-chip" id="attach-chip" hidden></div>
     <div class="composer">
       <button class="attach-btn" id="attach-btn" onclick="$('file').click()" title="Share a photo or PDF" aria-label="Share a photo or PDF"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
       <input type="file" id="file" accept="image/*,application/pdf" hidden onchange="onFile(this)"/>
       <textarea id="say" rows="1" placeholder="Ask Tello anything…" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
+      <button class="talk-btn" id="talk-btn" hidden onclick="talkToggle()" title="Talk with Tello" aria-label="Talk with Tello"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
       <button id="send" onclick="ask()">Ask</button>
     </div>
     <div class="foot" id="foot">Tello is an AI and can be wrong. No medical advice.</div>
@@ -406,6 +430,7 @@ async function boot(){
   const partner=mode==='partner';
   document.body.classList.toggle('is-partner',partner);
   $('cab-partner').hidden=!partner;
+  $('talk-btn').hidden=!partner||!SpeechRec;
   $('bar-kicker').textContent=partner?'Your business partner · '+who.client:'AI assistant · '+who.client;
   $('say').placeholder='Ask Tello anything…';
   showCredits(who);
@@ -486,9 +511,19 @@ function say(text,cls,noCopy){
   const d=document.createElement('div');d.className='turn '+cls;d.textContent=text;
   // Every real answer can be copied with one tap: rewrites, translations and
   // captions are meant to be pasted somewhere else.
-  if(cls==='her'&&!noCopy&&text&&text.length>40){
-    const b=document.createElement('button');b.className='copy';b.type='button';b.textContent='Copy';
-    b.onclick=()=>copyText(text,b);d.appendChild(b);
+  // And heard: a Play button reads it aloud, for answers short enough to
+  // listen to (SPEAK_MAX). A long one is for reading, and gets none.
+  if(cls==='her'&&!noCopy&&text&&(text.length>40||text.length<=SPEAK_MAX)){
+    const row=document.createElement('div');row.className='acts';
+    if(text.length<=SPEAK_MAX){
+      const pl=document.createElement('button');pl.className='copy play';pl.type='button';pl.textContent='Play';
+      pl.setAttribute('aria-label','Play this answer aloud');pl.onclick=()=>playReply(text,pl);row.appendChild(pl);
+    }
+    if(text.length>40){
+      const b=document.createElement('button');b.className='copy';b.type='button';b.textContent='Copy';
+      b.onclick=()=>copyText(text,b);row.appendChild(b);
+    }
+    d.appendChild(row);
   }
   if(cls==='me'&&mode==='partner'&&!noCopy&&text&&!text.startsWith('[')){
     const k=document.createElement('button');k.className='keep';k.type='button';k.textContent='Remember this';
@@ -681,14 +716,16 @@ function phiCheck(text){
   return hits.length?'Please leave out '+hits.join(' and ')+'. Tello keeps what you tell her, and she should never hold anyone\'s health or identity details. Describe the person by role instead, like "a caregiver on nights".':'';
 }
 
-async function ask(text){
+async function ask(text,opts){
+  opts=opts||{};
   if(busy)return;
   const input=$('say');
   const q=(text||input.value).trim();
   const att=text?null:attachment;
   if(!q&&!att)return;
   const phi=phiCheck(q);
-  if(phi){say(phi,'her err');scrollEnd();return}
+  if(phi){say(phi,'her err');scrollEnd();return null}
+  let reply=null,longTurn=null;
   input.value='';input.style.height='auto';
   $('compose-hint').hidden=true;
   if(att){attachment=null;showAttachment()}
@@ -698,10 +735,13 @@ async function ask(text){
   busy=true;$('send').disabled=true;
   try{
     const body={message:q};
+    if(opts.spoken)body.spoken=true;
     if(att)body.attachment={media_type:att.media_type,data:att.data,name:att.name};
     const d=await api('',{method:'POST',body});
     thinking.remove();
-    say(d.reply,'her');
+    const turn=say(d.reply,'her');
+    reply=d.reply;
+    if(reply.length>SPEAK_MAX)longTurn=turn;
     if(d.noted){const n=document.createElement('div');n.className='divider';n.textContent=d.noted.ok?'Tello will remember that':'Not saved: '+(d.noted.message||'try again');$('thread').appendChild(n)}
     if(d.memory)held+=2;
     showCredits(d);
@@ -709,8 +749,11 @@ async function ask(text){
     thinking.remove();
     say(e.status===402?(e.data.message||'You\'ve used this month\'s messages.'):'Something went wrong. '+e.message,'her err');
   }finally{
-    busy=false;$('send').disabled=false;scrollEnd();
+    busy=false;$('send').disabled=false;
+    // A long answer opens at its first line, not its last.
+    if(longTurn)longTurn.scrollIntoView({block:'start'});else scrollEnd();
   }
+  return reply;
 }
 function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask()}}
 function grow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,160)+'px'}
@@ -789,19 +832,36 @@ async function voiceFetch(text){
   if(!r.ok)throw new Error(r.status===429?'Tello has read aloud enough for today. It resets tomorrow.':'The voice is not available right now.');
   return URL.createObjectURL(await r.blob());
 }
+// The brief's controls live in the Cabinet, so while she is talking (or
+// waiting for the tap an iPhone needs) a bar on the main screen says so and
+// can pause or stop her.
+let vState='idle';
 function voiceState(s){
-  $('listen').textContent=s==='playing'?'Pause':s==='loading'?'Loading…':s==='tap'?'Tap to listen':'Listen';
+  vState=s;
+  $('listen').textContent=s==='playing'?'Pause':s==='loading'?'Loading…':s==='tap'?'Tap to listen':s==='paused'?'Resume':'Listen';
   $('speaking').hidden=s!=='playing';
+  $('voice-bar').hidden=s==='idle';
+  $('vb-text').textContent=s==='playing'?'Tello is reading your brief':s==='loading'?'Tello is getting ready…':s==='tap'?'Tello has your brief ready':'Paused';
+  $('vb-btn').textContent=s==='playing'?'Pause':s==='loading'?'…':s==='tap'?'Listen':'Resume';
+  $('vb-btn').disabled=s==='loading';
 }
+// On an iPhone the first tap anywhere already starts her (armFirstTouch), so
+// the bar's own button must not toggle her straight back off.
+function vbAction(){if(talkOn){talkEnd();return}if(vState==='tap'){if(!armed&&au.paused)voicePlay();return}voiceToggle()}
 async function voicePlay(){
+  if(talkOn)return;
+  playReset();
   const text=greeting(true)+(briefKind==='weekly'?' Here’s your week.':' Here’s your brief.')+'\n'+briefText;
   try{
     if(voiceUrl&&voiceFor===text&&au.src===voiceUrl&&!au.ended&&au.currentTime>0){await au.play();voiceState('playing');return}  // resume
     if(!voiceUrl||voiceFor!==text){voiceState('loading');if(voiceUrl)URL.revokeObjectURL(voiceUrl);voiceUrl=await voiceFetch(text);voiceFor=text}
+    if(talkOn)return;
     au.src=voiceUrl;await au.play();voiceState('playing');
   }catch(e){
     if(e.name==='NotAllowedError'){voiceState('tap');armFirstTouch();return}
     voiceState('idle');$('speaking').hidden=false;$('speaking').textContent=e.message;
+    $('voice-bar').hidden=false;$('vb-text').textContent=e.message;$('vb-btn').hidden=true;
+    setTimeout(()=>{if(vState==='idle'){$('voice-bar').hidden=true;$('vb-btn').hidden=false}},6000);
   }
 }
 function armFirstTouch(){
@@ -811,11 +871,110 @@ function armFirstTouch(){
 }
 function voiceToggle(){
   if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}
-  if(!au.paused&&voiceUrl&&au.src===voiceUrl){au.pause();voiceState('idle');return}
+  if(!au.paused&&voiceUrl&&au.src===voiceUrl){au.pause();voiceState('paused');return}
   $('speaking').textContent='Tello is speaking (AI voice)';voicePlay();
 }
-function voiceStop(){try{au.pause()}catch(e){}if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}voiceState('idle')}
-au.addEventListener('ended',()=>voiceState('idle'));
+function voiceStop(){if(talkOn){talkEnd();return}try{au.pause()}catch(e){}if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}voiceState('idle')}
+au.addEventListener('ended',()=>{if(playBtn){playReset();return}if(talkOn&&talkPhase==='speaking'){talkListen();return}voiceState('idle')});
+/* ------------------------------------------------------------ play -- */
+// Longer than this is an answer to read, not to listen to: no Play button,
+// and in Talk mode it stays on the screen instead of being spoken. About
+// a minute of her voice; the voice Worker's own cap is 1,200 characters.
+const SPEAK_MAX=900;
+let playBtn=null,playUrls=new Map();
+function playReset(){if(playBtn){playBtn.textContent='Play';playBtn.classList.remove('on');playBtn=null}}
+async function playReply(text,btn){
+  if(talkOn)return;
+  if(playBtn===btn){au.pause();playReset();return}      // tap again to stop
+  playReset();voiceStop();
+  playBtn=btn;btn.textContent='Loading…';btn.classList.add('on');
+  try{
+    let url=playUrls.get(text);
+    if(!url){url=await voiceFetch(text);playUrls.set(text,url)}
+    if(playBtn!==btn)return;
+    au.src=url;au.currentTime=0;await au.play();btn.textContent='Stop';
+  }catch(e){
+    playReset();btn.textContent=e.name==='NotAllowedError'?'Tap again':'No voice';
+    setTimeout(()=>{if(playBtn!==btn)btn.textContent='Play'},3000);
+  }
+}
+
+/* ------------------------------------------------------------ talk -- */
+// Talk mode (partner only for now): tap the mic, speak, she answers in two to
+// four sentences and says it in her own voice, then listens again until you
+// end it. What you say is turned into text by the browser (on an iPhone,
+// Apple's dictation) and then goes through the same health-information check
+// as anything typed. Her reply is shown in the chat as well as spoken.
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+let talkOn=false,talkPhase='',rec=null,talkMisses=0,talkUrl=null;
+function talkBar(text,listening){
+  $('voice-bar').hidden=false;$('voice-bar').classList.toggle('listening',!!listening);
+  $('vb-text').textContent=text;$('vb-btn').hidden=false;$('vb-btn').disabled=false;$('vb-btn').textContent='End';
+}
+function talkToggle(){talkOn?talkEnd():talkStart()}
+function talkStart(){
+  if(!SpeechRec){say('This browser cannot listen. On an iPhone, open this page in Safari, or use the microphone on your keyboard.','her err',true);scrollEnd();return}
+  if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}
+  try{au.pause()}catch(e){}
+  // This tap is what lets her speak later on an iPhone: play something now.
+  unlocked=true;try{au.src=SILENT_MP3;au.play().catch(()=>{})}catch(e){}
+  playReset();
+  talkOn=true;talkMisses=0;$('talk-btn').classList.add('on');
+  talkListen();
+}
+function talkEnd(){
+  talkOn=false;talkPhase='';$('talk-btn').classList.remove('on');
+  if(rec){try{rec.abort()}catch(e){}rec=null}
+  try{au.pause()}catch(e){}
+  $('voice-bar').classList.remove('listening');voiceState('idle');
+}
+function talkListen(){
+  if(!talkOn)return;
+  talkPhase='listening';talkBar('Listening… just talk',true);
+  const r=new SpeechRec();rec=r;
+  r.lang='en-US';r.interimResults=true;r.continuous=false;r.maxAlternatives=1;
+  let heard='';
+  r.onresult=e=>{heard=Array.from(e.results).map(x=>x[0].transcript).join(' ').trim();$('say').value=heard;grow($('say'))};
+  r.onerror=e=>{
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){talkEnd();say('Tello needs the microphone. Allow it for title22.app in your browser settings, then tap the mic again.','her err',true);scrollEnd()}
+  };
+  r.onend=async()=>{
+    if(rec!==r||!talkOn)return;
+    rec=null;
+    const q=heard.trim();
+    if(!q){
+      if(++talkMisses>=2){talkEnd();talkBar('I stopped listening. Tap the mic to talk again.');$('vb-btn').hidden=true;
+        setTimeout(()=>{if(!talkOn&&vState==='idle')$('voice-bar').hidden=true;$('vb-btn').hidden=false},4000);return}
+      talkListen();return;
+    }
+    talkMisses=0;talkPhase='thinking';talkBar('Tello is thinking…');
+    const reply=await ask(q,{spoken:true});
+    if(!talkOn)return;
+    if(!reply){talkListen();return}
+    if(reply.length>SPEAK_MAX){
+      talkEnd();talkBar('That answer is long, so it is on the screen. Tap the mic when you are ready.');$('vb-btn').hidden=true;
+      setTimeout(()=>{if(!talkOn&&vState==='idle')$('voice-bar').hidden=true;$('vb-btn').hidden=false},6000);
+      return;
+    }
+    talkSpeak(reply);
+  };
+  try{r.start()}catch(e){talkEnd()}
+}
+async function talkSpeak(text){
+  talkPhase='speaking';talkBar('Tello is talking');
+  try{
+    const url=await voiceFetch(text);
+    if(!talkOn){URL.revokeObjectURL(url);return}
+    if(talkUrl)URL.revokeObjectURL(talkUrl);talkUrl=url;
+    au.src=url;await au.play();
+  }catch(e){
+    // No voice (limit reached, or the phone refused): the answer is on the
+    // screen, so keep the conversation going and say why she is quiet once.
+    talkBar(e.message||'Tello cannot speak right now.');
+    setTimeout(()=>{if(talkOn)talkListen()},2500);
+  }
+}
+
 function maybeAutoplay(kind){
   if(!voiceOn())return;
   const key='tello_spoken_'+kind+'_'+new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'});

@@ -444,6 +444,23 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   conversation, Memory, Sign out, the plan chip and the full disclaimer. A
   gold dot on the button means a brief arrived. Do not put cards, tool grids
   or links back on the main screen.
+  The one exception is `#voice-bar`, above the box: it shows only while she
+  is reading the brief aloud, paused, or waiting for the tap an iPhone needs
+  ("Tello has your brief ready · Listen"), with Pause/Resume and a stop.
+  She reads the brief once per day per brief kind (`maybeAutoplay`).
+- **Talk mode (partner only, 2026-09-28).** The mic button (`#talk-btn`,
+  `talkStart`/`talkListen`/`talkSpeak`) listens with the browser's speech
+  recognition (Apple's dictation on an iPhone, Google's in Chrome), sends the
+  words through the same PHI check as typing with `spoken:true`, and reads the
+  reply aloud in her Kokoro voice, then listens again; two silent turns end
+  it. `spoken:true` adds `SPOKEN` (2 to 4 sentences) and a `low` effort. It is
+  a style, not a mode. Customers do not get the mic: their speech would go to
+  Apple or Google before our PHI check sees it. The voice Worker's
+  `DAILY_LIMIT` went 10 → 150 for this (about 15 cents a user a day at most).
+- **Play on every answer that is short enough to hear** (`SPEAK_MAX` = 900
+  characters, `playReply`), for customers and partner alike; tap again to
+  stop. A longer answer is for reading: no Play button, and in Talk mode it
+  stays on the screen, is not spoken, and the mic stops until tapped again.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 

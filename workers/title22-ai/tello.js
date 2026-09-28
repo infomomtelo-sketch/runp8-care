@@ -14,7 +14,7 @@
 // is no button, URL or request field that turns it on. Anything uncertain
 // (table missing, read failed) answers as customer mode.
 
-import { TELLO_CORE, CUSTOMER_PAGE, PARTNER_FALLBACK, PARTNER_TOOLS, PARTNER_LAST, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
+import { TELLO_CORE, CUSTOMER_PAGE, PARTNER_FALLBACK, PARTNER_TOOLS, PARTNER_LAST, SPOKEN, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
 import { TITLE22_KNOWLEDGE } from './tello/title22-knowledge.js';
 import { TITLE22_HISTORY } from './tello/title22-history.js';
 
@@ -381,7 +381,10 @@ export async function handleTello(request, env, deps) {
         : { type: 'image', source: { type: 'base64', media_type: att.media_type, data: att.data } };
       last.content = [block, { type: 'text', text: last.content }];
     }
-    const system = await systemFor(env, founder, user.id);
+    // Talk mode: the page will read this reply aloud. Shorter, and a lighter
+    // think for the partner so the pause before she speaks is short.
+    const spoken = body.spoken === true && !att;
+    const system = (await systemFor(env, founder, user.id)) + (spoken ? '\n\n' + SPOKEN : '');
     let reply;
     try {
       ({ text: reply } = await converse(env, {
@@ -389,7 +392,7 @@ export async function handleTello(request, env, deps) {
         system, messages,
         tools: founder ? [SNAPSHOT_TOOL] : undefined,
         maxTokens: founder ? PARTNER_MAX_TOKENS : 800,
-        effort: founder ? PARTNER_EFFORT : undefined,   // Haiku 4.5 rejects effort
+        effort: founder ? (spoken ? 'low' : PARTNER_EFFORT) : undefined,   // Haiku 4.5 rejects effort
       }));
     } catch (e) {
       return json({ error: 'model_unavailable', message: 'Tello could not answer just now. Please try again in a moment.' }, 502);

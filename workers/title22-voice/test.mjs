@@ -4,7 +4,7 @@
 // provider's response; otherwise a 24 kHz float tone is generated.
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import worker, { readWav } from './index.js';
+import worker, { readWav, DAILY_LIMIT } from './index.js';
 import { prepare } from './speech.js';
 
 function toneWav({ rate = 24000, seconds = 1, amp = 0.5, float = true }) {
@@ -130,7 +130,7 @@ r = await post({ text: BRIEF });
 assert.equal(r.status, 200, await r.clone().text());
 assert.equal(r.headers.get('Content-Type'), 'audio/mpeg');
 assert.equal(r.headers.get('X-Voice-Cache'), 'miss');
-assert.equal(r.headers.get('X-Voice-Remaining'), '9');
+assert.equal(r.headers.get('X-Voice-Remaining'), String(DAILY_LIMIT - 1));
 assert.equal(lastBody.input, prepare(BRIEF));
 assert.equal(lastBody.input, "Good morning. Two staff haven't finished Fire safety, due Friday. Maria's T B test is due October third, twenty twenty-six. Title twenty-two checked your R C F E for D S S.");
 assert.equal(Object.keys(lastBody).sort().join(), 'input,model,response_format,speed,voice');
@@ -141,14 +141,15 @@ r = await post({ text: BRIEF }, 'other-token');
 assert.equal(r.headers.get('X-Voice-Cache'), 'hit'); assert.equal(providerCalls, 1);
 assert.equal(r2.has('rate/' + new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date()) + '/user-2'), false);
 
-// limit: user-1 has used 1; nine more new texts succeed, the eleventh is refused
-for (let i = 2; i <= 10; i++) { r = await post({ text: BRIEF + ' Item ' + i + '.' }); assert.equal(r.status, 200); }
+// limit: user-1 has used 1; the rest of the day's renders succeed, one more is refused
+assert.equal(DAILY_LIMIT, 150);
+for (let i = 2; i <= DAILY_LIMIT; i++) { r = await post({ text: BRIEF + ' Item ' + i + '.' }); assert.equal(r.status, 200); }
 assert.equal(r.headers.get('X-Voice-Remaining'), '0');
-r = await post({ text: BRIEF + ' Item 11.' }); assert.equal(r.status, 429);
+r = await post({ text: BRIEF + ' Item ' + (DAILY_LIMIT + 1) + '.' }); assert.equal(r.status, 429);
 const before11 = providerCalls;
 r = await post({ text: BRIEF }); assert.equal(r.status, 200); assert.equal(r.headers.get('X-Voice-Cache'), 'hit');
 assert.equal(providerCalls, before11);
-console.log('limit: 10 new renders, 11th -> 429, cached replay still plays');
+console.log('limit: ' + DAILY_LIMIT + ' new renders, one more -> 429, cached replay still plays');
 
 // provider failure -> 502 with no text in the body; counts against the day
 providerStatus = 500;
