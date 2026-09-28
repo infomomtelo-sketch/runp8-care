@@ -725,7 +725,7 @@ async function ask(text,opts){
   if(!q&&!att)return;
   const phi=phiCheck(q);
   if(phi){say(phi,'her err');scrollEnd();return null}
-  let reply=null;
+  let reply=null,longTurn=null;
   input.value='';input.style.height='auto';
   $('compose-hint').hidden=true;
   if(att){attachment=null;showAttachment()}
@@ -739,8 +739,9 @@ async function ask(text,opts){
     if(att)body.attachment={media_type:att.media_type,data:att.data,name:att.name};
     const d=await api('',{method:'POST',body});
     thinking.remove();
-    say(d.reply,'her');
+    const turn=say(d.reply,'her');
     reply=d.reply;
+    if(reply.length>SPEAK_MAX)longTurn=turn;
     if(d.noted){const n=document.createElement('div');n.className='divider';n.textContent=d.noted.ok?'Tello will remember that':'Not saved: '+(d.noted.message||'try again');$('thread').appendChild(n)}
     if(d.memory)held+=2;
     showCredits(d);
@@ -748,7 +749,9 @@ async function ask(text,opts){
     thinking.remove();
     say(e.status===402?(e.data.message||'You\'ve used this month\'s messages.'):'Something went wrong. '+e.message,'her err');
   }finally{
-    busy=false;$('send').disabled=false;scrollEnd();
+    busy=false;$('send').disabled=false;
+    // A long answer opens at its first line, not its last.
+    if(longTurn)longTurn.scrollIntoView({block:'start'});else scrollEnd();
   }
   return reply;
 }
