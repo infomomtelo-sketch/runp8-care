@@ -183,3 +183,34 @@ detectors, exit signs, fire extinguishers (these belong to the fire
 clearance), controlled substances log, MAR (x2), physician orders for all
 medications, monthly weight, self-administration assessment, food handler
 certificate, mandated reporter training.
+
+## Initial training phases, topics and medication (2026-09-30)
+
+From a training partner's new-staff orientation checklist, each rule checked
+before it was built. Source unless noted: CDSS "Reference Guide to RCFE
+Administrator, Staff, and Volunteer Training Requirements" (January 2025),
+which quotes the statute, and the current text of 22 CCR §87411.
+
+| Rule | Citation | Verified | Built as |
+|---|---|---|---|
+| Phase 1: 20 h before working with residents alone | HSC §1569.625(b)(1) | Yes | Enforced |
+| Phase 1 includes 6 h dementia | HSC §1569.626(a)(1) | Yes | Enforced |
+| Phase 1 includes 4 h postural supports / restricted conditions / hospice | HSC §1569.696(a)(1) | Yes | Enforced |
+| Phase 2: remaining 20 h within the first 4 weeks, incl. 6 h dementia | HSC §§1569.625, 1569.626 | Yes | Enforced |
+| 16 of the 40 hands-on | HSC §1569.625(b)(1) | Yes | Enforced (hands-on log) |
+| Required topics: physical limitations, personal care, infection control, residents' rights, medication policies, psychosocial, emergency response, LGBT cultural competency | HSC §1569.625(c); 22 CCR §87411(c)(3)(A)–(F); HSC §1569.695(b) | Yes (topics) | Covered / not covered |
+| First aid | 22 CCR §87411(c)(1) | Yes | Covered / on file |
+| Elder abuse reporting training within 60 days | WIC §15655(a) | Yes | Enforced (60 days) |
+| LGBT cultural competency: 1 h minimum | — | **No** | Topic only, no minimum |
+| Personal care: 3 h minimum | — | **No** | Topic only, no minimum |
+| Physical limitations: 2 h minimum | — | **No** | Topic only, no minimum |
+| Medication policies: 2 h for every home | — | **No** | Topic only, no minimum |
+| Medication, 15 or fewer: 10 h, 6 hands-on shadowing before assisting, 4 other within 2 weeks | HSC §1569.69(a) | Yes | Enforced, for staff who assist with medication |
+| Medication, 16 or more: 24 h, 16 hands-on shadowing before assisting, 8 other within 4 weeks | HSC §1569.69(a) | Yes | Enforced, for staff who assist with medication |
+| Medication course covers antipsychotics and psychotropic drugs | HSC §1569.69(a) | Yes (search of the statute text) | Stated; content not checked |
+| Medication: 8 h every year after | HSC §1569.69(b) | Yes | Stated; not yet tracked |
+
+Differences from the partner's checklist: the medication hours apply only to
+staff who assist with self-administration, not every direct care worker; the
+hands-on shadowing must come before the person assists; the non-hands-on hours
+are due within 2 weeks in a home of 15 or fewer (not 4).

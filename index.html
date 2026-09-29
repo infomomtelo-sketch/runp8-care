@@ -1265,7 +1265,15 @@
               </select>
             </div>
           </div>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:2px 0 12px;cursor:pointer"><input type="checkbox" id="tr-hands-on" style="width:16px;height:16px;accent-color:var(--teal)"/> Hands-on training (counts toward the 16 hands-on hours of the initial 40)</label>
+          <div class="form-group" id="tr-phase-wrap"><label>Initial training phase</label>
+            <select id="tr-phase">
+              <option value="">Work it out from the date</option>
+              <option value="phase1">Phase 1: before working with residents on their own</option>
+              <option value="phase2">Phase 2: the rest, within the first 4 weeks</option>
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:2px 0 8px;cursor:pointer"><input type="checkbox" id="tr-hands-on" onchange="document.getElementById('tr-supervisor-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px;accent-color:var(--teal)"/> Hands-on training (counts toward the 16 hands-on hours of the initial 40, and medication shadowing)</label>
+          <div class="form-group" id="tr-supervisor-wrap" style="display:none"><label>Confirmed by (supervisor)</label><input type="text" id="tr-supervisor" autocomplete="off" placeholder="Name of the supervisor who watched it"/></div>
           <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
           <div class="form-group"><label>Certificate (optional)</label>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -5343,6 +5351,7 @@ function openStaffModal(staffId){
   document.getElementById('staff-livescan-date').value=s?.livescan_date||'';
   document.getElementById('staff-mandated').value=s?.mandated_reporter_completed===true?'true':'false';
   document.getElementById('staff-mandated-date').value=s?.mandated_reporter_date||'';
+  document.getElementById('staff-assists-med').checked=s?.assists_with_medication===true;
   
   document.getElementById('staff-training').value=(s?.initial_training_complete===true||s?.initial_training_completed===true)?'true':'false';
   document.getElementById('staff-training-hours').value=s?.initial_training_hours||'';
@@ -5396,6 +5405,7 @@ async function saveStaff(andAddAnother){
     initial_training_completed:trainingDone,
     initial_training_hours:parseInt(document.getElementById('staff-training-hours').value)||0,
     status:isActive?'active':'inactive',
+    assists_with_medication:document.getElementById('staff-assists-med').checked,
   };
   let error;
   let savedId=currentStaffId;
@@ -5406,6 +5416,13 @@ async function saveStaff(andAddAnother){
   }else{
     const{data,error:e}=await sb.from('staff').insert(payload).select().single();
     error=e;if(!e&&data){staffList.push(data);savedId=data.id;track('record_created',{record_type:'staff',record_id:data.id});}
+  }
+  // assists_with_medication arrives with 2026-09-30_title22_training_phases.sql.
+  if(error&&/assists_with_medication/i.test((error.message||'')+(error.details||''))){
+    delete payload.assists_with_medication;
+    if(currentStaffId){const{error:e}=await sb.from('staff').update(payload).eq('id',currentStaffId);error=e;if(!e){const idx=staffList.findIndex(s=>s.id===currentStaffId);if(idx>-1)staffList[idx]={...staffList[idx],...payload};}}
+    else{const{data,error:e}=await sb.from('staff').insert(payload).select().single();error=e;if(!e&&data){staffList.push(data);savedId=data.id;}}
+    if(!error)t22Toast('Saved. "Assists with medication" needs migrations/2026-09-30_title22_training_phases.sql before it can be stored.');
   }
   if(error){err.className='error-msg show';err.textContent=error.message;return;}
 
@@ -6175,7 +6192,7 @@ async function seedLiteDemoData(opts){
       S('Daniel Reyes','caregiver',dISO(-250),{tb_test_due:dISO(-10),tb_test_expiry:dISO(-10),first_aid_cert_expiry:dISO(-45)}),
       // Working before the clearance came back, and no mandated reporter
       // training on file. This is the one an analyst opens first.
-      S('Sofia Ivanova','night_caregiver',dISO(-30),{livescan_cleared:false,livescan_date:null,mandated_reporter_completed:false,mandated_reporter_date:null,initial_training_complete:false,initial_training_completed:false,initial_training_hours:8}),
+      S('Sofia Ivanova','night_caregiver',dISO(-11),{livescan_cleared:false,livescan_date:null,mandated_reporter_completed:false,mandated_reporter_date:null,initial_training_complete:false,initial_training_completed:false,initial_training_hours:8}),
     ]).select();
     if(se)throw se;
     // Invented training hours, so the Training tab shows all three checks:
@@ -6194,15 +6211,32 @@ async function seedLiteDemoData(opts){
         tr(id('James Carter'),-100,5,'dementia'),
         tr(id('James Carter'),-60,4,'postural_hospice'),
         tr(id('James Carter'),-30,6,'residents_rights',{delivery:'self_paced'}),
+        tr(id('James Carter'),-495,6,'medication',{hands_on:true,supervisor:'Maria Lopez',topic:'Medication shadowing with the administrator'}),
+        tr(id('James Carter'),-494,4,'medication',{topic:'Medication management, including antipsychotics and psychotropic drugs'}),
         tr(id('Daniel Reyes'),-150,8,'dementia'),
         tr(id('Daniel Reyes'),-90,4,'postural_hospice'),
         tr(id('Daniel Reyes'),-40,8,'emergency'),
         tr(id('Priya Patel'),-118,16,'personal_care',{hands_on:true}),
-        tr(id('Sofia Ivanova'),-29,6,'dementia'),
-        tr(id('Sofia Ivanova'),-29,2,'postural_hospice'),
+        // Sofia, a new hire in week 2: phase 1 done, part of phase 2, hands-on
+        // partly logged, and one required topic (medication) not yet covered.
+        tr(id('Sofia Ivanova'),-12,6,'dementia',{phase:'phase1',topic:'Dementia care: the basics'}),
+        tr(id('Sofia Ivanova'),-12,4,'postural_hospice',{phase:'phase1',topic:'Postural supports, restricted health conditions and hospice'}),
+        tr(id('Sofia Ivanova'),-11,1,'lgbt_cultural',{phase:'phase1',topic:'Caring for LGBT elders'}),
+        tr(id('Sofia Ivanova'),-10,5,'personal_care',{phase:'phase1',hands_on:true,supervisor:'Maria Lopez',topic:'Bathing, dressing and transfers, with a supervisor'}),
+        tr(id('Sofia Ivanova'),-9,2,'aging',{phase:'phase1',topic:'Physical limitations and needs of the elderly'}),
+        tr(id('Sofia Ivanova'),-9,2,'residents_rights',{phase:'phase1',topic:"Residents' rights"}),
+        tr(id('Sofia Ivanova'),-4,3,'dementia',{phase:'phase2',topic:'Dementia care: behaviors and communication'}),
+        tr(id('Sofia Ivanova'),-3,2,'infection_control',{phase:'phase2',hands_on:true,supervisor:'Maria Lopez',topic:'Hand hygiene, PPE and cleaning supplies'}),
+        tr(id('Sofia Ivanova'),-2,1,'emergency',{phase:'phase2',hands_on:true,supervisor:'James Carter',topic:'Shut-off valves, fire extinguishers and exits walk-through'}),
+        tr(id('Sofia Ivanova'),-2,1,'psychosocial',{phase:'phase2',topic:'Activities and companionship'}),
       ].filter(r=>r.staff_id);
-      const{error:te}=await sb.from('staff_trainings').insert(rows);
+      let{error:te}=await sb.from('staff_trainings').insert(rows);
+      // Before 2026-09-30's migration there is no phase or supervisor column.
+      if(te&&/phase|supervisor/i.test(te.message||''))({error:te}=await sb.from('staff_trainings').insert(rows.map(r=>{const c={...r};delete c.phase;delete c.supervisor;return c;})));
       if(te)console.warn('Sample training hours not added:',te.message||te);
+      // James assists with medication: shows the medication training check.
+      const{error:me}=await sb.from('staff').update({assists_with_medication:true}).eq('facility_id',fac.id).eq('name','James Carter');
+      if(me)console.warn('Sample medication flag not set:',me.message||me);
     }
     stage='adding the incident reports';
     // No resident_id: in Lite an incident is a facility record, and the column
@@ -9814,13 +9848,23 @@ async function saveTraining(){
     hands_on:document.getElementById('tr-hands-on').checked,
     delivery:document.getElementById('tr-delivery').value||null,
     counts_toward:document.getElementById('tr-counts').value||'direct_care',
+    phase:document.getElementById('tr-phase').value||null,
+    supervisor:document.getElementById('tr-hands-on').checked?(document.getElementById('tr-supervisor').value.trim()||null):null,
   };
+  if(row.hands_on&&!row.supervisor){err.textContent='Hands-on hours need the name of the supervisor who confirmed them.';err.classList.add('show');return;}
   // .select().single() so the certificate has a training id to file against.
   let{data,error}=await sb.from('staff_trainings').insert(row).select().single();
   // The four new columns arrive with migrations/2026-09-29_title22_training_requirements.sql.
   // Until that has run they are rejected: log the hours anyway, with the old
   // category where one maps, and say what could not be stored.
-  let fieldsDropped=false;
+  let fieldsDropped=false,phaseDropped=false;
+  // phase and supervisor arrive with 2026-09-30_title22_training_phases.sql:
+  // without it, save everything else and say so.
+  if(error&&/phase|supervisor/i.test((error.message||'')+(error.details||''))){
+    const r2=Object.assign({},row);delete r2.phase;delete r2.supervisor;
+    ({data,error}=await sb.from('staff_trainings').insert(r2).select().single());
+    if(!error)phaseDropped=true;
+  }
   if(error&&/topic_area|hands_on|delivery|counts_toward/i.test((error.message||'')+(error.details||''))){
     const retry={facility_id:row.facility_id,staff_id:row.staff_id,topic:row.topic,hours:row.hours,training_date:row.training_date,notes:row.notes};
     const legacy=row.hands_on?'hands_on':({dementia:'dementia',postural_hospice:'special_care'}[topicArea]||null);
@@ -9839,6 +9883,9 @@ async function saveTraining(){
   ['tr-topic','tr-hours','tr-notes'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('tr-topic-area').value='';
   document.getElementById('tr-hands-on').checked=false;
+  document.getElementById('tr-supervisor').value='';
+  document.getElementById('tr-supervisor-wrap').style.display='none';
+  document.getElementById('tr-phase').value='';
   document.getElementById('tr-delivery').value='';
   await loadTrainings();
   if(certFailure){
@@ -9847,6 +9894,9 @@ async function saveTraining(){
   }else if(fieldsDropped){
     err.textContent='Hours logged, but the topic area, hands-on and delivery could not be saved yet. Run migrations/2026-09-29_title22_training_requirements.sql in the Supabase SQL editor.';
     err.classList.add('show');
+  }else if(phaseDropped){
+    err.textContent='Hours logged, but the phase and supervisor could not be saved yet. Run migrations/2026-09-30_title22_training_phases.sql in the Supabase SQL editor.';
+    err.classList.add('show');
   }
 }
 
@@ -9854,10 +9904,38 @@ async function saveTraining(){
 // hire date), initial training for anyone hired in the last 13 months, and
 // administrator renewal hours for administrators. Each shows its gaps, and
 // the hours per topic for the current cycle.
+// The Initial block's detail: the two phases, days left in the four weeks,
+// hands-on hours, and the required topics with no hours yet.
+function trainingInitialDetail(ini,s,firstAidOnFile){
+  if(!ini.phases)return '';
+  const R=T22T.RULES.initial,p1=ini.phases.phase1,p2=ini.phases.phase2,h=ini.hours||{};
+  const tick=ok=>ok?'<span style="color:var(--green);font-weight:600">done</span>':'<span style="color:var(--amber);font-weight:600">not yet</span>';
+  const line=(label,p,P)=>`<div style="font-size:12px;margin-top:4px"><strong>${label}</strong> ${tick(p.done)} · ${p.hours} / ${P.hours} hours · dementia ${p.dementia} / ${P.minimums.dementia}${P.minimums.postural_hospice?` · postural / restricted / hospice ${p.postural_hospice} / ${P.minimums.postural_hospice}`:''}</div>`;
+  return line('Phase 1',p1,R.phases.phase1)+line('Phase 2',p2,R.phases.phase2)
+    +`<div style="font-size:12px;margin-top:4px">Hands-on ${h.hands_on||0} / ${R.minimums.hands_on} hours · ${ini.status==='overdue'?'past the first 4 weeks':ini.days_left+' day'+(ini.days_left===1?'':'s')+' left in the first 4 weeks'} · first aid ${firstAidOnFile?'on file':'not on file'}</div>`;
+}
+// Hands-on training log for one person: the digital version of the paper form.
+function trainingHandsOnLog(s,rows,edit){
+  const hands=rows.filter(r=>r.hands_on||r.category==='hands_on').slice().sort((a,b)=>String(b.training_date).localeCompare(String(a.training_date)));
+  const total=hands.reduce((a,r)=>a+(parseFloat(r.hours)||0),0);
+  const label=k=>(T22T.TOPICS.find(t=>t.key===k)||{}).label||'';
+  const list=hands.length
+    ?`<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><tr style="text-align:left;color:var(--text2)"><th style="padding:3px 4px">Date</th><th style="padding:3px 4px">What</th><th style="padding:3px 4px">Hours</th><th style="padding:3px 4px">Confirmed by</th></tr>${hands.map(r=>`<tr style="border-top:1px solid var(--border)"><td style="padding:3px 4px">${esc(new Date(r.training_date+'T12:00:00').toLocaleDateString())}</td><td style="padding:3px 4px">${esc(r.topic||'')}${r.topic_area?`<div style="color:var(--text2)">${esc(label(r.topic_area))}</div>`:''}</td><td style="padding:3px 4px">${esc(r.hours)}</td><td style="padding:3px 4px">${r.supervisor?esc(r.supervisor):'<span style="color:var(--amber)">not recorded</span>'}</td></tr>`).join('')}</table>`
+    :`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6">No hands-on training logged yet. Examples: where the utility shut-off valves and fire extinguishers are, the first aid supplies, the cleaning supplies, assisting with ADLs under supervision, food prep, activities.</div>`;
+  const add=edit?`<button type="button" class="btn btn-outline" style="font-size:12px;padding:4px 10px;margin-top:8px" onclick="startHandsOnEntry('${esc(s.id)}')">Log hands-on training</button>`:'';
+  return `<details style="margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius)"${hands.length?'':' open'}><summary style="cursor:pointer;font-size:13px;font-weight:600">Hands-on training log · ${Math.round(total*100)/100} hours</summary>${list}${add}</details>`;
+}
+function startHandsOnEntry(staffId){
+  document.getElementById('tr-staff').value=staffId;
+  const cb=document.getElementById('tr-hands-on');cb.checked=true;
+  document.getElementById('tr-supervisor-wrap').style.display='block';
+  document.getElementById('tr-topic').focus();
+  document.getElementById('tab-training').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function trainingBlock(title,st,extra){
   const done=st.status==='complete';
   const color=done?'var(--green)':(st.status==='overdue'?'var(--red)':'var(--amber)');
-  const label={complete:'Complete',in_progress:'In progress',overdue:'Overdue',needs_hire_date:'Needs a hire date',needs_expiry:'Needs certificate expiry'}[st.status]||st.status;
+  const label={complete:'Complete',in_progress:'In progress',overdue:'Overdue',needs_hire_date:'Needs a hire date',needs_expiry:'Needs certificate expiry',needs_capacity:'Needs licensed capacity'}[st.status]||st.status;
   const gaps=(st.gaps||[]).map(g=>`<li>${esc(g)}</li>`).join('');
   const warns=(st.warnings||[]).map(w=>`<div style="color:var(--red);font-size:12px;margin-top:4px">⚠ ${esc(w)}</div>`).join('');
   return `<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius)">
@@ -9875,7 +9953,7 @@ function renderTrainings(){
   if(!list)return;
   const R=T22T.RULES;
   if(note)note.innerHTML=trainingAppliesHere()
-    ?`Checked against the RCFE requirements: <strong>${R.initial.total_hours} hours initial</strong> (${R.initial.before_independent.hours} before working on their own, the rest within 4 weeks; ${R.initial.minimums.hands_on} hands-on, ${R.initial.minimums.dementia} dementia, ${R.initial.minimums.postural_hospice} postural supports / restricted health conditions / hospice), <strong>${R.annual.total_hours} hours every year</strong> from the hire date (${R.annual.minimums.dementia} dementia, ${R.annual.minimums.postural_hospice} postural / restricted / hospice), and for administrators <strong>${R.admin_ce.total_hours} hours every 2 years</strong> (${R.admin_ce.minimums.dementia} dementia, ${R.admin_ce.minimums.laws_regs} laws and regulations, at least ${R.admin_ce.min_live_hours} live, no more than ${R.admin_ce.max_self_paced_hours} self-paced). Sources: ${esc(R.initial.citation)}; ${esc(R.admin_ce.citation)}. Requirements change — confirm yours with your licensing analyst.`
+    ?`Checked against the RCFE requirements: <strong>${R.initial.total_hours} hours initial</strong> in two phases (phase 1: ${R.initial.phases.phase1.hours} hours with ${R.initial.phases.phase1.minimums.dementia} dementia and ${R.initial.phases.phase1.minimums.postural_hospice} postural supports / restricted health conditions / hospice, before working with residents on their own; phase 2: ${R.initial.phases.phase2.hours} more with ${R.initial.phases.phase2.minimums.dementia} dementia, within 4 weeks of hire; ${R.initial.minimums.hands_on} of the 40 hands-on; every required topic covered), <strong>${R.annual.total_hours} hours every year</strong> from the hire date (${R.annual.minimums.dementia} dementia, ${R.annual.minimums.postural_hospice} postural / restricted / hospice), and for administrators <strong>${R.admin_ce.total_hours} hours every 2 years</strong> (${R.admin_ce.minimums.dementia} dementia, ${R.admin_ce.minimums.laws_regs} laws and regulations, at least ${R.admin_ce.min_live_hours} live, no more than ${R.admin_ce.max_self_paced_hours} self-paced). Sources: ${esc(R.initial.citation)}; ${esc(R.admin_ce.citation)}. Requirements change — confirm yours with your licensing analyst.`
     :'ARF-specific training requirements are not built yet, so no hours are checked against a requirement here. Your log and certificates are kept as records.';
   if(summary){
     if(!trainingStaff.length){summary.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';}
@@ -9905,11 +9983,20 @@ function renderTrainings(){
           // Hidden when the staff record already says initial training is done:
           // those hours usually predate the log.
           if(hired&&(Date.now()-hired.getTime())<396*86400000&&!s.initial_training_complete&&!s.initial_training_completed){
-            const ini=T22T.initialStatus(rows,s.hire_date,today);
-            const h=ini.hours||{};
-            blocks+=trainingBlock('Initial training',ini,`<div style="font-size:12px;margin-top:4px">${h.total||0} / ${R.initial.total_hours} hours · hands-on ${h.hands_on||0} / ${R.initial.minimums.hands_on} · dementia ${h.dementia||0} / ${R.initial.minimums.dementia} · postural / restricted / hospice ${h.postural_hospice||0} / ${R.initial.minimums.postural_hospice}</div>`);
+            const firstAidOnFile=!!(s.first_aid_cert_date||s.first_aid_cert_expiry);
+            const ini=T22T.initialStatus(rows,s.hire_date,today,{firstAidOnFile});
+            blocks+=trainingBlock('Initial training',ini,trainingInitialDetail(ini,s,firstAidOnFile));
+          }
+          const ea=T22T.elderAbuseStatus(rows,s.hire_date,today);
+          if(ea.status!=='needs_hire_date'&&(ea.status!=='complete'||hired&&(Date.now()-hired.getTime())<396*86400000))
+            blocks+=trainingBlock('Elder abuse reporting training',ea,`<div style="font-size:12px;margin-top:4px;color:var(--text2)">Within 60 days of the first day of work (${esc(R.elder_abuse.citation)}). Log it with the topic "Recognizing and reporting elder abuse".</div>`);
+          if(s.assists_with_medication){
+            const med=T22T.medicationStatus(rows,s.hire_date,currentFacility&&currentFacility.capacity,today);
+            const mh=med.hours||{};
+            blocks+=trainingBlock('Medication training (assists with self-administration)',med,med.size?`<div style="font-size:12px;margin-top:4px">Licensed for ${esc(currentFacility.capacity)}: ${med.size.total_hours} hours · hands-on shadowing ${mh.hands_on||0} / ${med.size.hands_on} (before assisting) · other ${mh.other||0} / ${med.size.other} (within ${med.size.other_within_days/7} weeks)</div><div style="font-size:11px;margin-top:4px;color:var(--text2)">The course must cover ${esc(R.medication.must_cover)}. Then ${R.medication.annual_hours} hours every year. ${esc(R.medication.citation)}.</div>`:'');
           }
         }
+        if(trainingAppliesHere()&&directCare)blocks+=trainingHandsOnLog(s,rows,edit);
         if(trainingAppliesHere()&&admins.includes(s)){
           const exp=trainingAdminExpiry(s,admins);
           const ce=T22T.adminCeStatus(rows,exp,today);
@@ -12064,6 +12151,7 @@ function renderRefNote(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group" style="grid-column:1/-1"><label>Full name</label><input type="text" id="staff-name" placeholder="e.g. Maria Lopez"/></div>
       <div class="form-group searchable-select"><label>Role</label><input type="text" id="staff-role-search" placeholder="Search or type a role..." oninput="filterRoleOptions(this.value)" onfocus="filterRoleOptions(this.value)" autocomplete="off"/><input type="hidden" id="staff-role" value="caregiver"/><div class="searchable-dropdown" id="role-options-dropdown"></div></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:-4px 0 12px;cursor:pointer"><input type="checkbox" id="staff-assists-med" style="width:16px;height:16px;accent-color:var(--teal)"/> Assists residents with their medication (adds the medication training check)</label>
       <div class="form-group"><label>Hire date</label><input type="date" id="staff-hire-date"/></div>
       <div class="form-group"><label>Phone</label><input type="text" id="staff-phone" placeholder="(559) 555-0100"/></div>
       <div class="form-group"><label>Status</label><select id="staff-active"><option value="true">Active</option><option value="false">Inactive / Terminated</option></select></div>
