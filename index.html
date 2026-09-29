@@ -9840,6 +9840,9 @@ async function saveTraining(){
   if(!topic){err.textContent='Please enter the course or session.';err.classList.add('show');return;}
   if(!topicArea){err.textContent='Please choose a topic area. It is how the dementia and other minimums are counted.';err.classList.add('show');return;}
   if(!hours||hours<=0){err.textContent='Please enter hours.';err.classList.add('show');return;}
+  // Free text leaves the page: refuse identifiers here as in incidents and notes.
+  const trPhi=t22PhiBlock([['Course or session',topic],['Notes',document.getElementById('tr-notes').value],['Confirmed by',document.getElementById('tr-supervisor').value]]);
+  if(trPhi){err.textContent=trPhi;err.classList.add('show');return;}
   const row={
     facility_id:currentFacility.id,staff_id:staffId,topic,hours,
     training_date:document.getElementById('tr-date').value||new Date().toISOString().slice(0,10),
