@@ -708,6 +708,9 @@
       <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
     </div>
     <p class="hero-note">30 days free · No credit card · Nothing to cancel</p>
+    <!-- For whoever is not ready to make an account (the owner, 2026-09-29):
+         /tello talks to visitors with no sign-up (guestStart in tello.html). -->
+    <p class="hero-note" style="margin-top:6px">Not sure yet? <a href="/tello?src=app-landing" style="color:var(--teal);font-weight:600">Ask Tello a question</a> — no account needed.</p>
     <p class="ref-note" id="ref-note-landing" style="display:none"></p>
   </div>
   <div class="features" style="margin-top:40px">
@@ -783,6 +786,7 @@
       </form>
       <div class="auth-switch" id="signup-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('signup')">Send it again</a></div>
       <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>
+      <div class="auth-switch" style="margin-top:8px">Not sure yet? <a href="/tello?src=app-signup">Ask Tello first</a> — no account needed.</div>
     </div>
   </div>
 </div>
