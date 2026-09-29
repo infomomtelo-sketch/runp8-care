@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Talk to Charrise · Title22</title>
 <meta name="description" content="Talk to Charrise, the AI assistant for Title22. Ask anything about Title22 in your own words and language, by typing or talking, and send Eli a note when you want him to follow up."/>
-<meta name="theme-color" content="#123a30"/>
+<meta name="theme-color" content="#ffffff"/>
 <link rel="icon" href="/tello-favicon.svg"/>
 <link rel="apple-touch-icon" href="/tello-apple-touch-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -21,61 +21,63 @@
   Server side: workers/title22-ai/assistant.js. Leads: Tello's Cabinet.
 -->
 <style>
-:root{--cream:#f9f5ed;--cream2:#f2ecdf;--green:#123a30;--green2:#1d5c4d;--gold:#e8a23d;--gold-soft:rgba(232,162,61,.16);
-  --ink:#1d2b26;--muted:rgba(18,58,48,.64);--line:#e4dccb;--white:#fff;--bad:#8a2b2b;--bad-bg:#fbeaea;--r:14px}
+:root{--bg:#ffffff;--soft:#f6f8f7;--line:#e7ecea;--ink:#1c2723;--muted:#6b7a74;--green:#1d5c4d;--green-soft:#e9f2ef;--gold:#e8a23d;--bad:#9b3b3b;--bad-bg:#fbf1f1;--r:18px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var(--cream);color:var(--ink);line-height:1.6;font-size:16px;-webkit-text-size-adjust:100%;display:flex;flex-direction:column}
+body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;font-size:15.5px;-webkit-text-size-adjust:100%;display:flex;flex-direction:column}
 button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
-.bar{background:var(--green);color:var(--cream);border-bottom:2px solid var(--gold);flex:none}
-.bar-in{max-width:780px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
-.mark{flex:none;width:34px;height:34px;border-radius:50%;background:var(--green2);color:var(--cream);display:grid;place-items:center;font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:18px;box-shadow:0 0 0 2px var(--gold)}
+.bar{background:var(--bg);border-bottom:1px solid var(--line);flex:none}
+.bar-in{max-width:720px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:11px}
+.mark{flex:none;width:36px;height:36px;border-radius:50%;background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:18px;position:relative}
+.bar .mark::after{content:"";position:absolute;right:0;bottom:1px;width:9px;height:9px;border-radius:50%;background:#3aa76d;border:2px solid var(--bg)}
 .who{display:flex;flex-direction:column;min-width:0;flex:1}
-.who b{font-family:'Zilla Slab',Georgia,serif;font-size:21px;line-height:1.05}
-.who small{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(249,245,237,.7)}
-#lang{background:rgba(249,245,237,.1);color:var(--cream);border:1px solid rgba(249,245,237,.35);border-radius:16px;padding:5px 8px;font-size:13px;max-width:128px}
-#lang option{color:#000}
-.wrap{flex:1;display:flex;flex-direction:column;width:100%;max-width:780px;margin:0 auto;padding:0 16px;min-height:0}
-#scroll{flex:1;overflow-y:auto;padding:16px 0 8px;-webkit-overflow-scrolling:touch}
-#thread{display:flex;flex-direction:column;gap:12px}
-.turn{max-width:86%;padding:11px 15px;border-radius:16px;font-size:15px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
-.turn.me{align-self:flex-end;background:var(--green);color:var(--cream);border-bottom-right-radius:5px}
-.turn.her{align-self:flex-start;background:var(--white);border:1px solid var(--line);border-bottom-left-radius:5px}
-.turn.err{background:var(--bad-bg);border-color:#e8a0a0;color:var(--bad)}
+.who b{font-size:16px;font-weight:600;line-height:1.2}
+.who small{font-size:12.5px;color:var(--muted)}
+#lang{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:13px;max-width:118px}
+.wrap{flex:1;display:flex;flex-direction:column;width:100%;max-width:720px;margin:0 auto;padding:0 16px;min-height:0}
+#scroll{flex:1;overflow-y:auto;padding:20px 0 8px;-webkit-overflow-scrolling:touch}
+#thread{display:flex;flex-direction:column;gap:10px}
+.turn{max-width:82%;padding:10px 14px;border-radius:var(--r);font-size:15px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.turn.me{align-self:flex-end;background:var(--green);color:#fff;border-bottom-right-radius:6px}
+.turn.her{align-self:flex-start;background:var(--soft);border-bottom-left-radius:6px}
+.turn.err{background:var(--bad-bg);color:var(--bad)}
 .turn.thinking{color:var(--muted)}
-.play{display:block;margin:6px 0 0 auto;font-size:12px;padding:3px 11px;border-radius:14px;border:1px solid var(--line);background:var(--cream);color:var(--green);font-weight:500}
-.play.on{background:var(--green);color:var(--cream);border-color:var(--green)}
-.send-eli{align-self:center;margin:6px 0 2px;border:none;border-radius:20px;padding:9px 18px;background:var(--gold);color:var(--green);font-weight:700;font-size:14px}
-.voice-bar{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px;border-radius:14px;background:var(--green);color:var(--cream);font-size:13.5px}
-.voice-bar .mark{width:26px;height:26px;font-size:14px;animation:pulse 1.6s ease-in-out infinite}
-@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(232,162,61,0)}}
+.play{display:block;margin:4px 0 0;font-size:12px;padding:0;border:none;background:none;color:var(--green);font-weight:600}
+.play.on{color:var(--gold)}
+.send-eli{align-self:flex-start;margin:4px 0 2px;border:1px solid var(--line);border-radius:20px;padding:7px 14px;background:var(--bg);color:var(--green);font-weight:600;font-size:13.5px}
+.send-eli:hover{border-color:var(--green)}
+.voice-bar{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;border-radius:14px;background:var(--green-soft);color:var(--green);font-size:13.5px}
+.voice-bar .mark{width:24px;height:24px;font-size:13px;background:#fff;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(29,92,77,0)}0%{box-shadow:0 0 0 0 rgba(29,92,77,.25)}}
 .voice-bar span{flex:1}
-.voice-bar button{border:none;border-radius:16px;padding:5px 13px;background:var(--gold);color:var(--green);font-weight:600;font-size:13px}
-.composer{flex:none;display:flex;gap:8px;padding:10px 0 calc(8px + env(safe-area-inset-bottom))}
-#say{flex:1;min-width:0;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);outline:none;resize:none;line-height:1.5;max-height:140px}
-#say::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gold-soft)}
-.icon-btn{flex:none;width:46px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);color:var(--green);display:flex;align-items:center;justify-content:center}
-.icon-btn.on{background:var(--gold);border-color:var(--gold)}
-#send{flex:none;padding:0 18px;border:none;border-radius:var(--r);background:var(--green);color:var(--cream);font-weight:600}
-#send[disabled]{opacity:.5}
+.voice-bar button{border:none;border-radius:14px;padding:5px 12px;background:var(--green);color:#fff;font-weight:600;font-size:12.5px}
+.composer{flex:none;display:flex;align-items:flex-end;gap:6px;margin:8px 0 calc(8px + env(safe-area-inset-bottom));padding:6px;border:1px solid var(--line);border-radius:24px;background:var(--bg);box-shadow:0 2px 10px rgba(20,40,34,.06)}
+.composer:focus-within{border-color:#b9cfc8}
+#say{flex:1;min-width:0;padding:8px 10px;border:none;background:transparent;outline:none;resize:none;line-height:1.5;max-height:140px}
+#say::placeholder{color:#9aa7a2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{flex:none;width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.icon-btn:hover{background:var(--soft);color:var(--green)}
+.icon-btn.on{background:var(--green-soft);color:var(--green)}
+#send{flex:none;width:38px;height:38px;border-radius:50%;border:none;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center}
+#send[disabled]{opacity:.45}
 .foot{flex:none;font-size:11.5px;color:var(--muted);text-align:center;padding:0 16px calc(10px + env(safe-area-inset-bottom));line-height:1.6}
-.foot button{border:none;background:none;color:var(--green);text-decoration:underline;font-size:11.5px;padding:0}
-.sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
+.foot button{border:none;background:none;color:var(--muted);text-decoration:underline;font-size:11.5px;padding:0}
+.sheet{display:none;position:fixed;inset:0;background:rgba(20,30,27,.35);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
-.sheet-in{background:var(--cream);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:20px 16px calc(22px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
-.sheet-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.sheet-top b{font-family:'Zilla Slab',Georgia,serif;font-size:21px;color:var(--green)}
+.sheet-in{background:var(--bg);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+.sheet-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sheet-top b{font-size:18px;font-weight:600}
 .sheet-top button{border:none;background:none;color:var(--muted);font-size:14px}
-.sheet p{font-size:13.5px;color:var(--muted);margin-bottom:10px}
-.sheet label{display:block;font-size:12.5px;font-weight:600;color:var(--green);margin:8px 0 4px}
-.sheet input,.sheet textarea{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--white);outline:none}
-.sheet textarea{min-height:80px;resize:vertical}
-.btn{width:100%;margin-top:14px;padding:13px;border:none;border-radius:var(--r);background:var(--green);color:var(--cream);font-weight:600}
+.sheet p{font-size:13.5px;color:var(--muted);margin-bottom:8px}
+.sheet label{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin:10px 0 4px}
+.sheet input,.sheet textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--bg);outline:none}
+.sheet input:focus,.sheet textarea:focus{border-color:#b9cfc8}
+.sheet textarea{min-height:76px;resize:vertical}
+.btn{width:100%;margin-top:16px;padding:12px;border:none;border-radius:12px;background:var(--green);color:#fff;font-weight:600}
 .btn[disabled]{opacity:.55}
-.msg{font-size:13px;margin-top:10px}
+.msg{font-size:13px;margin-top:10px;color:var(--green)}
 .msg.bad{color:var(--bad)}
 @media(prefers-reduced-motion:reduce){.voice-bar .mark{animation:none}}
 </style>
@@ -84,7 +86,7 @@ button{cursor:pointer}
 
 <div class="bar"><div class="bar-in">
   <span class="mark" aria-hidden="true">C</span>
-  <div class="who"><b>Charrise</b><small>AI assistant for Eli · Title22</small></div>
+  <div class="who"><b>Charrise</b><small>AI assistant · Title22</small></div>
   <select id="lang" aria-label="Language for talking" onchange="setLang(this.value)"></select>
 </div></div>
 
@@ -92,13 +94,12 @@ button{cursor:pointer}
   <div id="scroll"><div id="thread"></div></div>
   <div class="voice-bar" id="vbar" hidden><span class="mark" aria-hidden="true">C</span><span id="vtext">Listening</span><button type="button" onclick="talkEnd()">End</button></div>
   <div class="composer">
-    <textarea id="say" rows="1" placeholder="Ask Charrise anything…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="grow(this)" aria-label="Your message"></textarea>
+    <textarea id="say" rows="1" placeholder="Message Charrise" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="grow(this)" aria-label="Your message"></textarea>
     <button class="icon-btn" id="mic" type="button" onclick="talkToggle()" title="Talk" aria-label="Talk to Charrise"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
-    <button id="send" type="button" onclick="ask()">Ask</button>
+    <button id="send" type="button" onclick="ask()" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
   </div>
 </div>
-<div class="foot">Charrise is an AI and can be wrong. Please leave out anyone's health information.<br/>
-  Powered by Tello · <button type="button" onclick="openLead('wants-own')">Want an assistant like Charrise for your business?</button></div>
+<div class="foot">AI, can be wrong · No health information, please · Powered by Tello · <button type="button" onclick="openLead('wants-own')">Get your own assistant</button></div>
 
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeLead()">
   <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="lead-title">
@@ -130,7 +131,7 @@ LANGS.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.tex
   const nav=(navigator.language||'en-US');const m=LANGS.find(l=>l[0]===saved)||LANGS.find(l=>l[0].slice(0,2)===nav.slice(0,2))||LANGS[0];lang=m[0];$('lang').value=lang})();
 function setLang(v){lang=v;try{localStorage.setItem('charrise_lang',v)}catch(e){}}
 
-const GREETING="Hi, I'm Charrise, an AI assistant for Eli at Title22. Ask me anything about Title22, in your own words and your own language. Type, or tap the microphone to talk. When you'd like Eli to follow up, tap Send to Eli.";
+const GREETING="Hi, I'm Charrise, Eli's AI assistant at Title22. Ask me anything, in any language. Type or tap the mic.";
 function turn(text,cls,withPlay){
   const d=document.createElement('div');d.className='turn '+cls;d.textContent=text;
   if(withPlay&&canSpeak()){const b=document.createElement('button');b.type='button';b.className='play';b.textContent='Play';b.onclick=()=>playOne(text,b);d.appendChild(b)}
