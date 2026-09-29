@@ -163,6 +163,10 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 /* ---- cabinet: everything that is not the conversation ---- */
 .cab-btn{position:relative;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:20px;border:1px solid rgba(249,245,237,.35);background:rgba(249,245,237,.08);color:var(--cream);font-size:13.5px;font-weight:600}
 .cab-btn:hover{background:rgba(249,245,237,.16)}
+/* The one other control in the bar (2026-09-29, the owner: New conversation
+   was hidden in the Cabinet). Icon only on a narrow phone. */
+.new-btn{padding:7px 11px}
+@media(max-width:380px){.new-btn span{display:none}}
 .cab-btn .dot{position:absolute;top:3px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--gold)}
 .cab{position:fixed;inset:0;z-index:15;background:rgba(18,32,27,.45);display:flex;justify-content:flex-end;visibility:hidden;opacity:0;transition:opacity .2s,visibility 0s .2s}
 .cab.open{visibility:visible;opacity:1;transition:opacity .2s}
@@ -264,6 +268,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
   <span class="t-mark"></span>
   <div class="who"><span class="name">Tello</span><span class="kicker" id="bar-kicker">AI assistant</span></div>
   <span class="spacer"></span>
+  <button class="cab-btn new-btn" id="new-btn" hidden onclick="newConversation()" aria-label="New conversation" title="New conversation"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>New</span></button>
   <button class="cab-btn" id="cab-btn" hidden onclick="openCabinet()" aria-haspopup="dialog" aria-controls="cabinet" aria-label="Open the cabinet: tools, memory and settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 6h4M10 12h4M10 18h4"/></svg><span>Cabinet</span><i class="dot" id="cab-dot" hidden></i></button>
 </div></div>
 
@@ -488,7 +493,7 @@ async function api(path,opts={}){
 async function boot(){
   const signedIn=!!me;
   if(!signedIn){closeCabinet();$('credits').hidden=true;$('cab-partner').hidden=true;guestStart();return}
-  $('gate').hidden=true; $('chat').hidden=false; $('cab-btn').hidden=false;
+  $('gate').hidden=true; $('chat').hidden=false; $('cab-btn').hidden=false; $('new-btn').hidden=false;
   ['fresh','mem','out','attach-btn'].forEach(id=>$(id).hidden=false);
   ['guest-in','guest-send'].forEach(id=>$(id).hidden=true);
   $('thread').innerHTML='';
@@ -545,6 +550,8 @@ function greet(){
 }
 async function newConversation(){
   if(busy)return;
+  if(mode==='guest'){guestChat=[];guestSave();guestStart();return}
+  if(typeof talkOn!=='undefined'&&talkOn)talkEnd();
   try{await api('/new',{method:'POST'})}catch(e){}
   $('thread').innerHTML='';divider();greet();
 }
@@ -1202,7 +1209,7 @@ try{guestChat=JSON.parse(sessionStorage.getItem('tello_guest')||'[]')}catch(e){g
 function guestSave(){try{sessionStorage.setItem('tello_guest',JSON.stringify(guestChat.slice(-40)))}catch(e){}}
 function guestStart(){
   mode='guest';document.body.classList.remove('is-partner');
-  $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;
+  $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;$('new-btn').hidden=false;
   ['fresh','mem','out','attach-btn','talk-btn'].forEach(id=>$(id).hidden=true);
   ['guest-in','guest-send'].forEach(id=>$(id).hidden=false);
   ['drawer-mkt','drawer-ptn','drawer-leads'].forEach(id=>$(id).hidden=true);
@@ -1221,7 +1228,7 @@ async function guestAsk(q){
   guestChat.push({role:'assistant',content:d.reply});guestSave();
   return{reply:d.reply};
 }
-function showGate(){$('chat').hidden=true;$('gate').hidden=false;$('gate-back').hidden=!!me;window.scrollTo(0,0)}
+function showGate(){$('new-btn').hidden=true;$('chat').hidden=true;$('gate').hidden=false;$('gate-back').hidden=!!me;window.scrollTo(0,0)}
 function backToGuest(){if(!me)guestStart()}
 function openLead(){$('l-out').textContent='';$('l-out').className='msg';$('l-send').disabled=false;$('l-send').textContent='Send';$('lead').classList.add('open');setTimeout(()=>$('l-name').focus(),50)}
 function closeLead(){$('lead').classList.remove('open')}

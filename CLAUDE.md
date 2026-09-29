@@ -444,7 +444,9 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   conversation, Memory, Sign out, the plan chip and the full disclaimer. A
   gold dot on the button means a brief arrived. Do not put cards, tool grids
   or links back on the main screen.
-  The one exception is `#voice-bar`, above the box: it shows only while she
+  Two exceptions. `#new-btn`, New conversation, in the bar beside the
+  Cabinet (2026-09-29: the owner could not find it in the drawer); for a
+  guest it clears the tab's chat. And `#voice-bar`, above the box: it shows only while she
   is reading the brief aloud, paused, or waiting for the tap an iPhone needs
   ("Tello has your brief ready · Listen"), with Pause/Resume and a stop.
   She reads the brief once per day per brief kind (`maybeAutoplay`).
