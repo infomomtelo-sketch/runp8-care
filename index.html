@@ -10533,7 +10533,7 @@ async function onScanFile(input){
   const form=SCAN_FIELD_MAP[formType];
   if(!form)return;
 
-  showScanBusy(SCAN_DOC_FIELDS[scanState.forceDocType]?.label||form.title);
+  showScanBusy(SCAN_DOC_FIELDS[scanState.forceDocType]?.label||form.title.toLowerCase());
   try{
     // Two shapes come through here. A photo gets downscaled and re-encoded so
     // the upload stays small and the crops line up with what the model saw. A
@@ -10717,7 +10717,7 @@ function closeScanModal(){
 }
 
 function showScanBusy(title){
-  document.getElementById('scan-modal-title').textContent='Reading '+title.toLowerCase();
+  document.getElementById('scan-modal-title').textContent='Reading '+title;
   document.getElementById('scan-modal-footer').style.display='none';
   document.getElementById('scan-modal-body').innerHTML=
     '<div class="empty">Reading the page…<br/><span style="font-size:12px">This uses one AI call from your monthly allowance.</span></div>';
