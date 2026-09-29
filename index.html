@@ -1260,7 +1260,7 @@
             <div class="form-group"><label>How it was taught</label>
               <select id="tr-delivery">
                 <option value="">Not recorded</option>
-                <option value="live">Live: in person or live-stream</option>
+                <option value="live">Live (in person or live-stream)</option>
                 <option value="self_paced">Self-paced</option>
               </select>
             </div>
@@ -6207,7 +6207,7 @@ async function seedLiteDemoData(opts){
       const rows=[
         tr(id('Maria Lopez'),-400,8,'dementia',{counts_toward:'admin_ce'}),
         tr(id('Maria Lopez'),-300,4,'laws_regs',{counts_toward:'admin_ce'}),
-        tr(id('Maria Lopez'),-200,24,'other',{counts_toward:'admin_ce',delivery:'self_paced',topic:'Online CE bundle'}),
+        tr(id('Maria Lopez'),-200,24,'other',{counts_toward:'admin_ce',delivery:'self_paced',topic:'Self-paced CE modules'}),
         tr(id('James Carter'),-100,5,'dementia'),
         tr(id('James Carter'),-60,4,'postural_hospice'),
         tr(id('James Carter'),-30,6,'residents_rights',{delivery:'self_paced'}),
@@ -10005,7 +10005,7 @@ function renderTrainings(){
           const ce=T22T.adminCeStatus(rows,exp,today);
           const hh=ce.hours||{};
           const expInput=edit?`<div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">Certificate expires <input type="date" value="${esc(exp||'')}" onchange="saveAdminCertExpiry('${esc(s.id)}',this.value)" style="padding:3px 6px;font-size:12px"/></div>`:'';
-          blocks+=trainingBlock('Administrator certificate renewal',ce,(ce.hours?`<div style="font-size:12px;margin-top:4px">${hh.counted} / ${R.admin_ce.total_hours} countable hours · live ${hh.live} / ${R.admin_ce.min_live_hours} · self-paced ${hh.self_paced} (up to ${R.admin_ce.max_self_paced_hours} count) · dementia ${hh.dementia} / ${R.admin_ce.minimums.dementia} · laws and regulations ${hh.laws_regs} / ${R.admin_ce.minimums.laws_regs}</div>`:'')+expInput);
+          blocks+=trainingBlock('Administrator certificate renewal',ce,(ce.hours?`<div style="font-size:12px;margin-top:4px">${hh.counted} / ${R.admin_ce.total_hours} countable hours · Live (in person or live-stream) ${hh.live} / ${R.admin_ce.min_live_hours} · Self-paced ${hh.self_paced} (up to ${R.admin_ce.max_self_paced_hours} count) · dementia ${hh.dementia} / ${R.admin_ce.minimums.dementia} · laws and regulations ${hh.laws_regs} / ${R.admin_ce.minimums.laws_regs}</div>`:'')+expInput);
         }
         if(!trainingAppliesHere()){
           const byTopic=T22T.hoursByTopic(rows);
@@ -10039,7 +10039,7 @@ function renderTrainings(){
         : '');
     return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-weight:600;font-size:13px">${t.topic.replace(/</g,'&lt;')}${(()=>{const e=T22T.normalise(t);const tags=[e.topic?trainingTopicLabel(e.topic):'No topic recorded',e.hands_on?'Hands-on':'',e.delivery==='live'?'Live':e.delivery==='self_paced'?'Self-paced':'',e.counts_toward==='admin_ce'?'Administrator renewal':''].filter(Boolean);return `<div style="font-weight:400;font-size:11px;color:var(--text2);margin-top:2px">${tags.map(esc).join(' · ')}</div>`;})()}</div>
+        <div style="font-weight:600;font-size:13px">${t.topic.replace(/</g,'&lt;')}${(()=>{const e=T22T.normalise(t);const tags=[e.topic?trainingTopicLabel(e.topic):'No topic recorded',e.hands_on?'Hands-on':'',e.delivery==='live'?'Live (in person or live-stream)':e.delivery==='self_paced'?'Self-paced':'',e.counts_toward==='admin_ce'?'Administrator renewal':''].filter(Boolean);return `<div style="font-weight:400;font-size:11px;color:var(--text2);margin-top:2px">${tags.map(esc).join(' · ')}</div>`;})()}</div>
         <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--text2)">${t.hours} hr</span>${del}</div>
       </div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">${sName} · ${new Date(t.training_date+'T00:00:00').toLocaleDateString()}${t.notes?' · '+t.notes.replace(/</g,'&lt;'):''}</div>
