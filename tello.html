@@ -324,9 +324,13 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <span class="spacer"></span>
       <button class="linkbtn dark" onclick="closeCabinet()">Close</button>
     </div>
+    <details class="drawer">
+      <summary><span class="kicker">Tap one</span><span class="slab">What Tello can do</span></summary>
+      <div class="drawer-body tools" id="cab-tools"></div>
+    </details>
     <div id="cab-partner" hidden>
       <div class="setup" id="setup-note" hidden></div>
-      <details class="drawer" id="drawer-brief" open>
+      <details class="drawer" id="drawer-brief">
         <summary><span class="kicker" id="brief-kicker">Tello · today</span><span class="slab" id="brief-title">Three things for today</span></summary>
         <div class="drawer-body">
           <div id="brief-text" class="loading">Reading the numbers…</div>
@@ -348,10 +352,6 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
         </div>
       </details>
     </div>
-    <details class="drawer">
-      <summary><span class="kicker">Tap one</span><span class="slab">What Tello can do</span></summary>
-      <div class="drawer-body tools" id="cab-tools"></div>
-    </details>
     <details class="drawer" id="drawer-leads" hidden>
       <summary><span class="kicker">Send to Title22</span><span class="slab">Leads</span></summary>
       <div class="drawer-body" id="leads"></div>

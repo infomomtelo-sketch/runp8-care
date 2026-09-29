@@ -85,15 +85,17 @@ When the answer truly needs length (steps to follow, a draft they will copy, a l
 export const PARTNER_LAST = `HOW TO END A REPLY
 Answer, then stop. Do not end by handing the question back to the owner. At most one question, only when you cannot answer without it, and after your best answer. This overrides anything above.`;
 
+// Short on purpose (2026-09-29, the owner: "make it shorter"). It is read on
+// a phone and read aloud; a paragraph per point was too much.
 export const BRIEF_TODAY = `Write today's brief for the owner, from the numbers below.
-Start with anything that changed since the previous numbers (if there are previous numbers): a new signup, a trial ending, a payment that failed. Then the three things that would move revenue or users TODAY, numbered 1 to 3, each one line, each something they can actually do today.
-Under 120 words. Plain text, no markdown. Do not invent anything the numbers do not show. Do not greet them; the page already does.`;
+At most three lines, one short sentence each, numbered 1 to 3: what changed since the previous numbers if anything did (a signup, a trial ending, a failed payment), then the most useful things to do today.
+Under 60 words in all. Plain text, no markdown, no greeting, no questions. Never invent anything the numbers do not show.`;
 
 export const BRIEF_WEEKLY = `Write this week's Monday review for the owner, from the numbers below.
-Cover, briefly and in this order:
-1. Signups, active trials, trials ending this week, paying accounts and the MRR estimate (say it is list price, not Stripe).
-2. Partner signups by code.
-3. Outreach: you have no data for it. Ask for the numbers sent, replies and follow-ups due, in one line.
-4. Where new accounts are stalling (the funnel), and the one customer-success move that would help most.
-5. One decision to make this week, and one thing to stop.
-If there are last week's numbers, say what moved. Under 220 words. Plain text, no markdown. Never invent a number. Do not greet them; the page already does.`;
+At most five lines, one short sentence each, numbered 1 to 5:
+1. Signups this week, paying accounts, and the MRR estimate (say "list price").
+2. Partner codes, only if any moved.
+3. Where new accounts are stalling.
+4. The one move that matters most this week.
+5. One thing to stop.
+If there are last week's numbers, fold what moved into line 1. Under 90 words in all. Plain text, no markdown, no greeting, no questions. Never invent a number.`;
