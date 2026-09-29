@@ -456,6 +456,30 @@ compliance answer about one home is wrong for another. The input goes through
 `t22PhiBlock` like the Tello tab's — those two boxes are the only free text
 that leaves the database.
 
+### Tello's setup guide in the dock (2026-09-29)
+
+The owner: "Tello should be visible when a user subscribes, helping them start
+setting up the home". On a real (non-sample) home with setup left, the dock
+opens BY ITSELF once per home per browser (`maybeOpenTelloGuide`, from
+`initFacility`), after the first-visit menu has closed and with no form open.
+It shows three steps, ticked from what is actually recorded
+(`telloGuideSteps`):
+1. **Staff:** `staffList` has a row.
+2. **Staff certificates:** a document filed against a staff member. This
+   step names Scan to fill and links to the 1-minute video.
+3. **The home's own documents:** a document filed against no one.
+
+While steps are left and the dock is closed, a "Let's set up your home. N
+steps left" bubble (`#td-nudge`) sits beside Tello's button. "Hide these
+steps" turns it off for that home.
+
+- Written in the page: no AI call and nothing sent.
+- Not shown on the practice home or in the sandbox.
+- Like everything Tello says, it describes what the app does, never what DSS
+  requires.
+- `renderStaff` and `renderDocuments` call `telloGuideRefresh`, so the ticks
+  follow the data as it loads.
+
 ## Tello's own page and partner mode (2026-09-27)
 
 title22.app/tello (`tello.html`) talks to `/api/tello/*` on `title22-ai`
