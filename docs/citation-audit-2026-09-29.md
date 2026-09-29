@@ -143,3 +143,43 @@ that were.
 
 Not changed: "RCFE / ARF course instructors" in the site's navigation, which
 describes who can be a partner, not what the app does.
+
+## Second pass: the rest of the checklist (`2026-09-29b` migration)
+
+Step 7 of the first migration printed every checklist item still carrying a
+citation. Each was checked against the current regulations. 96 cited items
+became 57.
+
+Merged into the correct item (each home keeps one task; a tick on either copy
+is kept):
+
+| Merged | Into | Why |
+|---|---|---|
+| 16-hour initial / 8-hour annual caregiver training (4 items) | Items B and C | The law is 40 and 20 (HSC §§1569.625, 1569.626) |
+| Annual TB Test (x2), TB Test on Hire (x2), Staff Health Screening on Hire | Health screening incl. TB, §87411(f) | One screening at hire; no annual TB rule; §87411(b) is minimum age |
+| CPR (x2), First Aid (x2) cited §87411(d) | The corrected CPR and First Aid items | §87411(d) is a list of training topics |
+| LiveScan (x2) | Criminal record clearance, §87355; §87411(g) | Duplicates |
+| Fire Safety Inspection (x2) | Fire clearance, §87202 | Duplicates |
+| Disaster plan posted, plan reviewed | Emergency disaster plan, §87212(a), (c) | §87211 is incident reporting; §87303 is maintenance |
+| RCFE License Posted (§87309) | License posted, §87113 | §87309 is storage of poisons; §87207 is False Claims |
+| Resident Rights Posted (§87572) | Rights posted, §87468(c) | §87572 does not exist |
+| Physician Report (LIC 602) (x2), Annual Physical | LIC 602A item, §87458 | RCFE uses the 602A; no annual physical rule |
+| Pre-Admission Appraisal (LIC 601), ISP Completed | Pre-admission appraisal (LIC 603A), §87457 | The LIC 601 is identification; "ISP" is not an RCFE term |
+| ISP / ISP Annual Review (x3) | Reappraisal, §87463 | As above |
+| Expired meds (x2), stored (x2), physician orders | The §87465 items | Duplicates; §87465(d)/(e)/(c) were the wrong subsections |
+
+Citations corrected: administrator certificate §87405(a); renewal filed
+§87407; hot water §87303(e)(2) (105–120°F); hazardous materials §87309(a);
+bedrooms §87307(a)(2) (§87304 does not exist); telephone §87311; menus
+§87555(b)(6) (homes of 16+); kitchen §87555(b); first aid kit §87465(a)(8);
+labels §87465(h)(4); storage §87465(h); disposal §87465(i); PRN order
+§87465(e); advance directive information §87468.2 (§87585 does not exist);
+"evacuation drills 2x/year" (§87218 is Theft and Loss) became staff training
+on the plan at hire and yearly, HSC §1569.695(b).
+
+Citations removed, because no section in Chapter 8 says it: administrator
+certificate posted, DSS inspection log, liability insurance, smoke and CO
+detectors, exit signs, fire extinguishers (these belong to the fire
+clearance), controlled substances log, MAR (x2), physician orders for all
+medications, monthly weight, self-administration assessment, food handler
+certificate, mandated reporter training.
