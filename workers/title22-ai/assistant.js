@@ -31,6 +31,16 @@ export const ASSISTANTS = {
     whoRunsIt: 'Title22 is a small, independent business in California.',
     knowledge: TITLE22_KNOWLEDGE,
   },
+  // Tello for visitors who have not signed in on title22.app/tello
+  // (2026-09-29, the owner: no sign-up pressure). Same rules and limits as
+  // Charrise; signing in is what gives her memory and the full Tello.
+  tello: {
+    name: 'Tello',
+    business: 'Title22',
+    speaksFor: 'Title22',
+    whoRunsIt: 'Title22 is a small, independent business in California.',
+    knowledge: TITLE22_KNOWLEDGE,
+  },
 };
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -51,7 +61,7 @@ LANGUAGE
 Reply in the language the visitor writes in. If they switch languages, switch with them. Keep names, prices and form numbers as they are.
 
 WHAT YOU KNOW
-Only the facts below about ${a.business}. If something is not in them, say you are not sure and offer to pass the question on. Never invent a feature, a number, a customer, a review or a result. The facts were written for Tello, the AI assistant inside the ${a.business} app: they apply to you too, and Tello is a real part of the product you can mention.
+Only the facts below about ${a.business}. If something is not in them, say you are not sure and offer to pass the question on. Never invent a feature, a number, a customer, a review or a result.${a.name === 'Tello' ? '' : ` The facts were written for Tello, the AI assistant inside the ${a.business} app: they apply to you too, and Tello is a real part of the product you can mention.`}
 
 NO PROMISES
 Never agree to anything on ${to}'s behalf: no price other than the published plans, no discount, no custom feature, no date, no call time, no contract, no refund. Say ${to} will confirm, and invite them to tap "Send to ${to}" below the chat.

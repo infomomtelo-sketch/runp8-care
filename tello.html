@@ -269,11 +269,12 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 
 <div class="wrap">
 
-  <div id="gate">
+  <div id="gate" hidden>
     <span class="t-mark lg"></span>
     <h1>Ask Tello anything.</h1>
     <p class="sub">She gives you a straight answer instead of a list of options, and she tells you when she doesn't know.</p>
     <span class="powered">Title22 is the first business powered by Tello</span>
+    <button class="btn btn-ghost" type="button" id="gate-back" onclick="backToGuest()" style="margin:0 0 14px">Not now, just ask Tello</button>
     <div class="msg" id="gate-msg"></div>
     <button class="btn btn-ghost btn-google" type="button" onclick="signInGoogle()">
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
@@ -352,7 +353,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <div class="drawer-body tools" id="cab-tools"></div>
     </details>
     <details class="drawer" id="drawer-leads" hidden>
-      <summary><span class="kicker">From title22.app/meet</span><span class="slab">Leads from Charrise</span></summary>
+      <summary><span class="kicker">Send to Title22</span><span class="slab">Leads from Charrise and Tello</span></summary>
       <div class="drawer-body" id="leads"></div>
     </details>
     <details class="drawer" id="drawer-ptn" hidden>
@@ -364,11 +365,25 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <div class="drawer-body" id="mkt"></div>
     </details>
     <div class="cab-list">
+      <button type="button" id="guest-send" hidden onclick="closeCabinet();openLead()">Send to Title22</button>
+      <button type="button" id="guest-in" hidden onclick="closeCabinet();showGate()">Sign in to keep your conversations</button>
       <button type="button" id="fresh" onclick="closeCabinet();newConversation()">New conversation</button>
       <button type="button" id="mem" onclick="closeCabinet();openMemory()">What Tello remembers</button>
       <button type="button" id="out" onclick="signOut()">Sign out</button>
     </div>
     <p class="cab-fine">Tello is an AI assistant and can be wrong, so check anything that matters. No medical or dosage advice about a specific person. Title22 holds no resident health information.</p>
+  </div>
+</div>
+
+<div class="sheet" id="lead" onclick="if(event.target===this)closeLead()">
+  <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="lead-title">
+    <div class="sheet-top"><strong id="lead-title">Send to Title22</strong><button class="linkbtn dark" onclick="closeLead()">Close</button></div>
+    <p class="sheet-note">Every message is read, and answered by text or email. A short summary of your chat with Tello goes with it.</p>
+    <label for="l-name">Your name</label><input id="l-name" autocomplete="name" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"/>
+    <label for="l-contact">Email or phone</label><input type="email" id="l-contact" autocomplete="email"/>
+    <label for="l-msg">What would you like from Title22? (optional)</label><textarea id="l-msg" style="width:100%;min-height:76px;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);resize:vertical"></textarea>
+    <button class="btn" id="l-send" type="button" onclick="sendLead()" style="margin-top:12px">Send</button>
+    <div class="msg" id="l-out"></div>
   </div>
 </div>
 
@@ -472,9 +487,10 @@ async function api(path,opts={}){
 
 async function boot(){
   const signedIn=!!me;
-  $('gate').hidden=signedIn; $('chat').hidden=!signedIn;
-  $('cab-btn').hidden=!signedIn;
-  if(!signedIn){closeCabinet();$('credits').hidden=true;$('cab-partner').hidden=true;mode=null;return}
+  if(!signedIn){closeCabinet();$('credits').hidden=true;$('cab-partner').hidden=true;guestStart();return}
+  $('gate').hidden=true; $('chat').hidden=false; $('cab-btn').hidden=false;
+  ['fresh','mem','out','attach-btn'].forEach(id=>$(id).hidden=false);
+  ['guest-in','guest-send'].forEach(id=>$(id).hidden=true);
   $('thread').innerHTML='';
   let who;
   try{who=await api('/me')}
@@ -571,7 +587,7 @@ function say(text,cls,noCopy){
   // listen to (SPEAK_MAX). A long one is for reading, and gets none.
   if(cls==='her'&&!noCopy&&text&&(text.length>40||text.length<=SPEAK_MAX)){
     const row=document.createElement('div');row.className='acts';
-    if(text.length<=SPEAK_MAX){
+    if(text.length<=SPEAK_MAX&&mode!=='guest'){
       const pl=document.createElement('button');pl.className='copy play';pl.type='button';pl.textContent='Play';
       pl.setAttribute('aria-label','Play this answer aloud');pl.onclick=()=>playReply(text,pl);row.appendChild(pl);
     }
@@ -797,7 +813,7 @@ async function ask(text,opts){
     const body={message:q};
     if(opts.spoken)body.spoken=true;
     if(att)body.attachment={media_type:att.media_type,data:att.data,name:att.name};
-    const d=await api('',{method:'POST',body});
+    const d=mode==='guest'?await guestAsk(q):await api('',{method:'POST',body});
     thinking.remove();
     const turn=say(d.reply,'her');
     reply=d.reply;
@@ -1173,6 +1189,57 @@ function ptnClassroom(){
   },true));f.append(w,out);return f;
 }
 
+/* ----------------------------------------------------------- guest -- */
+// No sign-up needed (2026-09-29, the owner: no pressure). A visitor who has
+// not signed in talks to Tello through the public assistant endpoint
+// (/api/assistant/chat, assistant 'tello'): same rules and daily limits as
+// Charrise, nothing stored on the server, the chat kept in this tab only.
+// Signing in, from the Cabinet, is what gives her memory, Play and photos.
+// This is not a mode switch on /api/tello: that endpoint still decides who
+// she is from the signed-in account alone.
+const ASSIST_API='https://title22-ai.infomomtelo.workers.dev/api/assistant';
+let guestChat=[];
+try{guestChat=JSON.parse(sessionStorage.getItem('tello_guest')||'[]')}catch(e){guestChat=[]}
+function guestSave(){try{sessionStorage.setItem('tello_guest',JSON.stringify(guestChat.slice(-40)))}catch(e){}}
+function guestStart(){
+  mode='guest';document.body.classList.remove('is-partner');
+  $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;
+  ['fresh','mem','out','attach-btn','talk-btn'].forEach(id=>$(id).hidden=true);
+  ['guest-in','guest-send'].forEach(id=>$(id).hidden=false);
+  ['drawer-mkt','drawer-ptn','drawer-leads'].forEach(id=>$(id).hidden=true);
+  $('say').placeholder='Ask Tello anything…';
+  renderTools($('cab-tools'),false);
+  $('thread').innerHTML='';
+  say("Hi, I'm Tello, Title22's AI assistant. Ask me anything, no sign-up needed. Tap Cabinet to send Title22 a message.",'her',true);
+  guestChat.forEach(m=>say(m.content,m.role==='user'?'me':'her',m.role==='user'));
+  scrollEnd();
+}
+async function guestAsk(q){
+  guestChat.push({role:'user',content:q});guestSave();
+  const r=await fetch(ASSIST_API+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assistant:'tello',messages:guestChat})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.reply){guestChat.pop();guestSave();const e=new Error(d.message||'I could not answer just now.');e.status=r.status;e.data=d;throw e}
+  guestChat.push({role:'assistant',content:d.reply});guestSave();
+  return{reply:d.reply};
+}
+function showGate(){$('chat').hidden=true;$('gate').hidden=false;$('gate-back').hidden=!!me;window.scrollTo(0,0)}
+function backToGuest(){if(!me)guestStart()}
+function openLead(){$('l-out').textContent='';$('l-out').className='msg';$('l-send').disabled=false;$('l-send').textContent='Send';$('lead').classList.add('open');setTimeout(()=>$('l-name').focus(),50)}
+function closeLead(){$('lead').classList.remove('open')}
+async function sendLead(){
+  const out=$('l-out');
+  const body={assistant:'tello',kind:'follow-up',name:$('l-name').value.trim(),contact:$('l-contact').value.trim(),message:$('l-msg').value.trim(),lang:navigator.language||'',transcript:guestChat};
+  if(!body.name||!body.contact){out.textContent='Please leave your name and an email or phone number.';out.className='msg show bad';return}
+  $('l-send').disabled=true;$('l-send').textContent='Sending…';
+  try{
+    const r=await fetch(ASSIST_API+'/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){out.textContent=d.message||'That did not go through. Please try again.';out.className='msg show bad';$('l-send').disabled=false;$('l-send').textContent='Send';return}
+    $('l-send').textContent='Sent';out.textContent='Thank you. Title22 has your message and will get back to you.';out.className='msg show good';
+    setTimeout(closeLead,1800);
+  }catch(e){out.textContent='No connection. Please try again.';out.className='msg show bad';$('l-send').disabled=false;$('l-send').textContent='Send'}
+}
+
 /* ----------------------------------------------------------- leads -- */
 // What visitors sent with "Send to Title22" on title22.app/meet (Charrise), and
 // businesses asking for an assistant of their own. Partner-admin RPCs from
@@ -1189,7 +1256,7 @@ async function loadLeads(){
   el.appendChild(ptnEl('p','mkt-note',!data||!data.length?'Nobody has sent anything yet. Share the link instead of booking a call.':fresh+' new · '+data.length+' in all'));
   (data||[]).forEach(l=>{
     const c=ptnEl('div','ptn-card'+(l.status==='done'?' off':''));
-    const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,l.name),ptnEl('span','ptn-tag',(l.kind==='wants-own'?'Wants own assistant':'Follow-up')+(l.language?' · '+l.language:'')));c.appendChild(top);
+    const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,l.name),ptnEl('span','ptn-tag',(l.assistant==='tello'?'Tello · ':'Charrise · ')+(l.kind==='wants-own'?'Wants own assistant':'Follow-up')+(l.language?' · '+l.language:'')));c.appendChild(top);
     c.appendChild(ptnEl('div','ptn-tag',new Date(l.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+(l.business?' · '+l.business:'')));
     if(l.message)c.appendChild(ptnEl('p','mkt-note',l.message));
     if(l.summary){const sm=ptnEl('p','mkt-note','Chat: '+l.summary);sm.style.color='var(--ink)';c.appendChild(sm)}

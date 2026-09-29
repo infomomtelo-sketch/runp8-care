@@ -388,6 +388,12 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   assert.equal(r.status, 200); assert.equal(db.assistant_leads.at(-1).kind, 'wants-own'); assert.equal(db.assistant_leads.at(-1).summary, null);
   for (let i = 0; i <= AL.visitorLead; i++) r = await visit('/api/assistant/lead', { assistant: 'title22', name: 'Spam', contact: 'spam@x.com' }, '192.0.2.5');
   assert.equal(r.status, 429);
+  script = [text('Hi, I am Tello.')];
+  r = await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'What is Title22?' }] }, '198.51.100.20');
+  assert.equal(r.status, 200);
+  assert.match(anthropic.at(-1).system, /You are Tello, Title22's AI assistant/);
+  assert.ok(!/The facts were written for Tello/.test(anthropic.at(-1).system));
+  assert.ok(Object.keys(usage).some((k) => k.startsWith('v:tello:')), 'guest Tello has her own counters');
   console.log('ok  Charrise: no sign-in, Title22 knowledge, says she is an AI, no chat stored, IP hashed, limits fail closed, leads with a summary');
 }
 

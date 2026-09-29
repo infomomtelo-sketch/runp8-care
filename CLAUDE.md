@@ -479,6 +479,16 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   (one per partner per month; delete only a mistake). Nothing here moves
   money. Every RPC checks `title22_is_partner_admin`. Classroom access sits
   there too, via the existing `title22_grant_classroom_account`.
+- **No sign-up needed (2026-09-29, the owner: no pressure on visitors).** A
+  visitor who is not signed in lands in the chat, not the gate
+  (`guestStart`), and talks to Tello through the PUBLIC assistant endpoint
+  (`/api/assistant/chat`, assistant `tello`, see the Charrise section): same
+  rules and daily limits, nothing stored on the server, the chat in
+  sessionStorage. The Cabinet offers "Send to Title22" (a lead) and "Sign in
+  to keep your conversations" (the gate, with "Not now"). Guests get no Play
+  (the Kokoro voice needs an account), no photos, no memory, no mic. This is
+  NOT a mode switch on `/api/tello`: that endpoint still decides who she is
+  from the signed-in account alone.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
