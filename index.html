@@ -705,6 +705,9 @@
            title22-walkthrough.html, a page nobody arrives at. This is a link to
            something already built and already working. -->
       <a class="btn btn-ghost btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="/?demo=1&amp;tour=1">See it first — no signup</a>
+      <!-- For whoever is not ready to make an account (the owner, 2026-09-29):
+           /tello talks to visitors with no sign-up (guestStart in tello.html). -->
+      <a class="btn btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fdf3e2;color:#123a30;border:1.5px solid #e8a23d;border-radius:999px" href="/tello?src=app-landing"><img src="/tello-icon.svg" alt="" width="24" height="24" style="border-radius:50%"/>Ask Tello first — no signup</a>
       <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
     </div>
     <p class="hero-note">30 days free · No credit card · Nothing to cancel</p>
@@ -762,6 +765,10 @@
       <h2>Start your free trial</h2>
       <p id="signup-trial-line">30 days free · No credit card · Nothing to cancel</p>
       <p class="ref-note" id="ref-note-signup" style="display:none"></p>
+      <!-- Most people reach this card straight from "Create your account",
+           never seeing the landing page's Tello button, so it is here too, at
+           the top where the not-sure visitor is deciding (the owner, 2026-09-29). -->
+      <a href="/tello?src=app-signup" style="display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 16px;padding:10px 14px;background:#fdf3e2;color:#123a30;border:1.5px solid #e8a23d;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600"><img src="/tello-icon.svg" alt="" width="24" height="24" style="border-radius:50%"/>Not sure yet? Ask Tello first — no signup</a>
       <!-- The promise title-22.com makes on every trial CTA. True because
            signup asks for nothing else, and the practice home (startJustLooking)
            needs nothing else. Keep them in step: if signup ever asks for a
@@ -782,8 +789,7 @@
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
       </form>
       <div class="auth-switch" id="signup-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('signup')">Send it again</a></div>
-      <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>
-    </div>
+      <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>    </div>
   </div>
 </div>
 
@@ -8409,19 +8415,22 @@ function requestFax(){
 // docType must be in the CHECK constraint in
 // migrations/2026-08-09b_title22_document_slot_dates.sql.
 const DOC_SLOTS={
-  // scan:false throughout — no BAA is signed with anyone yet. Supabase's
-  // HIPAA add-on is still being negotiated (unsigned, as of 2026-08), and
-  // nothing is in motion with Anthropic, the API a scan sends the photo to.
-  // Staff certs are not resident PHI, but that gap blocks any photo leaving
-  // the browser for a third party, staff included. Uploading goes browser ->
-  // Supabase Storage and touches no AI, so it stays available regardless.
+  // Scan is on for the staff certificates and OFF for TB (2026-09-29, the
+  // owner's decision). A CPR card, a First Aid card, a Live Scan clearance and
+  // a training certificate are employment records, not health information.
+  // A TB result is the employee's own medical information, so its two dates
+  // are typed by hand and the paper stays in the staff file. Each scan reads
+  // only its own slot's fields: SCAN_DOC_FIELDS, mirrored in the extract
+  // Worker, which refuses tb_test and any staff scan without a slot.
+  // Uploading goes browser -> Supabase Storage and touches no AI, so it stays
+  // available on every slot, TB included.
   staff:[
     {docType:'tb_test',           issuedEl:'staff-tb-date',       expiresEl:'staff-tb-due',            scan:false, issuedLabel:'Tested'},
-    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:false, issuedLabel:'Certified'},
-    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:false, issuedLabel:'Certified'},
-    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:false, issuedLabel:'Cleared'},
-    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:false, issuedLabel:'Completed'},
-    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:false},
+    {docType:'cpr_card',          issuedEl:'staff-cpr-date',      expiresEl:'staff-cpr-expiry',        scan:true,  issuedLabel:'Certified'},
+    {docType:'first_aid',         issuedEl:'staff-firstaid-date', expiresEl:'staff-firstaid-expiry',   scan:true,  issuedLabel:'Certified'},
+    {docType:'livescan',          issuedEl:'staff-livescan-date', selectEl:'staff-livescan', yes:'true', scan:true,  issuedLabel:'Cleared'},
+    {docType:'mandated_reporter', issuedEl:'staff-mandated-date', selectEl:'staff-mandated', yes:'true', scan:true,  issuedLabel:'Completed'},
+    {docType:'training_cert',                                     selectEl:'staff-training', yes:'true', scan:true},
   ],
   // scan:false throughout — a resident face sheet is PHI and scanning sends it
   // to a third-party AI service, which we cannot do without a BAA. Uploading
@@ -8723,8 +8732,10 @@ async function uploadSlotDoc({file,docType,staffId=null,residentId=null,kind}){
   }
 }
 
+// Staff certificates only, never TB, never a resident or a medication: a slot
+// not in SCAN_DOC_FIELDS does nothing.
 function slotScan(kind,docType){
-  return;   // SCAN DISABLED for every kind — no BAA is signed with anyone yet (Supabase's HIPAA add-on is still being negotiated; nothing is in motion with Anthropic, who a scan sends photos to). Delete this line once both exist.
+  if(kind!=='staff'||!SCAN_DOC_FIELDS[docType])return;
   startScan('staff','camera',docType);
 }
 
@@ -10459,6 +10470,25 @@ const SCAN_FIELD_MAP={
   }},
 };
 
+// What each staff slot's scan may fill: that document's own fields and
+// nothing else (2026-09-29). A CPR card fills the two CPR dates; it does not
+// touch the name, the hire date or anything another paper owns. The name on
+// the card is read too, but only to check it is this person's card: it is
+// shown, never filled. Keep in step with STAFF_DOCS in
+// workers/title22-extract/index.js. tb_test is absent on purpose.
+const SCAN_DOC_FIELDS={
+  cpr_card:{label:'CPR card',fields:['cpr_cert_date','cpr_cert_expiry']},
+  first_aid:{label:'First Aid card',fields:['first_aid_cert_date','first_aid_cert_expiry']},
+  livescan:{label:'Live Scan clearance',fields:['livescan_cleared','livescan_date']},
+  mandated_reporter:{label:'Mandated Reporter certificate',fields:['mandated_reporter_completed','mandated_reporter_date']},
+  training_cert:{label:'Training certificate',fields:['initial_training_complete','initial_training_hours']},
+};
+// The fields this scan may fill, or null for "all of the form" (no slot).
+function scanAllowedKeys(){
+  const d=scanState.forceDocType&&SCAN_DOC_FIELDS[scanState.forceDocType];
+  return d?d.fields:null;
+}
+
 // Long edge the photo is resized to before upload. The model reads small print
 // and handwriting off these scans, so this is deliberately generous — dropping
 // it saves tokens but costs accuracy on medication labels.
@@ -10478,6 +10508,9 @@ const SCAN_CONFIDENCE={
 // should not have to re-pick "CPR card" after pressing Scan on the CPR slot.
 function startScan(formType,source,docType){
   if(!SCAN_FIELD_MAP[formType])return;
+  // Only a staff certificate slot can scan. No slot, TB, a resident or a
+  // medication: nothing happens, and the Worker refuses the same.
+  if(formType!=='staff'||!SCAN_DOC_FIELDS[docType])return;
   if(demoMode){alert('Scan to fill needs a signed-in account. The sample facility is read-only.');return;}
   if(!canEdit()){alert('You do not have permission to add records.');return;}
   if(!currentFacility){alert('Open a facility first.');return;}
@@ -10500,7 +10533,7 @@ async function onScanFile(input){
   const form=SCAN_FIELD_MAP[formType];
   if(!form)return;
 
-  showScanBusy(form.title);
+  showScanBusy(SCAN_DOC_FIELDS[scanState.forceDocType]?.label||form.title.toLowerCase());
   try{
     // Two shapes come through here. A photo gets downscaled and re-encoded so
     // the upload stays small and the crops line up with what the model saw. A
@@ -10536,7 +10569,7 @@ async function onScanFile(input){
         method:'POST',
         signal:abort.signal,
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-        body:JSON.stringify({formType,image:{media_type:prepared.mediaType,data:prepared.base64}})
+        body:JSON.stringify({formType,docType:scanState.forceDocType,image:{media_type:prepared.mediaType,data:prepared.base64}})
       });
     }catch(netErr){
       throw new Error(netErr.name==='AbortError'
@@ -10684,7 +10717,7 @@ function closeScanModal(){
 }
 
 function showScanBusy(title){
-  document.getElementById('scan-modal-title').textContent='Reading '+title.toLowerCase();
+  document.getElementById('scan-modal-title').textContent='Reading '+title;
   document.getElementById('scan-modal-footer').style.display='none';
   document.getElementById('scan-modal-body').innerHTML=
     '<div class="empty">Reading the page…<br/><span style="font-size:12px">This uses one AI call from your monthly allowance.</span></div>';
@@ -10697,8 +10730,8 @@ function showScanError(message){
   document.getElementById('scan-modal-body').innerHTML=
     `<div class="empty" style="padding:24px 12px">${esc(message)}</div>
      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-bottom:8px">
-       <button class="btn btn-outline" onclick="startScan(scanState.formType)">Retake photo</button>
-       <button class="btn btn-outline" onclick="startScan(scanState.formType,'library')">Choose a file</button>
+       <button class="btn btn-outline" onclick="startScan(scanState.formType,'camera',scanState.forceDocType)">Retake photo</button>
+       <button class="btn btn-outline" onclick="startScan(scanState.formType,'library',scanState.forceDocType)">Choose a file</button>
        <button class="btn btn-outline" onclick="closeScanModal()">Close</button>
      </div>`;
   openScanModal();
@@ -10737,13 +10770,21 @@ function scanDisplayValue(entry,value){
 
 function renderScanReview(result){
   const form=SCAN_FIELD_MAP[scanState.formType];
-  document.getElementById('scan-modal-title').textContent='Review scan · '+form.title;
+  const doc=SCAN_DOC_FIELDS[scanState.forceDocType];
+  document.getElementById('scan-modal-title').textContent='Review scan · '+(doc?doc.label:form.title);
 
   const editing=form.isEdit?form.isEdit():true;
 
+  // Only this slot's fields are rows. Anything else the Worker returned (the
+  // name on the card) is never offered for filling.
+  const allowed=scanAllowedKeys();
+  const nameCheck=allowed?scanNameCheck(scanState.fields.full_name):'';
+  const shown=Object.entries(scanState.fields).filter(([key])=>!allowed||allowed.includes(key));
+  scanState.fields=Object.fromEntries(shown);
+
   const rows=[];
   let suggested=0;
-  Object.entries(scanState.fields).forEach(([key,f])=>{
+  shown.forEach(([key,f])=>{
     const entry=form.fields[key];
     const conf=SCAN_CONFIDENCE[f.confidence]||SCAN_CONFIDENCE.low;
     const found=f.confidence!=='not_found';
@@ -10792,6 +10833,7 @@ function renderScanReview(result){
         : `<img class="scan-thumb" src="${scanState.dataUrl}" alt="The page you scanned" onclick="openScanLightbox()"/>`}
       <div style="flex:1;min-width:180px;font-size:12px;color:var(--text2);line-height:1.6">
         ${scanState.notes?esc(scanState.notes)+'<br/>':''}
+        ${nameCheck}
         <strong>${suggested}</strong> of ${Object.keys(scanState.fields).length} field${Object.keys(scanState.fields).length===1?'':'s'} ticked by default.
         ${remaining?'<br/>'+esc(remaining):''}
       </div>
@@ -10804,7 +10846,7 @@ function renderScanReview(result){
     ${scanFileItBlock(scanState.formType)}
     <div style="font-size:11px;color:var(--text2);margin-top:14px">
       ${scanState.isPdf?'':'Crops are approximate — tap one to see where it sits on the full page. '}
-      <a style="color:var(--teal);cursor:pointer;text-decoration:underline" onclick="startScan(scanState.formType,'library')">Use a different file</a>
+      <a style="color:var(--teal);cursor:pointer;text-decoration:underline" onclick="startScan(scanState.formType,'library',scanState.forceDocType)">Use a different file</a>
     </div>`;
 
   document.getElementById('scan-modal-footer').style.display='flex';
@@ -10823,6 +10865,25 @@ function renderScanReview(result){
   });
 
   openScanModal();
+}
+
+// A card filed on the wrong person is the mistake a date check cannot catch,
+// so the name printed on it is shown beside the name on this staff record.
+// Shown only; it never fills the name field. Returns HTML ending in <br/>.
+function scanNameCheck(f){
+  const onDoc=f&&f.confidence!=='not_found'?String(f.value||'').trim():'';
+  if(!onDoc)return '';
+  const record=String(document.getElementById('staff-name')?.value||'').trim();
+  const words=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').split(/[^a-z]+/).filter(w=>w.length>1);
+  const a=words(onDoc),b=words(record);
+  const line='Name on the document: <strong>'+esc(onDoc)+'</strong>.';
+  if(!b.length)return line+'<br/>';
+  // Same person if the record's first and last names both appear on the card
+  // (a middle name or initial on either side does not matter).
+  const same=b.length&&a.includes(b[0])&&a.includes(b[b.length-1]);
+  return same
+    ? line+' Matches this staff record.<br/>'
+    : line+' <span class="scan-overwrite">This staff record says “'+esc(record)+'”. Check it is this person’s card.</span><br/>';
 }
 
 // Document types a staff file actually contains. Keys match the CHECK
@@ -10844,8 +10905,10 @@ const SCAN_DOC_TYPES={
 // with nothing behind it is what DSS refuses to accept. So this defaults ON,
 // and skipping it is the deliberate act.
 function scanFileItBlock(formType){
-  const types=SCAN_DOC_TYPES[formType];
-  if(!types||!scanState.file)return '';
+  // Started from a slot, the paper is filed as that slot and nothing else: a
+  // CPR scan must not be fileable as a TB clearance.
+  const types=(SCAN_DOC_TYPES[formType]||[]).filter(([v])=>!scanState.forceDocType||v===scanState.forceDocType);
+  if(!types.length||!scanState.file)return '';
   const guess=guessScanDocType(formType);
   return `<div style="margin-top:16px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--gray-bg)">
     <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
@@ -10953,9 +11016,11 @@ function applyScanToForm(){
   if(!form)return;
   const err=document.getElementById('scan-modal-error');
   const filled=[];
+  const allowed=scanAllowedKeys();
 
   document.querySelectorAll('#scan-rows .scan-check:checked').forEach(box=>{
     const key=box.dataset.key;
+    if(allowed&&!allowed.includes(key))return;
     const entry=form.fields[key];
     const input=document.querySelector(`#scan-rows .scan-value[data-key="${CSS.escape(key)}"]`);
     if(!entry||!input)return;
@@ -11829,7 +11894,7 @@ function renderRefNote(){
     <div id="scan-modal-body"></div>
     <div class="error-msg" id="scan-modal-error"></div>
     <div class="modal-footer" id="scan-modal-footer" style="display:none">
-      <button class="btn btn-outline" style="margin-right:auto" onclick="startScan(scanState.formType)">Retake</button>
+      <button class="btn btn-outline" style="margin-right:auto" onclick="startScan(scanState.formType,'camera',scanState.forceDocType)">Retake</button>
       <button class="btn btn-outline" onclick="closeScanModal()">Cancel</button>
       <button class="btn btn-primary" id="scan-apply-btn" onclick="applyScanToForm()">Fill form</button>
     </div>

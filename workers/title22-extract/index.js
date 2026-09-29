@@ -1,9 +1,11 @@
 // title22-extract — "Scan to fill" form extraction worker
 //
-// Takes a photo of a paper form (staff file, resident face sheet, medication
-// label) and returns that form's fields as JSON, with a per-field confidence
-// flag and an approximate bounding box so the UI can show the photo crop next
-// to each extracted value.
+// Takes a photo of ONE staff certificate (CPR, First Aid, Live Scan, Mandated
+// Reporter, training) and returns that certificate's own fields as JSON, with
+// a per-field confidence flag and an approximate bounding box so the UI can
+// show the photo crop next to each extracted value. TB, resident and
+// medication papers are refused: see STAFF_DOCS. The resident and medication
+// entries in FORMS are kept only as the record of what the app's inputs are.
 //
 // This worker NEVER writes to residents/staff/medications. It returns data for
 // a human to review in the app; the existing save paths (and the audit-log
@@ -60,19 +62,30 @@ async function getProfile(userId, env) {
 }
 
 // Kept in sync with workers/title22-ai/index.js. Unknown -> trial (default deny).
+// lite and multi were missing here, so a paying Lite customer was metered as a
+// trial and told to "Upgrade to Pro".
 const LIMITS = {
   trial: 50,
   edu: 100000,
+  lite: 200,
+  multi: 500,
   starter: 50,
   pro: 200,
   specialist: 200,
   agency: 500,
 };
 
-const PAID_PLANS = ['starter', 'pro', 'specialist', 'agency'];
+const PAID_PLANS = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency'];
+
+// Same folding as title22-ai's normalisePlan and the app's t22NormalisePlan.
+function normalisePlan(raw) {
+  if (typeof raw !== 'string') return raw;
+  const k = raw.trim().toLowerCase().replace(/[\s_]+/g, '-');
+  return ['multi-home', 'multihome', 'multi'].includes(k) ? 'multi' : k;
+}
 
 function resolvePlan(profile) {
-  const raw = profile?.title22_plan;
+  const raw = normalisePlan(profile?.title22_plan);
   if (!raw || !(raw in LIMITS)) return 'trial';
 
   const expires = profile?.title22_plan_expires_at;
@@ -223,6 +236,68 @@ const FORMS = {
   },
 };
 
+// ===== WHAT MAY BE SCANNED (2026-09-29) =====
+//
+// Only a staff certificate, one at a time, and only that certificate's own
+// fields. The app sends the slot it was started from as `docType`; the form
+// sent to the model is narrowed to these fields, so the prompt, the schema
+// and the reply all name nothing else. Keep in step with SCAN_DOC_FIELDS in
+// index.html.
+//
+// NOT here, and refused below: tb_test (a TB result is the employee's own
+// medical information; its dates are typed), a staff scan with no slot (the
+// whole staff form includes the TB fields), and every resident and
+// medication scan (Title22 holds no resident health information).
+//
+// full_name is read on every certificate so the app can check the card
+// belongs to this person. The app shows it and never fills it.
+export const STAFF_DOCS = {
+  cpr_card: {
+    label: 'CPR card',
+    docHint: 'a CPR certification card or certificate for one person',
+    fields: ['cpr_cert_date', 'cpr_cert_expiry'],
+  },
+  first_aid: {
+    label: 'First Aid card',
+    docHint: 'a First Aid certification card or certificate for one person',
+    fields: ['first_aid_cert_date', 'first_aid_cert_expiry'],
+  },
+  livescan: {
+    label: 'Live Scan clearance',
+    docHint: 'a Live Scan (fingerprint) clearance, exemption or transfer letter, or a Live Scan request form, for one person. A request form shows the date it was submitted and does NOT show a clearance',
+    fields: ['livescan_cleared', 'livescan_date'],
+  },
+  mandated_reporter: {
+    label: 'Mandated Reporter certificate',
+    docHint: 'a Mandated Reporter training completion certificate for one person',
+    fields: ['mandated_reporter_completed', 'mandated_reporter_date'],
+  },
+  training_cert: {
+    label: 'Training certificate',
+    docHint: 'a caregiver initial training certificate for one person',
+    fields: ['initial_training_complete', 'initial_training_hours'],
+  },
+};
+
+const NAME_ON_DOC = {
+  key: 'full_name', label: 'Name on the document', type: 'text',
+  desc: 'The name of the person this document was issued to, exactly as printed. Not an instructor, an agency or a signer.',
+};
+
+// The staff form narrowed to one certificate: its name check plus its own
+// fields, in the Worker's own wording. null for anything not scannable.
+export function scanForm(formType, docType) {
+  if (formType !== 'staff') return null;
+  const doc = Object.prototype.hasOwnProperty.call(STAFF_DOCS, docType) ? STAFF_DOCS[docType] : null;
+  if (!doc) return null;
+  const byKey = Object.fromEntries(FORMS.staff.fields.map((f) => [f.key, f]));
+  return {
+    label: doc.label,
+    docHint: doc.docHint,
+    fields: [NAME_ON_DOC, ...doc.fields.map((k) => byKey[k])],
+  };
+}
+
 function buildSchema(form) {
   // A LIST of uniform entries, not one named property per field.
   //
@@ -283,6 +358,7 @@ function systemPrompt(form) {
     '- Dates on these forms are US-format (MM/DD/YYYY) unless the page clearly says otherwise.',
     '- If the page is the wrong kind of document for these fields, return not_found for everything and say so in `notes`.',
     '- This output is reviewed by a caregiver before it is saved. Do not add commentary about clinical appropriateness, dosing, or care decisions — transcribe only.',
+    '- Read only the fields listed below. Do not transcribe or mention anything else on the page, in the fields or in `notes`: no ID numbers, dates of birth, addresses or test results.',
     '',
     // These live here rather than in the JSON schema on purpose: schema
     // descriptions are compiled into the output grammar and count against its
@@ -445,14 +521,12 @@ export default {
         SUPABASE_SERVICE_KEY: Boolean(env.SUPABASE_SERVICE_KEY),
         ANTHROPIC_API_KEY: Boolean(env.ANTHROPIC_API_KEY),
       };
-      const residentScanningEnabled = env.ALLOW_RESIDENT_SCAN === 'true';
       const missing = Object.keys(config).filter((k) => !config[k]);
       return json({
         status: missing.length ? 'misconfigured' : 'ok',
-        forms: Object.keys(FORMS),
+        scannable: { staff: Object.keys(STAFF_DOCS) },
         model: env.EXTRACT_MODEL || 'claude-opus-5',
         config,
-        resident_scanning_enabled: residentScanningEnabled,
         ...(missing.length ? { missing, hint: `Set ${missing.join(', ')} on this Worker. Names are case-sensitive and must match exactly.` } : {}),
       });
     }
@@ -463,17 +537,28 @@ export default {
 
     try {
       const body = await request.json();
-      const { formType, image, hint } = body || {};
+      const { formType, docType, image, hint } = body || {};
 
-      const form = FORMS[formType];
-      if (!form) {
-        return json({ error: 'bad_request', message: `Unknown formType. Expected one of: ${Object.keys(FORMS).join(', ')}.` }, 400);
-      }
-      if (formType === 'resident' && env.ALLOW_RESIDENT_SCAN !== 'true') {
+      // Refused before anything else, including the credit check, so a
+      // refused scan costs nothing. No switch turns these back on.
+      if (formType === 'resident' || formType === 'medication') {
         return json({
-          error: 'resident_scan_disabled',
-          message: 'Resident scanning is disabled until a HIPAA BAA is in place. Upload resident documents instead.',
+          error: 'scan_not_allowed',
+          message: 'Title22 does not read resident or medication papers. Keep them on paper at the home.',
         }, 403);
+      }
+      if (formType === 'staff' && docType === 'tb_test') {
+        return json({
+          error: 'scan_not_allowed',
+          message: 'TB results are not scanned. Type the two dates and keep the paper in the staff file.',
+        }, 403);
+      }
+      const form = scanForm(formType, docType);
+      if (!form) {
+        return json({
+          error: 'bad_request',
+          message: `Scan one staff certificate at a time. formType must be "staff" and docType one of: ${Object.keys(STAFF_DOCS).join(', ')}.`,
+        }, 400);
       }
       if (!image?.data || typeof image.data !== 'string') {
         return json({ error: 'bad_request', message: 'image.data (base64, no data: prefix) is required.' }, 400);
@@ -524,7 +609,7 @@ export default {
           error: 'limit_reached',
           message: isPaid
             ? `You've used all ${credits.limit} AI calls on your ${plan} plan this month.`
-            : `You've used all your AI calls this month. Upgrade to Pro for 200 calls/month.`,
+            : `You've used all ${credits.limit} AI calls included this month.`,
           plan,
           remaining: 0
         }, 402);
@@ -616,6 +701,7 @@ export default {
 
       return json({
         formType,
+        docType,
         formLabel: form.label,
         sourceKind: isPdf ? 'pdf' : 'image',
         fields,

@@ -11,6 +11,13 @@ name = "mission-control"
 main = "index.js"
 compatibility_date = "2026-08-05"
 
+# This Worker was only ever deployed by pasting into the dashboard, so any
+# plain-text var on it (EXTRACT_MODEL, say) was typed there. A `wrangler
+# deploy` REPLACES vars with this file's [vars] block, which is how the
+# stripe-webhook lost SUPABASE_URL on 2026-09-09. keep_vars leaves the
+# dashboard's vars alone. Secrets survive a deploy either way.
+keep_vars = true
+
 # Secrets (set via `wrangler secret put <NAME>` — never stored here):
 #   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
 #   SUPABASE_SERVICE_KEY   — Supabase service_role key (bypasses RLS; used
@@ -23,8 +30,9 @@ compatibility_date = "2026-08-05"
 #   EXTRACT_MODEL          — defaults to claude-opus-5. Extraction accuracy on
 #                            handwriting is the whole point of this worker, so
 #                            only step down after measuring on real scans.
-#   ALLOW_RESIDENT_SCAN    — set to "true" only after a HIPAA BAA is in place;
-#                            otherwise resident scans are rejected server-side
+#
+# ALLOW_RESIDENT_SCAN is no longer read (2026-09-29). Resident, medication and
+# TB scans are refused in the code with no switch; see STAFF_DOCS in index.js.
 #
 # Public route (configured in the Cloudflare dashboard, not here):
 #   https://mission-control.infomomtelo.workers.dev/api/extract

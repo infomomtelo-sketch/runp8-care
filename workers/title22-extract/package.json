@@ -1,0 +1,9 @@
+{
+  "name": "title22-extract",
+  "private": true,
+  "type": "module",
+  "description": "Scan to fill: reads one staff certificate's own fields for a person to check. No TB, resident or medication papers.",
+  "scripts": {
+    "test": "node test.mjs"
+  }
+}

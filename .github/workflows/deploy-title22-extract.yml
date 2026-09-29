@@ -1,0 +1,80 @@
+# Deploy the scan Worker (title22-extract, live script name `mission-control`)
+# from a browser. Actions -> "Deploy title22-extract Worker" -> Run workflow.
+#
+# Manual only. Same token and account as deploy-stripe-webhook.yml, which
+# explains both at length: the ONLY repository secret read here is
+# CLOUDFLARE_API_TOKEN, and the account id is a plain env var on purpose.
+#
+# The Worker's secrets (SUPABASE_URL, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY)
+# are set on the Worker and a deploy leaves them alone. Never add them here.
+# Until this workflow, every deploy was a dashboard paste, so any plain-text
+# var lives only in the dashboard: wrangler.toml sets keep_vars so a deploy
+# does not erase it. The last step reads /health, which says whether all three
+# secrets are present (yes/no only, never a value).
+name: Deploy title22-extract Worker
+
+on:
+  workflow_dispatch:
+
+env:
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  WRANGLER_VERSION: '4.130.0'
+  HEALTH_URL: https://mission-control.infomomtelo.workers.dev/api/extract
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the token is set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions, then run this again."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No dependencies. The test mocks fetch: no network, no key, no model call.
+      - name: Test
+        working-directory: workers/title22-extract
+        run: node test.mjs
+
+      - name: Build check (no deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-extract
+          command: deploy --dry-run
+
+      - name: Deploy
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-extract
+          command: deploy
+
+      - name: Health
+        run: |
+          sleep 5
+          body=$(curl -sS "$HEALTH_URL" || true)
+          echo "$body"
+          {
+            echo "### title22-extract deployed"
+            echo '```'
+            echo "${{ steps.deploy.outputs.command-output }}"
+            echo '```'
+            echo "Health: \`$body\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$body" | grep -q '"status":"ok"' || { echo "::error::Health is not ok. Read the config line above: false names a missing secret."; exit 1; }
+          echo "$body" | grep -q '"scannable"' || { echo "::error::Health does not list 'scannable': the new code is not the one answering."; exit 1; }
