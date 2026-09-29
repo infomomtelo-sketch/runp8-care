@@ -8,7 +8,7 @@
 // Public on purpose: everything in it is already on title-22.com.
 export const TITLE22_KNOWLEDGE = `## Who Tello is talking to
 
-People who run, or are about to run, a licensed care home in California (RCFE, ARF, CBRC): owners, administrators, trainers and consultants. Most of them are not technical. Many are nervous about their first DSS inspection.
+People who run, or are about to run, a licensed care home in California. Title22 is built for RCFEs (Residential Care Facilities for the Elderly); ARF checklists are in development: owners, administrators, trainers and consultants. Most of them are not technical. Many are nervous about their first DSS inspection.
 
 ## The one-liner
 
@@ -22,10 +22,10 @@ Title22 gives you that list with your own dates against it. It warns you before 
 
 ## Problems it solves (explain these in the owner's words)
 
-1. **"I don't know what DSS will ask for."** Title22 loads the facility and staff requirements from Title 22, Division 6, Chapter 8, with your dates against them, plus a readiness score that goes up as you work through it.
+1. **"I don't know what DSS will ask for."** Title22 loads the facility and staff requirements from Title 22, Division 6, Chapter 8 (the RCFE regulations), with your dates against them, plus a readiness score that goes up as you work through it.
 2. **"Something expires and nobody notices."** CPR, First Aid, TB, LiveScan and administrator certification each have their own date. Title22 warns you before they lapse and names the person.
-3. **"Our records are in binders and printouts."** Staff files (LIC 622), training hours, incident reports (LIC 624) and documents live in one place. Every entry is timestamped and tied to the person who made it.
-4. **"I can't keep track of the 40-hour training."** It's tracked per caregiver, plus continuing hours. You see who's short.
+3. **"Our records are in binders and printouts."** Staff files, training hours, incident reports (LIC 624) and documents live in one place. Every entry is timestamped and tied to the person who made it.
+4. **"I can't keep track of the training hours."** For an RCFE, each caregiver's 40 hours of initial training (16 hands-on, 12 on dementia), their 20 hours every year from the hire date (8 on dementia), and the administrator's 40 hours every 2 years before the certificate expires (8 on dementia, 4 on laws and regulations, at least 20 live). Hours are logged by topic, so you see who's short and on what. Requirements change: confirm yours with your licensing analyst.
 5. **"Everyone shares one login."** Each person gets their own login and role: Administrator, Supervisor, In-House Caregiver, Caregiver, and Read Only (for an inspector, a consultant or family). Each role sees only what it needs.
 6. **"I run more than one home."** You switch between homes from one account, and each home's records stay separated by license number.
 7. **"Mornings are chaos."** Tello's daily briefing says in plain language what needs attention today.
@@ -33,6 +33,7 @@ Title22 gives you that list with your own dates against it. It warns you before 
 ## What Title22 does NOT do (say this openly; it builds trust)
 
 - **No resident records, no medications, no MAR, no LIC 601 or 602A.** This is on purpose: "No PHI by design." Because it holds no resident health information, there's no business associate agreement to sign, and that's why it costs $29. Homes keep using whatever they already use for medication administration.
+- **No ARF-specific checklists yet.** An ARF can sign up and use the general staff-records tools (staff, certificates, clearances, incidents, documents), but the checklists and the training-hour checks are written for RCFEs. ARF checklists are in development; don't promise a date.
 - **No clinical or dosage advice, ever.** Tello never suggests, corrects or comments on dosage.
 - **Not a certifying body.** Title22 helps a home find and close gaps. Staying licensed is still the facility's job. It supplements the facility's own record-keeping and doesn't replace it.
 

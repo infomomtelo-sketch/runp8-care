@@ -639,9 +639,48 @@ administrator or new hire needs, for whom, and how.
   owner's own checklists (a real home's). Home-specific names (the facility,
   its doctor, pharmacies, other software, house contracts) are left out on
   purpose; the source documents are not committed.
-- OPEN: "Staff files (LIC 622)" appears on the site, the app and in
-  `tello/title22-knowledge.js`. LIC 622 is very likely the centrally stored
-  medication record, not a staff form. Confirm from the CDSS form, then fix.
+- SETTLED 2026-09-29: LIC 622 is the centrally stored medication and
+  destruction record (§87465(h)(6), (i)), not a staff form. "Staff files (LIC
+  622)" is gone from the site, the app and Tello's knowledge. Never label a
+  staff file with it.
+
+## Training hours are data, checked against the law (2026-09-29)
+
+`training-rules.js` (UMD: `window.T22Training` in the page, `require` in
+`tests/training-rules.test.mjs`) holds the three RCFE requirements and the
+arithmetic; `public.title22_training_requirements` stores the same numbers,
+and the test fails if the migration and the JS disagree.
+
+- A `admin_ce`: 40 h in the 2 years before the certificate expires, 8
+  dementia, 4 laws/regs, at least 20 live, at most 20 self-paced count (a
+  warning shows when more are logged). HSC §1569.616(f); §87407.
+- B `initial`: 40 h, 20 before working alone (6 dementia, 4 postural /
+  restricted / hospice), the rest within 4 weeks of hire; 16 hands-on, 12
+  dementia. HSC §§1569.625, 1569.626, 1569.696.
+- C `annual`: 20 h per year from the hire anniversary, 8 dementia, 4
+  postural / restricted / hospice. Hours in the first 4 weeks count toward B,
+  not C.
+- `staff_trainings` gained `topic_area`, `hands_on`, `delivery`,
+  `counts_toward`; `staff` gained `admin_cert_expiry`. Old rows map from
+  `category` through `T22T.normalise`.
+- RCFE only (`facility_types` on the rule and on `checklist_items`). An ARF
+  sees a plain hours-by-topic line and nothing checked against a requirement.
+- The old "Continuing Education (20 hrs / 2 years) §87405" item is WRONG and
+  was deleted by `migrations/2026-09-29_title22_training_requirements.sql`,
+  which also fixed every mis-cited checklist item. The full audit, with what
+  the law says for each, is `docs/citation-audit-2026-09-29.md`.
+- The regulation text (§§87411(c), 87412(c)) still says 10 and 4 hours. The
+  statute's 40 and 20 govern. Do not "correct" the numbers from the regs.
+- `training.html` is a redirect: it read `training_courses` rows nobody had
+  checked. Do not bring it back without checking every row.
+
+## ARF: accepted, not built (2026-09-29)
+
+Title22 is built for California RCFEs; ARF checklists are in development.
+ARF stays selectable at signup and in facility settings, and choosing it shows
+"ARF-specific checklists aren't available yet. You'll see the general
+staff-records tools." Do not write "for RCFEs and ARFs" anywhere, and do not
+build ARF checklists without a decision.
 
 ## Portfolio briefing — Tello for the executive (2026-09-23)
 
