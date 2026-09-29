@@ -340,8 +340,10 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   assert.ok(!r.body.reply.includes('**'), 'markdown stripped');
   const req = anthropic.at(-1);
   assert.equal(req.model, 'claude-haiku-4-5-20251001');
-  assert.match(req.system, /You are Charrise, the AI assistant for Eli, who runs Title22/);
-  assert.match(req.system, /Never say or suggest that you are Eli/);
+  assert.match(req.system, /You are Charrise, Title22's AI assistant/);
+  assert.match(req.system, /Never say or suggest that you are a person/);
+  assert.match(req.system, /Do not name anyone behind Title22, and do not describe a team/);
+  assert.ok(!/\bEli\b/.test(req.system), 'she is never told the owner\'s name');
   assert.match(req.system, /NO PROMISES/);
   assert.match(req.system, /Title22 keeps a care home's staff records/, 'the Title22 knowledge is injected');
   assert.equal(anthropic.length, before + 1);
@@ -362,7 +364,7 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
 
   // per-visitor limit, then another visitor still gets through
   for (let i = 0; i < AL.visitorChat + 2; i++) r = await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'q' + i } ] }, '198.51.100.9');
-  assert.equal(r.status, 429); assert.match(r.body.message, /Send to Eli/);
+  assert.equal(r.status, 429); assert.match(r.body.message, /Send to Title22/);
   assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'hello' }] }, '198.51.100.10')).status, 200);
   // counter down = closed, not free
   takeDown = true;

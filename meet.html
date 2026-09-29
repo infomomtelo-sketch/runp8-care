@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Talk to Charrise · Title22</title>
-<meta name="description" content="Talk to Charrise, the AI assistant for Title22. Ask anything about Title22 in your own words and language, by typing or talking, and send Eli a note when you want him to follow up."/>
+<meta name="description" content="Talk to Charrise, the AI assistant for Title22. Ask anything about Title22 in your own words and language, by typing or talking, and send Title22 a note when you want a reply."/>
 <meta name="theme-color" content="#ffffff"/>
 <link rel="icon" href="/tello-favicon.svg"/>
 <link rel="apple-touch-icon" href="/tello-apple-touch-icon.png"/>
@@ -13,9 +13,10 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@600;700&display=swap" rel="stylesheet"/>
 <!--
   "Talk to my assistant" (2026-09-29). A visitor talks to Charrise instead of
-  booking a meeting with Eli. No sign-in: the chat lives in this tab only
+  booking a meeting. It speaks as Title22 and never names the person behind
+  it (the owner's wish, 2026-09-29). No sign-in: the chat lives in this tab only
   (sessionStorage) and the server keeps nothing but what the visitor sends
-  with "Send to Eli". Listening uses the browser's own speech recognition, and
+  with "Send to Title22". Listening uses the browser's own speech recognition, and
   her voice is the phone's own (speechSynthesis), so it speaks any language
   the phone has a voice for and costs nothing per reply.
   Server side: workers/title22-ai/assistant.js. Leads: Tello's Cabinet.
@@ -103,12 +104,12 @@ button{cursor:pointer}
 
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeLead()">
   <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="lead-title">
-    <div class="sheet-top"><b id="lead-title">Send to Eli</b><button type="button" onclick="closeLead()">Close</button></div>
-    <p id="lead-intro">Eli reads every one and replies by text or email. A short summary of your chat with Charrise goes with it.</p>
+    <div class="sheet-top"><b id="lead-title">Send to Title22</b><button type="button" onclick="closeLead()">Close</button></div>
+    <p id="lead-intro">Every message is read, and answered by text or email. A short summary of your chat with Charrise goes with it.</p>
     <label for="l-name">Your name</label><input id="l-name" autocomplete="name"/>
     <label for="l-contact">Email or phone</label><input id="l-contact" autocomplete="email" inputmode="email"/>
     <label for="l-biz">Your business (optional)</label><input id="l-biz" autocomplete="organization"/>
-    <label for="l-msg">What would you like from Eli? (optional)</label><textarea id="l-msg"></textarea>
+    <label for="l-msg">What would you like from Title22? (optional)</label><textarea id="l-msg"></textarea>
     <button class="btn" id="l-send" type="button" onclick="sendLead()">Send</button>
     <div class="msg" id="l-out"></div>
   </div>
@@ -131,7 +132,7 @@ LANGS.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.tex
   const nav=(navigator.language||'en-US');const m=LANGS.find(l=>l[0]===saved)||LANGS.find(l=>l[0].slice(0,2)===nav.slice(0,2))||LANGS[0];lang=m[0];$('lang').value=lang})();
 function setLang(v){lang=v;try{localStorage.setItem('charrise_lang',v)}catch(e){}}
 
-const GREETING="Hi, I'm Charrise, Eli's AI assistant at Title22. Ask me anything, in any language. Type or tap the mic.";
+const GREETING="Hi, I'm Charrise, Title22's AI assistant. Ask me anything, in any language. Type or tap the mic.";
 function turn(text,cls,withPlay){
   const d=document.createElement('div');d.className='turn '+cls;d.textContent=text;
   if(withPlay&&canSpeak()){const b=document.createElement('button');b.type='button';b.className='play';b.textContent='Play';b.onclick=()=>playOne(text,b);d.appendChild(b)}
@@ -142,13 +143,13 @@ function grow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeigh
 function render(){
   $('thread').innerHTML='';turn(GREETING,'her',true);
   chat.forEach(m=>turn(m.content,m.role==='user'?'me':'her',m.role==='assistant'));
-  const b=document.createElement('button');b.type='button';b.className='send-eli';b.id='send-eli';b.textContent='Send to Eli';b.onclick=()=>openLead('follow-up');
+  const b=document.createElement('button');b.type='button';b.className='send-eli';b.id='send-eli';b.textContent='Send to Title22';b.onclick=()=>openLead('follow-up');
   $('thread').appendChild(b);scrollEnd();
 }
 function moveSendEli(){const b=$('send-eli');if(b)$('thread').appendChild(b);scrollEnd()}
 
 // Contact details belong in the form, not the chat: the form is what reaches
-// Eli, and the chat is sent to the model.
+// Title22, and the chat is sent to the model.
 const CHAT_BLOCK=[
   [/\b[\w.+-]+@[\w-]+\.[A-Za-z]{2,}\b/,'an email address'],
   [/\b\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/,'a phone number'],
@@ -159,7 +160,7 @@ async function ask(text){
   if(busy)return null;
   const q=(text||$('say').value).trim();if(!q)return null;
   const hit=CHAT_BLOCK.find(([re])=>re.test(q));
-  if(hit){turn('That looks like '+hit[1]+'. Please leave it out of the chat. To reach Eli, tap Send to Eli and put your contact details there.','her err');moveSendEli();return null}
+  if(hit){turn('That looks like '+hit[1]+'. Please leave it out of the chat. To get a reply, tap Send to Title22 and put your contact details there.','her err');moveSendEli();return null}
   $('say').value='';grow($('say'));
   chat.push({role:'user',content:q});saveChat();turn(q,'me');
   const th=turn('Charrise is typing…','her thinking');busy=true;$('send').disabled=true;
@@ -219,11 +220,11 @@ function listen(){
   try{r.start()}catch(e){talkEnd()}
 }
 
-/* ---- Send to Eli ---- */
+/* ---- Send to Title22 ---- */
 function openLead(k){
   kind=k;talkEnd();
-  $('lead-title').textContent=k==='wants-own'?'An assistant for your business':'Send to Eli';
-  $('lead-intro').textContent=k==='wants-own'?'Tell us about your business and how to reach you. Eli will get back to you about an assistant like Charrise.':'Eli reads every one and replies by text or email. A short summary of your chat with Charrise goes with it.';
+  $('lead-title').textContent=k==='wants-own'?'An assistant for your business':'Send to Title22';
+  $('lead-intro').textContent=k==='wants-own'?'Tell us about your business and how to reach you. We will get back to you about an assistant like Charrise.':'Every message is read, and answered by text or email. A short summary of your chat with Charrise goes with it.';
   $('l-out').textContent='';$('l-out').className='msg';$('l-send').disabled=false;$('l-send').textContent='Send';
   $('sheet').classList.add('open');setTimeout(()=>$('l-name').focus(),50);
 }
@@ -237,8 +238,8 @@ async function sendLead(){
     const r=await fetch(API+'/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){out.className='msg bad';out.textContent=d.message||'That did not go through. Please try again.';$('l-send').disabled=false;$('l-send').textContent='Send';return}
-    $('l-send').textContent='Sent';out.textContent='Thank you. Eli has your message and will get back to you.';
-    turn('Thank you, '+body.name.split(/\s+/)[0]+'. Eli has your message and will get back to you.','her');moveSendEli();
+    $('l-send').textContent='Sent';out.textContent='Thank you. Title22 has your message and will get back to you.';
+    turn('Thank you, '+body.name.split(/\s+/)[0]+'. Title22 has your message and will get back to you.','her');moveSendEli();
     setTimeout(closeLead,1800);
   }catch(e){out.className='msg bad';out.textContent='No connection. Please try again.';$('l-send').disabled=false;$('l-send').textContent='Send'}
 }

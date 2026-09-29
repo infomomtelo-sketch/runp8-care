@@ -1,6 +1,7 @@
 // "Talk to my assistant": a public page where a visitor talks to an AI that
 // stands in for the owner, instead of a meeting (2026-09-29). The first one is
-// Charrise, for Eli at Title22, at title22.app/meet.
+// Charrise, for Title22, at title22.app/meet. She speaks as the business and
+// never names the person behind it.
 //
 // Routes (no sign-in; a visitor has no account):
 //   POST /api/assistant/chat  {assistant, messages:[{role,content}], lang}
@@ -12,18 +13,22 @@
 // - the chat is not stored. The page keeps it; the server sees the last few
 //   turns for one answer. Only a lead is kept, and only as the visitor's own
 //   fields plus a short summary;
-// - she says she is an AI, never that she is the owner, and promises nothing.
+// - she says she is an AI, never a person, names nobody, and promises nothing.
 //
 // Adding another business is another ASSISTANTS entry with its own knowledge.
 
 import { TITLE22_KNOWLEDGE } from './tello/title22-knowledge.js';
 import { rest, callModel } from './tello.js';
 
+// speaksFor: who she represents and who a lead goes to. For Title22 that is
+// the business itself: the owner does not want his name on it (2026-09-29),
+// and there is no team, so she names neither a person nor a team.
 export const ASSISTANTS = {
   title22: {
     name: 'Charrise',
     business: 'Title22',
-    owner: 'Eli',
+    speaksFor: 'Title22',
+    whoRunsIt: 'Title22 is a small, independent business in California.',
     knowledge: TITLE22_KNOWLEDGE,
   },
 };
@@ -35,22 +40,24 @@ const MAX_TURN_CHARS = 1500;
 const MAX_TOTAL_CHARS = 12000;
 
 export function assistantPrompt(a) {
-  return `You are ${a.name}, the AI assistant for ${a.owner}, who runs ${a.business}. ${a.owner} asked you to take first conversations for him, so people can learn about ${a.business} and reach him without a meeting.
+  const to = a.speaksFor;
+  return `You are ${a.name}, ${a.business}'s AI assistant. You take first conversations, so people can learn about ${a.business} and get a reply from ${to} without a meeting.
 
 WHO YOU ARE
-You are an AI assistant. Say so in your first reply, and whenever anyone asks or seems unsure. Never say or suggest that you are ${a.owner} or any other person. Speak about ${a.owner} in the third person.
+You are an AI assistant. Say so in your first reply, and whenever anyone asks or seems unsure. Never say or suggest that you are a person.
+Do not name anyone behind ${a.business}, and do not describe a team or staff: there is none to describe. If someone asks who runs it or who they will hear from, say: "${a.whoRunsIt} I can pass your question on." Never invent a name, a person, a title or a team.
 
 LANGUAGE
 Reply in the language the visitor writes in. If they switch languages, switch with them. Keep names, prices and form numbers as they are.
 
 WHAT YOU KNOW
-Only the facts below about ${a.business}. If something is not in them, say you are not sure and offer to pass the question to ${a.owner}. Never invent a feature, a number, a customer, a review or a result. The facts were written for Tello, the AI assistant inside the ${a.business} app: they apply to you too, and Tello is a real part of the product you can mention.
+Only the facts below about ${a.business}. If something is not in them, say you are not sure and offer to pass the question on. Never invent a feature, a number, a customer, a review or a result. The facts were written for Tello, the AI assistant inside the ${a.business} app: they apply to you too, and Tello is a real part of the product you can mention.
 
 NO PROMISES
-Never agree to anything on ${a.owner}'s behalf: no price other than the published plans, no discount, no custom feature, no date, no call time, no contract, no refund. Say ${a.owner} will confirm, and invite them to tap "Send to ${a.owner}" below the chat.
+Never agree to anything on ${to}'s behalf: no price other than the published plans, no discount, no custom feature, no date, no call time, no contract, no refund. Say ${to} will confirm, and invite them to tap "Send to ${to}" below the chat.
 
-WHEN THEY WANT ${a.owner.toUpperCase()}
-When they want a demo, a call, a price for many homes, a partnership, or anything only ${a.owner} can answer, ask them to tap "Send to ${a.owner}" and leave their name and how to reach them. Do not ask for an email or phone number in the chat itself: the form is where it goes.
+WHEN THEY WANT A REPLY
+When they want a demo, a price for many homes, a partnership, or anything you cannot answer, ask them to tap "Send to ${to}" and leave their name and how to reach them. Replies come by text or email. Do not ask for an email or phone number in the chat itself: the form is where it goes.
 
 HEALTH INFORMATION
 Do not ask for it. If someone shares a resident's name or health details, ask them kindly to leave those out. No medical, medication or dosage advice about anyone.
@@ -128,10 +135,10 @@ export async function handleAssistant(request, env, deps) {
     const last = turns[turns.length - 1].content;
     if (inputIsBlocked(last)) return json({ reply: DOSAGE_REFUSAL, blocked: true });
     if (!(await take(env, who + ':chat', LIMITS.visitorChat))) {
-      return json({ error: 'limit', message: `That is all the questions I can take from you today. Tap "Send to ${a.owner}" and he will get back to you.` }, 429);
+      return json({ error: 'limit', message: `That is all the questions I can take from you today. Tap "Send to ${a.speaksFor}" for a reply.` }, 429);
     }
     if (!(await take(env, 'all:' + slug, LIMITS.assistantChat))) {
-      return json({ error: 'busy', message: `I am very busy today. Tap "Send to ${a.owner}" and he will get back to you.` }, 429);
+      return json({ error: 'busy', message: `I am very busy today. Tap "Send to ${a.speaksFor}" for a reply.` }, 429);
     }
     let reply;
     try {
@@ -161,7 +168,7 @@ export async function handleAssistant(request, env, deps) {
       try {
         summary = plainText(textOf(await callModel(env, {
           model: env.ASSISTANT_MODEL || MODEL, max_tokens: 300,
-          system: `Summarise this chat between a visitor and ${a.name}, ${a.owner}'s AI assistant for ${a.business}, for ${a.owner}, in English, in at most three short lines: what they asked, what they need from ${a.owner}, and anything ${a.name} could not answer. No names of residents, no health details, no contact details.`,
+          system: `Summarise this chat between a visitor and ${a.name}, ${a.business}'s AI assistant, for the business owner, in English, in at most three short lines: what they asked, what they need, and anything ${a.name} could not answer. No names of residents, no health details, no contact details.`,
           messages: turns,
         }))).slice(0, 2000) || null;
       } catch { summary = null; }
