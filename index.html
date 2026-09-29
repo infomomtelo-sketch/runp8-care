@@ -765,6 +765,10 @@
       <h2>Start your free trial</h2>
       <p id="signup-trial-line">30 days free · No credit card · Nothing to cancel</p>
       <p class="ref-note" id="ref-note-signup" style="display:none"></p>
+      <!-- Most people reach this card straight from "Create your account",
+           never seeing the landing page's Tello button, so it is here too, at
+           the top where the not-sure visitor is deciding (the owner, 2026-09-29). -->
+      <a href="/tello?src=app-signup" style="display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 16px;padding:10px 14px;background:#fdf3e2;color:#123a30;border:1.5px solid #e8a23d;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600"><img src="/tello-icon.svg" alt="" width="24" height="24" style="border-radius:50%"/>Not sure yet? Ask Tello first — no signup</a>
       <!-- The promise title-22.com makes on every trial CTA. True because
            signup asks for nothing else, and the practice home (startJustLooking)
            needs nothing else. Keep them in step: if signup ever asks for a
@@ -785,9 +789,7 @@
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
       </form>
       <div class="auth-switch" id="signup-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('signup')">Send it again</a></div>
-      <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>
-      <div class="auth-switch" style="margin-top:8px">Not sure yet? <a href="/tello?src=app-signup">Ask Tello first</a> — no account needed.</div>
-    </div>
+      <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>    </div>
   </div>
 </div>
 
