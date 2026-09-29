@@ -98,9 +98,12 @@ real Worker against a stubbed Supabase and Anthropic.
 
 ## title22-extract
 
-Backs the "Scan to fill" button in the staff, resident, and medication modals:
-a photo of a paper form goes in, that form's fields come back as JSON for a
-human to review before anything is saved.
+Backs the Scan button on five staff certificate slots (CPR, First Aid, Live
+Scan, Mandated Reporter, training): a photo of ONE certificate goes in, that
+certificate's own fields come back as JSON for a person to review before
+anything is saved. TB, resident and medication scans are refused (403). See
+"Scan to fill" in CLAUDE.md. Deploy with the "Deploy title22-extract Worker"
+workflow; test with `node test.mjs`.
 
 - Route: `https://mission-control.infomomtelo.workers.dev/api/extract`
 - **The deployed script is named `mission-control`, not `title22-extract`.**
@@ -113,9 +116,8 @@ human to review before anything is saved.
   again, update `wrangler.toml` and `EXTRACT_WORKER` in `index.html`, then
   delete `mission-control`.
 - Deployed 2026-08-05 from the Cloudflare dashboard (paste-the-file flow), not
-  via `wrangler`. Re-pull the deployed source per the instructions at the top
-  of this file before changing it, in case it has been edited in the dashboard
-  since.
+  via `wrangler`. From 2026-09-29 it has a workflow; `keep_vars = true` in
+  `wrangler.toml` keeps any var the dashboard holds.
 - Model: `claude-opus-5`, overridable with the `EXTRACT_MODEL` binding. This
   reads handwriting and small pharmacy print off phone photos, which is the
   whole point of the worker — measure on real scans before stepping down.

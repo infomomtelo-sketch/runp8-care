@@ -348,7 +348,8 @@ MAR, roster fixed, see the section above. No real
 person's data is in it and none can be added. Do not add one back without a decision about
 the BAA that removing them avoided.
 Staff records (TB, Live Scan, certs) are employment
-records, not PHI, and may use scan.
+records, not PHI. Scan is on for the certificates and OFF
+for TB — see "Scan to fill" below.
 The AI never suggests, corrects, or comments on clinical
 dosage information, on any plan.
 Incidents (LIC 624) are kept, unlinked from residents —
@@ -388,6 +389,40 @@ on incidents or documents sails past it — the embed
 rides in the query string. Those two are gated on
 showMAR now. The remaining embeds are on mar_entries and
 daily_logs, whose paths t22Fetch already blocks.
+
+## Scan to fill: staff certificates only, one field set each (2026-09-29)
+
+The owner's decision: scan is back on for five staff slots — CPR, First Aid,
+Live Scan, Mandated Reporter, training certificate — and stays off for TB. A
+TB result is the employee's own medical information (California's CMIA), so
+its two dates are typed and the signed paper stays in the staff file. Resident
+and medication scans stay off with no switch to turn them on.
+
+"Accurate to field": each scan reads and fills ONLY its own slot's fields.
+`SCAN_DOC_FIELDS` (index.html) and `STAFF_DOCS` (workers/title22-extract) are
+the same list and must stay in step. A CPR scan asks the model for the CPR
+dates and nothing else; the prompt and the output schema name only those.
+
+- Enforced in both places. The app: the Scan button only on those five slots,
+  `startScan` refuses anything else, the review shows only the slot's rows,
+  `applyScanToForm` fills only those keys, and "File as" offers only that
+  slot. The Worker: 403 for resident, medication and `tb_test`, 400 for a
+  staff scan with no slot, all before the credit check and before any call.
+- The name printed on the card is read on every scan and shown beside the
+  staff record's name ("Matches" / "Check it is this person's card"). It is
+  never filled. A card filed on the wrong person is the one mistake a date
+  check cannot catch.
+- The staff modal's whole-page "Scan to fill" stays commented out: a whole
+  staff file includes TB.
+- The Worker also meters `lite` and `multi` properly now. They were missing
+  from its LIMITS, so a Lite customer was counted as a trial (50) and told to
+  "Upgrade to Pro".
+- Deploys by `.github/workflows/deploy-title22-extract.yml` (manual). The live
+  script is `mission-control`; every earlier deploy was a dashboard paste, so
+  `wrangler.toml` sets `keep_vars = true` to keep whatever vars the dashboard
+  holds (the stripe-webhook lesson). The workflow reads `/health` afterwards
+  and fails unless it says ok and lists `scannable`.
+- Tests: `node workers/title22-extract/test.mjs` (49 checks, fetch mocked).
 
 ## Tello has a chat dock now, inside the app only
 
