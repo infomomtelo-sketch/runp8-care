@@ -673,6 +673,18 @@ and the test fails if the migration and the JS disagree.
   statute's 40 and 20 govern. Do not "correct" the numbers from the regs.
 - `training.html` is a redirect: it read `training_courses` rows nobody had
   checked. Do not bring it back without checking every row.
+- Phases (2026-09-30): phase 1 = 20 h (6 dementia, 4 postural) before
+  working alone; phase 2 = 20 more (6 dementia) within 4 weeks. Entries carry
+  `phase`; untagged ones fill phase 1 first by date. Required topics are
+  checked covered / not covered with NO hour minimums: the partner's 1 h LGBT,
+  3 h personal care, 2 h physical limitations and 2 h medication policies are
+  not in any source checked and are not enforced. Do not add them as rules.
+- Medication (HSC §1569.69) only for `staff.assists_with_medication`, sized by
+  `facilities.capacity`: 10 h (6 hands-on before assisting, 4 within 2 weeks)
+  or 24 h (16 hands-on, 8 within 4 weeks). Elder abuse training within 60
+  days (WIC §15655). Hands-on entries carry the confirming `supervisor`.
+- `title22_course_catalog` holds a course's credit hours and topic split
+  (`courseToEntries` turns one into log entries). No SCORM yet.
 
 ## ARF: accepted, not built (2026-09-29)
 
