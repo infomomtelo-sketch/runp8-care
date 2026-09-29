@@ -518,6 +518,18 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   a style, not a mode. Customers do not get the mic: their speech would go to
   Apple or Google before our PHI check sees it. The voice Worker's
   `DAILY_LIMIT` went 10 → 150 for this (about 15 cents a user a day at most).
+- **The brief is voiced in pieces (2026-09-29, the owner: "takes a while
+  before talking").** It used to be ONE voice request for the greeting and the
+  whole brief, and nothing played until the whole MP3 was made (4 s of silence
+  in the test, more on a long brief). Now:
+  - Every line is its own request, all sent at once. She starts on the short
+    greeting and each next piece is ready by the time she gets to it.
+  - On the dashboard, the greeting is voiced while the AI is still writing the
+    briefing (`telloVoicePrefetchGreeting`). There she starts 0.06 s after the
+    text appears, and each line lights up exactly as she reads it.
+  - `telloVoicePieces` in index.html, `vPieces` in tello.html.
+  - Costs about 4-6 voice renders per new brief instead of 1, well inside
+    `DAILY_LIMIT` = 150. A replay hits the Worker's cache and counts nothing.
 - **Play on every answer that is short enough to hear** (`SPEAK_MAX` = 900
   characters, `playReply`), for customers and partner alike; tap again to
   stop. A longer answer is for reading: no Play button, and in Talk mode it

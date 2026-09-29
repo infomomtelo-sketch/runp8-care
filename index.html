@@ -6675,7 +6675,15 @@ function writeCachedBriefing(html){
 // A Refresh that produces a different briefing is a new briefing.
 const VOICE_WORKER='https://title22-voice.infomomtelo.workers.dev/api/tello/briefing-voice';
 const TELLO_SILENT_MP3='data:audio/mpeg;base64,//NAxAAAAANIAAAAAExBTUUDAAkIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80LEAAAAA0gAAAAATEFNRQMACQgABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRQMACQgABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQsQAAAADSAAAAABMQU1FAwAJCAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQMQAAAADSAAAAABMQU1FAwAJCAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NCxAAAAANIAAAAAExBTUUDAAkIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-let telloVoiceAudio=null, telloVoiceUrl=null, telloVoiceText='', telloVoiceSeq=0;
+let telloVoiceAudio=null, telloVoiceText='', telloVoiceSeq=0;
+// She speaks in pieces (2026-09-29, the owner: "the morning briefing takes a
+// while before talking"). It used to be one request for greeting + briefing,
+// and nothing played until the whole MP3 was made. Now the greeting is voiced
+// while the briefing is still being written, every line is voiced at once in
+// parallel, and she starts on the greeting the moment it is ready; each next
+// piece is waiting by the time the one before ends. Each piece is cached by
+// the voice Worker, so Listen again costs nothing.
+let telloVoicePieces=[], telloVoiceIdx=0, telloGreetPromise=null, telloGreetFor='';
 
 function telloVoiceEl(){
   if(telloVoiceAudio)return telloVoiceAudio;
@@ -6684,8 +6692,11 @@ function telloVoiceEl(){
   a.setAttribute('playsinline','');
   a.addEventListener('playing',()=>{if(a.dataset.real)telloVoiceRender('playing');});
   a.addEventListener('pause',()=>{if(a.dataset.real&&!a.ended&&a.currentTime>0)telloVoiceRender('paused');});
-  a.addEventListener('ended',()=>{if(a.dataset.real)telloVoiceRender('again');});
-  a.addEventListener('timeupdate',telloVoiceTick);
+  a.addEventListener('ended',()=>{
+    if(!a.dataset.real)return;
+    if(telloVoiceIdx+1<telloVoicePieces.length){telloVoiceNext();return;}
+    telloVoiceMark(-1);telloVoiceRender('again');
+  });
   telloVoiceAudio=a;
   return a;
 }
@@ -6783,33 +6794,21 @@ function telloVoiceRender(state){
   bar.className='on'+(state==='playing'?' speaking':'');
 }
 
-// Follow-along: marks the briefing line Tello is on. No word timings exist,
-// so each line gets its share of the audio by length, plus a little for the
-// pause at its end. Close, not exact — lines are short.
-let telloVoiceLines=[], telloVoiceBounds=[], telloVoiceGreetEnd=0;
+// Follow-along: marks the briefing line Tello is on. Each line is voiced as
+// its own piece, so the line lit is exactly the one being spoken.
+let telloVoiceLines=[];
 function telloVoicePrepLines(){
   const el=document.getElementById('dash-ai-briefing');
   telloVoiceLines=el?[...el.querySelectorAll('li, :scope > div > div')].filter(n=>(n.innerText||'').trim()):[];
-  const w=telloVoiceLines.map(n=>n.innerText.trim().length+14);
-  // The greeting comes first and marks no line; its share of the audio is
-  // counted so the first line lights up when she actually reaches it.
-  const g=telloVoiceGreetingText?telloVoiceGreetingText.length+14:0;
-  const total=(g+w.reduce((a,b)=>a+b,0))||1;
-  telloVoiceGreetEnd=g/total;
-  let acc=g;telloVoiceBounds=w.map(x=>(acc+=x)/total);
   telloVoiceLines.forEach(n=>n.classList.add('tv-line'));
 }
 function telloVoiceMark(idx){
   telloVoiceLines.forEach((n,i)=>n.classList.toggle('tv-now',i===idx));
 }
-function telloVoiceTick(){
-  // Only while she is actually speaking: Stop rewinds to 0, and that rewind
-  // fires one more timeupdate that would otherwise re-mark the first line.
-  const a=telloVoiceAudio;if(!a||!a.dataset.real||a.paused||!a.duration||!telloVoiceLines.length)return;
-  const f=a.currentTime/a.duration;
-  if(f<telloVoiceGreetEnd){telloVoiceMark(-1);return;}
-  let i=telloVoiceBounds.findIndex(b=>f<b);if(i<0)i=telloVoiceLines.length-1;
-  telloVoiceMark(i);
+// Each piece is one line, so the line she is on is simply the piece playing.
+function telloVoiceMarkPiece(){
+  const p=telloVoicePieces[telloVoiceIdx];
+  telloVoiceMark(p&&p.line!=null?p.line:-1);
 }
 
 function telloVoiceStop(){
@@ -6817,6 +6816,7 @@ function telloVoiceStop(){
   telloVoiceDisarm();
   const a=telloVoiceAudio;
   if(a){a.pause();try{a.currentTime=0;}catch(e){}}
+  telloVoiceIdx=0;
 }
 function telloVoiceStopClick(){telloVoiceStop();telloVoiceRender('again');}
 function telloVoicePause(){if(telloVoiceAudio)telloVoiceAudio.pause();}
@@ -6828,7 +6828,7 @@ function telloVoiceResume(){
 function telloVoiceReset(){
   telloVoiceStop();
   if(telloVoiceAudio){delete telloVoiceAudio.dataset.real;telloVoiceAudio.removeAttribute('src');}
-  if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
+  telloVoiceDropPieces();
   telloVoiceText='';telloVoiceGreetingText='';
   telloVoiceRender('off');
   telloVoiceLines.forEach(n=>n.classList.remove('tv-line','tv-now'));telloVoiceLines=[];
@@ -6858,12 +6858,70 @@ async function telloVoiceFetch(text){
   if(!session)throw Object.assign(new Error('not signed in'),{status:401});
   const res=await fetch(VOICE_WORKER,{method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-    body:JSON.stringify({text:telloVoiceGreetingText+'\n'+text})});
+    body:JSON.stringify({text})});
   if(!res.ok){
     let msg='';try{msg=(await res.json()).error||'';}catch(e){}
     throw Object.assign(new Error(msg||('HTTP '+res.status)),{status:res.status});
   }
   return URL.createObjectURL(await res.blob());
+}
+// A piece: its text, the briefing line it lights up (null for the greeting),
+// and its audio, fetched the moment the piece is made.
+function telloVoicePiece(text,line,promise){
+  const p={text,line,url:null,promise:promise||telloVoiceFetch(text)};
+  p.promise.then(u=>{p.url=u;},()=>{});
+  return p;
+}
+// The greeting does not depend on the briefing, so it is voiced as soon as
+// the dashboard starts writing one. Kept apart from the pieces so a reset for
+// a new briefing does not throw it away.
+function telloVoicePrefetchGreeting(){
+  if(demoMode||!currentUser||!telloVoiceEnabled())return;
+  const g=telloGreeting();
+  if(telloGreetPromise&&telloGreetFor===g)return;
+  telloGreetFor=g;
+  telloGreetPromise=telloVoiceFetch(g);
+  telloGreetPromise.catch(()=>{});
+}
+function telloVoiceBuildPieces(text){
+  const pieces=[];
+  const g=telloVoiceGreetingText;
+  pieces.push(telloVoicePiece(g,null,(telloGreetPromise&&telloGreetFor===g)?telloGreetPromise:null));
+  // One piece per briefing line, when the lines hold the whole briefing.
+  // Anything else (a note, a heading) and it is read as one piece, so nothing
+  // on screen goes unsaid.
+  const lines=telloVoiceLines.map(n=>(n.innerText||'').trim());
+  const covered=lines.join(' ').replace(/\s+/g,' ').length;
+  const whole=text.replace(/\s+/g,' ').length;
+  if(lines.length&&lines.length<=12&&covered>=whole*0.85)lines.forEach((t,i)=>pieces.push(telloVoicePiece(t,i)));
+  else pieces.push(telloVoicePiece(text,null));
+  return pieces;
+}
+function telloVoiceDropPieces(){
+  telloVoicePieces.forEach(p=>{
+    // The greeting's audio is shared with the prefetch: never revoke it here.
+    if(p.url&&p.promise!==telloGreetPromise)URL.revokeObjectURL(p.url);
+  });
+  telloVoicePieces=[];telloVoiceIdx=0;
+}
+// Plays the piece after the one that just ended. If it failed, it is skipped
+// rather than stopping her mid-briefing.
+async function telloVoiceNext(){
+  const seq=telloVoiceSeq;
+  const i=++telloVoiceIdx;
+  const p=telloVoicePieces[i];if(!p)return;
+  telloVoiceMarkPiece();
+  let url;
+  try{url=await p.promise;}
+  catch(e){
+    if(seq!==telloVoiceSeq)return;
+    if(i+1<telloVoicePieces.length)return telloVoiceNext();
+    telloVoiceMark(-1);telloVoiceRender('again');return;
+  }
+  if(seq!==telloVoiceSeq)return;
+  const a=telloVoiceEl();
+  a.src=url;
+  a.play().catch(()=>telloVoiceRender('tap'));
 }
 
 // Plays the current briefing. Called from a tap ("Tap to listen", "Listen
@@ -6872,23 +6930,31 @@ async function telloVoiceListen(){
   const text=telloVoiceText;if(!text)return;
   const a=telloVoiceEl();
   const seq=++telloVoiceSeq;
-  if(!telloVoiceUrl){
+  if(!telloVoicePieces.length){
     telloVoiceGreetingText=telloGreeting();
     telloVoicePrepLines();
-    telloVoiceRender('loading');
-    try{telloVoiceUrl=await telloVoiceFetch(text);}
-    catch(e){
+    telloVoicePieces=telloVoiceBuildPieces(text);   // every piece starts fetching now
+  }
+  telloVoiceIdx=0;
+  let first;
+  if(!telloVoicePieces[0].url)telloVoiceRender('loading');
+  try{first=await telloVoicePieces[0].promise;}
+  catch(e){
+    // The greeting failed: start at the first line instead, if that works.
+    try{if(telloVoicePieces.length<2)throw e;telloVoiceIdx=1;first=await telloVoicePieces[1].promise;}
+    catch(e2){
       // Owner's rule: the text is already on screen; log it and go quiet.
-      console.warn('[tello voice] unavailable:',e.status||'',e.message);
-      track('briefing_voice_failed',{status:e.status||0});
+      console.warn('[tello voice] unavailable:',e2.status||'',e2.message);
+      track('briefing_voice_failed',{status:e2.status||0});
       if(seq===telloVoiceSeq)telloVoiceRender('off');
       return;
     }
-    if(seq!==telloVoiceSeq)return;       // stopped, refreshed or signed out meanwhile
   }
+  if(seq!==telloVoiceSeq)return;         // stopped, refreshed or signed out meanwhile
   a.dataset.real='1';
-  if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+  if(a.src!==first)a.src=first;
   try{a.currentTime=0;}catch(e){}
+  telloVoiceMarkPiece();
   try{
     await a.play();
     telloVoiceDisarm();
@@ -6912,7 +6978,8 @@ function telloVoiceDisarm(){
 function telloVoiceArmFirstTouch(){
   if(telloVoiceArmed)return;
   telloVoiceArmed=e=>{
-    if(!telloVoiceText||!telloVoiceUrl){telloVoiceDisarm();return;}
+    const firstUrl=telloVoicePieces[0]&&telloVoicePieces[0].url;
+    if(!telloVoiceText||!firstUrl){telloVoiceDisarm();return;}
     const t=e.target&&e.target.closest?e.target:null;
     // Its own buttons do their own thing.
     if(t&&t.closest('#tello-voice-bar'))return;
@@ -6922,7 +6989,8 @@ function telloVoiceArmFirstTouch(){
     if(!dash||dash.style.display==='none')return;
     const a=telloVoiceEl();
     a.dataset.real='1';
-    if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+    telloVoiceIdx=0;telloVoiceMarkPiece();
+    if(a.src!==firstUrl)a.src=firstUrl;
     try{a.currentTime=0;}catch(err){}
     // play() is called synchronously inside the touch — that is what Safari
     // requires. If it still refuses (a scroll is not a tap), stay armed.
@@ -6941,7 +7009,7 @@ function telloVoiceOffer(el,opts){
   if(!text){telloVoiceRender('off');return;}
   if(text!==telloVoiceText){
     telloVoiceStop();
-    if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
+    telloVoiceDropPieces();
     telloVoiceText=text;
   }
   telloVoicePrepLines();
@@ -6956,6 +7024,7 @@ async function loadDashboardAIBriefing(force){
   // A new briefing (refresh, other facility) must not keep reading the old one.
   telloVoiceReset();delete el.dataset.voice;
   if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
+  telloVoicePrefetchGreeting();          // voiced while the briefing is written
   if(!force){
     const cached=readCachedBriefing();
     if(cached){el.innerHTML=cached;dashBriefingLoaded=true;telloVoiceOffer(el);return;}
