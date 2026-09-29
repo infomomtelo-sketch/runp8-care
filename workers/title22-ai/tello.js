@@ -51,7 +51,7 @@ const ATTACH_MAX_B64 = 7_000_000; // about 5 MB
 const GAP_FOR_MODEL = '[Some earlier messages are left out here. What follows is the most recent part of the conversation.]';
 
 // ----------------------------------------------------------------- REST --
-function rest(env, path, init = {}) {
+export function rest(env, path, init = {}) {
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: {
@@ -152,7 +152,7 @@ export function plain(s) {
   return String(s || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/\*\*/g, '').trim();
 }
 
-async function callModel(env, body) {
+export async function callModel(env, body) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },

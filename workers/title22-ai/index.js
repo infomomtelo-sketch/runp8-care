@@ -7,8 +7,11 @@
 //                     page, because they carry that facility's context.
 //   /api/tello/*      Tello's own page (title22.app/tello). The SERVER picks
 //                     her instructions, including partner mode. See tello.js.
+//   /api/assistant/*  "talk to my assistant" (title22.app/meet, Charrise). No
+//                     sign-in; limited per visitor and per day. See assistant.js.
 
 import { handleTello } from './tello.js';
+import { handleAssistant } from './assistant.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -294,6 +297,15 @@ export default {
       } catch (err) {
         console.error('tello', err);
         return json({ error: 'tello_error', message: String(err?.message || err) }, 500);
+      }
+    }
+
+    if (new URL(request.url).pathname.startsWith('/api/assistant')) {
+      try {
+        return await handleAssistant(request, env, { json, inputIsBlocked, DOSAGE_REFUSAL, containsDosageAdvice, SAFE_DOSAGE_MESSAGE });
+      } catch (err) {
+        console.error('assistant', err);
+        return json({ error: 'assistant_error', message: 'Something went wrong. Please try again.' }, 500);
       }
     }
 
