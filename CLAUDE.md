@@ -694,6 +694,12 @@ ARF stays selectable at signup and in facility settings, and choosing it shows
 staff-records tools." Do not write "for RCFEs and ARFs" anywhere, and do not
 build ARF checklists without a decision.
 
+CBRC ("Community Board and Care") stays in the facility-type picker for now
+(the owner, 2026-09-30): no CDSS licence of that name was found, and the owner
+is checking a real licence certificate before deciding. Do not remove it
+without that decision. Under both pickers a hint says a board and care home is
+an RCFE (residents 60+) or an ARF (18 to 59).
+
 ## Portfolio briefing — Tello for the executive (2026-09-23)
 
 `#ai-portfolio` in the Tello tab, `renderPortfolioCard` / `runPortfolioBriefing`
