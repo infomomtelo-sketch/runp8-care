@@ -1,7 +1,10 @@
-// "Talk to my assistant": a public page where a visitor talks to an AI that
-// stands in for the owner, instead of a meeting (2026-09-29). The first one is
-// Charrise, for Title22, at title22.app/meet. She speaks as the business and
-// never names the person behind it.
+// The public, no-sign-in assistant endpoint (2026-09-29). Two assistants:
+//   charrise  "talk to my assistant", her own page at title22.app/charrise,
+//             kept separate from Tello on purpose (the owner, 2026-09-29):
+//             nothing in Tello links to her. Key 'title22' for history.
+//   tello     Tello for visitors who have not signed in on title22.app/tello.
+// Any assistant here speaks as the business and never names the person
+// behind it.
 //
 // Routes (no sign-in; a visitor has no account):
 //   POST /api/assistant/chat  {assistant, messages:[{role,content}], lang}
@@ -32,8 +35,8 @@ export const ASSISTANTS = {
     knowledge: TITLE22_KNOWLEDGE,
   },
   // Tello for visitors who have not signed in on title22.app/tello
-  // (2026-09-29, the owner: no sign-up pressure). Same rules and limits as
-  // Charrise; signing in is what gives her memory and the full Tello.
+  // (2026-09-29, the owner: no sign-up pressure). Signing in is what gives
+  // her memory and the full Tello.
   tello: {
     name: 'Tello',
     business: 'Title22',

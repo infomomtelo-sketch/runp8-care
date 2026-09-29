@@ -492,11 +492,12 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
-## Charrise: "talk to my assistant" (title22.app/meet, 2026-09-29)
+## Charrise: "talk to my assistant" (title22.app/charrise, 2026-09-29)
 
 The owner does not want to take meetings face to face, and wants a product
 other shy owners can use. First step: a public link that stands in for a
-meeting. `meet.html` (the page), `workers/title22-ai/assistant.js`
+meeting. `charrise.html` (the page, title22.app/charrise; first built as
+`meet.html`), `workers/title22-ai/assistant.js`
 (`/api/assistant/chat`, `/api/assistant/lead`), and
 `migrations/2026-09-29_title22_assistant_charrise.sql`.
 
@@ -510,7 +511,7 @@ meeting. `meet.html` (the page), `workers/title22-ai/assistant.js`
   nobody** (the owner's wish, 2026-09-29: he does not want his circle to know
   he built it, and there is no team, so she must not invent one). Asked who
   runs it: "Title22 is a small, independent business in California. I can
-  pass your question on." Never put the owner's name back into `meet.html`,
+  pass your question on." Never put the owner's name back into `charrise.html`,
   `assistant.js` or the Marketing messages. She promises nothing (price,
   discount, date, contract): she sends people to "Send to Title22". She
   states no licensing requirement as fact.
@@ -528,6 +529,11 @@ meeting. `meet.html` (the page), `workers/title22-ai/assistant.js`
   directly") and in `assets/tello.js`. Not changed yet: partners are owed
   money and are owed a real person to deal with.
 - "Powered by Tello · Get your own assistant" records a `wants-own` lead: demand for the product, before it is built.
+- **Kept separate from Tello on purpose** (the owner, 2026-09-29: "remove
+  Charrise for now... don't waste it, make a separate page"). Nothing in
+  Tello, its Marketing drawer or title-22.com links to her; the owner shares
+  her link himself. Her leads still land in the Cabinet's Leads drawer,
+  labelled Charrise. The same endpoint serves Tello's no-sign-up guests.
 - Another business = another `ASSISTANTS` entry with its own knowledge. Not
   self-serve yet.
 - NOT live until: the migration is run, `deploy-title22-ai.yml` is run, and

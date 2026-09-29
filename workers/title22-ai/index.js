@@ -7,7 +7,7 @@
 //                     page, because they carry that facility's context.
 //   /api/tello/*      Tello's own page (title22.app/tello). The SERVER picks
 //                     her instructions, including partner mode. See tello.js.
-//   /api/assistant/*  "talk to my assistant" (title22.app/meet, Charrise). No
+//   /api/assistant/*  Charrise (title22.app/charrise) and signed-out Tello. No
 //                     sign-in; limited per visitor and per day. See assistant.js.
 
 import { handleTello } from './tello.js';

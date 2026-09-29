@@ -326,7 +326,7 @@ await ask('customer-token', 'thanks');
 assert.ok(!JSON.stringify(anthropic.at(-1).messages).includes(IMG));
 console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 400, too big 413');
 
-// ------------------------------------------------ Charrise (/api/assistant) --
+// ------------------------------- public assistant: guest Tello (/api/assistant) --
 {
   const { LIMITS: AL, cleanTurns } = await import('./assistant.js');
   const visit = (path, body, ip = '203.0.113.7') => worker.fetch(new Request('https://w' + path, {
@@ -334,13 +334,13 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   }), env).then(async (r) => ({ status: r.status, body: await r.json() }));
   const before = anthropic.length;
 
-  script = [text('Hi, I am Charrise, an **AI assistant** for Eli at Title22. It is $29 a month for one home.')];
-  let r = await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'How much is it?' }] });
+  script = [text('Hi, I am Tello, an **AI assistant** for Title22. It is $29 a month for one home.')];
+  let r = await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'How much is it?' }] });
   assert.equal(r.status, 200);
   assert.ok(!r.body.reply.includes('**'), 'markdown stripped');
   const req = anthropic.at(-1);
   assert.equal(req.model, 'claude-haiku-4-5-20251001');
-  assert.match(req.system, /You are Charrise, Title22's AI assistant/);
+  assert.match(req.system, /You are Tello, Title22's AI assistant/);
   assert.match(req.system, /Never say or suggest that you are a person/);
   assert.match(req.system, /Do not name anyone behind Title22, and do not describe a team/);
   assert.ok(!/\bEli\b/.test(req.system), 'she is never told the owner\'s name');
@@ -352,41 +352,46 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
 
   // no account needed, unknown assistant refused, empty chat refused, roles tidied
   assert.equal((await visit('/api/assistant/chat', { assistant: 'nobody', messages: [{ role: 'user', content: 'hi' }] })).status, 404);
-  assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'assistant', content: 'hi' }] })).status, 400);
+  script = [text('Hi, I am Charrise, Title22\'s AI assistant.')];
+  assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'hi' }] }, '198.51.100.30')).status, 200);
+  assert.match(anthropic.at(-1).system, /You are Charrise, Title22's AI assistant/);
+  assert.match(anthropic.at(-1).system, /The facts were written for Tello/, 'Charrise may mention Tello as part of the product');
+  assert.ok(!/\bEli\b/.test(anthropic.at(-1).system));
+  assert.equal((await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'assistant', content: 'hi' }] })).status, 400);
   const t = cleanTurns([{ role: 'assistant', content: 'greeting' }, { role: 'user', content: 'a' }, { role: 'user', content: 'b' }, { role: 'system', content: 'x' }]);
   assert.deepEqual(t, [{ role: 'user', content: 'a\nb' }]);
   assert.equal(cleanTurns(Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(1400) })).concat([{ role: 'user', content: 'last' }])).reduce((n, x) => n + x.content.length, 0) <= 12000, true);
 
   // dosage question refused before any model call
   const n0 = anthropic.length;
-  r = await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'what dose should she take' }] });
+  r = await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'what dose should she take' }] });
   assert.equal(r.body.blocked, true); assert.equal(anthropic.length, n0);
 
   // per-visitor limit, then another visitor still gets through
-  for (let i = 0; i < AL.visitorChat + 2; i++) r = await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'q' + i } ] }, '198.51.100.9');
+  for (let i = 0; i < AL.visitorChat + 2; i++) r = await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'q' + i } ] }, '198.51.100.9');
   assert.equal(r.status, 429); assert.match(r.body.message, /Send to Title22/);
-  assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'hello' }] }, '198.51.100.10')).status, 200);
+  assert.equal((await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'hello' }] }, '198.51.100.10')).status, 200);
   // counter down = closed, not free
   takeDown = true;
   const n1 = anthropic.length;
-  assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'hello' }] }, '198.51.100.11')).status, 429);
+  assert.equal((await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'hello' }] }, '198.51.100.11')).status, 429);
   assert.equal(anthropic.length, n1, 'no model call when the limit cannot be checked');
   takeDown = false;
 
   // a lead: kept with a summary, the chat itself dropped
   script = [text('Asked about price for three homes. Wants a demo. Could not answer the agency price.')];
-  r = await visit('/api/assistant/lead', { assistant: 'title22', name: 'Ana', contact: 'ana@example.com', business: 'Oak Hill RCFE', message: 'Can we talk?', lang: 'es',
+  r = await visit('/api/assistant/lead', { assistant: 'tello', name: 'Ana', contact: 'ana@example.com', business: 'Oak Hill RCFE', message: 'Can we talk?', lang: 'es',
     transcript: [{ role: 'user', content: 'Precio para tres casas?' }, { role: 'assistant', content: 'Multi-Home es $79.' }] });
   assert.equal(r.status, 200);
   const lead = db.assistant_leads.at(-1);
-  assert.deepEqual([lead.name, lead.contact, lead.kind, lead.language, lead.assistant], ['Ana', 'ana@example.com', 'follow-up', 'es', 'title22']);
+  assert.deepEqual([lead.name, lead.contact, lead.kind, lead.language, lead.assistant], ['Ana', 'ana@example.com', 'follow-up', 'es', 'tello']);
   assert.match(lead.summary, /three homes/);
   assert.ok(!('transcript' in lead) && !JSON.stringify(lead).includes('Precio para tres'), 'the chat is not stored with the lead');
-  assert.equal((await visit('/api/assistant/lead', { assistant: 'title22', name: 'Ana', contact: 'x' })).status, 400);
-  assert.equal((await visit('/api/assistant/lead', { assistant: 'title22', name: 'Ana', contact: 'call me maybe' })).status, 400);
-  r = await visit('/api/assistant/lead', { assistant: 'title22', kind: 'wants-own', name: 'Bo', contact: '559 555 0100', business: 'Bo Plumbing' });
+  assert.equal((await visit('/api/assistant/lead', { assistant: 'tello', name: 'Ana', contact: 'x' })).status, 400);
+  assert.equal((await visit('/api/assistant/lead', { assistant: 'tello', name: 'Ana', contact: 'call me maybe' })).status, 400);
+  r = await visit('/api/assistant/lead', { assistant: 'tello', kind: 'wants-own', name: 'Bo', contact: '559 555 0100', business: 'Bo Plumbing' });
   assert.equal(r.status, 200); assert.equal(db.assistant_leads.at(-1).kind, 'wants-own'); assert.equal(db.assistant_leads.at(-1).summary, null);
-  for (let i = 0; i <= AL.visitorLead; i++) r = await visit('/api/assistant/lead', { assistant: 'title22', name: 'Spam', contact: 'spam@x.com' }, '192.0.2.5');
+  for (let i = 0; i <= AL.visitorLead; i++) r = await visit('/api/assistant/lead', { assistant: 'tello', name: 'Spam', contact: 'spam@x.com' }, '192.0.2.5');
   assert.equal(r.status, 429);
   script = [text('Hi, I am Tello.')];
   r = await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'user', content: 'What is Title22?' }] }, '198.51.100.20');
@@ -394,7 +399,7 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   assert.match(anthropic.at(-1).system, /You are Tello, Title22's AI assistant/);
   assert.ok(!/The facts were written for Tello/.test(anthropic.at(-1).system));
   assert.ok(Object.keys(usage).some((k) => k.startsWith('v:tello:')), 'guest Tello has her own counters');
-  console.log('ok  Charrise: no sign-in, Title22 knowledge, says she is an AI, no chat stored, IP hashed, limits fail closed, leads with a summary');
+  console.log('ok  guest Tello (/api/assistant): no sign-in, Title22 knowledge, says she is an AI, names nobody, no chat stored, IP hashed, limits fail closed, leads with a summary; Charrise on her own page, same rules');
 }
 
 console.log('all checks passed');

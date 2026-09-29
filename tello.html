@@ -353,7 +353,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <div class="drawer-body tools" id="cab-tools"></div>
     </details>
     <details class="drawer" id="drawer-leads" hidden>
-      <summary><span class="kicker">Send to Title22</span><span class="slab">Leads from Charrise and Tello</span></summary>
+      <summary><span class="kicker">Send to Title22</span><span class="slab">Leads</span></summary>
       <div class="drawer-body" id="leads"></div>
     </details>
     <details class="drawer" id="drawer-ptn" hidden>
@@ -977,7 +977,6 @@ const MKT={
     {name:'Partner media kit',note:'Images, QR codes and posts with their code',url:'https://title-22.com/partner-kit/'},
     {name:'Follow Title22',note:'All the accounts on one page',url:'https://title-22.com/follow/'},
     {name:'Tello',note:'Her own page',url:'https://title22.app/tello'},
-    {name:'Talk to Charrise',note:'Your AI assistant, instead of a meeting',url:'https://title22.app/meet'},
   ],
   videos:[
     {name:'Meet Tello',note:'37 s, vertical: Reels, Shorts, Stories',url:'https://title-22.com/videos/title22-tello-intro.mp4'},
@@ -989,7 +988,7 @@ const MKT={
     {name:'To a care home owner',text:'Hi [name], this is Title22, an app for California care homes. It keeps your staff files, training and clearances current, and shows you what DSS will ask for before they do. Try it free for 30 days, no card: https://title22.app'},
     {name:'Follow-up',text:'Hi [name], just checking in on Title22. If you want to look before you sign up, the practice home is open with no account: https://title22.app/?demo=1 Happy to walk you through it.'},
     {name:'To a trainer',text:'Hi [name], this is Title22, a staff-records and DSS-readiness app for RCFEs and ARFs. If you teach administrator courses, your students get a 90-day trial through your own link, and you earn 20% of every paid month they stay. You would need to tell students you earn a commission. The details: https://title-22.com/for-trainers/'},
-    {name:'Instead of a call',text:'Hi [name], thanks for reaching out. The quickest way to get your questions answered is Charrise, Title22\'s AI assistant. She knows Title22 well and speaks any language: https://title22.app/meet When you want a reply, tap Send to Title22.'},
+    {name:'Instead of a call',text:'Hi [name], thanks for reaching out. The quickest way to get your questions answered is Tello, Title22\'s AI assistant. No sign-up needed: https://title22.app/tello When you want a reply, open the Cabinet and tap Send to Title22.'},
     {name:'Social post',text:'Your next DSS visit, without guessing. Title22 keeps your staff files, training and clearances current, and Tello tells you each morning what needs attention. $29 a month for one home. Try it free for 30 days, no card. https://title22.app #RCFE #CareHome #California'},
   ],
 };
@@ -1192,8 +1191,8 @@ function ptnClassroom(){
 /* ----------------------------------------------------------- guest -- */
 // No sign-up needed (2026-09-29, the owner: no pressure). A visitor who has
 // not signed in talks to Tello through the public assistant endpoint
-// (/api/assistant/chat, assistant 'tello'): same rules and daily limits as
-// Charrise, nothing stored on the server, the chat kept in this tab only.
+// (/api/assistant/chat, assistant 'tello'): public, daily limits, nothing
+// stored on the server, the chat kept in this tab only.
 // Signing in, from the Cabinet, is what gives her memory, Play and photos.
 // This is not a mode switch on /api/tello: that endpoint still decides who
 // she is from the signed-in account alone.
@@ -1241,19 +1240,21 @@ async function sendLead(){
 }
 
 /* ----------------------------------------------------------- leads -- */
-// What visitors sent with "Send to Title22" on title22.app/meet (Charrise), and
-// businesses asking for an assistant of their own. Partner-admin RPCs from
+// What visitors sent with "Send to Title22": from Tello without signing in,
+// and from Charrise's own page (title22.app/charrise), each labelled. Tello
+// does not link to Charrise: she is kept separate on purpose. And businesses
+// asking for an assistant of their own. Partner-admin RPCs from
 // migrations/2026-09-29_title22_assistant_charrise.sql. The chats themselves
 // are never kept: a lead is the visitor's own fields plus a short summary.
 async function loadLeads(){
   const el=$('leads');if(!el)return;el.innerHTML='';el.appendChild(ptnEl('p','mkt-note','Loading…'));
   const{data,error}=await sb.rpc('title22_assistant_leads');el.innerHTML='';
   if(error){const m=error.message||'';el.appendChild(ptnEl('p','mkt-note',/not authorized/i.test(m)?'Your account is not set as the partner admin.':(error.code==='PGRST202'||/function|does not exist/i.test(m))?'Leads need one database file. In Supabase, run migrations/2026-09-29_title22_assistant_charrise.sql, then open this again.':'Could not load leads: '+m));return}
-  const share=ptnEl('div','mkt-btns');const link='https://title22.app/meet';
-  share.append(mktBtn('Share Charrise',()=>mktShare({name:'Talk to Charrise',url:link}),true),mktBtn('Copy link',b=>copyText(link,b)),mktLink('Open','/meet'));
+  const share=ptnEl('div','mkt-btns');const link='https://title22.app/tello';
+  share.append(mktBtn('Share Tello',()=>mktShare({name:'Ask Tello',url:link}),true),mktBtn('Copy link',b=>copyText(link,b)));
   el.appendChild(share);
   const fresh=(data||[]).filter(l=>l.status==='new').length;
-  el.appendChild(ptnEl('p','mkt-note',!data||!data.length?'Nobody has sent anything yet. Share the link instead of booking a call.':fresh+' new · '+data.length+' in all'));
+  el.appendChild(ptnEl('p','mkt-note',!data||!data.length?'Nobody has sent anything yet.':fresh+' new · '+data.length+' in all'));
   (data||[]).forEach(l=>{
     const c=ptnEl('div','ptn-card'+(l.status==='done'?' off':''));
     const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,l.name),ptnEl('span','ptn-tag',(l.assistant==='tello'?'Tello · ':'Charrise · ')+(l.kind==='wants-own'?'Wants own assistant':'Follow-up')+(l.language?' · '+l.language:'')));c.appendChild(top);
@@ -1262,7 +1263,7 @@ async function loadLeads(){
     if(l.summary){const sm=ptnEl('p','mkt-note','Chat: '+l.summary);sm.style.color='var(--ink)';c.appendChild(sm)}
     const w=ptnEl('div','mkt-btns');const isMail=/@/.test(l.contact);
     const first=(l.name||'').split(/\s+/)[0];
-    w.appendChild(mktLink(isMail?'Email '+first:'Text '+first,isMail?'mailto:'+encodeURIComponent(l.contact)+'?subject='+encodeURIComponent('Title22')+'&body='+encodeURIComponent('Hi '+first+', thanks for your message to Charrise. '):'sms:'+l.contact.replace(/[^\d+]/g,'')));
+    w.appendChild(mktLink(isMail?'Email '+first:'Text '+first,isMail?'mailto:'+encodeURIComponent(l.contact)+'?subject='+encodeURIComponent('Title22')+'&body='+encodeURIComponent('Hi '+first+', thanks for your message to Title22. '):'sms:'+l.contact.replace(/[^\d+]/g,'')));
     w.appendChild(mktBtn('Copy contact',b=>copyText(l.contact,b)));
     w.appendChild(mktBtn(l.status==='done'?'Mark as new':'Done',async b=>{b.disabled=true;const{error}=await sb.rpc('title22_assistant_lead_status',{p_id:l.id,p_status:l.status==='done'?'new':'done'});if(error){b.disabled=false;return}loadLeads()}));
     c.appendChild(w);el.appendChild(c);
