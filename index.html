@@ -31,6 +31,8 @@
      (sha512 verified against the registry) instead of a third-party CDN, so a
      jsdelivr compromise or outage cannot execute arbitrary code in the app. -->
 <script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<!-- Training hours: the RCFE requirements as data, and the arithmetic (tests/training-rules.test.mjs). -->
+<script src="/training-rules.js"></script>
 <script>
   if (typeof window.supabase === 'undefined') {
     document.addEventListener('DOMContentLoaded', function () {
@@ -702,7 +704,7 @@
 <!-- LANDING -->
 <div id="page-landing" class="page active">
    <div class="hero" style="padding-bottom:0">
-    <div class="hero-badge">Built for RCFE &amp; CBRC · California Title 22 · Fresno, CA</div>
+    <div class="hero-badge">Built for California RCFEs · ARF checklists are in development</div>
     <h1>Run a facility <span>DSS is proud to inspect</span></h1>
     <p>Genuine compliance every day — not just inspection day. Title22 Lite warns you before a staff certification lapses, keeps your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
@@ -923,7 +925,7 @@
         <strong>Just exploring? Open the practice home instead</strong>
         <span>Nothing to fill in. Everyone in it is invented.</span>
       </button>
-      <div class="form-group"><label>Facility type</label><select id="ob-type" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select></div>
+      <div class="form-group"><label>Facility type</label><select id="ob-type" onchange="t22ArfNote(this)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select><div class="t22-arf-note" style="display:none;margin-top:8px;font-size:13px;color:var(--text2);background:var(--amber-light);padding:8px 12px;border-radius:var(--radius)">ARF-specific checklists aren't available yet. You'll see the general staff-records tools.</div></div>
       <div class="form-group"><label>Facility name</label><input type="text" id="ob-name" autocomplete="organization" placeholder="Sunrise Care Home"/></div>
       <div class="form-row">
         <div class="form-group" id="ob-row-license"><label>License number <span style="font-weight:400;color:var(--text2)">(optional)</span></label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX" aria-describedby="ob-license-trust"/></div>
@@ -1237,21 +1239,33 @@
         <div class="card">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
-          <div class="form-group"><label>Topic</label><input type="text" id="tr-topic" autocomplete="off" placeholder="e.g., Dementia care, First aid/CPR, Medication management..."/></div>
+          <div class="form-group"><label>Course or session</label><input type="text" id="tr-topic" autocomplete="off" placeholder="e.g., Understanding dementia, CPR review..."/></div>
+          <!-- Topic area, hands-on, delivery and "counts toward" are stored as
+               data (migrations/2026-09-29_title22_training_requirements.sql)
+               and checked by training-rules.js. -->
+          <div class="form-group"><label>Topic area</label>
+            <select id="tr-topic-area"><option value="">Choose a topic area...</option></select>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group"><label>Hours</label><input type="number" id="tr-hours" step="0.5" min="0" placeholder="1.0"/></div>
             <div class="form-group"><label>Date</label><input type="date" id="tr-date"/></div>
           </div>
-          <div class="form-group"><label>Counts toward</label>
-            <select id="tr-category">
-              <option value="">Not specified — counts toward the 20 only</option>
-              <option value="dementia">Dementia care (8 hr minimum)</option>
-              <option value="special_care">Special care — postural, restricted, hospice (4 hr minimum)</option>
-              <option value="general">General — medication, resident rights, fire safety (8 hr minimum)</option>
-              <option value="hands_on">Hands-on at the facility — counts toward the 16 hr initial, not the annual 20</option>
-            </select>
-            <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">The 20 annual hours have minimums inside them. Hours left unspecified still count toward the 20, but cannot satisfy a minimum.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group"><label>Counts toward</label>
+              <select id="tr-counts">
+                <option value="direct_care">Direct care staff training</option>
+                <option value="admin_ce">Administrator certificate renewal</option>
+              </select>
+            </div>
+            <div class="form-group"><label>How it was taught</label>
+              <select id="tr-delivery">
+                <option value="">Not recorded</option>
+                <option value="live">Live: in person or live-stream</option>
+                <option value="self_paced">Self-paced</option>
+              </select>
+            </div>
           </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:2px 0 12px;cursor:pointer"><input type="checkbox" id="tr-hands-on" style="width:16px;height:16px;accent-color:var(--teal)"/> Hands-on training (counts toward the 16 hands-on hours of the initial 40)</label>
           <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
           <div class="form-group"><label>Certificate (optional)</label>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1264,18 +1278,9 @@
           <button class="btn btn-primary" style="margin-top:10px" onclick="saveTraining()">Save training</button>
         </div>
         <div class="card" style="margin-top:16px">
-          <div class="card-title">Annual hours — 20 hr in-service, with minimums inside it</div>
-          <div id="training-summary" style="display:grid;gap:8px;font-size:13px"></div>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <div class="card-title">Initial hands-on training — 16 hr, delivered by you</div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">A new caregiver's 40 initial hours split 24 / 16: 24 hours of instruction from an approved vendor, and these 16 hours of supervised practice at the facility. No vendor provides them — you are the required trainer. Log each session above with <strong>Hands-on at the facility</strong> selected.</div>
-          <div id="handson-summary" style="display:grid;gap:10px;font-size:13px"></div>
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Suggested topics to cover</div>
-            <div id="handson-topics" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-            <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5">A starting point, not a regulated list. §87412 requires the hours and verification of hands-on skills competency in the personnel record; what a shift needs to cover is yours to define.</div>
-          </div>
+          <div class="card-title">Hours by staff member</div>
+          <div id="training-rules-note" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
+          <div id="training-summary" style="display:grid;gap:14px;font-size:13px"></div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Training history</div>
@@ -3046,7 +3051,7 @@ async function handleOnboard(){
   // checklist up on their next load, and "Create facility" now retries only
   // the seeding.
   try{
-    await seedComplianceTasks(data.id,adminCertExpiry);
+    await seedComplianceTasks(data.id,adminCertExpiry,data.facility_type);
   }catch(e){
     err.textContent='Your facility was created, but the compliance checklist could not be built: '+
       ((e&&e.message)||e)+' Press Create facility again to retry — it will not create a second facility.';
@@ -3092,8 +3097,12 @@ function maybeAnnouncePortfolio(){
 // One insert, not chunks: a partial insert would leave a half-checklist that
 // looks seeded, which the self-heal in initFacility cannot tell from a real
 // one. All or nothing is the recoverable failure.
-async function seedComplianceTasks(facilityId,adminCertExpiry){
-  const{data:items,error:readErr}=await sb.from('checklist_items').select('*');
+async function seedComplianceTasks(facilityId,adminCertExpiry,facilityType){
+  let{data:items,error:readErr}=await sb.from('checklist_items').select('*');
+  // facility_types (2026-09-29): an item listing types applies only to them —
+  // the RCFE training requirements are not an ARF's. Null applies to all. A
+  // facility with no type recorded is an RCFE, which onboarding defaults to.
+  if(items)items=items.filter(i=>!Array.isArray(i.facility_types)||!i.facility_types.length||i.facility_types.includes(facilityType||'rcfe'));
   if(readErr)throw new Error('Could not read the Title 22 requirement list: '+readErr.message);
   if(!items||!items.length)throw new Error('The Title 22 requirement list came back empty, so there was nothing to build the checklist from.');
   const highPriority=['daily','on_hire','on_admission'];
@@ -4015,7 +4024,7 @@ async function initFacility(){
   // of every existing customer, which is a decision, not a repair.
   if(!complianceTasks.length&&checklistItems.length&&!demoMode&&!t22ReadOnly&&canEdit()){
     try{
-      await seedComplianceTasks(currentFacility.id,currentFacility.administrator_cert_expiry||null);
+      await seedComplianceTasks(currentFacility.id,currentFacility.administrator_cert_expiry||null,currentFacility.facility_type);
       const{data:again}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
       complianceTasks=again||[];
       if(complianceTasks.length)t22Toast('Your compliance checklist was missing — it has been rebuilt.');
@@ -4736,7 +4745,7 @@ async function exportDSSAudit(){
   // front of an inspector invites the question of what section 3 was.
   let secNo=0;
   const sec=(title,sub)=>`<h2 style="font-size:15px;margin:24px 0 2px">${++secNo}. ${title}</h2><div style="font-size:11px;color:#666;margin-bottom:8px">${sub}</div>`;
-  const residentSection=showMAR?`${sec('Resident roster &amp; required documents','Maps to LIC 602A (Medical Assessment) and resident record requirements — §87506, §87569')}
+  const residentSection=showMAR?`${sec('Resident roster &amp; required documents','Maps to LIC 602A (Medical Assessment) and resident record requirements — §87458, §87506')}
   <table><tr><th style="${th}">Resident</th><th style="${th}">Room</th><th style="${th}">DOB</th><th style="${th}">Admitted</th><th style="${th}">LIC 601</th><th style="${th}">LIC 602A</th><th style="${th}">ISP</th><th style="${th}">ISP reviewed</th></tr>${resRows||`<tr><td style="${td}" colspan="8">No residents on file</td></tr>`}</table>`:'';
   const staffSection=`${sec('Staff certifications','Personnel record requirements — §87411, §87412')}
   <table><tr><th style="${th}">Staff</th><th style="${th}">Role</th><th style="${th}">Hired</th><th style="${th}">TB due</th><th style="${th}">CPR exp</th><th style="${th}">First Aid exp</th><th style="${th}">LiveScan</th><th style="${th}">Mand. Rep.</th><th style="${th}">Initial training</th></tr>${stRows||`<tr><td style="${td}" colspan="9">No active staff on file</td></tr>`}</table>`;
@@ -5692,7 +5701,7 @@ function renderFacilityInfo(){
 function openFacilityModal(){
   const f=currentFacility||{};
   document.getElementById('facm-name').value=f.name||'';
-  document.getElementById('facm-type').value=f.facility_type||'rcfe';
+  document.getElementById('facm-type').value=f.facility_type||'rcfe';t22ArfNote(document.getElementById('facm-type'));
   document.getElementById('facm-license').value=f.license_number||'';
   document.getElementById('facm-capacity').value=f.capacity||'';
   document.getElementById('facm-address').value=f.address||'';
@@ -6047,7 +6056,7 @@ async function seedDemoData(opts){
       inc(5,'behavioral',20,'Resident became agitated during evening activity, raised voice at peer.','Redirected to quiet area; trigger noted; ISP update scheduled.',false),
     ]);
     stage='building the compliance checklist';
-    await seedComplianceTasks(fac.id,dISO(300));
+    await seedComplianceTasks(fac.id,dISO(300),fac.facility_type);
     if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
     currentFacility=fac;
     await initFacility();
@@ -6169,6 +6178,32 @@ async function seedLiteDemoData(opts){
       S('Sofia Ivanova','night_caregiver',dISO(-30),{livescan_cleared:false,livescan_date:null,mandated_reporter_completed:false,mandated_reporter_date:null,initial_training_complete:false,initial_training_completed:false,initial_training_hours:8}),
     ]).select();
     if(se)throw se;
+    // Invented training hours, so the Training tab shows all three checks:
+    // administrator renewal (too much self-paced), an annual year short on
+    // dementia, one complete, and two new hires behind on initial training.
+    // Not fatal: without the 2026-09-29 migration's columns the insert is
+    // refused, and the practice home is still usable.
+    {
+      const tr=(who,d,h,topic,o)=>Object.assign({facility_id:fac.id,staff_id:who,training_date:dISO(d),hours:h,topic_area:topic,topic:(T22T.TOPICS.find(t=>t.key===topic)||{}).label||topic,hands_on:false,delivery:'live',counts_toward:'direct_care'},o||{});
+      const{data:stf}=await sb.from('staff').select('id,name').eq('facility_id',fac.id);
+      const id=n=>((stf||[]).find(x=>x.name===n)||{}).id;
+      const rows=[
+        tr(id('Maria Lopez'),-400,8,'dementia',{counts_toward:'admin_ce'}),
+        tr(id('Maria Lopez'),-300,4,'laws_regs',{counts_toward:'admin_ce'}),
+        tr(id('Maria Lopez'),-200,24,'other',{counts_toward:'admin_ce',delivery:'self_paced',topic:'Online CE bundle'}),
+        tr(id('James Carter'),-100,5,'dementia'),
+        tr(id('James Carter'),-60,4,'postural_hospice'),
+        tr(id('James Carter'),-30,6,'residents_rights',{delivery:'self_paced'}),
+        tr(id('Daniel Reyes'),-150,8,'dementia'),
+        tr(id('Daniel Reyes'),-90,4,'postural_hospice'),
+        tr(id('Daniel Reyes'),-40,8,'emergency'),
+        tr(id('Priya Patel'),-118,16,'personal_care',{hands_on:true}),
+        tr(id('Sofia Ivanova'),-29,6,'dementia'),
+        tr(id('Sofia Ivanova'),-29,2,'postural_hospice'),
+      ].filter(r=>r.staff_id);
+      const{error:te}=await sb.from('staff_trainings').insert(rows);
+      if(te)console.warn('Sample training hours not added:',te.message||te);
+    }
     stage='adding the incident reports';
     // No resident_id: in Lite an incident is a facility record, and the column
     // is left null exactly as the purge left the real ones.
@@ -6179,7 +6214,7 @@ async function seedLiteDemoData(opts){
     ]);
     if(ie)throw ie;
     stage='building the compliance checklist';
-    await seedComplianceTasks(fac.id,dISO(300));
+    await seedComplianceTasks(fac.id,dISO(300),fac.facility_type);
     if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
     currentFacility=fac;
     await initFacility();
@@ -6340,7 +6375,7 @@ async function loadMARBriefing(){
   const notLoggedYet=resList.filter(r=>!givenResIds.has(r.id));
   let tips=[];
   if(notLoggedYet.length)tips.push(`<svg class="ic"><use href="#i-clipboard"/></svg> ${esc(notLoggedYet.map(r=>r.name||r.full_name).join(', '))} — no medications logged today yet`);
-  if(refusedCount)tips.push(`<svg class="ic"><use href="#i-alert"/></svg> ${refusedCount} refusal${refusedCount>1?'s':''} logged today — document reason per Title 22 §87465`);
+  if(refusedCount)tips.push(`<svg class="ic"><use href="#i-alert"/></svg> ${refusedCount} refusal${refusedCount>1?'s':''} logged today — note the reason with each one`);
   if(missedCount)tips.push(`<svg class="ic"><use href="#i-alert"/></svg> ${missedCount} missed dose${missedCount>1?'s':''} today — physician notification may be required`);
   if(!tips.length){el.style.display='none';return;}
   el.style.display='block';
@@ -6446,7 +6481,7 @@ function getMARComplianceTip(medName,scheduledTime){
   if(name.includes('insulin')||name.includes('metformin')||name.includes('glipizide'))return'Diabetic medication — document blood glucose reading in notes if available per facility protocol.';
   if(name.includes('warfarin')||name.includes('coumadin'))return'Anticoagulant — any falls or bruising should be reported to the physician and documented as an incident.';
   if(name.includes('morphine')||name.includes('oxycodone')||name.includes('hydrocodone')||name.includes('fentanyl'))return'Controlled substance — two-staff verification may be required per facility policy. Document witness name in notes.';
-  if(name.includes('lisinopril')||name.includes('amlodipine')||name.includes('metoprolol')||name.includes('atenolol'))return'Blood pressure medication — document any complaints of dizziness or lightheadedness per Title 22 §87465.';
+  if(name.includes('lisinopril')||name.includes('amlodipine')||name.includes('metoprolol')||name.includes('atenolol'))return'Blood pressure medication — report any complaints of dizziness or lightheadedness to the physician and note them.';
   if(name.includes('lasix')||name.includes('furosemide'))return'Diuretic — monitor for signs of dehydration. Ensure resident has adequate fluid intake documented.';
   return'Document the exact time of administration. Incomplete MAR is a common DSS citation — every dose must be logged.';
 }
@@ -9610,31 +9645,20 @@ async function deleteDailyLog(id){
 }
 
 // ===== TRAINING =====
-// The 20 annual hours are not interchangeable. Title 22 sets minimums inside
-// them, so twenty hours of general topics is twenty hours and still not
-// compliant — which a total-only progress bar cannot show. Kept as data rather
-// than literals so correcting an hour figure is an edit here, not a hunt
-// through the file.
-const ANNUAL_CE={
-  total:20,
-  categories:[
-    {key:'dementia',     label:'Dementia care',  min:8, hint:'behaviour, hydration, safety'},
-    {key:'special_care', label:'Special care',   min:4, hint:'postural supports, restricted conditions, hospice'},
-    {key:'general',      label:'General',        min:8, hint:'medication, resident rights, fire safety'},
-  ],
-};
+// What the hours are checked against lives in training-rules.js: the RCFE
+// requirements as data, each with its source, and the arithmetic. Nothing
+// here adds hours up on its own, so correcting a figure is one edit there.
+//
+// Two things this screen used to say that were not so, both removed on
+// 2026-09-29 after a training company's review: an "8 hour general" minimum
+// inside the annual 20 (the law sets 8 dementia and 4 postural/restricted/
+// hospice, nothing else), and that the 40 initial hours split 24 from an
+// approved vendor and 16 "delivered by you". The law says 16 of the 40 are
+// hands-on; it does not say who must teach which.
+const T22T=window.T22Training;
 
-// Initial training for a new direct care staff member is 40 hours, and it
-// splits by who delivers it: 24 hours of instruction from an approved vendor,
-// and 16 hours hands-on at the facility. The facility is the required trainer
-// for the second half — no vendor sells it, and it cannot be a video, because
-// it is supervised practice with a resident present. That is the only training
-// this app should ever host itself, and it is what these hours record.
-const INITIAL_TRAINING={vendorHours:24,handsOnHours:16,total:40};
-
-// A starting checklist, not a regulated list. Title 22 requires the hours and
-// verification of hands-on skills competency in the personnel record (§87412);
-// what a shift actually needs to cover is the facility's to define. Adapt it.
+// The in-app hands-on checklist was a starting point, not a regulated list.
+// Kept as suggestions for the course field.
 const HANDS_ON_TOPICS=[
   'Transfers and mobility assistance',
   'Personal care and activities of daily living',
@@ -9645,37 +9669,18 @@ const HANDS_ON_TOPICS=[
   'Documentation — daily log, incident reports',
 ];
 
-// Hours logged per category for one staff member in the given year, plus the
-// ones filed before categories existed — those count toward the 20 but cannot
-// count toward a minimum, and the summary says so rather than guessing.
-//
-// Hands-on hours are excluded on purpose: they are initial training, counted
-// once at hire, not part of the recurring 20.
-function annualCE(staffId,year){
-  const out={total:0,uncategorised:0};
-  ANNUAL_CE.categories.forEach(c=>{out[c.key]=0;});
-  (trainings||[]).forEach(t=>{
-    if(!t||t.staff_id!==staffId)return;
-    if(t.category==='hands_on')return;
-    if(!t.training_date||new Date(t.training_date).getFullYear()!==year)return;
-    const h=parseFloat(t.hours)||0;
-    out.total+=h;
-    if(t.category&&out[t.category]!==undefined)out[t.category]+=h;
-    else out.uncategorised+=h;
-  });
-  return out;
-}
-
-// Hands-on hours are counted across all time rather than per year — this is a
-// one-off at hire, not an annual clock.
-function handsOnHours(staffId){
-  let hours=0;const topics=[];
-  (trainings||[]).forEach(t=>{
-    if(!t||t.staff_id!==staffId||t.category!=='hands_on')return;
-    hours+=parseFloat(t.hours)||0;
-    if(t.topic)topics.push(t.topic);
-  });
-  return{hours,topics};
+function trainingTopicLabel(key){const t=T22T.TOPICS.find(x=>x.key===key);return t?t.label:'';}
+// ARF is accepted at signup, but its checklists are not built: say so under
+// the picker whenever ARF is chosen.
+function t22ArfNote(sel){const n=sel&&sel.parentNode&&sel.parentNode.querySelector('.t22-arf-note');if(n)n.style.display=sel.value==='arf'?'block':'none';}
+function trainingAppliesHere(){return T22T.appliesTo(T22T.RULES.annual,currentFacility&&currentFacility.facility_type);}
+function trainingRowsFor(staffId){return (trainings||[]).filter(t=>t&&t.staff_id===staffId);}
+// An administrator's certificate expiry: their own staff field, else the
+// facility's administrator certificate when there is exactly one administrator.
+function trainingAdminExpiry(s,admins){
+  if(s.admin_cert_expiry)return s.admin_cert_expiry;
+  if(admins.length===1&&currentFacility&&currentFacility.administrator_cert_expiry)return currentFacility.administrator_cert_expiry;
+  return null;
 }
 let trainings=[];let trainingStaff=[];
 // In-service certificates, keyed by the training entry they prove. A logged
@@ -9689,8 +9694,13 @@ async function loadTrainings(){
   if(!currentFacility)return;
   const dEl=document.getElementById('tr-date');
   if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
-  const{data:st}=await sb.from('staff').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');
-  trainingStaff=st||[];
+  // admin_cert_expiry arrives with the 2026-09-29 migration; until then the
+  // select is retried without it rather than emptying the tab.
+  // '*' so this works with or without the 2026-09-29 admin_cert_expiry column.
+  const{data:st}=await sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('name');
+  trainingStaff=(st||[]).filter(x=>x.active!==false);
+  const ta=document.getElementById('tr-topic-area');
+  if(ta&&ta.options.length<2)ta.innerHTML='<option value="">Choose a topic area...</option>'+T22T.TOPICS.map(t=>`<option value="${t.key}">${esc(t.label)}</option>`).join('');
   const sel=document.getElementById('tr-staff');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select staff...</option>'+trainingStaff.map(s=>`<option value="${s.id}">${(s.name||s.full_name||'Staff')}</option>`).join('');if(cur)sel.value=cur;}
   const{data}=await sb.from('staff_trainings').select('*, staff(name, full_name)').eq('facility_id',currentFacility.id).order('training_date',{ascending:false}).limit(300);
@@ -9791,26 +9801,33 @@ async function saveTraining(){
   const staffId=document.getElementById('tr-staff').value;
   const topic=document.getElementById('tr-topic').value.trim();
   const hours=parseFloat(document.getElementById('tr-hours').value);
+  const topicArea=document.getElementById('tr-topic-area').value;
   if(!staffId){err.textContent='Please select a staff member.';err.classList.add('show');return;}
-  if(!topic){err.textContent='Please enter a topic.';err.classList.add('show');return;}
+  if(!topic){err.textContent='Please enter the course or session.';err.classList.add('show');return;}
+  if(!topicArea){err.textContent='Please choose a topic area. It is how the dementia and other minimums are counted.';err.classList.add('show');return;}
   if(!hours||hours<=0){err.textContent='Please enter hours.';err.classList.add('show');return;}
   const row={
     facility_id:currentFacility.id,staff_id:staffId,topic,hours,
     training_date:document.getElementById('tr-date').value||new Date().toISOString().slice(0,10),
-    notes:document.getElementById('tr-notes').value.trim()||null
+    notes:document.getElementById('tr-notes').value.trim()||null,
+    topic_area:topicArea,
+    hands_on:document.getElementById('tr-hands-on').checked,
+    delivery:document.getElementById('tr-delivery').value||null,
+    counts_toward:document.getElementById('tr-counts').value||'direct_care',
   };
-  const category=(document.getElementById('tr-category')||{}).value||'';
-  if(category)row.category=category;
   // .select().single() so the certificate has a training id to file against.
   let{data,error}=await sb.from('staff_trainings').insert(row).select().single();
-  // category arrives with migrations/2026-08-19_staff_training_category.sql.
-  // Until that has been run the column is rejected — log the hours anyway
-  // rather than lose them, and say which minimum they could not be credited to.
-  let categoryDropped=false;
-  if(error&&category&&/category/i.test((error.message||'')+(error.details||''))){
-    const retry={...row};delete retry.category;
+  // The four new columns arrive with migrations/2026-09-29_title22_training_requirements.sql.
+  // Until that has run they are rejected: log the hours anyway, with the old
+  // category where one maps, and say what could not be stored.
+  let fieldsDropped=false;
+  if(error&&/topic_area|hands_on|delivery|counts_toward/i.test((error.message||'')+(error.details||''))){
+    const retry={facility_id:row.facility_id,staff_id:row.staff_id,topic:row.topic,hours:row.hours,training_date:row.training_date,notes:row.notes};
+    const legacy=row.hands_on?'hands_on':({dementia:'dementia',postural_hospice:'special_care'}[topicArea]||null);
+    if(legacy)retry.category=legacy;
     ({data,error}=await sb.from('staff_trainings').insert(retry).select().single());
-    categoryDropped=!error;
+    if(error&&retry.category){delete retry.category;({data,error}=await sb.from('staff_trainings').insert(retry).select().single());}
+    fieldsDropped=!error;
   }
   if(error){err.textContent=error.message;err.classList.add('show');return;}
 
@@ -9819,77 +9836,95 @@ async function saveTraining(){
   let certFailure=null;
   if(cert&&data)certFailure=await fileTrainingCert(cert,data);
 
-  document.getElementById('tr-topic').value='';document.getElementById('tr-hours').value='';document.getElementById('tr-notes').value='';
-  const catSel=document.getElementById('tr-category');if(catSel)catSel.value='';
+  ['tr-topic','tr-hours','tr-notes'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('tr-topic-area').value='';
+  document.getElementById('tr-hands-on').checked=false;
+  document.getElementById('tr-delivery').value='';
   await loadTrainings();
   if(certFailure){
     err.textContent='Training logged, but the certificate could not be filed: '+certFailure;
     err.classList.add('show');
-  }else if(categoryDropped){
-    err.textContent='Hours logged, but they could not be credited to a minimum — run migrations/2026-08-19_staff_training_category.sql in the Supabase SQL editor.';
+  }else if(fieldsDropped){
+    err.textContent='Hours logged, but the topic area, hands-on and delivery could not be saved yet. Run migrations/2026-09-29_title22_training_requirements.sql in the Supabase SQL editor.';
     err.classList.add('show');
   }
 }
 
-// Per staff member: hands-on hours logged against the 16, and which of the
-// suggested topics have been covered at least once. Topic matching is a plain
-// case-insensitive comparison of what was typed — a topic ticks only when it
-// was actually logged under that name, never inferred.
-function renderHandsOn(){
-  const el=document.getElementById('handson-summary');
-  const topicsEl=document.getElementById('handson-topics');
-  if(topicsEl){
-    const coveredAll=new Set();
-    (trainings||[]).forEach(t=>{if(t&&t.category==='hands_on'&&t.topic)coveredAll.add(String(t.topic).trim().toLowerCase());});
-    topicsEl.innerHTML=HANDS_ON_TOPICS.map(topic=>{
-      const done=coveredAll.has(topic.toLowerCase());
-      return `<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:${done?'var(--green-light)':'var(--gray-light)'};color:${done?'var(--green)':'var(--text2)'}">${done?'✓ ':''}${esc(topic)}</span>`;
-    }).join('');
-  }
-  if(!el)return;
-  if(!trainingStaff.length){el.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';return;}
-  const withHours=trainingStaff.map(s=>({s,ho:handsOnHours(s.id)})).filter(x=>x.ho.hours>0);
-  if(!withHours.length){
-    el.innerHTML='<div style="color:var(--text2)">No hands-on hours logged yet. These are the 16 hours you deliver on shift — they are separate from the annual 20 above.</div>';
-    return;
-  }
-  el.innerHTML=withHours.map(({s,ho})=>{
-    const target=INITIAL_TRAINING.handsOnHours;
-    const pct=Math.min(100,Math.round(ho.hours/target*100));
-    const done=ho.hours>=target;
-    const color=done?'var(--green)':(ho.hours>=target/2?'var(--amber)':'var(--red)');
-    return `<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:500">${esc(s.name||s.full_name||'Staff')}</span><span style="color:${color};font-weight:600">${ho.hours} / ${target} hrs${done?' ✓':''}</span></div>
-    <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div></div>`;
-  }).join('');
+// Per staff member, from training-rules.js: annual hours this cycle (from the
+// hire date), initial training for anyone hired in the last 13 months, and
+// administrator renewal hours for administrators. Each shows its gaps, and
+// the hours per topic for the current cycle.
+function trainingBlock(title,st,extra){
+  const done=st.status==='complete';
+  const color=done?'var(--green)':(st.status==='overdue'?'var(--red)':'var(--amber)');
+  const label={complete:'Complete',in_progress:'In progress',overdue:'Overdue',needs_hire_date:'Needs a hire date',needs_expiry:'Needs certificate expiry'}[st.status]||st.status;
+  const gaps=(st.gaps||[]).map(g=>`<li>${esc(g)}</li>`).join('');
+  const warns=(st.warnings||[]).map(w=>`<div style="color:var(--red);font-size:12px;margin-top:4px">⚠ ${esc(w)}</div>`).join('');
+  return `<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius)">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong style="font-size:13px">${esc(title)}</strong><span style="color:${color};font-weight:600;font-size:12px">${esc(label)}${st.due?' · due '+esc(new Date(st.due+'T12:00:00').toLocaleDateString()):''}</span></div>
+    ${extra||''}
+    ${gaps?`<ul style="margin:6px 0 0 18px;padding:0;font-size:12px;color:var(--text2)">${gaps}</ul>`:''}
+    ${warns}
+  </div>`;
 }
-
 function renderTrainings(){
   const summary=document.getElementById('training-summary');
+  const note=document.getElementById('training-rules-note');
   const list=document.getElementById('training-list');
   const empty=document.getElementById('training-empty');
   if(!list)return;
-  const year=new Date().getFullYear();
+  const R=T22T.RULES;
+  if(note)note.innerHTML=trainingAppliesHere()
+    ?`Checked against the RCFE requirements: <strong>${R.initial.total_hours} hours initial</strong> (${R.initial.before_independent.hours} before working on their own, the rest within 4 weeks; ${R.initial.minimums.hands_on} hands-on, ${R.initial.minimums.dementia} dementia, ${R.initial.minimums.postural_hospice} postural supports / restricted health conditions / hospice), <strong>${R.annual.total_hours} hours every year</strong> from the hire date (${R.annual.minimums.dementia} dementia, ${R.annual.minimums.postural_hospice} postural / restricted / hospice), and for administrators <strong>${R.admin_ce.total_hours} hours every 2 years</strong> (${R.admin_ce.minimums.dementia} dementia, ${R.admin_ce.minimums.laws_regs} laws and regulations, at least ${R.admin_ce.min_live_hours} live, no more than ${R.admin_ce.max_self_paced_hours} self-paced). Sources: ${esc(R.initial.citation)}; ${esc(R.admin_ce.citation)}. Requirements change — confirm yours with your licensing analyst.`
+    :'ARF-specific training requirements are not built yet, so no hours are checked against a requirement here. Your log and certificates are kept as records.';
   if(summary){
     if(!trainingStaff.length){summary.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';}
     else{
+      const today=new Date().toISOString().slice(0,10);
+      const admins=trainingStaff.filter(s=>s.role==='administrator'||s.admin_cert_expiry);
+      const edit=canEdit()&&!demoMode;
       summary.innerHTML=trainingStaff.map(s=>{
-        const ce=annualCE(s.id,year);
-        const ytd=ce.total;
-        const pct=Math.min(100,Math.round(ytd/ANNUAL_CE.total*100));
-        const allMinimumsMet=ANNUAL_CE.categories.every(c=>ce[c.key]>=c.min);
-        const color=(ytd>=ANNUAL_CE.total&&allMinimumsMet)?'var(--green)':(ytd>=ANNUAL_CE.total/2?'var(--amber)':'var(--red)');
-        const chips=ANNUAL_CE.categories.map(c=>{
-          const met=ce[c.key]>=c.min;
-          return `<span title="${esc(c.hint)}" style="font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap;background:${met?'var(--green-light)':'var(--gray-light)'};color:${met?'var(--green)':'var(--text2)'}">${met?'✓':''} ${esc(c.label)} ${ce[c.key]}/${c.min}</span>`;
-        }).join('')
-        +(ce.uncategorised?`<span title="Logged before a category was recorded, or left unspecified" style="font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--amber-light);color:var(--text2)">${ce.uncategorised} hr not credited to a minimum</span>`:'');
-        return `<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-weight:500">${s.name||s.full_name}</span><span style="color:${color};font-weight:600">${ytd} / 20 hrs</span></div>
-        <div style="height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips}</div></div>`;
+        const rows=trainingRowsFor(s.id);
+        let blocks='';
+        // An administrator is shown the direct care blocks only if hours have
+        // been logged for them as direct care: they are not a caregiver by role.
+        const directCare=s.role!=='administrator'||rows.some(r=>(r.counts_toward||'direct_care')==='direct_care');
+        if(trainingAppliesHere()&&directCare){
+          const annual=T22T.annualStatus(rows,s.hire_date,today);
+          // Hours in the first four weeks count toward initial training, so the
+          // topic chips under Annual leave them out, as the annual total does.
+          const initialEnd=s.hire_date?new Date(new Date(s.hire_date+'T12:00:00').getTime()+R.initial.within_days_of_hire*86400000).toISOString().slice(0,10):null;
+          const cycleRows=annual.start?rows.filter(r=>r.training_date>=annual.start&&r.training_date<=annual.due&&(!initialEnd||r.training_date>initialEnd)):[];
+          const byTopic=T22T.hoursByTopic(cycleRows.filter(r=>(r.counts_toward||'direct_care')==='direct_care'));
+          const chips=T22T.TOPICS.filter(t=>byTopic[t.key]>0).map(t=>`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--gray-light)">${esc(t.label)} ${byTopic[t.key]} hr</span>`).join('')
+            +(byTopic.untagged?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--amber-light)">No topic recorded ${byTopic.untagged} hr</span>`:'');
+          const annualHours=annual.hours?`<div style="font-size:12px;margin-top:4px">${annual.hours.total} / ${R.annual.total_hours} hours · dementia ${annual.hours.dementia} / ${R.annual.minimums.dementia} · postural / restricted / hospice ${annual.hours.postural_hospice} / ${R.annual.minimums.postural_hospice}</div>`:'';
+          // Inside the first four weeks the Initial block is the one that applies.
+          if(!initialEnd||today>initialEnd)blocks+=trainingBlock('Annual training',annual,annualHours+(chips?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips}</div>`:''));
+          const hired=s.hire_date?new Date(s.hire_date+'T12:00:00'):null;
+          // Hidden when the staff record already says initial training is done:
+          // those hours usually predate the log.
+          if(hired&&(Date.now()-hired.getTime())<396*86400000&&!s.initial_training_complete&&!s.initial_training_completed){
+            const ini=T22T.initialStatus(rows,s.hire_date,today);
+            const h=ini.hours||{};
+            blocks+=trainingBlock('Initial training',ini,`<div style="font-size:12px;margin-top:4px">${h.total||0} / ${R.initial.total_hours} hours · hands-on ${h.hands_on||0} / ${R.initial.minimums.hands_on} · dementia ${h.dementia||0} / ${R.initial.minimums.dementia} · postural / restricted / hospice ${h.postural_hospice||0} / ${R.initial.minimums.postural_hospice}</div>`);
+          }
+        }
+        if(trainingAppliesHere()&&admins.includes(s)){
+          const exp=trainingAdminExpiry(s,admins);
+          const ce=T22T.adminCeStatus(rows,exp,today);
+          const hh=ce.hours||{};
+          const expInput=edit?`<div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">Certificate expires <input type="date" value="${esc(exp||'')}" onchange="saveAdminCertExpiry('${esc(s.id)}',this.value)" style="padding:3px 6px;font-size:12px"/></div>`:'';
+          blocks+=trainingBlock('Administrator certificate renewal',ce,(ce.hours?`<div style="font-size:12px;margin-top:4px">${hh.counted} / ${R.admin_ce.total_hours} countable hours · live ${hh.live} / ${R.admin_ce.min_live_hours} · self-paced ${hh.self_paced} (up to ${R.admin_ce.max_self_paced_hours} count) · dementia ${hh.dementia} / ${R.admin_ce.minimums.dementia} · laws and regulations ${hh.laws_regs} / ${R.admin_ce.minimums.laws_regs}</div>`:'')+expInput);
+        }
+        if(!trainingAppliesHere()){
+          const byTopic=T22T.hoursByTopic(rows);
+          blocks=`<div style="font-size:12px;color:var(--text2);margin-top:4px">${T22T.TOPICS.filter(t=>byTopic[t.key]>0).map(t=>esc(t.label)+' '+byTopic[t.key]+' hr').join(' · ')||'No hours logged yet.'}</div>`;
+        }
+        return `<div><div style="font-weight:600">${esc(s.name||s.full_name||'Staff')}${s.hire_date?`<span style="font-weight:400;color:var(--text2);font-size:12px"> · hired ${esc(new Date(s.hire_date+'T12:00:00').toLocaleDateString())}</span>`:''}</div>${blocks}</div>`;
       }).join('');
     }
   }
-  renderHandsOn();
   if(!trainings.length){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   const edit=canEdit()&&!demoMode;
@@ -9914,13 +9949,23 @@ function renderTrainings(){
         : '');
     return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-weight:600;font-size:13px">${t.topic.replace(/</g,'&lt;')}</div>
+        <div style="font-weight:600;font-size:13px">${t.topic.replace(/</g,'&lt;')}${(()=>{const e=T22T.normalise(t);const tags=[e.topic?trainingTopicLabel(e.topic):'No topic recorded',e.hands_on?'Hands-on':'',e.delivery==='live'?'Live':e.delivery==='self_paced'?'Self-paced':'',e.counts_toward==='admin_ce'?'Administrator renewal':''].filter(Boolean);return `<div style="font-weight:400;font-size:11px;color:var(--text2);margin-top:2px">${tags.map(esc).join(' · ')}</div>`;})()}</div>
         <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--text2)">${t.hours} hr</span>${del}</div>
       </div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">${sName} · ${new Date(t.training_date+'T00:00:00').toLocaleDateString()}${t.notes?' · '+t.notes.replace(/</g,'&lt;'):''}</div>
       ${certRow}
     </div>`;
   }).join('');
+}
+
+// An administrator's certificate expiry, kept on their staff record so the two
+// renewal years can be counted. Column from the 2026-09-29 migration.
+async function saveAdminCertExpiry(staffId,value){
+  if(!canEdit()||demoMode)return;
+  const{error}=await sb.from('staff').update({admin_cert_expiry:value||null}).eq('id',staffId);
+  if(error){alert(/admin_cert_expiry/.test(error.message||'')?'The certificate date could not be saved yet. Run migrations/2026-09-29_title22_training_requirements.sql in the Supabase SQL editor.':error.message);return;}
+  const s=trainingStaff.find(x=>x.id===staffId);if(s)s.admin_cert_expiry=value||null;
+  renderTrainings();
 }
 
 async function deleteTraining(id){
@@ -11929,7 +11974,7 @@ function renderRefNote(){
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
   <div class="modal" style="max-width:520px"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
-  <div class="form-group"><label>Facility type</label><select id="facm-type"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select></div>
+  <div class="form-group"><label>Facility type</label><select id="facm-type" onchange="t22ArfNote(this)"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select><div class="t22-arf-note" style="display:none;margin-top:8px;font-size:13px;color:var(--text2);background:var(--amber-light);padding:8px 12px;border-radius:var(--radius)">ARF-specific checklists aren't available yet. You'll see the general staff-records tools.</div></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity"/></div></div>
   <div class="form-group"><label>Address</label><input type="text" id="facm-address" autocomplete="off"/></div>
   <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Administrator</div>

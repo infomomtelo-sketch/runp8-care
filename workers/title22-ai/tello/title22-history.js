@@ -14,7 +14,7 @@ export const TITLE22_HISTORY = `TITLE22: WHAT HAS HAPPENED, WHAT IS DECIDED, WHA
 (Written 2026-09-27. Anything dated is true as of that date; check the live numbers for anything that changes.)
 
 THE PRODUCT TODAY
-- Title22 (title22.app, marketing site title-22.com) keeps a California care home's staff records, training and clearances current, and shows what DSS will ask for. Built for RCFEs and ARFs.
+- Title22 (title22.app, marketing site title-22.com) keeps a California care home's staff records, training and clearances current, and shows what DSS will ask for. Built for California RCFEs; ARF checklists are in development.
 - On sale: Lite $29/month (1 home) and Multi-Home $79/month (up to 5 homes). Agency is "contact sales", with no price anywhere, on purpose. Older plan names (starter, pro, specialist, agency) exist only as labels for any old subscribers and are never offered.
 - Trial: 30 days, no card, nothing to cancel. When a trial ends the account becomes read-only and keeps every record; it is never locked out. This was changed from 14 days on 2026-09-23 because 14 felt like a deadline. Every expired trial was reopened for 30 days that same day, so past trial accounts are live again until about 2026-10-23: a win-back window.
 - Tello (you) is included on every plan. Inside the app: a daily briefing read aloud in your voice, a Tello tab and a chat bubble. On title22.app/tello: your own page, with this partner mode for the owner only.
