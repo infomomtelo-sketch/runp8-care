@@ -903,7 +903,23 @@ function renderSnapshot(s){
 // Kokoro af_heart). It reads the brief aloud once a day by itself; after
 // that, Listen. If the browser refuses to play before a tap (iPhone), the
 // first tap anywhere plays it.
-const au=$('voice');let voiceUrl=null,voiceFor='',unlocked=false,armed=null;
+const au=$('voice');let voiceFor='',unlocked=false,armed=null;
+// The brief is voiced in pieces, one per line, all at once (2026-09-29, the
+// owner: "the morning briefing takes a while before talking"). She starts on
+// the greeting as soon as that short piece is ready instead of waiting for the
+// whole brief; the next piece is ready by the time each one ends. Each piece
+// is cached by the voice Worker, so Listen again costs nothing.
+let vPieces=[],vIdx=0;
+function voicePieces(text){
+  return text.split(/\n+/).map(t=>t.trim()).filter(Boolean).map(t=>{
+    const p={url:null,promise:voiceFetch(t)};p.promise.then(u=>{p.url=u},()=>{});return p});
+}
+function voiceIsBrief(){return vPieces.some(p=>p.url&&p.url===au.src)}
+async function voiceNext(){
+  const i=++vIdx,p=vPieces[i];if(!p)return;
+  try{const u=await p.promise;if(vState!=='playing')return;au.src=u;await au.play()}
+  catch(e){if(vState!=='playing')return;if(i+1<vPieces.length)return voiceNext();voiceState('idle')}
+}
 function voiceOn(){return (me?.user_metadata||{}).title22_briefing_voice!==false}
 // Only when nothing is loaded: a first tap on Pause must pause her, not swap
 // her for silence.
@@ -936,10 +952,13 @@ async function voicePlay(){
   playReset();
   const text=greeting(true)+(briefKind==='weekly'?' Here’s your week.':' Here’s your brief.')+'\n'+briefText;
   try{
-    if(voiceUrl&&voiceFor===text&&au.src===voiceUrl&&!au.ended&&au.currentTime>0){await au.play();voiceState('playing');return}  // resume
-    if(!voiceUrl||voiceFor!==text){voiceState('loading');if(voiceUrl)URL.revokeObjectURL(voiceUrl);voiceUrl=await voiceFetch(text);voiceFor=text}
+    if(voiceFor===text&&voiceIsBrief()&&!au.ended&&au.currentTime>0){await au.play();voiceState('playing');return}  // resume
+    if(voiceFor!==text||!vPieces.length){vPieces.forEach(p=>p.url&&URL.revokeObjectURL(p.url));vPieces=voicePieces(text);voiceFor=text}
+    vIdx=0;
+    if(!vPieces[0].url)voiceState('loading');
+    const first=await vPieces[0].promise;
     if(talkOn)return;
-    au.src=voiceUrl;await au.play();voiceState('playing');
+    au.src=first;await au.play();voiceState('playing');
   }catch(e){
     if(e.name==='NotAllowedError'){voiceState('tap');armFirstTouch();return}
     voiceState('idle');$('speaking').hidden=false;$('speaking').textContent=e.message;
@@ -954,11 +973,11 @@ function armFirstTouch(){
 }
 function voiceToggle(){
   if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}
-  if(!au.paused&&voiceUrl&&au.src===voiceUrl){au.pause();voiceState('paused');return}
+  if(!au.paused&&voiceIsBrief()){au.pause();voiceState('paused');return}
   $('speaking').textContent='Tello is speaking (AI voice)';voicePlay();
 }
 function voiceStop(){if(talkOn){talkEnd();return}try{au.pause()}catch(e){}if(armed){document.removeEventListener('pointerdown',armed,true);armed=null}voiceState('idle')}
-au.addEventListener('ended',()=>{if(playBtn){playReset();return}if(talkOn&&talkPhase==='speaking'){talkListen();return}voiceState('idle')});
+au.addEventListener('ended',()=>{if(playBtn){playReset();return}if(talkOn&&talkPhase==='speaking'){talkListen();return}if(vState==='playing'&&voiceIsBrief()&&vIdx+1<vPieces.length){voiceNext();return}voiceState('idle')});
 /* ------------------------------------------------------- marketing -- */
 // The owner's marketing kit, partner mode only: his accounts, the links and
 // videos worth sending, and messages ready to go. Every fact here is one the

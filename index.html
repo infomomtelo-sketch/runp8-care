@@ -256,9 +256,28 @@
   .td-foot{border-top:1px solid var(--border);padding:10px;display:flex;gap:8px}
   .td-foot textarea{flex:1;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;resize:none;outline:none}
   .td-foot button{align-self:flex-end;min-height:40px}
+  /* Tello's setup guide: the first thing in the dock on a home not set up yet. */
+  .td-guide{background:#f9f5ed;border:1.5px solid #e8a23d;border-radius:var(--radius);padding:12px 12px 10px;font-size:13.5px;line-height:1.55;color:#123a30}
+  .td-guide p{margin:0 0 10px}
+  .td-step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid rgba(18,58,48,.1)}
+  .td-step .n{flex:0 0 26px;height:26px;border-radius:50%;background:#123a30;color:#f9f5ed;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .td-step.done .n{background:var(--green,#2e7d32)}
+  .td-step.done b{text-decoration:line-through;opacity:.65}
+  .td-step small{display:block;color:var(--text2);font-size:12.5px;margin-top:2px}
+  .td-step .go{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .td-step .go button{font:600 12.5px inherit;font-family:inherit;border-radius:999px;padding:6px 12px;min-height:34px;cursor:pointer;border:1.5px solid #123a30;background:#123a30;color:#f9f5ed}
+  .td-step .go button.ghost{background:#fff;color:#123a30}
+  .td-guide .hide{background:none;border:none;color:var(--text2);font-size:12px;text-decoration:underline;cursor:pointer;padding:4px 0 0}
+  #td-nudge{position:fixed;right:92px;bottom:30px;z-index:900;max-width:210px;background:#123a30;color:#f9f5ed;border:none;border-radius:14px 14px 4px 14px;
+    padding:9px 13px;font:600 13px/1.35 inherit;font-family:inherit;text-align:left;cursor:pointer;box-shadow:0 8px 22px rgba(18,58,48,.3);display:none}
+  #td-nudge.show{display:block;animation:tdNudge .4s ease}
+  #td-nudge b{color:#e8a23d}
+  @keyframes tdNudge{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){#td-nudge.show{animation:none}}
   @media(max-width:520px){
     #tello-dock{right:8px;left:8px;width:auto;bottom:86px}
     #tello-dock-btn{right:14px;bottom:14px}
+    #td-nudge{right:84px;bottom:22px}
   }
   @media(max-width:520px){
     .lh-title{font-size:20px}
@@ -4032,6 +4051,7 @@ async function initFacility(){
   // facility switch, which is where the per-facility history is picked up.
   mountTelloDock();
   maybeIntroNav();
+  maybeOpenTelloGuide();
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
   }else if(t22Plan==='trial'&&!t22CoveredByFacility){
@@ -5204,6 +5224,7 @@ function staffCertStatus(s){
 }
 
 function renderStaff(){
+  try{telloGuideRefresh();}catch(e){}
   const grid=document.getElementById('staff-grid');
   const empty=document.getElementById('staff-empty');
   const summary=document.getElementById('staff-summary');
@@ -6654,7 +6675,15 @@ function writeCachedBriefing(html){
 // A Refresh that produces a different briefing is a new briefing.
 const VOICE_WORKER='https://title22-voice.infomomtelo.workers.dev/api/tello/briefing-voice';
 const TELLO_SILENT_MP3='data:audio/mpeg;base64,//NAxAAAAANIAAAAAExBTUUDAAkIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80LEAAAAA0gAAAAATEFNRQMACQgABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRQMACQgABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQsQAAAADSAAAAABMQU1FAwAJCAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQMQAAAADSAAAAABMQU1FAwAJCAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NCxAAAAANIAAAAAExBTUUDAAkIAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-let telloVoiceAudio=null, telloVoiceUrl=null, telloVoiceText='', telloVoiceSeq=0;
+let telloVoiceAudio=null, telloVoiceText='', telloVoiceSeq=0;
+// She speaks in pieces (2026-09-29, the owner: "the morning briefing takes a
+// while before talking"). It used to be one request for greeting + briefing,
+// and nothing played until the whole MP3 was made. Now the greeting is voiced
+// while the briefing is still being written, every line is voiced at once in
+// parallel, and she starts on the greeting the moment it is ready; each next
+// piece is waiting by the time the one before ends. Each piece is cached by
+// the voice Worker, so Listen again costs nothing.
+let telloVoicePieces=[], telloVoiceIdx=0, telloGreetPromise=null, telloGreetFor='';
 
 function telloVoiceEl(){
   if(telloVoiceAudio)return telloVoiceAudio;
@@ -6663,8 +6692,11 @@ function telloVoiceEl(){
   a.setAttribute('playsinline','');
   a.addEventListener('playing',()=>{if(a.dataset.real)telloVoiceRender('playing');});
   a.addEventListener('pause',()=>{if(a.dataset.real&&!a.ended&&a.currentTime>0)telloVoiceRender('paused');});
-  a.addEventListener('ended',()=>{if(a.dataset.real)telloVoiceRender('again');});
-  a.addEventListener('timeupdate',telloVoiceTick);
+  a.addEventListener('ended',()=>{
+    if(!a.dataset.real)return;
+    if(telloVoiceIdx+1<telloVoicePieces.length){telloVoiceNext();return;}
+    telloVoiceMark(-1);telloVoiceRender('again');
+  });
   telloVoiceAudio=a;
   return a;
 }
@@ -6762,33 +6794,21 @@ function telloVoiceRender(state){
   bar.className='on'+(state==='playing'?' speaking':'');
 }
 
-// Follow-along: marks the briefing line Tello is on. No word timings exist,
-// so each line gets its share of the audio by length, plus a little for the
-// pause at its end. Close, not exact — lines are short.
-let telloVoiceLines=[], telloVoiceBounds=[], telloVoiceGreetEnd=0;
+// Follow-along: marks the briefing line Tello is on. Each line is voiced as
+// its own piece, so the line lit is exactly the one being spoken.
+let telloVoiceLines=[];
 function telloVoicePrepLines(){
   const el=document.getElementById('dash-ai-briefing');
   telloVoiceLines=el?[...el.querySelectorAll('li, :scope > div > div')].filter(n=>(n.innerText||'').trim()):[];
-  const w=telloVoiceLines.map(n=>n.innerText.trim().length+14);
-  // The greeting comes first and marks no line; its share of the audio is
-  // counted so the first line lights up when she actually reaches it.
-  const g=telloVoiceGreetingText?telloVoiceGreetingText.length+14:0;
-  const total=(g+w.reduce((a,b)=>a+b,0))||1;
-  telloVoiceGreetEnd=g/total;
-  let acc=g;telloVoiceBounds=w.map(x=>(acc+=x)/total);
   telloVoiceLines.forEach(n=>n.classList.add('tv-line'));
 }
 function telloVoiceMark(idx){
   telloVoiceLines.forEach((n,i)=>n.classList.toggle('tv-now',i===idx));
 }
-function telloVoiceTick(){
-  // Only while she is actually speaking: Stop rewinds to 0, and that rewind
-  // fires one more timeupdate that would otherwise re-mark the first line.
-  const a=telloVoiceAudio;if(!a||!a.dataset.real||a.paused||!a.duration||!telloVoiceLines.length)return;
-  const f=a.currentTime/a.duration;
-  if(f<telloVoiceGreetEnd){telloVoiceMark(-1);return;}
-  let i=telloVoiceBounds.findIndex(b=>f<b);if(i<0)i=telloVoiceLines.length-1;
-  telloVoiceMark(i);
+// Each piece is one line, so the line she is on is simply the piece playing.
+function telloVoiceMarkPiece(){
+  const p=telloVoicePieces[telloVoiceIdx];
+  telloVoiceMark(p&&p.line!=null?p.line:-1);
 }
 
 function telloVoiceStop(){
@@ -6796,6 +6816,7 @@ function telloVoiceStop(){
   telloVoiceDisarm();
   const a=telloVoiceAudio;
   if(a){a.pause();try{a.currentTime=0;}catch(e){}}
+  telloVoiceIdx=0;
 }
 function telloVoiceStopClick(){telloVoiceStop();telloVoiceRender('again');}
 function telloVoicePause(){if(telloVoiceAudio)telloVoiceAudio.pause();}
@@ -6807,7 +6828,7 @@ function telloVoiceResume(){
 function telloVoiceReset(){
   telloVoiceStop();
   if(telloVoiceAudio){delete telloVoiceAudio.dataset.real;telloVoiceAudio.removeAttribute('src');}
-  if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
+  telloVoiceDropPieces();
   telloVoiceText='';telloVoiceGreetingText='';
   telloVoiceRender('off');
   telloVoiceLines.forEach(n=>n.classList.remove('tv-line','tv-now'));telloVoiceLines=[];
@@ -6837,12 +6858,70 @@ async function telloVoiceFetch(text){
   if(!session)throw Object.assign(new Error('not signed in'),{status:401});
   const res=await fetch(VOICE_WORKER,{method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-    body:JSON.stringify({text:telloVoiceGreetingText+'\n'+text})});
+    body:JSON.stringify({text})});
   if(!res.ok){
     let msg='';try{msg=(await res.json()).error||'';}catch(e){}
     throw Object.assign(new Error(msg||('HTTP '+res.status)),{status:res.status});
   }
   return URL.createObjectURL(await res.blob());
+}
+// A piece: its text, the briefing line it lights up (null for the greeting),
+// and its audio, fetched the moment the piece is made.
+function telloVoicePiece(text,line,promise){
+  const p={text,line,url:null,promise:promise||telloVoiceFetch(text)};
+  p.promise.then(u=>{p.url=u;},()=>{});
+  return p;
+}
+// The greeting does not depend on the briefing, so it is voiced as soon as
+// the dashboard starts writing one. Kept apart from the pieces so a reset for
+// a new briefing does not throw it away.
+function telloVoicePrefetchGreeting(){
+  if(demoMode||!currentUser||!telloVoiceEnabled())return;
+  const g=telloGreeting();
+  if(telloGreetPromise&&telloGreetFor===g)return;
+  telloGreetFor=g;
+  telloGreetPromise=telloVoiceFetch(g);
+  telloGreetPromise.catch(()=>{});
+}
+function telloVoiceBuildPieces(text){
+  const pieces=[];
+  const g=telloVoiceGreetingText;
+  pieces.push(telloVoicePiece(g,null,(telloGreetPromise&&telloGreetFor===g)?telloGreetPromise:null));
+  // One piece per briefing line, when the lines hold the whole briefing.
+  // Anything else (a note, a heading) and it is read as one piece, so nothing
+  // on screen goes unsaid.
+  const lines=telloVoiceLines.map(n=>(n.innerText||'').trim());
+  const covered=lines.join(' ').replace(/\s+/g,' ').length;
+  const whole=text.replace(/\s+/g,' ').length;
+  if(lines.length&&lines.length<=12&&covered>=whole*0.85)lines.forEach((t,i)=>pieces.push(telloVoicePiece(t,i)));
+  else pieces.push(telloVoicePiece(text,null));
+  return pieces;
+}
+function telloVoiceDropPieces(){
+  telloVoicePieces.forEach(p=>{
+    // The greeting's audio is shared with the prefetch: never revoke it here.
+    if(p.url&&p.promise!==telloGreetPromise)URL.revokeObjectURL(p.url);
+  });
+  telloVoicePieces=[];telloVoiceIdx=0;
+}
+// Plays the piece after the one that just ended. If it failed, it is skipped
+// rather than stopping her mid-briefing.
+async function telloVoiceNext(){
+  const seq=telloVoiceSeq;
+  const i=++telloVoiceIdx;
+  const p=telloVoicePieces[i];if(!p)return;
+  telloVoiceMarkPiece();
+  let url;
+  try{url=await p.promise;}
+  catch(e){
+    if(seq!==telloVoiceSeq)return;
+    if(i+1<telloVoicePieces.length)return telloVoiceNext();
+    telloVoiceMark(-1);telloVoiceRender('again');return;
+  }
+  if(seq!==telloVoiceSeq)return;
+  const a=telloVoiceEl();
+  a.src=url;
+  a.play().catch(()=>telloVoiceRender('tap'));
 }
 
 // Plays the current briefing. Called from a tap ("Tap to listen", "Listen
@@ -6851,23 +6930,31 @@ async function telloVoiceListen(){
   const text=telloVoiceText;if(!text)return;
   const a=telloVoiceEl();
   const seq=++telloVoiceSeq;
-  if(!telloVoiceUrl){
+  if(!telloVoicePieces.length){
     telloVoiceGreetingText=telloGreeting();
     telloVoicePrepLines();
-    telloVoiceRender('loading');
-    try{telloVoiceUrl=await telloVoiceFetch(text);}
-    catch(e){
+    telloVoicePieces=telloVoiceBuildPieces(text);   // every piece starts fetching now
+  }
+  telloVoiceIdx=0;
+  let first;
+  if(!telloVoicePieces[0].url)telloVoiceRender('loading');
+  try{first=await telloVoicePieces[0].promise;}
+  catch(e){
+    // The greeting failed: start at the first line instead, if that works.
+    try{if(telloVoicePieces.length<2)throw e;telloVoiceIdx=1;first=await telloVoicePieces[1].promise;}
+    catch(e2){
       // Owner's rule: the text is already on screen; log it and go quiet.
-      console.warn('[tello voice] unavailable:',e.status||'',e.message);
-      track('briefing_voice_failed',{status:e.status||0});
+      console.warn('[tello voice] unavailable:',e2.status||'',e2.message);
+      track('briefing_voice_failed',{status:e2.status||0});
       if(seq===telloVoiceSeq)telloVoiceRender('off');
       return;
     }
-    if(seq!==telloVoiceSeq)return;       // stopped, refreshed or signed out meanwhile
   }
+  if(seq!==telloVoiceSeq)return;         // stopped, refreshed or signed out meanwhile
   a.dataset.real='1';
-  if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+  if(a.src!==first)a.src=first;
   try{a.currentTime=0;}catch(e){}
+  telloVoiceMarkPiece();
   try{
     await a.play();
     telloVoiceDisarm();
@@ -6891,7 +6978,8 @@ function telloVoiceDisarm(){
 function telloVoiceArmFirstTouch(){
   if(telloVoiceArmed)return;
   telloVoiceArmed=e=>{
-    if(!telloVoiceText||!telloVoiceUrl){telloVoiceDisarm();return;}
+    const firstUrl=telloVoicePieces[0]&&telloVoicePieces[0].url;
+    if(!telloVoiceText||!firstUrl){telloVoiceDisarm();return;}
     const t=e.target&&e.target.closest?e.target:null;
     // Its own buttons do their own thing.
     if(t&&t.closest('#tello-voice-bar'))return;
@@ -6901,7 +6989,8 @@ function telloVoiceArmFirstTouch(){
     if(!dash||dash.style.display==='none')return;
     const a=telloVoiceEl();
     a.dataset.real='1';
-    if(a.src!==telloVoiceUrl)a.src=telloVoiceUrl;
+    telloVoiceIdx=0;telloVoiceMarkPiece();
+    if(a.src!==firstUrl)a.src=firstUrl;
     try{a.currentTime=0;}catch(err){}
     // play() is called synchronously inside the touch — that is what Safari
     // requires. If it still refuses (a scroll is not a tap), stay armed.
@@ -6920,7 +7009,7 @@ function telloVoiceOffer(el,opts){
   if(!text){telloVoiceRender('off');return;}
   if(text!==telloVoiceText){
     telloVoiceStop();
-    if(telloVoiceUrl){URL.revokeObjectURL(telloVoiceUrl);telloVoiceUrl=null;}
+    telloVoiceDropPieces();
     telloVoiceText=text;
   }
   telloVoicePrepLines();
@@ -6935,6 +7024,7 @@ async function loadDashboardAIBriefing(force){
   // A new briefing (refresh, other facility) must not keep reading the old one.
   telloVoiceReset();delete el.dataset.voice;
   if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
+  telloVoicePrefetchGreeting();          // voiced while the briefing is written
   if(!force){
     const cached=readCachedBriefing();
     if(cached){el.innerHTML=cached;dashBriefingLoaded=true;telloVoiceOffer(el);return;}
@@ -7562,7 +7652,7 @@ function telloDockAllowed(){
 }
 
 function unmountTelloDock(){
-  ['tello-dock','tello-dock-btn'].forEach(id=>{
+  ['tello-dock','tello-dock-btn','td-nudge'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.remove();
   });
 }
@@ -7614,10 +7704,122 @@ function mountTelloDock(){
   renderTelloDock();
 }
 
+// ── Tello's setup guide (2026-09-29, the owner: "Tello should be visible when
+// a user subscribes, helping them start setting up the home") ───────────────
+// On a real home that is not set up yet, Tello opens by herself once and lists
+// three steps, ticking each off from what is actually recorded:
+//   1. staff added            staffList has a row
+//   2. staff certificates     a document filed against a staff member
+//   3. the home's own papers  a document filed against no one (licence, fire
+//                             clearance, insurance...)
+// Written in the page, not asked of the model: no AI call, nothing sent. Not on
+// the practice home (it is set up already) and not in the sandbox (no dock).
+// It says what the app does and never what DSS requires.
+const TELLO_GUIDE_VIDEO='https://title-22.com/videos/#howto-docs';
+function telloGuideKey(kind){return 'title22_tello_setup_'+kind+'_'+(currentFacility&&currentFacility.id);}
+function telloGuideSteps(){
+  const docs=(typeof facilityDocs!=='undefined'?facilityDocs:[])||[];
+  return[
+    {done:staffList.length>0},
+    {done:docs.some(d=>d.staff_id)},
+    {done:docs.some(d=>!d.staff_id&&!d.resident_id)},
+  ];
+}
+function telloGuideWanted(){
+  try{
+    if(!currentFacility||isSampleFacility(currentFacility)||!telloDockAllowed())return false;
+    if(localStorage.getItem(telloGuideKey('hidden')))return false;
+    return telloGuideSteps().some(s=>!s.done);
+  }catch(e){return false;}
+}
+function telloGuideHtml(){
+  const s=telloGuideSteps();
+  const home=esc(currentFacility.name||'your home');
+  const step=(i,title,text,buttons)=>`<div class="td-step${s[i].done?' done':''}"><span class="n">${s[i].done?'&#10003;':i+1}</span><div><b>${title}</b><small>${text}</small>${s[i].done?'':`<div class="go">${buttons}</div>`}</div></div>`;
+  return `<div class="td-guide">
+    <p>Hi, I’m Tello. Let’s set up <b>${home}</b>. Three steps, and I tick each one off as you go.</p>
+    ${step(0,'Add your staff','One record per person: name, role and hire date.',
+      `<button type="button" onclick="telloGuideGo('staff')">Add staff</button>`)}
+    ${step(1,'Add their certificates with Scan to fill','Tap <b>Scan</b> on a CPR, First Aid, Live Scan, Mandated Reporter or training card. Take a photo, I fill in the dates, you check them. TB dates are typed.',
+      `<button type="button" onclick="telloGuideGo('staff')">Open Staff</button><button type="button" class="ghost" onclick="telloGuideGo('video')">Watch how (1 min)</button>`)}
+    ${step(2,'Upload your home’s documents','Licence, fire clearance, insurance and policies, in one place to view, print or share.',
+      `<button type="button" onclick="telloGuideGo('documents')">Open Documents</button>`)}
+    <p style="margin:8px 0 0">Then your checklist shows what is left. Ask me anything along the way.</p>
+    <button type="button" class="hide" onclick="telloGuideHide()">Hide these steps</button>
+  </div>`;
+}
+function telloGuideGo(where){
+  track('tello_guide_go',{to:where});
+  if(where==='video'){window.open(TELLO_GUIDE_VIDEO,'_blank','noopener');return;}
+  // On a phone the open dock covers the page it just sent you to.
+  if(window.innerWidth<=520){const p=document.getElementById('tello-dock');if(p)p.classList.remove('open');}
+  switchTab(where);
+  if(where==='staff'&&!staffList.length&&canEdit())openStaffModal();
+  telloGuideNudge();
+}
+function telloGuideHide(){
+  try{localStorage.setItem(telloGuideKey('hidden'),'1');}catch(e){}
+  track('tello_guide_hidden',null);
+  renderTelloDock();telloGuideNudge();
+}
+// The small "Let's set up your home" bubble beside Tello's button, while the
+// guide has steps left and the dock is closed.
+function telloGuideNudge(){
+  let n=document.getElementById('td-nudge');
+  const host=document.getElementById('page-app');
+  const panel=document.getElementById('tello-dock');
+  const want=telloGuideWanted()&&panel&&!panel.classList.contains('open');
+  if(!want){if(n)n.classList.remove('show');return;}
+  if(!n&&host){
+    n=document.createElement('button');n.id='td-nudge';n.type='button';
+    n.onclick=()=>{if(!document.getElementById('tello-dock')?.classList.contains('open'))toggleTelloDock();};
+    host.appendChild(n);
+  }
+  if(!n)return;
+  const left=telloGuideSteps().filter(s=>!s.done).length;
+  n.innerHTML='Let’s set up your home. <b>'+left+' step'+(left===1?'':'s')+' left</b>';
+  n.classList.add('show');
+}
+// Staff and documents load after the dock is mounted, so both renders call
+// this to tick the steps as the data arrives.
+function telloGuideRefresh(){
+  const panel=document.getElementById('tello-dock');
+  if(panel&&panel.classList.contains('open'))renderTelloDock();
+  telloGuideNudge();
+}
+// Opens the dock by itself, once per home per browser, when the guide is
+// wanted. Waits for the page to be free: not over the first-visit menu (the
+// way-finding intro), not over an open form. Gives up after a minute and a
+// half; the bubble is still there.
+function maybeOpenTelloGuide(){
+  if(demoMode||!currentFacility)return;
+  const fid=currentFacility.id;
+  let tries=0;
+  const attempt=()=>{
+    if(!currentFacility||currentFacility.id!==fid)return;
+    if(!telloGuideWanted())return;
+    try{if(localStorage.getItem(telloGuideKey('opened')))return telloGuideNudge();}catch(e){return;}
+    const menu=document.getElementById('user-menu');
+    const busy=(menu&&menu.style.display!=='none')||document.querySelector('.modal-overlay.open')||tourIdx>=0;
+    if(busy){if(++tries<150)setTimeout(attempt,600);return;}
+    const panel=document.getElementById('tello-dock');
+    if(!panel)return;
+    try{localStorage.setItem(telloGuideKey('opened'),'1');}catch(e){}
+    if(!panel.classList.contains('open'))toggleTelloDock();
+    track('tello_guide_shown',null);
+  };
+  // Long enough for staff and documents to load, so the ticks are right.
+  setTimeout(attempt,1800);
+}
+
 function renderTelloDock(){
   const box=document.getElementById('td-msgs');if(!box)return;
   box.innerHTML='';
-  if(!telloDockMessages.length){
+  if(telloGuideWanted()){
+    const g=document.createElement('div');
+    g.innerHTML=telloGuideHtml();
+    box.appendChild(g.firstElementChild);
+  }else if(!telloDockMessages.length){
     const el=document.createElement('div');
     el.className='td-msg assistant t-say';
     el.textContent='Hi, I’m Tello. Ask me about staff, training, certificates, documents or DSS readiness. This edition holds no resident records, so there is nothing about a resident for me to look up.';
@@ -7632,7 +7834,8 @@ function renderTelloDock(){
     else el.innerHTML=renderTelloText(m.content);
     box.appendChild(el);
   });
-  box.scrollTop=box.scrollHeight;
+  // The guide reads from the top; a conversation reads from its latest line.
+  box.scrollTop=(telloGuideWanted()&&!telloDockMessages.length)?0:box.scrollHeight;
 }
 
 function toggleTelloDock(){
@@ -7640,9 +7843,11 @@ function toggleTelloDock(){
   const open=panel.classList.toggle('open');
   if(open){
     renderTelloDock();
-    const ta=document.getElementById('td-input');if(ta)ta.focus();
+    // Not on a phone: the keyboard would cover the guide she just opened with.
+    const ta=document.getElementById('td-input');if(ta&&window.innerWidth>520)ta.focus();
     track('tello_dock_open',null);
   }
+  telloGuideNudge();
 }
 
 async function sendTelloDock(){
@@ -8289,6 +8494,7 @@ async function loadDocuments(){
   renderDocuments();
 }
 function renderDocuments(){
+  try{telloGuideRefresh();}catch(e){}
   const list=document.getElementById('documents-list');const empty=document.getElementById('documents-empty');
   if(!list)return;
   if(!facilityDocs.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
