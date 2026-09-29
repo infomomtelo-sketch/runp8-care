@@ -247,7 +247,7 @@ select s.facility_id, s.id, v.topic, v.hours, current_date - v.days_ago, v.area,
   cross join lateral (values
     ('Dementia care for administrators', 8.0, 200, 'dementia', 'live'),
     ('RCFE regulations update', 4.0, 150, 'laws_regs', 'live'),
-    ('Online management modules', 24.0, 90, 'other', 'self_paced')
+    ('Self-paced management modules', 24.0, 90, 'other', 'self_paced')
   ) as v(topic, hours, days_ago, area, delivery)
  where s.role = 'administrator'
    and not exists (select 1 from public.staff_trainings x where x.facility_id = f.id and x.counts_toward = 'admin_ce');
