@@ -71,6 +71,10 @@
   .ic-md{width:1.35rem;height:1.35rem;stroke-width:1.8;vertical-align:-.3rem}
   .feature-icon .ic{width:1.5rem;height:1.5rem;stroke-width:1.8;vertical-align:middle}
   .page{display:none}.page.active{display:block}
+  .t22-search{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+  .t22-search input{flex:1;min-width:200px;padding:9px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:16px;font-family:inherit;outline:none;background:var(--white)}
+  .t22-search input:focus{border-color:var(--teal)}
+  .t22-search-count{font-size:12px;color:var(--text2);white-space:nowrap}
   /* The PHI entries are hidden by CSS, from the markup, with no script needed.
      applyLiteMode() is defined ~1500 lines BELOW the Supabase client, and the
      script dies at createClient if /vendor/supabase-js fails to load — a bad
@@ -1158,6 +1162,7 @@
       <!-- STAFF -->
       <div id="tab-staff" style="display:none">
         <div class="page-header"><h1>Staff &amp; certifications</h1><button class="btn btn-primary" style="font-size:13px" onclick="openStaffModal()">+ Add staff</button></div>
+        <div id="staff-search-wrap" class="t22-search" style="display:none"><input type="search" id="staff-search" placeholder="Search staff by name" aria-label="Search staff by name" autocomplete="off" oninput="t22SearchInput('staff-search',renderStaff)"/><span id="staff-search-count" class="t22-search-count" aria-live="polite"></span></div>
         <div id="staff-expiry-banner" style="margin-bottom:16px"></div>
         <div id="staff-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
           <div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)" id="staff-count">0</div><div style="font-size:11px;color:var(--text2)">Active staff</div></div>
@@ -1203,6 +1208,7 @@
           <div style="font-size:11px;color:var(--text2);margin-top:8px">Stored privately. Only your facility can view these.</div>
         </div>
         <div id="documents-empty" class="empty" style="margin-top:40px;display:none"><div style="font-size:2rem;margin-bottom:12px"><svg class="ic ic-lg"><use href="#i-file"/></svg></div><div style="font-weight:500;margin-bottom:6px">No documents yet</div><div>Upload LIC forms, physician reports, certificates, and other records here.</div></div>
+        <div id="documents-search-wrap" class="t22-search" style="display:none"><input type="search" id="documents-search" placeholder="Search by staff name or document type (e.g. CPR)" aria-label="Search documents by staff name or document type" autocomplete="off" oninput="t22SearchInput('documents-search',renderDocuments)"/><span id="documents-search-count" class="t22-search-count" aria-live="polite"></span></div>
         <div id="documents-list"></div>
       </div>
 
@@ -1288,6 +1294,7 @@
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Hours by staff member</div>
+          <div class="t22-search"><input type="search" id="training-search" placeholder="Search by staff name (hours and history)" aria-label="Search training by staff name" autocomplete="off" oninput="t22SearchInput('training-search',renderTrainings)"/><span id="training-search-count" class="t22-search-count" aria-live="polite"></span></div>
           <div id="training-rules-note" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
           <div id="training-summary" style="display:grid;gap:14px;font-size:13px"></div>
         </div>
@@ -5307,12 +5314,28 @@ function staffCertStatus(s){
   return{expired,soon,missingDocs};
 }
 
+// Search boxes on Staff, Training and Documents. They filter what is drawn,
+// never what is counted: totals, hours, the banner and the readiness score all
+// read the full lists. Case and accents are ignored and every word must match,
+// so "jose g" finds "José García".
+function t22Norm(s){return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();}
+function t22Matches(q,...fields){if(!q)return true;const hay=fields.map(t22Norm).join(' ');return q.split(' ').every(w=>hay.includes(w));}
+function t22SearchQuery(id){const el=document.getElementById(id);return el?t22Norm(el.value):'';}
+const t22SearchTimers={};
+function t22SearchInput(id,render){clearTimeout(t22SearchTimers[id]);t22SearchTimers[id]=setTimeout(render,120);}
+function t22SearchCount(id,q,shown,total,noun){
+  const el=document.getElementById(id);if(!el)return;
+  el.textContent=q?`${t22Num(shown)} of ${t22Num(total)} ${noun}`:'';
+}
+function t22NoMatch(q){return `<div class="empty" style="grid-column:1/-1;padding:24px">Nothing matches “${esc(q)}”.</div>`;}
+
 function renderStaff(){
   try{telloGuideRefresh();}catch(e){}
   const grid=document.getElementById('staff-grid');
   const empty=document.getElementById('staff-empty');
   const summary=document.getElementById('staff-summary');
   const banner=document.getElementById('staff-expiry-banner');
+  const q=t22SearchQuery('staff-search');
   if(banner){
     let allExpired=[],allSoon=[];
     staffList.filter(s=>s.active===true).forEach(s=>{
@@ -5326,12 +5349,16 @@ function renderStaff(){
       let html='';
       if(allExpired.length)html+=`<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--red);margin-bottom:8px"><svg class="ic"><use href="#i-alert"/></svg> ${allExpired.length} certification${allExpired.length>1?'s':''} EXPIRED</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allExpired.map(c=>`<div style="background:#fff;border:1px solid #e8a0a0;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600"><svg class="ic"><use href="#i-alert"/></svg> ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
       if(allSoon.length)html+=`<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px"><div style="font-weight:700;color:var(--amber);margin-bottom:8px"><svg class="ic"><use href="#i-clock"/></svg> ${allSoon.length} expiring within 30 days</div><div style="display:flex;flex-wrap:wrap;gap:8px">${allSoon.map(c=>`<div style="background:#fff;border:1px solid #e6c170;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--amber);font-weight:600"><svg class="ic"><use href="#i-clipboard"/></svg> ${esc(c.staff)} — ${esc(c.label)} (${esc(c.date)})</div>`).join('')}</div></div>`;
+      // While searching, one line of totals (still over all staff) so the
+      // matching cards are not pushed screens below the full list.
+      if(q)html=`<div style="background:var(--gray-bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:13px">${allExpired.length?`<strong style="color:var(--red)">${allExpired.length} expired</strong>`:''}${allExpired.length&&allSoon.length?' · ':''}${allSoon.length?`<strong style="color:var(--amber)">${allSoon.length} expiring within 30 days</strong>`:''} across all staff. Clear the search to see the list.</div>`;
       banner.innerHTML=html;
     }
   }
   const active=staffList.filter(s=>s.active===true);
-  if(!staffList.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';return;}
-  grid.style.display='grid';empty.style.display='none';summary.style.display='flex';
+  const sw=document.getElementById('staff-search-wrap');
+  if(!staffList.length){grid.style.display='none';empty.style.display='block';summary.style.display='none';if(sw)sw.style.display='none';return;}
+  grid.style.display='grid';empty.style.display='none';summary.style.display='flex';if(sw)sw.style.display='flex';
   let certsOk=0,certsSoon=0,certsExpired=0;
   active.forEach(s=>{const st=staffCertStatus(s);if(st.expired.length)certsExpired++;else if(st.soon.length||st.missingDocs.length)certsSoon++;else certsOk++;});
   document.getElementById('staff-count').textContent=active.length;
@@ -5341,7 +5368,10 @@ function renderStaff(){
   const today=new Date().toISOString().split('T')[0];
   const in30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
   const colors=['#0F6E56','#1D9E75','#BA7517','#3B6D11','#A32D2D','#2d5ba3'];
-  grid.innerHTML=staffList.map(s=>{
+  const shown=q?staffList.filter(s=>t22Matches(q,s.full_name,s.name)):staffList;
+  t22SearchCount('staff-search-count',q,shown.length,staffList.length,'staff');
+  if(!shown.length){grid.innerHTML=t22NoMatch(q);return;}
+  grid.innerHTML=shown.map(s=>{
     const nameField=s.full_name||s.name||'Unknown';
     const st=staffCertStatus(s);
     const initials=nameField.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
@@ -8764,11 +8794,17 @@ function renderDocuments(){
   try{telloGuideRefresh();}catch(e){}
   const list=document.getElementById('documents-list');const empty=document.getElementById('documents-empty');
   if(!list)return;
-  if(!facilityDocs.length){list.innerHTML='';if(empty)empty.style.display='block';return;}
-  if(empty)empty.style.display='none';
+  const sw=document.getElementById('documents-search-wrap');
+  if(!facilityDocs.length){list.innerHTML='';if(empty)empty.style.display='block';if(sw)sw.style.display='none';return;}
+  if(empty)empty.style.display='none';if(sw)sw.style.display='flex';
+  const q=t22SearchQuery('documents-search');
+  const docWho=d=>[d.staff&&(d.staff.full_name||d.staff.name),d.residents&&(d.residents.name||d.residents.full_name)];
+  const shown=q?facilityDocs.filter(d=>t22Matches(q,...docWho(d),DOC_TYPE_LABELS[d.doc_type],d.doc_type&&d.doc_type.replace(/_/g,' '))):facilityDocs;
+  t22SearchCount('documents-search-count',q,shown.length,facilityDocs.length,'documents');
+  if(!shown.length){list.innerHTML=t22NoMatch(q);return;}
   const del=canDelete();
   const canFaxTier=['pro','specialist','agency'].includes(t22Plan); // Fax = paid Facility+ add-on (coming soon)
-  list.innerHTML=facilityDocs.map(d=>{
+  list.innerHTML=shown.map(d=>{
     const res=d.residents?(d.residents.name||d.residents.full_name||''):'';
     const stf=d.staff?(d.staff.full_name||d.staff.name||''):'';
     const who=res||stf;
@@ -9918,6 +9954,7 @@ let trainingAll=[];            // every entry for the home: what the hours are c
 let trainingAllShort=null;     // {read,total} when that read stopped early
 let trainingCertsShort=null;   // same, for the in-service certificates
 const TRAINING_HISTORY_MAX=300;
+let trainingStaffById={};     // every staff member, inactive too: names for the history
 // In-service certificates, keyed by the training entry they prove. A logged
 // hour with no certificate is the same self-reported claim the document slots
 // exist to replace, so the history shows which entries actually have proof.
@@ -9955,6 +9992,7 @@ async function loadTrainings(){
   trainingAllShort=data.length<total?{read:data.length,total,failed:!!error}:null;
   // The history list below is only the newest TRAINING_HISTORY_MAX, named as such.
   const byId={};(st||[]).forEach(s=>{byId[s.id]=s;});
+  trainingStaffById=byId;
   trainings=trainingAll.slice(0,TRAINING_HISTORY_MAX).map(t=>({...t,staff:byId[t.staff_id]||null}));
   await loadTrainingCerts();
   renderTrainings();
@@ -10038,7 +10076,7 @@ async function onTrainingCertFile(input){
   const err=validateUploadFile(file);
   if(err){alert(err);return;}
 
-  const training=trainings.find(t=>t.id===id);
+  const training=(trainingAll||[]).find(t=>t.id===id);
   if(!training)return;
   const failure=await fileTrainingCert(file,training);
   if(failure){alert('Could not attach that certificate.\n\n'+failure);return;}
@@ -10236,10 +10274,16 @@ function renderTrainings(){
   const list=document.getElementById('training-list');
   const empty=document.getElementById('training-empty');
   if(!list)return;
+  const q=t22SearchQuery('training-search');
+  const sName=id=>{const x=trainingStaffById[id];return x?(x.full_name||x.name||''):'';};
+  const pool=q?trainingAll.filter(t=>t22Matches(q,sName(t.staff_id))):trainingAll;
+  const hist=q?pool.slice(0,TRAINING_HISTORY_MAX).map(t=>({...t,staff:trainingStaffById[t.staff_id]||null})):trainings;
   t22ShortNotice('training-summary',trainingAllShort
     ?`Hours below are counted from only ${t22Num(trainingAllShort.read)} of ${t22Num(trainingAllShort.total)} training entries: the rest could not be read. Refresh the page before relying on these totals.`:null);
-  t22ShortNotice('training-list',(trainingAll.length>trainings.length
-    ?(trainingAllShort
+  t22ShortNotice('training-list',(pool.length>hist.length
+    ?(q
+      ?`The history below shows the newest ${t22Num(hist.length)} of ${t22Num(pool.length)} matching entries.`
+      :trainingAllShort
       ?`The history below shows the newest ${t22Num(trainings.length)} of the ${t22Num(trainingAll.length)} entries that could be read.`
       :`The history below shows the newest ${t22Num(trainings.length)} of ${t22Num(trainingAll.length)} entries. Every person's hours above are counted from all ${t22Num(trainingAll.length)}.`):'')
     +(trainingCertsShort?` Only ${t22Num(trainingCertsShort.read)} of ${t22Num(trainingCertsShort.total)} certificates could be read, so an entry may show "No certificate on file" when it has one. Refresh to load the rest.`:'')||null);
@@ -10255,7 +10299,9 @@ function renderTrainings(){
       const today=new Date().toISOString().slice(0,10);
       const admins=trainingStaff.filter(s=>s.role==='administrator'||s.admin_cert_expiry);
       const edit=canEdit()&&!demoMode;
-      summary.innerHTML=trainingStaff.map(s=>{
+      const people=q?trainingStaff.filter(s=>t22Matches(q,s.full_name,s.name)):trainingStaff;
+      t22SearchCount('training-search-count',q,people.length,trainingStaff.length,'staff');
+      summary.innerHTML=!people.length?t22NoMatch(q):people.map(s=>{
         const rows=trainingRowsFor(s.id);
         let blocks='';
         // An administrator is shown the direct care blocks only if hours have
@@ -10309,9 +10355,10 @@ function renderTrainings(){
     }
   }
   if(!trainings.length){list.innerHTML='';empty.style.display='block';return;}
+  if(!hist.length){list.innerHTML=t22NoMatch(q);empty.style.display='none';return;}
   empty.style.display='none';
   const edit=canEdit()&&!demoMode;
-  list.innerHTML=trainings.map(t=>{
+  list.innerHTML=hist.map(t=>{
     const sName=t.staff?.name||t.staff?.full_name||'Staff';
     const del=canDelete()?`<button onclick="deleteTraining('${t.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">Delete</button>`:'';
     // Hours with a certificate behind them are what an inspector can be shown.
