@@ -685,13 +685,50 @@ and the test fails if the migration and the JS disagree.
 - `title22_course_catalog` holds a course's credit hours and topic split
   (`courseToEntries` turns one into log entries). No SCORM yet.
 
-## ARF: accepted, not built (2026-09-29)
+## ARF checklists and training checks (2026-09-30)
 
-Title22 is built for California RCFEs; ARF checklists are in development.
-ARF stays selectable at signup and in facility settings, and choosing it shows
-"ARF-specific checklists aren't available yet. You'll see the general
-staff-records tools." Do not write "for RCFEs and ARFs" anywhere, and do not
-build ARF checklists without a decision.
+ARFs (adults 18 to 59) follow 22 CCR §80000 and §85000, not §87100. Built
+from CDSS's "Reference Guide to ARF Administrator, Staff, and Volunteer
+Training Requirements" (Dec 2025, PIN 25-11-ASC), the CDSS Administrator
+Certification FAQ, and the current regulation text in CDSS's own files
+(arfman.docx, genman1-4.docx). Every item carries a citation and
+`checked_on = 2026-09-30`.
+
+- `migrations/2026-09-30b_title22_arf_checklists.sql`: 26 ARF items
+  (`facility_types = {arf}`), 4 rows in `title22_training_requirements`, a
+  `checked_on` column on `checklist_items`, and every previously untagged item
+  marked `{rcfe,cbrc}` (all were written for RCFEs). Additive; verified twice
+  on Postgres 16. Run it BEFORE merging the app change.
+- No resident items and no medication items for ARF, not even tick-boxes. Do
+  not add any.
+- `training-rules.js`: `arf_admin_ce` (40 / 2 yr, 4 laws-regs, >=20 live,
+  <=20 self-paced, NO dementia; initial 35 h live-only + exam in 60 days),
+  `arf_admin_hiv_tb` (3 + 1 h within 6 months, then every 2 yr, counted from
+  the administrator's hire date), `arf_infection_control` (10 days),
+  `arf_emergency_plan` (hire + yearly), `arf_first_aid`. `elder_abuse` applies
+  to ARF too. `adminCeStatus(rows, exp, today, rule)`; no rule = RCFE.
+  `topicsFor(type)`: ARF gets HIV and TB and loses dementia and aging.
+- The app shows only tasks whose item applies to the facility's type
+  (`t22TaskApplies`). An ARF home seeded before 2026-09-30 still HOLDS its RCFE
+  tasks in the database; they are hidden, not deleted, and the zero self-heal
+  gives it the ARF list once ("zero" = zero for this type).
+- Staff cards and the readiness score drop CPR and "Initial training" for ARF
+  (CPR is ARF-required only with emergency intervention, §85165). The RCFE
+  label "16hr Training" was wrong and is now "Initial training".
+- Sample ARF home: `seedArfDemoData`, "Sample ARF (Demo)", 4 invented staff,
+  no residents, no incidents, never the classroom MAR (`t22MarAllowed` names
+  the RCFE sample).
+- Tello gets `facility_type` and `training_rules` for that type only, and is
+  told never to give an ARF an RCFE rule and to say "I'm not sure. Check with
+  CCLD" otherwise. `tello/title22-knowledge.js` changed too: needs a
+  `deploy-title22-ai.yml` run after merge.
+- NOT modelled (named in the code): regional-center DSP training (WIC
+  §4695.2, not reachable from an official source here), up to 24 Regional
+  Center CE hours, the 10-hours-a-day CE cap, the 1-hour LGBT CE hour,
+  emergency intervention / delayed egress / secured perimeters / hospice
+  training.
+- title-22.com still says "ARF checklists are in development". Change it only
+  after this is merged AND live.
 
 CBRC ("Community Board and Care") stays in the facility-type picker for now
 (the owner, 2026-09-30): no CDSS licence of that name was found, and the owner

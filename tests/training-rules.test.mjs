@@ -191,6 +191,97 @@ const HIRE = '2025-03-10';
 ok(T.appliesTo(T.RULES.annual, 'rcfe') && T.appliesTo(T.RULES.annual, null), 'RCFE items apply to RCFE (and to an untyped facility)');
 ok(!T.appliesTo(T.RULES.annual, 'arf') && !T.appliesTo(T.RULES.admin_ce, 'arf'), 'RCFE items do not apply to ARF');
 
+// ── ARF ──────────────────────────────────────────────────────────────────
+{
+  const A = T.RULES;
+  // Every ARF rule applies to ARF and to nothing else; no RCFE rule applies to ARF.
+  const arfRules = [A.arf_admin_ce, A.arf_admin_hiv_tb, A.arf_infection_control, A.arf_emergency_plan, A.arf_first_aid];
+  ok(arfRules.every(r => T.appliesTo(r, 'arf') && !T.appliesTo(r, 'rcfe') && !T.appliesTo(r, 'cbrc') && !T.appliesTo(r, null)), 'ARF rules apply to ARF only (not RCFE, CBRC or an untyped facility)');
+  ok([A.admin_ce, A.initial, A.annual, A.medication].every(r => !T.appliesTo(r, 'arf')), 'no RCFE-only rule (admin CE, initial phases, annual, medication by size) applies to ARF');
+  ok(T.appliesTo(A.elder_abuse, 'arf') && T.appliesTo(A.elder_abuse, 'rcfe'), 'elder and dependent adult abuse training applies to both');
+  ok(!('dementia' in A.arf_admin_ce.minimums), 'ARF renewal has no dementia minimum');
+  eq([A.arf_admin_ce.total_hours, A.arf_admin_ce.minimums.laws_regs, A.arf_admin_ce.max_self_paced_hours, A.arf_admin_ce.min_live_hours], [40, 4, 20, 20], 'ARF renewal: 40 hours, 4 laws/regs, at most 20 self-paced, at least 20 live');
+  eq(A.arf_admin_ce.initial_certification, { hours: 35, live_only: true, exam_within_days: 60 }, 'ARF initial certification: 35 hours, live only, exam within 60 days');
+
+  // Topic picker: ARF gets HIV and TB, not dementia or aging; RCFE's list is unchanged.
+  const arfKeys = T.topicsFor('arf').map(t => t.key), rcfeKeys = T.topicsFor('rcfe').map(t => t.key);
+  ok(arfKeys.includes('hiv') && arfKeys.includes('tb') && !arfKeys.includes('dementia') && !arfKeys.includes('aging'), 'ARF topic list: HIV and TB in, dementia and aging out');
+  eq(rcfeKeys, ['aging', 'personal_care', 'infection_control', 'residents_rights', 'medication', 'psychosocial', 'dementia', 'postural_hospice', 'emergency', 'elder_abuse', 'lgbt_cultural', 'first_aid', 'laws_regs', 'other'], 'RCFE topic list is exactly what it was');
+  eq(T.topicsFor(null).map(t => t.key), rcfeKeys, 'an untyped facility gets the RCFE list');
+
+  // ARF administrator with 24 self-paced hours: only 20 count, and a warning.
+  const exp = '2027-06-30', today = '2026-09-30';
+  const ce = [
+    row('2026-01-10', 24, 'other', { counts_toward: 'admin_ce', delivery: 'self_paced' }),
+    row('2026-03-10', 4, 'laws_regs', { counts_toward: 'admin_ce', delivery: 'live' }),
+    row('2026-05-10', 12, 'other', { counts_toward: 'admin_ce', delivery: 'live' }),
+  ];
+  const s = T.adminCeStatus(ce, exp, today, A.arf_admin_ce);
+  eq(s.code, 'arf_admin_ce', 'ARF renewal uses the ARF rule');
+  eq(s.hours.self_paced, 24, 'all 24 self-paced hours are shown');
+  eq(s.hours.counted, 36, 'only 20 of the 24 self-paced hours count (20 + 16 live = 36)');
+  ok(s.warnings.some(w => /24 self-paced hours logged: only 20 can count/.test(w)), 'warns when self-paced passes 20');
+  eq(s.gaps, ['4 more countable hours to reach 40', '4 more live hours, in person or live-stream (20 needed)'], 'gaps: 4 countable, 4 live; nothing about dementia');
+  // The same rows under the RCFE rule would ask for dementia hours: the rule matters.
+  ok(T.adminCeStatus(ce, exp, today).gaps.some(g => /dementia/.test(g)), 'the RCFE rule, by contrast, asks for 8 dementia hours');
+  eq(JSON.stringify(T.adminCeStatus(ce, exp, today)), JSON.stringify(T.adminCeStatus(ce, exp, today, A.admin_ce)), 'no rule passed = the RCFE rule, as before');
+  // Complete: 20 live incl. 4 laws, 20 self-paced.
+  const full = T.adminCeStatus([row('2026-01-10', 20, 'other', { counts_toward: 'admin_ce', delivery: 'self_paced' }), row('2026-03-10', 4, 'laws_regs', { counts_toward: 'admin_ce', delivery: 'live' }), row('2026-05-10', 16, 'other', { counts_toward: 'admin_ce', delivery: 'live' })], exp, today, A.arf_admin_ce);
+  eq([full.status, full.gaps.length, full.warnings.length], ['complete', 0, 0], 'ARF renewal complete at 40 with 4 laws and 20 live');
+
+  // Infection Control Plan training within 10 calendar days of hire.
+  const hire = '2026-09-20';
+  eq(T.arfInfectionControlStatus([], hire, '2026-09-25').status, 'in_progress', 'infection control: day 5, not yet logged = in progress');
+  eq(T.arfInfectionControlStatus([], hire, '2026-10-01').status, 'overdue', 'infection control: day 11, not logged = overdue');
+  eq(T.arfInfectionControlStatus([row('2026-09-28', 1, 'infection_control')], hire, '2026-10-05').status, 'complete', 'infection control: logged on day 8 = complete');
+  eq(T.arfInfectionControlStatus([row('2026-10-02', 1, 'infection_control')], hire, '2026-10-05').status, 'overdue', 'infection control: logged on day 12 = still overdue');
+  eq(T.arfInfectionControlStatus([], hire, today).due, '2026-09-30', 'infection control due date is hire + 10 days');
+
+  // Emergency and Disaster Plan: upon hire, then yearly.
+  const eh = '2024-05-01';
+  eq(T.arfEmergencyPlanStatus([row('2024-05-01', 1, 'emergency'), row('2025-06-01', 1, 'emergency')], eh, '2025-09-01').status, 'complete', 'emergency plan: hire year and this year logged = complete');
+  const ep = T.arfEmergencyPlanStatus([row('2024-05-01', 1, 'emergency')], eh, '2025-09-01');
+  eq(ep.status, 'in_progress', 'emergency plan: this year not yet logged = in progress');
+  const eo = T.arfEmergencyPlanStatus([row('2024-05-01', 1, 'emergency')], eh, '2026-06-01');
+  eq(eo.status, 'overdue', 'emergency plan: a whole year ended with none = overdue');
+  ok(eo.gaps.some(g => /None logged in the year ending 2026-04-30/.test(g)), 'and the year that ended short is named');
+  eq(T.arfEmergencyPlanStatus([], '2026-09-20', '2026-09-25').gaps, ['Not logged yet. Due upon hire.'], 'emergency plan: a new hire is told it is due upon hire');
+
+  // HIV (3) and TB (1) within 6 months of becoming administrator, then every 2 years.
+  const ah = '2025-01-15';
+  const h0 = T.arfHivTbStatus([row('2025-03-01', 3, 'hiv')], ah, '2025-05-01');
+  eq([h0.status, h0.due, h0.gaps], ['in_progress', '2025-07-15', ['1 more hour on TB (1 needed)']], 'HIV/TB: 3 HIV, no TB, month 4 = in progress, TB named');
+  eq(T.arfHivTbStatus([row('2025-03-01', 3, 'hiv')], ah, '2025-08-01').status, 'overdue', 'HIV/TB: past 6 months without TB = overdue');
+  const h1 = T.arfHivTbStatus([row('2025-03-01', 3, 'hiv'), row('2025-04-01', 1, 'tb')], ah, '2026-09-30');
+  eq([h1.status, h1.completed_on, h1.due], ['complete', '2025-04-01', '2027-04-01'], 'HIV/TB: done 2025-04-01, next update due 2027-04-01');
+  const h2 = T.arfHivTbStatus([row('2025-03-01', 3, 'hiv'), row('2025-04-01', 1, 'tb')], ah, '2027-05-01');
+  eq([h2.status, h2.round, h2.due], ['overdue', 'update', '2027-04-01'], 'HIV/TB: 2-year update missed = overdue');
+  const h3 = T.arfHivTbStatus([row('2025-03-01', 3, 'hiv'), row('2025-04-01', 1, 'tb'), row('2027-02-01', 3, 'hiv'), row('2027-02-02', 1, 'tb')], ah, '2027-05-01');
+  eq([h3.status, h3.round, h3.due], ['complete', 'update', '2029-02-02'], 'HIV/TB: update done = complete, next due 2 years on');
+  eq(T.arfHivTbStatus([], null, today).status, 'needs_hire_date', 'HIV/TB needs a hire date');
+}
+
+// The ARF migration: same numbers, ARF-only items, no resident or medication items.
+{
+  const sql = readFileSync(path.join(here, '..', 'migrations', '2026-09-30b_title22_arf_checklists.sql'), 'utf8');
+  const ce = JSON.parse(sql.match(/\('arf_admin_ce',[\s\S]*?'(\{[^']+\})'::jsonb/)[1]);
+  const R = T.RULES.arf_admin_ce;
+  eq([ce.total_hours, ce.minimums, ce.max_self_paced_hours, ce.min_live_hours, ce.initial_certification], [R.total_hours, R.minimums, R.max_self_paced_hours, R.min_live_hours, R.initial_certification], 'migration: ARF renewal numbers match');
+  const hv = JSON.parse(sql.match(/\('arf_admin_hiv_tb',[\s\S]*?'(\{[^']+\})'::jsonb/)[1]);
+  eq([hv.hours, hv.within_months, hv.update_every_months], [T.RULES.arf_admin_hiv_tb.hours, 6, 24], 'migration: HIV/TB numbers match');
+  const ic = JSON.parse(sql.match(/\('arf_infection_control',[\s\S]*?'(\{[^']+\})'::jsonb/)[1]);
+  eq(ic.within_days_of_hire, T.RULES.arf_infection_control.within_days_of_hire, 'migration: infection control days match');
+  // The item list: every row ARF, cited, dated, and none about a resident or a medication.
+  const block = sql.split('-- ARF ITEMS BEGIN')[1].split('-- ARF ITEMS END')[0];
+  const items = [...block.matchAll(/^\s*\('((?:[^']|'')+)',\s*'(\w+)',\s*(?:'(\w+)'|null),\s*'((?:[^']|'')+)',\s*(?:'(\w+)'|null)\)/gm)];
+  ok(items.length >= 20, 'migration: ' + items.length + ' ARF items found');
+  ok(items.every(m => ['administrator', 'staff', 'facility'].includes(m[2])), 'migration: ARF items are administrator, staff or facility only — no residents, no medication');
+  ok(items.every(m => !/§87\d{3}|1569\./.test(m[4])), 'migration: no ARF item cites an RCFE section');
+  ok(items.every(m => /§/.test(m[4])), 'migration: every ARF item carries a citation');
+  ok(items.every(m => !/resident|client'?s (file|record)|diagnos|medication record|MAR\b|LIC ?60[12]/i.test(m[1])), 'migration: no ARF item names a resident document');
+  ok(/checked_on[\s\S]*date '2026-09-30'/.test(sql), 'migration: verified date recorded');
+}
+
 // ── The migration stores the same numbers ────────────────────────────────
 {
   const sqlPath = path.join(here, '..', 'migrations', '2026-09-29_title22_training_requirements.sql');

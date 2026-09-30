@@ -704,7 +704,7 @@
 <!-- LANDING -->
 <div id="page-landing" class="page active">
    <div class="hero" style="padding-bottom:0">
-    <div class="hero-badge">Built for California RCFEs · ARF checklists are in development</div>
+    <div class="hero-badge">Checklists for California RCFEs and ARFs</div>
     <h1>Run a facility <span>DSS is proud to inspect</span></h1>
     <p>Genuine compliance every day — not just inspection day. Title22 Lite warns you before a staff certification lapses, keeps your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
@@ -925,7 +925,7 @@
         <strong>Just exploring? Open the practice home instead</strong>
         <span>Nothing to fill in. Everyone in it is invented.</span>
       </button>
-      <div class="form-group"><label>Facility type</label><select id="ob-type" onchange="t22ArfNote(this)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select><div style="margin-top:6px;font-size:12px;color:var(--text2)">Board and care home? Choose RCFE if your residents are 60 or older, ARF if they are 18 to 59. Your license says which.</div><div class="t22-arf-note" style="display:none;margin-top:8px;font-size:13px;color:var(--text2);background:var(--amber-light);padding:8px 12px;border-radius:var(--radius)">ARF-specific checklists aren't available yet. You'll see the general staff-records tools.</div></div>
+      <div class="form-group"><label>Facility type</label><select id="ob-type" onchange="t22ArfNote(this)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;background:var(--white);color:var(--text)"><option value="rcfe">RCFE — Residential Care Facility for the Elderly</option><option value="cbrc">CBRC — Community Board and Care</option><option value="arf">ARF — Adult Residential Facility</option></select><div style="margin-top:6px;font-size:12px;color:var(--text2)">Board and care home? Choose RCFE if your residents are 60 or older, ARF if they are 18 to 59. Your license says which.</div><div class="t22-arf-note" style="display:none;margin-top:8px;font-size:13px;color:var(--text2);background:var(--gray-light);padding:8px 12px;border-radius:var(--radius)">You'll get the ARF checklist (22 CCR §80000 and §85000), not the RCFE one.</div></div>
       <div class="form-group"><label>Facility name</label><input type="text" id="ob-name" autocomplete="organization" placeholder="Sunrise Care Home"/></div>
       <div class="form-row">
         <div class="form-group" id="ob-row-license"><label>License number <span style="font-weight:400;color:var(--text2)">(optional)</span></label><input type="text" id="ob-license" autocomplete="off" placeholder="197XXXXXX" aria-describedby="ob-license-trust"/></div>
@@ -1024,6 +1024,7 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" style="font-size:13px" onclick="window.open('/title22-walkthrough.html','_blank')"><svg class="ic"><use href="#i-clipboard"/></svg> Read the walkthrough</button>
             <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load sample facility</button>
+            <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedArfDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load sample ARF</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="switchTab('ai')"><svg class="ic"><use href="#i-bot"/></svg> Ask Tello</button>
           </div>
         </div>
@@ -1193,7 +1194,7 @@
         <div id="doc-upload-row" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:16px;display:none">
           <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload a document</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601" data-phi="1">LIC 601</option><option value="lic602a" data-phi="1">LIC 602A — Medical Assessment</option><option value="isp" data-phi="1">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">16-hour initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
+            <select id="doc-type" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white)"><option value="lic601" data-phi="1">LIC 601</option><option value="lic602a" data-phi="1">LIC 602A — Medical Assessment</option><option value="isp" data-phi="1">ISP</option><option value="tb_test">TB test / clearance</option><option value="cpr_card">CPR card</option><option value="first_aid">First Aid card</option><option value="livescan">LiveScan clearance</option><option value="mandated_reporter">Mandated Reporter training</option><option value="training_cert">Initial training</option><option value="inservice_cert">In-service training certificate</option><option value="cert">Certificate</option><option value="other" selected>Other</option></select>
             <select id="doc-resident" data-phi="1" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a resident</option></select>
             <select id="doc-staff" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--white);max-width:220px"><option value="">Not linked to a staff member</option></select>
             <label class="btn btn-primary" style="font-size:13px;cursor:pointer;margin:0">+ Choose file<input type="file" id="doc-file" style="display:none" onchange="handleDocUpload(this)" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"/></label>
@@ -1272,7 +1273,7 @@
               <option value="phase2">Phase 2: the rest, within the first 4 weeks</option>
             </select>
           </div>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:2px 0 8px;cursor:pointer"><input type="checkbox" id="tr-hands-on" onchange="document.getElementById('tr-supervisor-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px;accent-color:var(--teal)"/> Hands-on training (counts toward the 16 hands-on hours of the initial 40, and medication shadowing)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:2px 0 8px;cursor:pointer"><input type="checkbox" id="tr-hands-on" onchange="document.getElementById('tr-supervisor-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px;accent-color:var(--teal)"/> <span id="tr-hands-on-text">Hands-on training (counts toward the 16 hands-on hours of the initial 40, and medication shadowing)</span></label>
           <div class="form-group" id="tr-supervisor-wrap" style="display:none"><label>Confirmed by (supervisor)</label><input type="text" id="tr-supervisor" autocomplete="off" placeholder="Name of the supervisor who watched it"/></div>
           <div class="form-group"><label>Notes (optional)</label><input type="text" id="tr-notes" placeholder="Provider, certificate #..."/></div>
           <div class="form-group"><label>Certificate (optional)</label>
@@ -1318,6 +1319,7 @@
           <div class="card-title">Demo data</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a separate sample facility — invented staff, their training and certificates, a compliance checklist and incident reports — to explore Title22 without touching your real records.</div>
           <button class="btn btn-outline" style="font-size:13px" id="seed-demo-btn" data-seed-demo onclick="seedDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load demo data</button>
+          <button class="btn btn-outline" style="font-size:13px" data-seed-demo onclick="seedArfDemoData()"><svg class="ic"><use href="#i-flask"/></svg> Load sample ARF</button>
         </div>
         <div class="card" style="margin-top:20px" id="about-title22-card">
           <div class="card-title">About Title22</div>
@@ -1701,7 +1703,7 @@ function t22MarAllowed(){
     if(t22Plan!=='edu')return false;
     // The seeder is building the sample facility, so currentFacility is not
     // it yet. Scoped to the seeder's own try/finally, never left on.
-    return t22SeedingSample||isSampleFacility(currentFacility);
+    return t22SeedingSample||(!!currentFacility&&currentFacility.name===SAMPLE_FACILITY_NAME);
   }catch(e){return false;}
 }
 
@@ -2232,7 +2234,7 @@ function allowedTabs(){
 const CATEGORY_LABELS = {administrator:'Administrator',staff:'Staff',residents:'Residents',medication:'Medications',facility:'Facility'};
 // checklist_items.frequency holds the tokens getDefaultDueDate() switches on,
 // so they cannot be prettied up in the database. Label them for display only.
-const FREQUENCY_LABELS = {daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',annual:'Annually',biennial:'Every 2 years',on_hire:'Before first shift',on_admission:'On admission'};
+const FREQUENCY_LABELS = {daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',annual:'Annually',biennial:'Every 2 years',semiannual:'Every 6 months',on_hire:'Before first shift',on_admission:'On admission'};
 function freqLabel(f){ return FREQUENCY_LABELS[f]||f||''; }
 
 // HTML-escape user-entered text before interpolating into innerHTML templates.
@@ -3110,14 +3112,14 @@ async function seedComplianceTasks(facilityId,adminCertExpiry,facilityType){
   // facility_types (2026-09-29): an item listing types applies only to them —
   // the RCFE training requirements are not an ARF's. Null applies to all. A
   // facility with no type recorded is an RCFE, which onboarding defaults to.
-  if(items)items=items.filter(i=>!Array.isArray(i.facility_types)||!i.facility_types.length||i.facility_types.includes(facilityType||'rcfe'));
+  if(items)items=items.filter(i=>t22ItemApplies(i,facilityType));
   if(readErr)throw new Error('Could not read the Title 22 requirement list: '+readErr.message);
   if(!items||!items.length)throw new Error('The Title 22 requirement list came back empty, so there was nothing to build the checklist from.');
   const highPriority=['daily','on_hire','on_admission'];
   const tasks=items.map(item=>{
     let dueDate=getDefaultDueDate(item.frequency);
     let completed=false,completedAt=null;
-    if(item.title==='RCFE Administrator Certificate Current'&&adminCertExpiry){dueDate=adminCertExpiry;completed=true;completedAt=new Date().toISOString();}
+    if((item.title==='RCFE Administrator Certificate Current'||item.requirement_code==='arf_admin_cert')&&adminCertExpiry){dueDate=adminCertExpiry;completed=true;completedAt=new Date().toISOString();}
     return{facility_id:facilityId,checklist_item_id:item.id,title:item.title,category:item.category,completed,completed_at:completedAt,priority:highPriority.includes(item.frequency)?'high':'medium',due_date:dueDate};
   });
   // One retry, because the failure this is written against is a transient one
@@ -3139,6 +3141,7 @@ function getDefaultDueDate(freq){
     case 'weekly':d.setDate(d.getDate()+7);break;
     case 'monthly':d.setMonth(d.getMonth()+1);break;
     case 'quarterly':d.setMonth(d.getMonth()+3);break;
+    case 'semiannual':d.setMonth(d.getMonth()+6);break;
     case 'annual':d.setFullYear(d.getFullYear()+1);break;
     case 'biennial':d.setFullYear(d.getFullYear()+2);break;
     default:d.setMonth(d.getMonth()+1);
@@ -3564,7 +3567,19 @@ const TIER_LIMITS={
 // edu is the plan the classroom flow tells trainers to sign up for, so the
 // documented path upsold the people it was written for.
 const SAMPLE_FACILITY_NAME='Sunrise Demo Home (Sample)';
-function isSampleFacility(f){return !!f&&f.name===SAMPLE_FACILITY_NAME;}
+// The ARF practice home (2026-09-30). Invented staff only, no residents, and
+// never the classroom MAR: t22MarAllowed asks for the RCFE sample by name.
+const SAMPLE_ARF_NAME='Sample ARF (Demo)';
+function isSampleFacility(f){return !!f&&(f.name===SAMPLE_FACILITY_NAME||f.name===SAMPLE_ARF_NAME);}
+
+// Facility type as the rules read it. Anything that is not ARF or CBRC is an
+// RCFE, which is what onboarding defaults to.
+function t22FacType(f){const t=((f===undefined?currentFacility:f)||{}).facility_type;return t==='arf'?'arf':(t==='cbrc'?'cbrc':'rcfe');}
+// A checklist item listing facility_types applies only to those types; an item
+// with none applies to every type. A task whose item is unknown (added by
+// hand, or the list could not be read) is always shown.
+function t22ItemApplies(item,type){return !item||!Array.isArray(item.facility_types)||!item.facility_types.length||item.facility_types.includes(type||'rcfe');}
+function t22TaskApplies(t,type){return t22ItemApplies((checklistItems||[]).find(i=>i.id===t.checklist_item_id),type);}
 
 // Facilities that count against the tier cap: owned, and not the sample.
 function ownedFacilityCount(){
@@ -4024,18 +4039,27 @@ async function initFacility(){
   const{data:items}=await sb.from('checklist_items').select('*');
   checklistItems=items||[];
   const{data:tasks}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
-  complianceTasks=tasks||[];
+  // Only the tasks whose item is for this facility type. An ARF home seeded
+  // before 2026-09-30 holds RCFE items; they are hidden here, not deleted.
+  const facType=t22FacType();
+  complianceTasks=(tasks||[]).filter(t=>t22TaskApplies(t,facType));
+  const hadHiddenTasks=(tasks||[]).length>complianceTasks.length;
   // Zero tasks against a non-empty requirement list means the seed failed at
   // onboarding — nothing else produces that state, and until now nothing ever
   // repaired it. Deliberately only the zero case: topping up a facility that
   // is merely missing NEWER items would quietly add tasks and drop the score
   // of every existing customer, which is a decision, not a repair.
-  if(!complianceTasks.length&&checklistItems.length&&!demoMode&&!t22ReadOnly&&canEdit()){
+  //
+  // "Zero" means zero for this facility type: an ARF home holding only RCFE
+  // tasks has no checklist of its own, and is given the ARF list once.
+  if(!complianceTasks.length&&checklistItems.some(i=>t22ItemApplies(i,facType))&&!demoMode&&!t22ReadOnly&&canEdit()){
     try{
       await seedComplianceTasks(currentFacility.id,currentFacility.administrator_cert_expiry||null,currentFacility.facility_type);
       const{data:again}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
-      complianceTasks=again||[];
-      if(complianceTasks.length)t22Toast('Your compliance checklist was missing — it has been rebuilt.');
+      complianceTasks=(again||[]).filter(t=>t22TaskApplies(t,facType));
+      if(complianceTasks.length)t22Toast(hadHiddenTasks&&facType==='arf'
+        ?'Your ARF checklist has been added. Items written for RCFEs are no longer shown.'
+        :'Your compliance checklist was missing — it has been rebuilt.');
     }catch(e){
       t22Toast('Your compliance checklist could not be loaded. Reload the page, or email hello@title-22.com.');
     }
@@ -4529,11 +4553,15 @@ function inviteFromSubscribed(){
 const COMPLIANCE_REQUIREMENTS={
   staff:[
     {docType:'tb_test',           label:'TB test',                    dates:['tb_test_due','tb_test_expiry']},
-    {docType:'cpr_card',          label:'CPR certification',          dates:['cpr_cert_expiry']},
+    // CPR is not a general ARF staff requirement (only where emergency
+    // intervention is used, 22 CCR §85165), so it is scored for RCFE and CBRC.
+    {docType:'cpr_card',          label:'CPR certification',          dates:['cpr_cert_expiry'], types:['rcfe','cbrc']},
     {docType:'first_aid',         label:'First aid certification',    dates:['first_aid_cert_expiry']},
     {docType:'livescan',          label:'LiveScan clearance',         truthy:['livescan_cleared']},
     {docType:'mandated_reporter', label:'Mandated reporter training', truthy:['mandated_reporter_completed']},
-    {docType:'training_cert',     label:'16-hour initial training',   truthy:['initial_training_complete','initial_training_completed']},
+    // RCFE initial training (40 hours, tracked in the Training tab). ARF has no
+    // initial-hours requirement for staff; its training is checked there too.
+    {docType:'training_cert',     label:'Initial training',           truthy:['initial_training_complete','initial_training_completed'], types:['rcfe','cbrc']},
   ],
   resident:[
     {docType:'lic601', label:'LIC 601 — Identification and Emergency Information', yes:['lic601']},
@@ -4567,7 +4595,7 @@ async function loadComplianceDocs(){
 function evaluateCompliance(){
   const out={items:[],met:0,total:0,verified:0,claimedOnly:0};
   const consider=(kind,rec,who)=>{
-    (COMPLIANCE_REQUIREMENTS[kind]||[]).forEach(req=>{
+    (COMPLIANCE_REQUIREMENTS[kind]||[]).filter(req=>!req.types||req.types.includes(t22FacType())).forEach(req=>{
       const doc=((complianceDocs[kind]||{})[rec.id]||{})[req.docType]||null;
       const typedDate=(req.dates||[]).map(f=>rec[f]).find(Boolean)||null;
       const claimed=(req.truthy||req.yes)
@@ -5228,7 +5256,8 @@ function staffCertStatus(s){
   const checks=[];
   const tbDue=s.tb_test_due||s.tb_test_expiry;
   if(tbDue)checks.push({label:'TB Test',date:tbDue});
-  if(s.cpr_cert_expiry)checks.push({label:'CPR',date:s.cpr_cert_expiry});
+  const arf=t22FacType()==='arf';
+  if(s.cpr_cert_expiry&&!arf)checks.push({label:'CPR',date:s.cpr_cert_expiry});
   if(s.first_aid_cert_expiry)checks.push({label:'First Aid',date:s.first_aid_cert_expiry});
   
   const expired=checks.filter(c=>c.date<today);
@@ -5236,7 +5265,7 @@ function staffCertStatus(s){
   const missingDocs=[];
   if(!s.livescan_cleared)missingDocs.push('LiveScan');
   if(!s.mandated_reporter_completed)missingDocs.push('Mandated Reporter');
-  if(!s.initial_training_complete&&!s.initial_training_completed)missingDocs.push('16hr Training');
+  if(!arf&&!s.initial_training_complete&&!s.initial_training_completed)missingDocs.push('Initial training');
   return{expired,soon,missingDocs};
 }
 
@@ -5287,11 +5316,11 @@ function renderStaff(){
     const tbDue=s.tb_test_due||s.tb_test_expiry;
     const certRows=[
       {label:'TB Test',date:tbDue,done:!!s.tb_test_date},
-      {label:'CPR',date:s.cpr_cert_expiry,done:!!s.cpr_cert_date},
+      ...(t22FacType()==='arf'?[]:[{label:'CPR',date:s.cpr_cert_expiry,done:!!s.cpr_cert_date}]),
       {label:'First Aid',date:s.first_aid_cert_expiry,done:!!s.first_aid_cert_date},
       {label:'LiveScan',done:s.livescan_cleared===true,noDate:true},
       {label:'Mandated Reporter',done:s.mandated_reporter_completed===true,noDate:true},
-      {label:'16hr Training',done:(s.initial_training_complete===true||s.initial_training_completed===true),noDate:true},
+      ...(t22FacType()==='arf'?[]:[{label:'Initial training',done:(s.initial_training_complete===true||s.initial_training_completed===true),noDate:true}]),
     ];
     const certHtml=certRows.map(c=>{
       let icon,col,text;
@@ -6267,6 +6296,126 @@ async function seedLiteDemoData(opts){
   }
 }
 
+// The ARF practice home, "Sample ARF (Demo)". Invented staff, no residents,
+// no incidents, no MAR — in any plan, including Classroom (t22MarAllowed asks
+// for the RCFE sample by name). The deliberate gaps:
+//   - Jordan Hayes (administrator): 24 self-paced CE hours, so only 20 count
+//     and a warning shows; 8 live hours short; HIV logged, TB not yet.
+//   - Marcus Webb: started 6 days ago; no Infection Control Plan training yet
+//     (due in 4 days); LiveScan clearance not back.
+//   - Tomas Ruiz (nights): first aid expired; no Emergency and Disaster Plan
+//     training in the last full year.
+// Alicia Brooks is the clean file the others are measured against.
+async function seedArfDemoData(){
+  if(seedDemoRunning)return;
+  if(T22_PAID.includes(t22Plan)){
+    alert('The sample facility is for trials and Classroom accounts.\n\nYour subscription is for your real home.');
+    return;
+  }
+  if(allFacilities.length&&currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
+  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&f.name===SAMPLE_ARF_NAME);
+  let reuse=null;
+  if(existing){
+    const{data:seeded}=await sb.from('compliance_tasks').select('id').eq('facility_id',existing.id).limit(1);
+    if(seeded&&seeded.length){
+      currentFacility=existing;
+      await initFacility();
+      switchTab('dashboard');
+      alert('You already have the sample ARF — switching to it now. Your own facilities are untouched.');
+      return;
+    }
+    reuse=existing;
+  }
+  if(!confirm('This creates a separate practice home, "'+SAMPLE_ARF_NAME+'": an Adult Residential Facility with 4 invented staff, the ARF checklist, and a few training gaps to find. No residents. Your real facilities are not touched. Continue?'))return;
+  const btns=[...document.querySelectorAll('[data-seed-demo]')];
+  btns.forEach(b=>{b.dataset.idleLabel=b.textContent;b.disabled=true;b.textContent='Loading sample facility…';});
+  seedDemoRunning=true;
+  let stage='creating the sample ARF';
+  try{
+    let fac=reuse;
+    if(reuse){
+      for(const t of ['staff_trainings','staff','compliance_tasks']){
+        const{error:de}=await sb.from(t).delete().eq('facility_id',reuse.id);
+        if(de)throw de;
+      }
+    }else{
+      const{data,error:fe}=await sb.from('facilities').insert({
+        user_id:currentUser.id,name:SAMPLE_ARF_NAME,facility_type:'arf',
+        license_number:'198000000',capacity:6,address:'456 Sample Court, Fresno, CA 93701',
+        administrator_name:'Jordan Hayes',administrator_cert_number:'ARF-000000',administrator_cert_expiry:dISO(240),
+      }).select().single();
+      if(fe)throw fe;
+      fac=data;
+    }
+    stage='adding the 4 staff';
+    const newStaffId=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+    const S=(name,role,hire,o)=>Object.assign({
+      id:newStaffId(),facility_id:fac.id,full_name:name,name,role,hire_date:hire,
+      phone:'(559) 555-0100',active:true,status:'active',
+      tb_test_date:dISO(-200),tb_test_due:dISO(160),tb_test_expiry:dISO(160),
+      first_aid_cert_date:dISO(-300),first_aid_cert_expiry:dISO(400),
+      livescan_cleared:true,livescan_date:dISO(-320),
+      mandated_reporter_completed:true,mandated_reporter_date:dISO(-310),
+    },o||{});
+    const{error:se}=await sb.from('staff').insert([
+      // A fresh id, not currentUser.id: the RCFE sample's administrator already
+      // holds that one, and an account may load both samples.
+      S('Jordan Hayes','administrator',dISO(-150),{livescan_date:dISO(-160),mandated_reporter_date:dISO(-140)}),
+      S('Alicia Brooks','caregiver',dISO(-400)),
+      S('Marcus Webb','caregiver',dISO(-6),{tb_test_date:dISO(-20),livescan_cleared:false,livescan_date:null,mandated_reporter_completed:false,mandated_reporter_date:null}),
+      S('Tomas Ruiz','night_caregiver',dISO(-800),{first_aid_cert_date:dISO(-760),first_aid_cert_expiry:dISO(-30)}),
+    ]).select();
+    if(se)throw se;
+    stage='adding the training log';
+    {
+      const tr=(who,d,h,topic,o)=>Object.assign({facility_id:fac.id,staff_id:who,training_date:dISO(d),hours:h,topic_area:topic,topic:(T22T.TOPICS.find(t=>t.key===topic)||{}).label||topic,hands_on:false,delivery:'live',counts_toward:'direct_care'},o||{});
+      const{data:stf}=await sb.from('staff').select('id,name').eq('facility_id',fac.id);
+      const id=n=>((stf||[]).find(x=>x.name===n)||{}).id;
+      const rows=[
+        // Administrator: renewal hours (too much self-paced), HIV done, TB not yet.
+        tr(id('Jordan Hayes'),-420,24,'other',{counts_toward:'admin_ce',delivery:'self_paced',topic:'Self-paced ARF management modules'}),
+        tr(id('Jordan Hayes'),-300,4,'laws_regs',{counts_toward:'admin_ce',topic:'ARF laws and regulations update (live-stream)'}),
+        tr(id('Jordan Hayes'),-200,8,'other',{counts_toward:'admin_ce',topic:'Staff supervision and scheduling (in person)'}),
+        tr(id('Jordan Hayes'),-120,3,'hiv',{topic:'HIV: needs of residents who may be infected'}),
+        tr(id('Jordan Hayes'),-148,1,'infection_control',{topic:'Infection Control Plan, with the Infection Control Lead'}),
+        tr(id('Jordan Hayes'),-150,1,'emergency',{topic:'Emergency and Disaster Plan walk-through'}),
+        tr(id('Jordan Hayes'),-140,1,'elder_abuse',{topic:'Recognizing and reporting abuse'}),
+        // Alicia: every check met.
+        tr(id('Alicia Brooks'),-398,1,'infection_control',{topic:'Infection Control Plan, with the Infection Control Lead'}),
+        tr(id('Alicia Brooks'),-400,1,'emergency',{topic:'Emergency and Disaster Plan walk-through'}),
+        tr(id('Alicia Brooks'),-380,1,'elder_abuse',{topic:'Recognizing and reporting abuse'}),
+        tr(id('Alicia Brooks'),-25,1,'emergency',{topic:'Emergency and Disaster Plan: yearly review'}),
+        tr(id('Alicia Brooks'),-60,2,'residents_rights',{topic:"Clients' personal rights"}),
+        // Marcus: started 6 days ago. Emergency plan on day one; infection control not yet.
+        tr(id('Marcus Webb'),-6,1,'emergency',{topic:'Emergency and Disaster Plan walk-through'}),
+        tr(id('Marcus Webb'),-5,2,'personal_care',{topic:'On-the-job: care and supervision, with a supervisor'}),
+        // Tomas: emergency plan only at hire, nothing in the last full year.
+        tr(id('Tomas Ruiz'),-799,1,'emergency',{topic:'Emergency and Disaster Plan walk-through'}),
+        tr(id('Tomas Ruiz'),-795,1,'infection_control',{topic:'Infection Control Plan, with the Infection Control Lead'}),
+        tr(id('Tomas Ruiz'),-770,1,'elder_abuse',{topic:'Recognizing and reporting abuse'}),
+      ].filter(r=>r.staff_id);
+      const{error:te}=await sb.from('staff_trainings').insert(rows);
+      if(te)console.warn('Sample ARF training hours not added:',te.message||te);
+    }
+    stage='building the ARF checklist';
+    await seedComplianceTasks(fac.id,dISO(240),'arf');
+    // A few items already done, so the checklist reads like a home in progress.
+    await sb.from('compliance_tasks').update({completed:true,completed_at:new Date().toISOString()}).eq('facility_id',fac.id)
+      .in('title',['Written disaster and mass casualty plan on file and current','First aid supplies and a current first aid manual kept in a central place','A dated staff schedule for each month, posted where staff can see it: name, job title, hours and days off','Infection Control Plan in the Plan of Operation, naming an Infection Control Lead']);
+    if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
+    currentFacility=fac;
+    await initFacility();
+    switchTab('dashboard');
+    alert('Sample ARF loaded — "'+SAMPLE_ARF_NAME+'": four invented staff, the ARF checklist, and a few gaps to find in the Training tab. Nobody in it is real, and there are no residents.');
+  }catch(e){
+    alert('The sample ARF could not be loaded.\n\nIt stopped while '+stage+':\n'+((e&&e.message)||e)+'\n\nYour own facilities were not touched. Pressing the button again clears what this attempt left behind and starts over.');
+  }
+  finally{
+    seedDemoRunning=false;
+    btns.forEach(b=>{b.disabled=false;if(b.dataset.idleLabel)b.textContent=b.dataset.idleLabel;});
+  }
+}
+
 // ===== MAR =====
 let marMedCache={};
 let marEmbedNote='';   // set when the joined read failed and names were resolved separately
@@ -6665,7 +6814,7 @@ async function buildFacilityContext(opts){
     const[resData,staffData,tasksData,incData,marData]=await Promise.all([
       withPhi?sb.from('residents').select('name,full_name,admission_date,isp_review_date,lic601,lic602a,isp,status').eq('facility_id',currentFacility.id):Promise.resolve({data:[]}),
       sb.from('staff').select('full_name,name,role,hire_date,cpr_cert_expiry,tb_test_due,tb_test_expiry,first_aid_cert_expiry,livescan_cleared,mandated_reporter_completed,active').eq('facility_id',currentFacility.id),
-      sb.from('compliance_tasks').select('title,due_date,completed,category').eq('facility_id',currentFacility.id),
+      sb.from('compliance_tasks').select('title,due_date,completed,category,checklist_item_id').eq('facility_id',currentFacility.id),
       sb.from('incidents').select('incident_type,occurred_at').eq('facility_id',currentFacility.id).limit(10),
       withPhi?sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).limit(30):Promise.resolve({data:[]}),
     ]);
@@ -6673,7 +6822,11 @@ async function buildFacilityContext(opts){
     const rows=(res,label)=>{if(res&&res.error){failed.push(label);return[];}return(res&&res.data)||[];};
     const residents=rows(resData,'residents');
     const staff=rows(staffData,'staff');
-    const compliance_tasks=rows(tasksData,'the compliance checklist');
+    // This facility type's items only, each with its citation, so an ARF
+    // question is answered from ARF items and never from RCFE ones.
+    const facType=t22FacType();
+    const compliance_tasks=rows(tasksData,'the compliance checklist').filter(t=>t22TaskApplies(t,facType))
+      .map(t=>{const it=(checklistItems||[]).find(i=>i.id===t.checklist_item_id)||{};return{title:t.title,due_date:t.due_date,completed:t.completed,category:t.category,citation:it.regulation_reference||null};});
     const recent_incidents=rows(incData,'incidents');
     // select('*') above only so voided_at can be read without naming a column
     // that does not exist before the migration. What actually leaves the app is
@@ -6690,9 +6843,11 @@ async function buildFacilityContext(opts){
     const forms_library=t22FormsFor(t22FormsType()).map(f=>({form:f.code,name:f.name,who_fills_it_in:f.who,when:f.when,where_it_goes:f.keep,printable_now:!!f.url}));
     // The resident and MAR keys are omitted entirely in Lite rather than sent
     // empty, for the reason above.
+    const facility_type=facType==='arf'?'ARF (Adult Residential Facility, adults 18 to 59; 22 CCR §80000 and §85000)':(facType==='cbrc'?'CBRC':'RCFE (Residential Care Facility for the Elderly; 22 CCR §87100)');
+    const training_rules=t22TrainingRulesForTello(facType);
     const payload=withPhi
-      ?{today,facility:currentFacility?.name,residents,staff,compliance_tasks,recent_incidents,recent_mar,document_guidance,forms_library}
-      :{today,facility:currentFacility?.name,staff,compliance_tasks,recent_incidents,document_guidance,forms_library};
+      ?{today,facility:currentFacility?.name,facility_type,residents,staff,compliance_tasks,training_rules,recent_incidents,recent_mar,document_guidance,forms_library}
+      :{today,facility:currentFacility?.name,facility_type,staff,compliance_tasks,training_rules,recent_incidents,document_guidance,forms_library};
     return{json:JSON.stringify(payload,null,2)};
   }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
@@ -7286,8 +7441,8 @@ async function demoComplianceAnswer(query){
       'A supervisor adds staff files. Read-only is what you hand an inspector.';
   }else if(q.includes('training')||q.includes('hours')||q.includes('ce')||q.includes('in-service')||q.includes('dementia')){
     body='<strong>Training hours</strong><br><br>'+
-      'California expects 40 initial hours — 24 from an approved vendor and 16 hands-on in your facility — then 20 in-service hours a year, '+
-      'of which at least 8 are dementia care and 4 are special care.<br><br>'+
+      'In an RCFE, direct care staff need 40 hours of initial training — 20 before working with residents on their own and the rest within the first 4 weeks, 16 of them hands-on — '+
+      'then 20 hours every year, at least 8 on dementia care and 4 on postural supports, restricted health conditions and hospice (HSC §§1569.625, 1569.696).<br><br>'+
       'Title22 tracks both clocks per person and keeps the certificate against the entry, so the hours and the proof stay together.';
   }else if(q.includes('document')||q.includes('paperwork')||q.includes('upload')||q.includes('file')||q.includes('print')){
     body='<strong>Documents</strong><br><br>'+
@@ -7335,7 +7490,7 @@ async function demoBriefingHTML(){
 // "I won't quote a Title 22 rule unless I'm certain" leaves the gate to the
 // model's own confidence, and a confident wrong regulation follows a facility
 // all the way to an inspection. Same reason checklist citations are null.
-const TELLO_CHARACTER = `You're in a residential care home for the elderly in California. Title 22 is the rulebook that governs how you operate.
+const TELLO_CHARACTER = `You're in a licensed residential care home in California: an RCFE (residents 60 and over) or an ARF (adults 18 to 59). facility_type in the data says which. Title 22 is the rulebook that governs how you operate.
 
 I'm Tello. I live inside Title22 Lite. Title22 Lite is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe — there is no resident health information here to leak, and no business associate agreement to sign.
 
@@ -7354,6 +7509,8 @@ If user asks about residents, MARs, meds, say: "Title22 Lite is No-PHI and doesn
 Tone: Short, practical, Fresno 6-bed owner.
 
 Three things that hold whatever the question is:
+
+0. RCFE and ARF rules are different. An ARF follows 22 CCR §80000 and §85000; an RCFE follows §87100. Answer from the rules for THIS facility_type only: training_rules and the citations on compliance_tasks. Never give an ARF an RCFE rule (dementia hours, the 40-hour initial training, medication hours by home size), or the reverse. If the ARF answer is not in the data, say "I'm not sure. Check with CCLD, your licensing analyst."
 
 1. Never state a Title 22 requirement, section number, deadline, permitted device or approved-vendor rule as fact unless it appears in the facility data below. Being fairly sure is not the same as it being written down. Say what you are unsure of and send them to their licensing analyst.
 
@@ -7493,7 +7650,7 @@ async function readPortfolioRow(f){
   const d=v=>v?String(v).slice(0,10):null;
   const row={id:f.id,name:f.name||'Unnamed facility',failed:[]};
   const[tk,st,inc]=await Promise.all([
-    sb.from('compliance_tasks').select('completed,due_date').eq('facility_id',f.id),
+    sb.from('compliance_tasks').select('completed,due_date,checklist_item_id').eq('facility_id',f.id),
     sb.from('staff').select('active,cpr_cert_expiry,first_aid_cert_expiry,tb_test_due,tb_test_expiry,livescan_cleared,mandated_reporter_completed').eq('facility_id',f.id),
     sb.from('incidents').select('occurred_at').eq('facility_id',f.id).gte('occurred_at',since30),
   ]).catch(e=>[{error:e},{error:e},{error:e}]);
@@ -7501,7 +7658,9 @@ async function readPortfolioRow(f){
   // home we could not read is the one line on this card that must not exist.
   if(tk.error)row.failed.push('checklist');
   else{
-    const t=tk.data||[];
+    // The home's own type's items only, as its checklist shows them.
+    const ft=t22FacType(f);
+    const t=(tk.data||[]).filter(x=>t22TaskApplies(x,ft));
     row.total=t.length;
     row.done=t.filter(x=>x.completed).length;
     row.overdue=t.filter(x=>!x.completed&&d(x.due_date)&&d(x.due_date)<today).length;
@@ -8521,7 +8680,7 @@ async function removeLaunchPhoto(stepKey){
 }
 
 // ===== DOCUMENTS =====
-const DOC_TYPE_LABELS={lic601:'LIC 601 — Identification and Emergency Information',lic602a:'LIC 602A — Medical Assessment',cert:'Certificate',isp:'ISP',tb_test:'TB test / clearance',cpr_card:'CPR card',first_aid:'First Aid card',livescan:'LiveScan clearance',training_cert:'16-hour initial training',mandated_reporter:'Mandated Reporter training',inservice_cert:'In-service training certificate',other:'Other'};
+const DOC_TYPE_LABELS={lic601:'LIC 601 — Identification and Emergency Information',lic602a:'LIC 602A — Medical Assessment',cert:'Certificate',isp:'ISP',tb_test:'TB test / clearance',cpr_card:'CPR card',first_aid:'First Aid card',livescan:'LiveScan clearance',training_cert:'Initial training',mandated_reporter:'Mandated Reporter training',inservice_cert:'In-service training certificate',other:'Other'};
 let facilityDocs=[];
 async function loadDocuments(){
   if(!currentFacility)return;
@@ -9704,8 +9863,7 @@ const HANDS_ON_TOPICS=[
 ];
 
 function trainingTopicLabel(key){const t=T22T.TOPICS.find(x=>x.key===key);return t?t.label:'';}
-// ARF is accepted at signup, but its checklists are not built: say so under
-// the picker whenever ARF is chosen.
+// Under the picker whenever ARF is chosen: which list an ARF gets.
 function t22ArfNote(sel){const n=sel&&sel.parentNode&&sel.parentNode.querySelector('.t22-arf-note');if(n)n.style.display=sel.value==='arf'?'block':'none';}
 function trainingAppliesHere(){return T22T.appliesTo(T22T.RULES.annual,currentFacility&&currentFacility.facility_type);}
 function trainingRowsFor(staffId){return (trainings||[]).filter(t=>t&&t.staff_id===staffId);}
@@ -9733,8 +9891,18 @@ async function loadTrainings(){
   // '*' so this works with or without the 2026-09-29 admin_cert_expiry column.
   const{data:st}=await sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('name');
   trainingStaff=(st||[]).filter(x=>x.active!==false);
+  // The topic list follows the facility type (ARF adds HIV and TB, and has no
+  // dementia or aging topic), so it is rebuilt when the type changes.
   const ta=document.getElementById('tr-topic-area');
-  if(ta&&ta.options.length<2)ta.innerHTML='<option value="">Choose a topic area...</option>'+T22T.TOPICS.map(t=>`<option value="${t.key}">${esc(t.label)}</option>`).join('');
+  const taType=t22FacType();
+  if(ta&&ta.dataset.type!==taType){ta.dataset.type=taType;ta.innerHTML='<option value="">Choose a topic area...</option>'+T22T.topicsFor(taType).map(t=>`<option value="${t.key}">${esc(t.label)}</option>`).join('');}
+  // Initial training phases are RCFE law. An ARF entry carries no phase.
+  const pw=document.getElementById('tr-phase-wrap');
+  if(pw){pw.style.display=taType==='arf'?'none':'';if(taType==='arf')document.getElementById('tr-phase').value='';}
+  const tp=document.getElementById('tr-topic');
+  const ht=document.getElementById('tr-hands-on-text');
+  if(ht)ht.textContent=taType==='arf'?'Hands-on training, watched by a supervisor':'Hands-on training (counts toward the 16 hands-on hours of the initial 40, and medication shadowing)';
+  if(tp)tp.placeholder=taType==='arf'?'e.g., Infection Control Plan, first aid review...':'e.g., Understanding dementia, CPR review...';
   const sel=document.getElementById('tr-staff');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select staff...</option>'+trainingStaff.map(s=>`<option value="${s.id}">${(s.name||s.full_name||'Staff')}</option>`).join('');if(cur)sel.value=cur;}
   const{data}=await sb.from('staff_trainings').select('*, staff(name, full_name)').eq('facility_id',currentFacility.id).order('training_date',{ascending:false}).limit(300);
@@ -9938,7 +10106,7 @@ function startHandsOnEntry(staffId){
 function trainingBlock(title,st,extra){
   const done=st.status==='complete';
   const color=done?'var(--green)':(st.status==='overdue'?'var(--red)':'var(--amber)');
-  const label={complete:'Complete',in_progress:'In progress',overdue:'Overdue',needs_hire_date:'Needs a hire date',needs_expiry:'Needs certificate expiry',needs_capacity:'Needs licensed capacity'}[st.status]||st.status;
+  const label=st.label||{complete:'Complete',in_progress:'In progress',overdue:'Overdue',needs_hire_date:'Needs a hire date',needs_expiry:'Needs certificate expiry',needs_capacity:'Needs licensed capacity'}[st.status]||st.status;
   const gaps=(st.gaps||[]).map(g=>`<li>${esc(g)}</li>`).join('');
   const warns=(st.warnings||[]).map(w=>`<div style="color:var(--red);font-size:12px;margin-top:4px">⚠ ${esc(w)}</div>`).join('');
   return `<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius)">
@@ -9947,6 +10115,70 @@ function trainingBlock(title,st,extra){
     ${gaps?`<ul style="margin:6px 0 0 18px;padding:0;font-size:12px;color:var(--text2)">${gaps}</ul>`:''}
     ${warns}
   </div>`;
+}
+// ARF (2026-09-30): the ARF checks for one person. No phases, no dementia
+// hours, no hands-on log and no medication hours by size: those are RCFE law.
+function trainingArfBlocks(s,rows,admins,edit,today){
+  const R=T22T.RULES;
+  const note=t=>`<div style="font-size:12px;margin-top:4px;color:var(--text2)">${t}</div>`;
+  const hired=s.hire_date?new Date(s.hire_date+'T12:00:00'):null;
+  const recent=hired&&(Date.now()-hired.getTime())<396*86400000;
+  const directCare=s.role!=='administrator'||rows.some(r=>(r.counts_toward||'direct_care')==='direct_care');
+  let b='';
+  const ic=T22T.arfInfectionControlStatus(rows,s.hire_date,today);
+  if(ic.status==='needs_hire_date'||ic.status!=='complete'||recent)
+    b+=trainingBlock('Infection Control Plan training',ic,note(`From the Infection Control Lead, within ${R.arf_infection_control.within_days_of_hire} calendar days of starting (${esc(R.arf_infection_control.citation)}). Log it with the topic "${esc(trainingTopicLabel('infection_control'))}".`));
+  const ep=T22T.arfEmergencyPlanStatus(rows,s.hire_date,today);
+  b+=trainingBlock('Emergency and Disaster Plan training',ep,note(`Upon hire, then every year (${esc(R.arf_emergency_plan.citation)}). Log it with the topic "${esc(trainingTopicLabel('emergency'))}".`));
+  const ea=T22T.elderAbuseStatus(rows,s.hire_date,today);
+  if(ea.status!=='needs_hire_date'&&(ea.status!=='complete'||recent))
+    b+=trainingBlock('Elder and dependent adult abuse reporting training',ea,note(`Within ${R.elder_abuse.within_days_of_hire} days of the first day of work (${esc(R.elder_abuse.citation)}). Log it with the topic "${esc(trainingTopicLabel('elder_abuse'))}".`));
+  if(directCare){
+    const faExp=s.first_aid_cert_expiry||null,faOn=!!(s.first_aid_cert_date||faExp);
+    const faExpired=!!faExp&&faExp<today;
+    const fa=faExpired?{status:'overdue',label:'Expired',gaps:['The first aid certificate on the staff record expired on '+new Date(faExp+'T12:00:00').toLocaleDateString()+'.']}
+      :faOn?{status:'complete',label:'On file'}
+      :{status:'in_progress',label:'Not on file',gaps:['No first aid certificate on the staff record (Staff tab).']};
+    b+=trainingBlock('First aid (direct care staff)',fa,note(`From persons qualified by an agency such as the American Red Cross (${esc(R.arf_first_aid.citation)}). No hours are set.`));
+  }
+  if(admins.includes(s)){
+    const exp=trainingAdminExpiry(s,admins);
+    const A=R.arf_admin_ce;
+    const ce=T22T.adminCeStatus(rows,exp,today,A);
+    const hh=ce.hours||{};
+    const expInput=edit?`<div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">Certificate expires <input type="date" value="${esc(exp||'')}" onchange="saveAdminCertExpiry('${esc(s.id)}',this.value)" style="padding:3px 6px;font-size:12px"/></div>`:'';
+    b+=trainingBlock('ARF administrator certificate renewal',ce,(ce.hours?`<div style="font-size:12px;margin-top:4px">${hh.counted} / ${A.total_hours} countable hours · Live (in person or live-stream) ${hh.live} / ${A.min_live_hours} · Self-paced ${hh.self_paced} (up to ${A.max_self_paced_hours} count) · laws and regulations ${hh.laws_regs} / ${A.minimums.laws_regs}</div>`:'')
+      +note(`Every 2-year certification period (${esc(A.citation)}). New administrators: ${A.initial_certification.hours} hours of initial certification training, in person or live-stream (no self-paced), and the state exam within ${A.initial_certification.exam_within_days} days of finishing it.`)+expInput);
+    const hv=T22T.arfHivTbStatus(rows,s.hire_date,today);
+    const H=R.arf_admin_hiv_tb;
+    b+=trainingBlock('HIV and TB training (administrator)',hv,(hv.hours?`<div style="font-size:12px;margin-top:4px">HIV ${hv.hours.hiv} / ${H.hours.hiv} · TB ${hv.hours.tb} / ${H.hours.tb}${hv.round==='update'?' · 2-year update':''}</div>`:'')
+      +note(`Within ${H.within_months} months of becoming administrator (counted from the hire date), then an update every 2 years (${esc(H.citation)}). Log it with the topics "${esc(trainingTopicLabel('hiv'))}" and "${esc(trainingTopicLabel('tb'))}".`));
+  }
+  const byTopic=T22T.hoursByTopic(rows);
+  const chips=T22T.TOPICS.filter(t=>byTopic[t.key]>0).map(t=>`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--gray-light)">${esc(t.label)} ${byTopic[t.key]} hr</span>`).join('');
+  if(chips)b+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chips}</div>`;
+  return b;
+}
+// What Tello is told about training for this facility type: the numbers the
+// Training tab checks, each with its citation. Nothing else.
+function t22TrainingRulesForTello(type){
+  const R=T22T.RULES;
+  if(type==='arf')return[
+    {rule:'ARF administrator certificate renewal',requirement:`${R.arf_admin_ce.total_hours} hours of continuing education each 2-year period; at least ${R.arf_admin_ce.minimums.laws_regs} on laws, regulations, policies and procedural standards; at least ${R.arf_admin_ce.min_live_hours} live (in person or live-stream); no more than ${R.arf_admin_ce.max_self_paced_hours} self-paced. No dementia requirement.`,citation:R.arf_admin_ce.citation},
+    {rule:'ARF administrator initial certification',requirement:`${R.arf_admin_ce.initial_certification.hours} hours of initial certification training, in person or live-stream (no self-paced), and the state exam within ${R.arf_admin_ce.initial_certification.exam_within_days} days of finishing it.`,citation:'HSC §1562.3(c); 22 CCR §85064.2'},
+    {rule:'ARF administrator HIV and TB training',requirement:`${R.arf_admin_hiv_tb.hours.hiv} hours on HIV and ${R.arf_admin_hiv_tb.hours.tb} on TB within ${R.arf_admin_hiv_tb.within_months} months of becoming administrator, then an update every 2 years.`,citation:R.arf_admin_hiv_tb.citation},
+    {rule:'ARF staff: Infection Control Plan training',requirement:`From the Infection Control Lead within ${R.arf_infection_control.within_days_of_hire} calendar days of employment.`,citation:R.arf_infection_control.citation},
+    {rule:'ARF staff: Emergency and Disaster Plan training',requirement:'Upon hire and every year.',citation:R.arf_emergency_plan.citation},
+    {rule:'Staff: elder and dependent adult abuse reporting training',requirement:`Within ${R.elder_abuse.within_days_of_hire} days of employment.`,citation:R.elder_abuse.citation},
+    {rule:'ARF direct care staff: first aid',requirement:'Training from persons qualified by an agency such as the American Red Cross. No hours set.',citation:R.arf_first_aid.citation},
+  ];
+  if(type==='rcfe'||type==='cbrc')return[
+    {rule:'RCFE administrator certificate renewal',requirement:`${R.admin_ce.total_hours} hours each 2 years: ${R.admin_ce.minimums.dementia} dementia, ${R.admin_ce.minimums.laws_regs} laws and regulations, at least ${R.admin_ce.min_live_hours} live, no more than ${R.admin_ce.max_self_paced_hours} self-paced.`,citation:R.admin_ce.citation},
+    {rule:'RCFE direct care staff: initial training',requirement:`${R.initial.total_hours} hours: ${R.initial.phases.phase1.hours} before working on their own (${R.initial.phases.phase1.minimums.dementia} dementia, ${R.initial.phases.phase1.minimums.postural_hospice} postural / restricted / hospice), the rest within 4 weeks (${R.initial.phases.phase2.minimums.dementia} dementia); ${R.initial.minimums.hands_on} hands-on.`,citation:R.initial.citation},
+    {rule:'RCFE direct care staff: annual training',requirement:`${R.annual.total_hours} hours a year from the hire date: ${R.annual.minimums.dementia} dementia, ${R.annual.minimums.postural_hospice} postural / restricted / hospice.`,citation:R.annual.citation},
+    {rule:'Staff: elder and dependent adult abuse reporting training',requirement:`Within ${R.elder_abuse.within_days_of_hire} days of employment.`,citation:R.elder_abuse.citation},
+  ];
+  return[];
 }
 function renderTrainings(){
   const summary=document.getElementById('training-summary');
@@ -9957,7 +10189,9 @@ function renderTrainings(){
   const R=T22T.RULES;
   if(note)note.innerHTML=trainingAppliesHere()
     ?`Checked against the RCFE requirements: <strong>${R.initial.total_hours} hours initial</strong> in two phases (phase 1: ${R.initial.phases.phase1.hours} hours with ${R.initial.phases.phase1.minimums.dementia} dementia and ${R.initial.phases.phase1.minimums.postural_hospice} postural supports / restricted health conditions / hospice, before working with residents on their own; phase 2: ${R.initial.phases.phase2.hours} more with ${R.initial.phases.phase2.minimums.dementia} dementia, within 4 weeks of hire; ${R.initial.minimums.hands_on} of the 40 hands-on; every required topic covered), <strong>${R.annual.total_hours} hours every year</strong> from the hire date (${R.annual.minimums.dementia} dementia, ${R.annual.minimums.postural_hospice} postural / restricted / hospice), and for administrators <strong>${R.admin_ce.total_hours} hours every 2 years</strong> (${R.admin_ce.minimums.dementia} dementia, ${R.admin_ce.minimums.laws_regs} laws and regulations, at least ${R.admin_ce.min_live_hours} live, no more than ${R.admin_ce.max_self_paced_hours} self-paced). Sources: ${esc(R.initial.citation)}; ${esc(R.admin_ce.citation)}. Requirements change — confirm yours with your licensing analyst.`
-    :'ARF-specific training requirements are not built yet, so no hours are checked against a requirement here. Your log and certificates are kept as records.';
+    :(t22FacType()==='arf'
+      ?`Checked against the ARF requirements: for every staff member, <strong>Infection Control Plan training</strong> within ${R.arf_infection_control.within_days_of_hire} calendar days of starting (${esc(R.arf_infection_control.citation)}), <strong>Emergency and Disaster Plan training</strong> on hire and every year (${esc(R.arf_emergency_plan.citation)}) and <strong>elder and dependent adult abuse reporting</strong> training within ${R.elder_abuse.within_days_of_hire} days (${esc(R.elder_abuse.citation)}); first aid for direct care staff (${esc(R.arf_first_aid.citation)}); and for the administrator <strong>${R.arf_admin_ce.total_hours} hours every 2 years</strong> (${R.arf_admin_ce.minimums.laws_regs} laws and regulations, at least ${R.arf_admin_ce.min_live_hours} live, no more than ${R.arf_admin_ce.max_self_paced_hours} self-paced; ${esc(R.arf_admin_ce.citation)}) and <strong>HIV and TB training</strong>, ${R.arf_admin_hiv_tb.hours.hiv} + ${R.arf_admin_hiv_tb.hours.tb} hours within ${R.arf_admin_hiv_tb.within_months} months, then every 2 years (${esc(R.arf_admin_hiv_tb.citation)}). No dementia hours and no 40-hour initial training: those are RCFE rules. Requirements change — confirm yours with your licensing analyst.`
+      :'Training requirements for this facility type are not built, so no hours are checked against a requirement here. Your log and certificates are kept as records.');
   if(summary){
     if(!trainingStaff.length){summary.innerHTML='<div style="color:var(--text2)">Add staff members first (Staff tab).</div>';}
     else{
@@ -10007,7 +10241,9 @@ function renderTrainings(){
           const expInput=edit?`<div style="font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">Certificate expires <input type="date" value="${esc(exp||'')}" onchange="saveAdminCertExpiry('${esc(s.id)}',this.value)" style="padding:3px 6px;font-size:12px"/></div>`:'';
           blocks+=trainingBlock('Administrator certificate renewal',ce,(ce.hours?`<div style="font-size:12px;margin-top:4px">${hh.counted} / ${R.admin_ce.total_hours} countable hours · Live (in person or live-stream) ${hh.live} / ${R.admin_ce.min_live_hours} · Self-paced ${hh.self_paced} (up to ${R.admin_ce.max_self_paced_hours} count) · dementia ${hh.dementia} / ${R.admin_ce.minimums.dementia} · laws and regulations ${hh.laws_regs} / ${R.admin_ce.minimums.laws_regs}</div>`:'')+expInput);
         }
-        if(!trainingAppliesHere()){
+        if(!trainingAppliesHere()&&t22FacType()==='arf'){
+          blocks=trainingArfBlocks(s,rows,admins,edit,today);
+        }else if(!trainingAppliesHere()){
           const byTopic=T22T.hoursByTopic(rows);
           blocks=`<div style="font-size:12px;color:var(--text2);margin-top:4px">${T22T.TOPICS.filter(t=>byTopic[t.key]>0).map(t=>esc(t.label)+' '+byTopic[t.key]+' hr').join(' · ')||'No hours logged yet.'}</div>`;
         }
@@ -11237,7 +11473,7 @@ const SCAN_DOC_TYPES={
     ['tb_test','TB test / clearance'],
     ['livescan','LiveScan clearance'],
     ['mandated_reporter','Mandated Reporter certificate'],
-    ['training_cert','16-hour initial training certificate'],
+    ['training_cert','Initial training certificate'],
     ['cert','Other certificate'],
   ],
 };
@@ -12064,7 +12300,7 @@ function renderRefNote(){
 <div class="modal-overlay" id="facility-modal" onclick="if(event.target===this)closeFacilityModal()">
   <div class="modal" style="max-width:520px"><div class="modal-header"><h3>Edit facility information</h3><button class="modal-close" onclick="closeFacilityModal()">×</button></div>
   <div class="form-group"><label>Facility name</label><input type="text" id="facm-name" placeholder="Sunrise Care Home"/></div>
-  <div class="form-group"><label>Facility type</label><select id="facm-type" onchange="t22ArfNote(this)"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select><div style="margin-top:6px;font-size:12px;color:var(--text2)">Board and care home? Choose RCFE if your residents are 60 or older, ARF if they are 18 to 59. Your license says which.</div><div class="t22-arf-note" style="display:none;margin-top:8px;font-size:13px;color:var(--text2);background:var(--amber-light);padding:8px 12px;border-radius:var(--radius)">ARF-specific checklists aren't available yet. You'll see the general staff-records tools.</div></div>
+  <div class="form-group"><label>Facility type</label><select id="facm-type" onchange="t22ArfNote(this)"><option value="rcfe">RCFE</option><option value="cbrc">CBRC</option><option value="arf">ARF</option></select><div style="margin-top:6px;font-size:12px;color:var(--text2)">Board and care home? Choose RCFE if your residents are 60 or older, ARF if they are 18 to 59. Your license says which.</div><div class="t22-arf-note" style="display:none;margin-top:8px;font-size:13px;color:var(--text2);background:var(--gray-light);padding:8px 12px;border-radius:var(--radius)">You'll get the ARF checklist (22 CCR §80000 and §85000), not the RCFE one.</div></div>
   <div class="form-row"><div class="form-group"><label>License number</label><input type="text" id="facm-license"/></div><div class="form-group"><label>Capacity</label><input type="number" id="facm-capacity"/></div></div>
   <div class="form-group"><label>Address</label><input type="text" id="facm-address" autocomplete="off"/></div>
   <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Administrator</div>
@@ -12208,7 +12444,7 @@ function renderRefNote(){
       </div>
 
       <div class="doc-slot" id="docslot-training_cert">
-        <div class="doc-slot-title">16-hour initial training</div>
+        <div class="doc-slot-title">Initial training</div>
         <div class="doc-slot-status" data-slot-status></div>
         <div class="doc-slot-actions" data-slot-actions></div>
         <div class="doc-slot-self"><label for="staff-training">Self-reported</label><select id="staff-training" onchange="renderDocSlots('staff')"><option value="false">No — incomplete</option><option value="true">Yes — completed</option></select></div>
