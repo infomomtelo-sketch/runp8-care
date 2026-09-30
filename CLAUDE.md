@@ -180,10 +180,9 @@ Stripe wiring, as of 2026-09-08:
 
   VERIFIED from the live link 2026-09-09, by screenshot: "Subscribe to
   Title22-Multi-Home", $79.00 per month, merchant title-22.com. Amount,
-  interval, product name and merchant all correct. Still unverified: the
-  link's redirect, which is not visible on the checkout page. This
-  environment's egress proxy blocks `buy.stripe.com`, so read it in the Stripe
-  dashboard.
+  interval, product name and merchant all correct. The link's redirect is
+  set too: both Payment Links return to `https://title22.app#welcome`
+  (reported by the owner 2026-09-30; see "the post-payment redirect" below).
 
   **The metadata does NOT matter, and the paragraph that used to stand here
   saying otherwise was wrong.** It said the deployed Worker was the 2026-09-07
@@ -686,13 +685,54 @@ and the test fails if the migration and the JS disagree.
 - `title22_course_catalog` holds a course's credit hours and topic split
   (`courseToEntries` turns one into log entries). No SCORM yet.
 
-## ARF: accepted, not built (2026-09-29)
+## ARF checklists and training checks (2026-09-30)
 
-Title22 is built for California RCFEs; ARF checklists are in development.
-ARF stays selectable at signup and in facility settings, and choosing it shows
-"ARF-specific checklists aren't available yet. You'll see the general
-staff-records tools." Do not write "for RCFEs and ARFs" anywhere, and do not
-build ARF checklists without a decision.
+ARFs (adults 18 to 59) follow 22 CCR §80000 and §85000, not §87100. Built
+from CDSS's "Reference Guide to ARF Administrator, Staff, and Volunteer
+Training Requirements" (Dec 2025, PIN 25-11-ASC), the CDSS Administrator
+Certification FAQ, and the current regulation text in CDSS's own files
+(arfman.docx, genman1-4.docx). Every item carries a citation and
+`checked_on = 2026-09-30`.
+
+- `migrations/2026-09-30b_title22_arf_checklists.sql`: 25 ARF items
+  (`facility_types = {arf}`), 4 rows in `title22_training_requirements`, a
+  `checked_on` column on `checklist_items`, and every previously untagged item
+  marked `{rcfe,cbrc}` (all were written for RCFEs). Additive; verified twice
+  on Postgres 16. Run it BEFORE merging the app change.
+- No resident items and no medication items for ARF, not even tick-boxes. Do
+  not add any.
+- PPE training for all staff is NOT an ARF item: §85095.5(b)(2)(C) applies
+  only when a client has a contagious disease (CDSS's guide lists it
+  unconditionally; the regulation text wins). Removed on review 2026-09-30 by
+  `2026-09-30c_title22_arf_drop_ppe.sql`. Do not add it back unconditionally.
+- `training-rules.js`: `arf_admin_ce` (40 / 2 yr, 4 laws-regs, >=20 live,
+  <=20 self-paced, NO dementia; initial 35 h live-only + exam in 60 days),
+  `arf_admin_hiv_tb` (3 + 1 h within 6 months, then every 2 yr, counted from
+  the administrator's hire date), `arf_infection_control` (10 days),
+  `arf_emergency_plan` (hire + yearly), `arf_first_aid`. `elder_abuse` applies
+  to ARF too. `adminCeStatus(rows, exp, today, rule)`; no rule = RCFE.
+  `topicsFor(type)`: ARF gets HIV and TB and loses dementia and aging.
+- The app shows only tasks whose item applies to the facility's type
+  (`t22TaskApplies`). An ARF home seeded before 2026-09-30 still HOLDS its RCFE
+  tasks in the database; they are hidden, not deleted, and the zero self-heal
+  gives it the ARF list once ("zero" = zero for this type).
+- Staff cards and the readiness score drop CPR and "Initial training" for ARF
+  (CPR is ARF-required only with emergency intervention, §85165). The RCFE
+  label "16hr Training" was wrong and is now "Initial training".
+- Sample ARF home: `seedArfDemoData`, "Sample ARF (Demo)", 4 invented staff,
+  no residents, no incidents, never the classroom MAR (`t22MarAllowed` names
+  the RCFE sample).
+- Tello gets `facility_type` and `training_rules` for that type only, and is
+  told never to give an ARF an RCFE rule and to say "I'm not sure. Check with
+  CCLD" otherwise. `tello/title22-knowledge.js` changed too: needs a
+  `deploy-title22-ai.yml` run after merge.
+- NOT modelled (named in the code): regional-center DSP training (WIC
+  §4695.2, not reachable from an official source here), up to 24 Regional
+  Center CE hours, the 10-hours-a-day CE cap, the 1-hour LGBT CE hour,
+  emergency intervention / delayed egress / secured perimeters / hospice
+  training.
+- title-22.com still says "ARF checklists are in development". Change it only
+  after this is merged AND live.
 
 CBRC ("Community Board and Care") stays in the facility-type picker for now
 (the owner, 2026-09-30): no CDSS licence of that name was found, and the owner
@@ -1223,14 +1263,16 @@ What is genuinely open:
   in the code this bullet spent a week worrying about — the price map and
   `welcomeIsPaid` were correct and irrelevant.
 
-  **What is still not done on that path: the post-payment redirect.** Stripe's
-  checkout does not return the customer to title22.app, because a Payment
-  Link's "After payment" setting is dashboard configuration and nothing in this
-  repo can set it. The app half is built and waiting — `index.html:3014` routes
-  any hash containing `welcome` to `handleWelcome()`, which polls
-  `welcomeIsPaid()` for 30s and shows "You're in." Set each Payment Link to
-  **Don't show confirmation page → Redirect to `https://title22.app#welcome`**.
-  Both links need it, Lite and Multi-Home.
+  **The post-payment redirect is SET (2026-09-30).** Both Payment Links, Lite
+  and Multi-Home, have "After payment" → Don't show confirmation page →
+  Redirect to `https://title22.app#welcome` — reported by the owner from the
+  Stripe dashboard. It is dashboard configuration, so nothing in this repo sets
+  it or can show it; this environment cannot reach `buy.stripe.com` to check.
+  If it is ever changed, the customer pays and is left on Stripe's own page.
+  The app half: the router (`location.hash.includes('welcome')` in the boot
+  path) calls `handleWelcome()`, which polls `welcomeIsPaid()` for 30s and
+  shows "You're in." — or, if Stripe has not confirmed by then, "Still
+  processing" with a "Check again" button.
 
   Do NOT "fix" this by changing `openStripe`'s `window.open(..., '_blank')` to
   a same-tab navigation. The new tab is deliberate: `index.html:1755` carries a

@@ -1,5 +1,5 @@
-/* Title22 training requirements for RCFEs — the numbers, as data, and the
- * arithmetic that checks a person's logged hours against them.
+/* Title22 training requirements for RCFEs and ARFs — the numbers, as data,
+ * and the arithmetic that checks a person's logged hours against them.
  *
  * Loaded by index.html (<script src="/training-rules.js">) and by
  * tests/training-rules.test.mjs. Pure: no DOM, no database, no network.
@@ -16,6 +16,15 @@
  *   - PIN 23-14-CCLD (live-stream counts as live; up to half self-paced).
  *   - 22 CCR §87407 and §87411, current text from the CDSS regulation files
  *     (rcfeman3.docx, manual letters through CCL-25-02).
+ * ARF (adult residential facilities), checked 2026-09-30 against:
+ *   - "Reference Guide to Adult Residential Facilities Administrator, Staff,
+ *     and Volunteer Training Requirements", CDSS, December 2025
+ *     (cdss.ca.gov/Portals/9/CCLD/ACL/Provider Resources/ARF-Training-Requirements.pdf),
+ *     announced by PIN 25-11-ASC.
+ *   - CDSS Administrator Certification FAQ (cdss.ca.gov, .../faq-administrators).
+ *   - 22 CCR §§80065, 80066, 80075, 85064, 85064.2, 85064.3, 85065.6, 85066
+ *     and 85095.5, current text from the CDSS regulation files (arfman.docx,
+ *     genman1-4.docx).
  * If the law changes, change it here. index.html and the migration read from
  * the same figures (the migration's are checked against these by the test).
  *
@@ -29,20 +38,25 @@
   // D. Topic areas a training entry can be tagged with.
   // aging..dementia follow 22 CCR §87411(c)(3)(A)-(F). postural_hospice and
   // laws_regs exist because a minimum below is counted in them.
+  // `types`, when present, limits which facility types are offered the topic
+  // (topicsFor). hiv and tb are the ARF administrator's HSC §1562.5 training.
+  // Hours already logged under any topic are always counted and shown.
   const TOPICS = [
-    { key: 'aging',             label: 'Aging, physical limitations and needs of the elderly' },
+    { key: 'aging',             label: 'Aging, physical limitations and needs of the elderly', types: ['rcfe', 'cbrc'] },
     { key: 'personal_care',     label: 'Personal care services (ADLs)' },
     { key: 'infection_control', label: 'Infectious disease and infection control' },
     { key: 'residents_rights',  label: "Residents' rights" },
     { key: 'medication',        label: 'Medication policies and procedures' },
     { key: 'psychosocial',      label: 'Psychosocial needs' },
-    { key: 'dementia',          label: 'Dementia care' },
+    { key: 'dementia',          label: 'Dementia care', types: ['rcfe', 'cbrc'] },
     { key: 'postural_hospice',  label: 'Postural supports, restricted health conditions and hospice care' },
     { key: 'emergency',         label: 'Fire safety and emergency response' },
-    { key: 'elder_abuse',       label: 'Recognizing and reporting elder abuse' },
+    { key: 'elder_abuse',       label: 'Recognizing and reporting elder and dependent adult abuse' },
     { key: 'lgbt_cultural',     label: 'Cultural competency and sensitivity for the aging LGBT community' },
     { key: 'first_aid',         label: 'First aid' },
     { key: 'laws_regs',         label: 'Laws, regulations, policies and procedural standards' },
+    { key: 'hiv',               label: 'HIV: needs of residents who may be infected', types: ['arf'] },
+    { key: 'tb',                label: 'Tuberculosis (TB): basic information', types: ['arf'] },
     { key: 'other',             label: 'Other' },
   ];
 
@@ -91,7 +105,9 @@
     },
     // Elder and dependent adult abuse reporting: all staff, within 60 days of
     // the first day of employment (WIC §15655(a)).
-    elder_abuse: { code: 'elder_abuse_training', within_days_of_hire: 60, citation: 'WIC §15655(a)' },
+    // Applies to ARF staff too: CDSS's ARF reference guide (Dec 2025) lists it
+    // under "All Staff: On-the-Job Training", citing WIC §15655(a)(1), (a)(2).
+    elder_abuse: { code: 'elder_abuse_training', facility_types: ['rcfe', 'cbrc', 'arf'], within_days_of_hire: 60, citation: 'WIC §15655(a)' },
     // Direct care staff who assist residents with self-administration of
     // medication (HSC §1569.69(a)), by the home's licensed capacity. Hands-on
     // shadowing comes before the person assists; the other hours within 2
@@ -118,6 +134,70 @@
       minimums: { dementia: 8, postural_hospice: 4 },
       citation: 'HSC §§1569.625, 1569.626, 1569.696; 22 CCR §87411(c)',
     },
+
+    // ── ARF (22 CCR §80000 general + §85000 ARF). No dementia hours, no
+    // 40-hour initial training in phases and no medication hours by home
+    // size: those are RCFE law (HSC §1569.x) and do not apply here.
+
+    // ARF administrator certificate renewal. 40 hours every 2-year period, at
+    // least 4 on laws, regulations, policies and procedural standards; no more
+    // than half (20) self-paced, so at least 20 live (in person or
+    // live-stream). HSC §1562.3(f)(1); 22 CCR §85064.3(a); CDSS FAQ.
+    // Initial certification: 35 hours of interactive instruction (in person or
+    // live-stream, no self-paced) and the state exam within 60 days of
+    // finishing it. HSC §1562.3(c)(1), (c)(3); 22 CCR §85064.2(b).
+    // Known and NOT modelled: up to 24 Regional Center (DDS) CE hours may
+    // count, not toward the 4 laws-and-regulations hours (§85064.3(b)(2); CDSS
+    // FAQ, updated 7/1/2026); no more than 10 hours counted from one day
+    // (§85064.3(c)(1)); 1 hour on the aging LGBT community if it was not in
+    // the person's initial program (§85064.3(a)(2)).
+    arf_admin_ce: {
+      code: 'arf_admin_ce',
+      facility_types: ['arf'],
+      label: 'ARF administrator certificate renewal: continuing education',
+      total_hours: 40,
+      period_months: 24,
+      due: 'certificate_expiry',
+      minimums: { laws_regs: 4 },
+      max_self_paced_hours: 20,
+      min_live_hours: 20,
+      initial_certification: { hours: 35, live_only: true, exam_within_days: 60 },
+      citation: 'HSC §1562.3(c), (f)(1); 22 CCR §§85064.2, 85064.3',
+    },
+    // ARF administrator: 4 hours (3 on HIV, 1 on TB) within 6 months of
+    // becoming administrator, then an update every 2 years. HSC §1562.5(a);
+    // 22 CCR §85064(k). Counted from the administrator's hire date.
+    arf_admin_hiv_tb: {
+      code: 'arf_admin_hiv_tb',
+      facility_types: ['arf'],
+      hours: { hiv: 3, tb: 1 },
+      within_months: 6,
+      update_every_months: 24,
+      citation: 'HSC §1562.5(a); 22 CCR §85064(k)',
+    },
+    // All ARF staff: training on the facility's Infection Control Plan from the
+    // Infection Control Lead within 10 calendar days of employment.
+    // 22 CCR §85095.5(c)(1)(C)1.
+    arf_infection_control: {
+      code: 'arf_infection_control',
+      facility_types: ['arf'],
+      within_days_of_hire: 10,
+      topic: 'infection_control',
+      citation: '22 CCR §85095.5(c)(1)(C)',
+    },
+    // All ARF staff: training on the Emergency and Disaster Plan upon hire and
+    // every year after. HSC §1565(b), as CDSS's ARF reference guide cites it.
+    arf_emergency_plan: {
+      code: 'arf_emergency_plan',
+      facility_types: ['arf'],
+      period_months: 12,
+      topic: 'emergency',
+      citation: 'HSC §1565(b)',
+    },
+    // ARF direct care staff: first aid training from persons qualified by an
+    // agency such as the American Red Cross. No hours set. 22 CCR §80075(f).
+    // Read from the staff record's first aid certificate.
+    arf_first_aid: { code: 'arf_first_aid', facility_types: ['arf'], citation: '22 CCR §80075(f)' },
   };
 
   const DAY = 86400000;
@@ -233,15 +313,88 @@
     return { code: R.code, status, due: iso(dueBy), days_left: daysLeft, hours: s, gaps, phases, topics_missing: topicsMissing };
   }
 
+  // One training on a topic, logged within N days of hire.
+  function withinDaysStatus(code, topic, days, rows, hireDate, today) {
+    const hire = toDate(hireDate);
+    const now = toDate(today) || toDate(new Date());
+    if (!hire) return { code, status: 'needs_hire_date' };
+    const dueBy = new Date(hire.getTime() + days * DAY);
+    const done = rows.map(normalise).some(e => e.topic === topic && e.date && e.date <= dueBy);
+    return { code, status: done ? 'complete' : (now > dueBy ? 'overdue' : 'in_progress'), due: iso(dueBy) };
+  }
+
   // Elder abuse reporting training within 60 days of hire (WIC §15655(a)).
   function elderAbuseStatus(rows, hireDate, today) {
     const R = RULES.elder_abuse;
+    return withinDaysStatus(R.code, 'elder_abuse', R.within_days_of_hire, rows, hireDate, today);
+  }
+
+  // ARF: Infection Control Plan training within 10 calendar days of hire.
+  function arfInfectionControlStatus(rows, hireDate, today) {
+    const R = RULES.arf_infection_control;
+    return withinDaysStatus(R.code, R.topic, R.within_days_of_hire, rows, hireDate, today);
+  }
+
+  // ARF: Emergency and Disaster Plan training upon hire, then every year. One
+  // entry tagged 'emergency' in each 12-month period from the hire date. A
+  // period that ended with none is reported as overdue.
+  function arfEmergencyPlanStatus(rows, hireDate, today) {
+    const R = RULES.arf_emergency_plan;
     const hire = toDate(hireDate);
     const now = toDate(today) || toDate(new Date());
     if (!hire) return { code: R.code, status: 'needs_hire_date' };
-    const dueBy = new Date(hire.getTime() + R.within_days_of_hire * DAY);
-    const done = rows.map(normalise).some(e => e.topic === 'elder_abuse' && e.date && e.date <= dueBy);
-    return { code: R.code, status: done ? 'complete' : (now > dueBy ? 'overdue' : 'in_progress'), due: iso(dueBy) };
+    const es = rows.map(normalise).filter(e => e.topic === R.topic && e.date);
+    let k = 0;
+    while (addMonths(hire, (k + 1) * R.period_months) <= now) k++;
+    const has = n => {
+      const start = addMonths(hire, n * R.period_months), end = addMonths(hire, (n + 1) * R.period_months);
+      // Training taken before the first day counts as "upon hire".
+      return es.some(e => (n === 0 || e.date >= start) && e.date < end);
+    };
+    const cur = has(k), prev = k > 0 ? has(k - 1) : true;
+    const due = iso(new Date(addMonths(hire, (k + 1) * R.period_months).getTime() - DAY));
+    const gaps = [];
+    if (!prev) gaps.push('None logged in the year ending ' + iso(new Date(addMonths(hire, k * R.period_months).getTime() - DAY)) + '.');
+    if (!cur) gaps.push(k === 0 ? 'Not logged yet. Due upon hire.' : 'Not logged yet this year.');
+    const status = cur && prev ? 'complete' : (!prev ? 'overdue' : 'in_progress');
+    return { code: R.code, status, due, gaps };
+  }
+
+  // ARF administrator: HIV (3 h) and TB (1 h) within 6 months of becoming
+  // administrator, then again within every 2 years after the last completed
+  // round. `startDate` is when they became administrator (their hire date).
+  function arfHivTbStatus(rows, startDate, today) {
+    const R = RULES.arf_admin_hiv_tb;
+    const start = toDate(startDate);
+    const now = toDate(today) || toDate(new Date());
+    if (!start) return { code: R.code, status: 'needs_hire_date', gaps: ['Add a hire date to track HIV and TB training.'] };
+    const es = rows.map(normalise).filter(e => (e.topic === 'hiv' || e.topic === 'tb') && e.date).sort((a, b) => a.date - b.date);
+    let from = null, due = addMonths(start, R.within_months), round_ = 'initial';
+    for (;;) {
+      const inWin = es.filter(e => (!from || e.date > from) && e.date <= due);
+      let hiv = 0, tb = 0, doneOn = null;
+      for (const e of inWin) {
+        if (e.topic === 'hiv') hiv = round(hiv + e.hours); else tb = round(tb + e.hours);
+        if (!doneOn && hiv >= R.hours.hiv && tb >= R.hours.tb) doneOn = e.date;
+      }
+      if (doneOn) {
+        const next = addMonths(doneOn, R.update_every_months);
+        // Completed, and the next round is not yet due: report it as done.
+        if (now <= next) return { code: R.code, status: 'complete', round: round_, completed_on: iso(doneOn), due: iso(next), hours: { hiv, tb }, gaps: [] };
+        from = doneOn; due = next; round_ = 'update';
+        continue;
+      }
+      const gaps = [];
+      if (hiv < R.hours.hiv) gaps.push(round(R.hours.hiv - hiv) + ' more hours on HIV (' + R.hours.hiv + ' needed)');
+      if (tb < R.hours.tb) gaps.push(round(R.hours.tb - tb) + ' more hour on TB (' + R.hours.tb + ' needed)');
+      return { code: R.code, status: now > due ? 'overdue' : 'in_progress', round: round_, due: iso(due), hours: { hiv, tb }, gaps };
+    }
+  }
+
+  // Topics offered when logging an entry at this facility type.
+  function topicsFor(facilityType) {
+    const t = facilityType || 'rcfe';
+    return TOPICS.filter(x => !x.types || x.types.includes(t));
   }
 
   // Medication training for a staff member who assists with self-administration,
@@ -319,8 +472,10 @@
   // years ending on the certificate's expiry date. Self-paced hours above 20
   // do not count toward the 40. Hours with no delivery recorded count toward
   // the total but not toward the live minimum, and are named as such.
-  function adminCeStatus(rows, certExpiry, today) {
-    const R = RULES.admin_ce;
+  // `rule` picks the facility type's renewal rule (RULES.admin_ce for RCFE,
+  // RULES.arf_admin_ce for ARF); omitted, it is the RCFE one.
+  function adminCeStatus(rows, certExpiry, today, rule) {
+    const R = rule || RULES.admin_ce;
     const exp = toDate(certExpiry);
     const now = toDate(today) || toDate(new Date());
     if (!exp) return { code: R.code, status: 'needs_expiry', gaps: ['Add the certificate expiry date to track renewal hours.'], warnings: [] };
@@ -341,7 +496,7 @@
     if (s.delivery_unknown > 0) warnings.push(s.delivery_unknown + ' hours have no delivery recorded (live or self-paced).');
     if (s.counted < R.total_hours) gaps.push(round(R.total_hours - s.counted) + ' more countable hours to reach ' + R.total_hours);
     if (s.live < R.min_live_hours) gaps.push(round(R.min_live_hours - s.live) + ' more live hours, in person or live-stream (' + R.min_live_hours + ' needed)');
-    if (s.dementia < R.minimums.dementia) gaps.push(round(R.minimums.dementia - s.dementia) + ' more dementia hours (' + R.minimums.dementia + ' needed)');
+    if (R.minimums.dementia && s.dementia < R.minimums.dementia) gaps.push(round(R.minimums.dementia - s.dementia) + ' more dementia hours (' + R.minimums.dementia + ' needed)');
     if (s.laws_regs < R.minimums.laws_regs) gaps.push(round(R.minimums.laws_regs - s.laws_regs) + ' more hours on laws, regulations, policies and procedural standards (' + R.minimums.laws_regs + ' needed)');
     const status = !gaps.length ? 'complete' : (now > exp ? 'overdue' : 'in_progress');
     return { code: R.code, status, start: iso(start), due: iso(exp), hours: s, gaps, warnings };
@@ -353,7 +508,8 @@
     return rule.facility_types.includes(facilityType || 'rcfe');
   }
 
-  const api = { TOPICS, RULES, normalise, hoursByTopic, initialStatus, annualStatus, adminCeStatus, elderAbuseStatus, medicationStatus, courseToEntries, appliesTo };
+  const api = { TOPICS, RULES, normalise, hoursByTopic, initialStatus, annualStatus, adminCeStatus, elderAbuseStatus, medicationStatus, courseToEntries, appliesTo,
+    topicsFor, arfInfectionControlStatus, arfEmergencyPlanStatus, arfHivTbStatus };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.T22Training = api;
 })(typeof window !== 'undefined' ? window : globalThis);
