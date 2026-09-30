@@ -244,6 +244,7 @@
     transition:transform .15s ease,box-shadow .15s ease}
   #tello-dock-btn:hover,#tello-dock-btn:focus-visible{transform:translateY(-2px);
     box-shadow:0 0 0 6px rgba(232,162,61,.2),0 0 0 7px rgba(232,162,61,.6),0 10px 26px rgba(18,58,48,.32)}
+  #page-app.tello-dock-mounted{padding-bottom:100px}
   @media (prefers-reduced-motion:reduce){#tello-dock-btn{transition:none}#tello-dock-btn:hover{transform:none}}
   #tello-dock{position:fixed;right:20px;bottom:92px;z-index:901;width:min(380px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 130px));max-height:min(560px,calc(100dvh - 130px));display:none;flex-direction:column;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden}
   #tello-dock.open{display:flex}
@@ -7883,6 +7884,8 @@ function unmountTelloDock(){
   ['tello-dock','tello-dock-btn','td-nudge'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.remove();
   });
+  const host=document.getElementById('page-app');
+  if(host)host.classList.remove('tello-dock-mounted');
 }
 
 function mountTelloDock(){
@@ -7929,6 +7932,7 @@ function mountTelloDock(){
   }
   const scope=document.getElementById('td-scope');
   if(scope)scope.textContent='AI assistant \u00b7 '+(currentFacility.name||'this facility');
+  if(host)host.classList.add('tello-dock-mounted');
   renderTelloDock();
 }
 
