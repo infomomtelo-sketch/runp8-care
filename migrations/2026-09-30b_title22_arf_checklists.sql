@@ -96,6 +96,9 @@ update public.checklist_items
 
 
 -- 4. The ARF items ----------------------------------------------------------
+-- PPE training (§85095.5(b)(2)(C)) is NOT listed: in the regulation it applies
+-- only when a client has a contagious disease. Removed 2026-09-30 on review;
+-- 2026-09-30c removes it from the live database.
 -- Frequency is shown on screen ("Every 2 years", "Before first shift"), so it
 -- is set only where the law sets that interval. Null = no fixed interval.
 
@@ -118,7 +121,6 @@ select v.title, v.category, v.frequency, v.ref, v.code, array['arf'], date '2026
     ('On-the-job training or related experience for each person''s job: food and nutrition, housekeeping and sanitation, care and supervision, assisting with self-administered medication, early signs of illness, community resources', 'staff', null, '22 CCR §80065(f)', null),
     ('All staff: training on the Emergency and Disaster Plan when hired, and every year', 'staff', 'annual', 'HSC §1565(b)', 'arf_emergency_plan'),
     ('All staff: Infection Control Plan training from the Infection Control Lead within 10 calendar days of starting', 'staff', null, '22 CCR §85095.5(c)(1)(C)', 'arf_infection_control'),
-    ('All staff and volunteers: trained in the proper use of required PPE before being around clients, and every year', 'staff', 'annual', '22 CCR §85095.5(b)(2)(C)', null),
     ('All staff: training in recognizing and reporting elder and dependent adult abuse within 60 days of starting', 'staff', null, 'WIC §15655(a)', 'elder_abuse_training'),
     ('All staff instructed to report any violation of clients'' personal rights', 'staff', null, '22 CCR §80065(m)', null),
     ('A personnel record for the licensee, the administrator and every employee, holding what §80066(a) lists', 'staff', null, '22 CCR §80066(a)', null),

@@ -694,13 +694,17 @@ Certification FAQ, and the current regulation text in CDSS's own files
 (arfman.docx, genman1-4.docx). Every item carries a citation and
 `checked_on = 2026-09-30`.
 
-- `migrations/2026-09-30b_title22_arf_checklists.sql`: 26 ARF items
+- `migrations/2026-09-30b_title22_arf_checklists.sql`: 25 ARF items
   (`facility_types = {arf}`), 4 rows in `title22_training_requirements`, a
   `checked_on` column on `checklist_items`, and every previously untagged item
   marked `{rcfe,cbrc}` (all were written for RCFEs). Additive; verified twice
   on Postgres 16. Run it BEFORE merging the app change.
 - No resident items and no medication items for ARF, not even tick-boxes. Do
   not add any.
+- PPE training for all staff is NOT an ARF item: §85095.5(b)(2)(C) applies
+  only when a client has a contagious disease (CDSS's guide lists it
+  unconditionally; the regulation text wins). Removed on review 2026-09-30 by
+  `2026-09-30c_title22_arf_drop_ppe.sql`. Do not add it back unconditionally.
 - `training-rules.js`: `arf_admin_ce` (40 / 2 yr, 4 laws-regs, >=20 live,
   <=20 self-paced, NO dementia; initial 35 h live-only + exam in 60 days),
   `arf_admin_hiv_tb` (3 + 1 h within 6 months, then every 2 yr, counted from
