@@ -180,10 +180,9 @@ Stripe wiring, as of 2026-09-08:
 
   VERIFIED from the live link 2026-09-09, by screenshot: "Subscribe to
   Title22-Multi-Home", $79.00 per month, merchant title-22.com. Amount,
-  interval, product name and merchant all correct. Still unverified: the
-  link's redirect, which is not visible on the checkout page. This
-  environment's egress proxy blocks `buy.stripe.com`, so read it in the Stripe
-  dashboard.
+  interval, product name and merchant all correct. The link's redirect is
+  set too: both Payment Links return to `https://title22.app#welcome`
+  (reported by the owner 2026-09-30; see "the post-payment redirect" below).
 
   **The metadata does NOT matter, and the paragraph that used to stand here
   saying otherwise was wrong.** It said the deployed Worker was the 2026-09-07
@@ -1223,14 +1222,16 @@ What is genuinely open:
   in the code this bullet spent a week worrying about — the price map and
   `welcomeIsPaid` were correct and irrelevant.
 
-  **What is still not done on that path: the post-payment redirect.** Stripe's
-  checkout does not return the customer to title22.app, because a Payment
-  Link's "After payment" setting is dashboard configuration and nothing in this
-  repo can set it. The app half is built and waiting — `index.html:3014` routes
-  any hash containing `welcome` to `handleWelcome()`, which polls
-  `welcomeIsPaid()` for 30s and shows "You're in." Set each Payment Link to
-  **Don't show confirmation page → Redirect to `https://title22.app#welcome`**.
-  Both links need it, Lite and Multi-Home.
+  **The post-payment redirect is SET (2026-09-30).** Both Payment Links, Lite
+  and Multi-Home, have "After payment" → Don't show confirmation page →
+  Redirect to `https://title22.app#welcome` — reported by the owner from the
+  Stripe dashboard. It is dashboard configuration, so nothing in this repo sets
+  it or can show it; this environment cannot reach `buy.stripe.com` to check.
+  If it is ever changed, the customer pays and is left on Stripe's own page.
+  The app half: the router (`location.hash.includes('welcome')` in the boot
+  path) calls `handleWelcome()`, which polls `welcomeIsPaid()` for 30s and
+  shows "You're in." — or, if Stripe has not confirmed by then, "Still
+  processing" with a "Check again" button.
 
   Do NOT "fix" this by changing `openStripe`'s `window.open(..., '_blank')` to
   a same-tab navigation. The new tab is deliberate: `index.html:1755` carries a
