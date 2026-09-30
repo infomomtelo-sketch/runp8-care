@@ -704,7 +704,10 @@ Certification FAQ, and the current regulation text in CDSS's own files
 - PPE training for all staff is NOT an ARF item: §85095.5(b)(2)(C) applies
   only when a client has a contagious disease (CDSS's guide lists it
   unconditionally; the regulation text wins). Removed on review 2026-09-30 by
-  `2026-09-30c_title22_arf_drop_ppe.sql`. Do not add it back unconditionally.
+  `2026-09-30c_title22_arf_drop_ppe.sql`, which is RUN: its report on the live
+  database, 2026-09-30, read arf 25, rcfe/cbrc 76 (arf 26 before). `30b` no
+  longer inserts the item, so a fresh database never gets it either. Do not
+  add it back unconditionally.
 - `training-rules.js`: `arf_admin_ce` (40 / 2 yr, 4 laws-regs, >=20 live,
   <=20 self-paced, NO dementia; initial 35 h live-only + exam in 60 days),
   `arf_admin_hiv_tb` (3 + 1 h within 6 months, then every 2 yr, counted from
@@ -731,8 +734,11 @@ Certification FAQ, and the current regulation text in CDSS's own files
   Center CE hours, the 10-hours-a-day CE cap, the 1-hour LGBT CE hour,
   emergency intervention / delayed egress / secured perimeters / hospice
   training.
-- title-22.com still says "ARF checklists are in development". Change it only
-  after this is merged AND live.
+- ARF checklists are LIVE as of 2026-09-30: 25 items, no resident or
+  medication items. title-22.com says "Checklists for California RCFEs and
+  ARFs" (homepage, contact page, partner handout; title-22-site #58). Claim
+  nothing about ARF beyond the 25 items, the ARF Training tab and the sample
+  ARF home.
 
 CBRC ("Community Board and Care") stays in the facility-type picker for now
 (the owner, 2026-09-30): no CDSS licence of that name was found, and the owner
