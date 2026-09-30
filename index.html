@@ -4573,16 +4573,53 @@ const COMPLIANCE_REQUIREMENTS={
 // Newest filed document per record and requirement.
 let complianceDocs={staff:{},resident:{}};
 
+// Every row a query matches, in pages. A single PostgREST request returns at
+// most the project's "Max rows" (1,000 by default) and says nothing when it
+// stops there, so one select silently dropped the rest of a large home. The
+// loop runs to the exact count, whatever page size the server allows, and
+// drops a row it has already seen (an insert between pages shifts the next
+// one). `build(opts)` returns a fresh ordered query; order by a unique column
+// last so pages do not overlap. {data,total,error}: data.length < total means
+// the read stopped early, and the caller must say so on the page.
+async function t22SelectAll(build){
+  const out=[],seen=new Set();let total=null,from=0;
+  for(let page=0;page<500;page++){
+    const{data,error,count}=await build(page===0?{count:'exact'}:{}).range(from,from+999);
+    if(error)return{data:out,total,error};
+    if(page===0&&typeof count==='number')total=count;
+    if(!data||!data.length)break;
+    data.forEach(r=>{if(r.id==null||!seen.has(r.id)){if(r.id!=null)seen.add(r.id);out.push(r);}});
+    from+=data.length;
+    if(total!==null&&from>=total)break;
+  }
+  return{data:out,total:total===null?out.length:Math.max(total,out.length),error:null};
+}
+// One amber line above a list, or nothing. Never a silent cut: whenever a list
+// or a count holds fewer rows than exist, this says so where it is read.
+function t22ShortNotice(anchorId,html){
+  const anchor=document.getElementById(anchorId);if(!anchor)return;
+  let n=document.getElementById(anchorId+'-short');
+  if(!html){if(n)n.remove();return;}
+  if(!n){n=document.createElement('div');n.id=anchorId+'-short';n.setAttribute('role','status');
+    n.style.cssText='background:var(--amber-light);color:var(--text);border:1px solid var(--amber);border-radius:var(--radius);padding:8px 12px;font-size:13px;margin:0 0 10px';
+    anchor.parentNode.insertBefore(n,anchor);}
+  n.innerHTML=html;
+}
+function t22Num(n){return Number(n).toLocaleString();}
+let complianceDocsShort=null;   // {read,total} when the readiness read stopped early
+
 async function loadComplianceDocs(){
   complianceDocs={staff:{},resident:{}};
+  complianceDocsShort=null;
   if(!currentFacility)return;
-  const{data,error}=await sb.from('documents')
-    .select('id,staff_id,resident_id,doc_type,issued_at,expires_at,uploaded_at')
-    .eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
+  const{data,total,error}=await t22SelectAll(o=>sb.from('documents')
+    .select('id,staff_id,resident_id,doc_type,issued_at,expires_at,uploaded_at',o)
+    .eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}).order('id'));
   // No documents table, or columns from a migration that has not been run:
   // leave the index empty and every requirement falls back to its typed value,
   // which is exactly the behaviour before any of this existed.
-  if(error||!data)return;
+  if(error&&!data.length)return;
+  if(data.length<total)complianceDocsShort={read:data.length,total};
   data.forEach(d=>{
     const kind=d.staff_id?'staff':(d.resident_id?'resident':null);
     const id=d.staff_id||d.resident_id;
@@ -4661,7 +4698,8 @@ function refreshDashboard(){
   document.getElementById('dash-score-sub').textContent=
     `${done} of ${total} requirements met`
     +(comp.total?` · ${comp.verified} of ${comp.total} backed by a document`:'')
-    +(comp.claimedOnly?` · ${comp.claimedOnly} recorded but unverified`:'');
+    +(comp.claimedOnly?` · ${comp.claimedOnly} recorded but unverified`:'')
+    +(complianceDocsShort?` · Incomplete: only ${t22Num(complianceDocsShort.read)} of ${t22Num(complianceDocsShort.total)} documents could be read. Refresh to count the rest.`:'');
   const arc=2*Math.PI*34;
   document.getElementById('score-arc').style.strokeDashoffset=arc*(1-score/100);
   document.getElementById('stat-overdue').textContent=overdue;
@@ -8710,11 +8748,12 @@ async function loadDocuments(){
   // rides in the query string where it cannot see it.
   const docSel=showMAR?'*, residents(name,full_name), staff(full_name,name)':'*, staff(full_name,name)';
   const docSelFallback=showMAR?'*, residents(name,full_name)':'*';
-  let{data,error}=await sb.from('documents').select(docSel).eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false});
-  if(error){
-    ({data,error}=await sb.from('documents').select(docSelFallback).eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}));
-  }
-  facilityDocs=error?[]:(data||[]);
+  const docsAll=sel=>t22SelectAll(o=>sb.from('documents').select(sel,o).eq('facility_id',currentFacility.id).order('uploaded_at',{ascending:false}).order('id'));
+  let{data,total,error}=await docsAll(docSel);
+  if(error&&!data.length)({data,total,error}=await docsAll(docSelFallback));
+  facilityDocs=(error&&!data.length)?[]:data;
+  t22ShortNotice('documents-list',data.length<total
+    ?`Showing ${t22Num(data.length)} of ${t22Num(total)} documents: the rest could not be read. Refresh the page to load them.`:null);
   // Lite holds no resident records, so a file attached to one — a LIC 601,
   // 602A or ISP scan uploaded before the pivot — is not listed. The rows
   // themselves go with migrations/2026-09-06_title22_lite_drop_phi.sql.
@@ -9866,7 +9905,7 @@ function trainingTopicLabel(key){const t=T22T.TOPICS.find(x=>x.key===key);return
 // Under the picker whenever ARF is chosen: which list an ARF gets.
 function t22ArfNote(sel){const n=sel&&sel.parentNode&&sel.parentNode.querySelector('.t22-arf-note');if(n)n.style.display=sel.value==='arf'?'block':'none';}
 function trainingAppliesHere(){return T22T.appliesTo(T22T.RULES.annual,currentFacility&&currentFacility.facility_type);}
-function trainingRowsFor(staffId){return (trainings||[]).filter(t=>t&&t.staff_id===staffId);}
+function trainingRowsFor(staffId){return (trainingAll||[]).filter(t=>t&&t.staff_id===staffId);}
 // An administrator's certificate expiry: their own staff field, else the
 // facility's administrator certificate when there is exactly one administrator.
 function trainingAdminExpiry(s,admins){
@@ -9875,6 +9914,10 @@ function trainingAdminExpiry(s,admins){
   return null;
 }
 let trainings=[];let trainingStaff=[];
+let trainingAll=[];            // every entry for the home: what the hours are counted from
+let trainingAllShort=null;     // {read,total} when that read stopped early
+let trainingCertsShort=null;   // same, for the in-service certificates
+const TRAINING_HISTORY_MAX=300;
 // In-service certificates, keyed by the training entry they prove. A logged
 // hour with no certificate is the same self-reported claim the document slots
 // exist to replace, so the history shows which entries actually have proof.
@@ -9905,8 +9948,14 @@ async function loadTrainings(){
   if(tp)tp.placeholder=taType==='arf'?'e.g., Infection Control Plan, first aid review...':'e.g., Understanding dementia, CPR review...';
   const sel=document.getElementById('tr-staff');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select staff...</option>'+trainingStaff.map(s=>`<option value="${s.id}">${(s.name||s.full_name||'Staff')}</option>`).join('');if(cur)sel.value=cur;}
-  const{data}=await sb.from('staff_trainings').select('*, staff(name, full_name)').eq('facility_id',currentFacility.id).order('training_date',{ascending:false}).limit(300);
-  trainings=data||[];
+  // Every entry: each person's hours are counted from this, so it must be
+  // complete. '*' so it reads with or without the 2026-09-29 / 09-30 columns.
+  const{data,total,error}=await t22SelectAll(o=>sb.from('staff_trainings').select('*',o).eq('facility_id',currentFacility.id).order('training_date',{ascending:false}).order('id'));
+  trainingAll=data;
+  trainingAllShort=data.length<total?{read:data.length,total,failed:!!error}:null;
+  // The history list below is only the newest TRAINING_HISTORY_MAX, named as such.
+  const byId={};(st||[]).forEach(s=>{byId[s.id]=s;});
+  trainings=trainingAll.slice(0,TRAINING_HISTORY_MAX).map(t=>({...t,staff:byId[t.staff_id]||null}));
   await loadTrainingCerts();
   renderTrainings();
 }
@@ -9916,8 +9965,9 @@ async function loadTrainings(){
 // breaking the tab.
 async function loadTrainingCerts(){
   trainingCerts={};
-  const{data,error}=await sb.from('documents').select('*').eq('facility_id',currentFacility.id).eq('doc_type','inservice_cert').order('uploaded_at',{ascending:false});
-  if(error||!data)return;
+  const{data,total,error}=await t22SelectAll(o=>sb.from('documents').select('*',o).eq('facility_id',currentFacility.id).eq('doc_type','inservice_cert').order('uploaded_at',{ascending:false}).order('id'));
+  trainingCertsShort=data.length<total?{read:data.length,total}:null;
+  if(error&&!data.length)return;
   data.forEach(d=>{ if(d.training_id&&!trainingCerts[d.training_id])trainingCerts[d.training_id]=d; });
 }
 
@@ -10186,6 +10236,13 @@ function renderTrainings(){
   const list=document.getElementById('training-list');
   const empty=document.getElementById('training-empty');
   if(!list)return;
+  t22ShortNotice('training-summary',trainingAllShort
+    ?`Hours below are counted from only ${t22Num(trainingAllShort.read)} of ${t22Num(trainingAllShort.total)} training entries: the rest could not be read. Refresh the page before relying on these totals.`:null);
+  t22ShortNotice('training-list',(trainingAll.length>trainings.length
+    ?(trainingAllShort
+      ?`The history below shows the newest ${t22Num(trainings.length)} of the ${t22Num(trainingAll.length)} entries that could be read.`
+      :`The history below shows the newest ${t22Num(trainings.length)} of ${t22Num(trainingAll.length)} entries. Every person's hours above are counted from all ${t22Num(trainingAll.length)}.`):'')
+    +(trainingCertsShort?` Only ${t22Num(trainingCertsShort.read)} of ${t22Num(trainingCertsShort.total)} certificates could be read, so an entry may show "No certificate on file" when it has one. Refresh to load the rest.`:'')||null);
   const R=T22T.RULES;
   if(note)note.innerHTML=trainingAppliesHere()
     ?`Checked against the RCFE requirements: <strong>${R.initial.total_hours} hours initial</strong> in two phases (phase 1: ${R.initial.phases.phase1.hours} hours with ${R.initial.phases.phase1.minimums.dementia} dementia and ${R.initial.phases.phase1.minimums.postural_hospice} postural supports / restricted health conditions / hospice, before working with residents on their own; phase 2: ${R.initial.phases.phase2.hours} more with ${R.initial.phases.phase2.minimums.dementia} dementia, within 4 weeks of hire; ${R.initial.minimums.hands_on} of the 40 hands-on; every required topic covered), <strong>${R.annual.total_hours} hours every year</strong> from the hire date (${R.annual.minimums.dementia} dementia, ${R.annual.minimums.postural_hospice} postural / restricted / hospice), and for administrators <strong>${R.admin_ce.total_hours} hours every 2 years</strong> (${R.admin_ce.minimums.dementia} dementia, ${R.admin_ce.minimums.laws_regs} laws and regulations, at least ${R.admin_ce.min_live_hours} live, no more than ${R.admin_ce.max_self_paced_hours} self-paced). Sources: ${esc(R.initial.citation)}; ${esc(R.admin_ce.citation)}. Requirements change — confirm yours with your licensing analyst.`
