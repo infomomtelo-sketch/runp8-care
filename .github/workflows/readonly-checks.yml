@@ -30,4 +30,5 @@ jobs:
       - name: PARTNER_TELLO_TEST_KEY set?
         env:
           K: ${{ secrets.PARTNER_TELLO_TEST_KEY }}
-        run: if [ -n "$K" ]; then echo "PARTNER_TELLO_TEST_KEY: set"; else echo "PARTNER_TELLO_TEST_KEY: NOT set"; fi
+        run: |
+          if [ -n "$K" ]; then echo "PARTNER_TELLO_TEST_KEY is set"; else echo "PARTNER_TELLO_TEST_KEY is NOT set"; fi
