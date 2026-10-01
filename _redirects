@@ -4,3 +4,7 @@
 /privacy.html           /privacy                             308
 /terms.html             /terms                               308
 /legal.html             /legal                               308
+# Partner Tello (partner_tello.html). A rewrite, not a redirect: the address
+# bar keeps title22.app/meet?k=<key>.
+/meet                   /partner_tello                       200
+/meet/                  /partner_tello                       200

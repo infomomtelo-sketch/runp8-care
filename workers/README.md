@@ -358,3 +358,19 @@ owner 2026-09-27 from the live preview on a phone.
   lifecycle rule (dashboard: R2 -> bucket -> Settings).
 - Deploy: Actions -> "Deploy title22-voice Worker". `node test.mjs` runs every
   route offline with DeepInfra, Supabase and R2 stubbed.
+
+## partner-tello (`workers/partner_tello/`)
+
+Partner Tello, title22.app/meet?k=<key>. Its own Worker, deployed only by
+`.github/workflows/deploy-partner-tello.yml` (manual). Source of truth: this
+directory; nothing about it was ever pasted into the dashboard.
+
+- Entry `worker.js` bundles `prompt.md` and `knowledge.md` as text; the logic
+  is `app.js`. Tests: `npm ci && node test.mjs` (fetch mocked). After a
+  deploy, `partner-tello-live-test.yml` runs the owner's tests live.
+- Uses `@anthropic-ai/sdk` (pinned in `package.json`, lockfile committed).
+- Secrets, set in the dashboard: `ANTHROPIC_API_KEY`, `RESEND_API_KEY`,
+  `PARTNER_TELLO_DB_SECRET`. Vars in `wrangler.toml`: `SUPABASE_URL`,
+  `SUPABASE_ANON_KEY` (public; no service key), `PARTNER_TELLO_MODEL`.
+- Cron every 10 minutes resends emails that failed.
+- See CLAUDE.md, "Partner Tello".

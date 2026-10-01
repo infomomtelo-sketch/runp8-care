@@ -1,0 +1,49 @@
+# Partner Tello, title22.app/meet?k=<key>. See app.js and CLAUDE.md
+# ("Partner Tello"). Cloudflare Worker names cannot contain "_", so the Worker
+# is partner-tello; everything else is partner_tello.
+name = "partner-tello"
+main = "worker.js"
+compatibility_date = "2026-09-15"
+workers_dev = true
+preview_urls = false
+
+[observability]
+enabled = true
+
+# The prompt and the knowledge are Markdown, bundled as text.
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = false
+
+# Every 10 minutes: emails that failed (or were waiting for notify_to) are
+# tried again, up to 8 runs per message. See retryUnsent in app.js.
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Secrets — exactly three, set by the owner in the Cloudflare dashboard
+# (Workers & Pages -> partner-tello -> Settings -> Variables and Secrets ->
+# Add, type Secret). Never here, never in the workflow. A deploy leaves
+# secrets alone.
+#   ANTHROPIC_API_KEY        the Messages API key
+#   RESEND_API_KEY           Resend, for the emails to the team
+#   PARTNER_TELLO_DB_SECRET  the value of `select secret from
+#                            public.partner_tello_config;` (generated in the
+#                            database by migrations/2026-10-01_partner_tello.sql)
+#
+# Where the emails go (notify_to) and who they come from (email_from) are NOT
+# here: this repository is public. They are a row in partner_tello_config.
+#
+# Plain-text vars. `wrangler deploy` REPLACES the Worker's vars with exactly
+# this block (the 2026-09-13 stripe-webhook lesson), so every var is here.
+[vars]
+# NOT secrets: the same public host and anon key index.html ships to every
+# browser. The anon key reaches only the partner_tello_* functions, and those
+# refuse anyone without PARTNER_TELLO_DB_SECRET.
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8"
+# A model change is a one-line PR.
+PARTNER_TELLO_MODEL = "claude-opus-5-5"
+
+# Public route (workers.dev):
+#   https://partner-tello.infomomtelo.workers.dev/api/partner_tello/*

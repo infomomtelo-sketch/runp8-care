@@ -352,10 +352,8 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
 
   // no account needed, unknown assistant refused, empty chat refused, roles tidied
   assert.equal((await visit('/api/assistant/chat', { assistant: 'nobody', messages: [{ role: 'user', content: 'hi' }] })).status, 404);
-  script = [text('Hi, I am Charrise, Title22\'s AI assistant.')];
-  assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'hi' }] }, '198.51.100.30')).status, 200);
-  assert.match(anthropic.at(-1).system, /You are Charrise, Title22's AI assistant/);
-  assert.match(anthropic.at(-1).system, /The facts were written for Tello/, 'Charrise may mention Tello as part of the product');
+  // Charrise (key 'title22') was removed 2026-10-01: her key no longer answers.
+  assert.equal((await visit('/api/assistant/chat', { assistant: 'title22', messages: [{ role: 'user', content: 'hi' }] }, '198.51.100.30')).status, 404);
   assert.ok(!/\bEli\b/.test(anthropic.at(-1).system));
   assert.equal((await visit('/api/assistant/chat', { assistant: 'tello', messages: [{ role: 'assistant', content: 'hi' }] })).status, 400);
   const t = cleanTurns([{ role: 'assistant', content: 'greeting' }, { role: 'user', content: 'a' }, { role: 'user', content: 'b' }, { role: 'system', content: 'x' }]);
@@ -399,7 +397,7 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   assert.match(anthropic.at(-1).system, /You are Tello, Title22's AI assistant/);
   assert.ok(!/The facts were written for Tello/.test(anthropic.at(-1).system));
   assert.ok(Object.keys(usage).some((k) => k.startsWith('v:tello:')), 'guest Tello has her own counters');
-  console.log('ok  guest Tello (/api/assistant): no sign-in, Title22 knowledge, says she is an AI, names nobody, no chat stored, IP hashed, limits fail closed, leads with a summary; Charrise on her own page, same rules');
+  console.log('ok  guest Tello (/api/assistant): no sign-in, Title22 knowledge, says she is an AI, names nobody, no chat stored, IP hashed, limits fail closed, leads with a summary; Charrise removed (404)');
 }
 
 console.log('all checks passed');

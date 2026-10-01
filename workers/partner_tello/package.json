@@ -1,0 +1,12 @@
+{
+  "name": "partner-tello",
+  "private": true,
+  "type": "module",
+  "description": "Partner Tello (title22.app/meet). See app.js.",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0"
+  }
+}
