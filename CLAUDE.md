@@ -1050,8 +1050,9 @@ false, covers_multi = false, 0 members under a Lite or Multi-Home owner. So on
 the two plans sold, an invited team member would go read-only when their own
 trial ended. Fixed by `migrations/2026-10-01_title22_member_entitlement_lite_multi.sql`
 (replaces the one function; tested on Postgres 16: Lite and Multi caregivers
-covered, cancelled-and-ended refused, trial team unchanged). NOT RUN until the
-owner reports it; its last comment is the one-line check (both must read true).
+covered, cancelled-and-ended refused, trial team unchanged). RUN on the live
+database 2026-10-01 by the owner; the one-line check in its last comment read
+covers_lite = true, covers_multi = true. Re-running it is harmless.
 
 **A sentinel bug worth remembering.** The first run reported
 `2026-09-07_lic_checklist_items` as NOT applied. It ran. Its sentinel was one
