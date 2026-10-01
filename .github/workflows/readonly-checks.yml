@@ -1,0 +1,24 @@
+# Temporary, read-only: DNS for Resend on title-22.com, and title22.app/meet.
+# Changes nothing. Deleted with its branch after one run.
+name: Read-only checks (temporary)
+on:
+  push:
+    branches: [claude/readonly-checks]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resend DNS records for title-22.com
+        run: |
+          for q in "resend._domainkey.title-22.com TXT" "send.title-22.com TXT" "send.title-22.com MX" "_dmarc.title-22.com TXT"; do
+            set -- $q; echo "== $1 $2"; dig +short "$1" "$2" || true
+          done
+      - name: title22.app/meet
+        run: |
+          for u in "https://title22.app/meet" "https://title22.app/meet?k=not-a-real-key" "https://title22.app/partner_tello"; do
+            code=$(curl -s -o page.html -w '%{http_code}' "$u"); echo "$u -> $code"
+            grep -o 'AI assistant for Title22 partners' page.html | head -1 || true
+            grep -o 'noindex[^"]*' page.html | head -1 || true
+          done
+      - name: partner-tello Worker health
+        run: curl -s https://partner-tello.infomomtelo.workers.dev/api/partner_tello/health; echo
