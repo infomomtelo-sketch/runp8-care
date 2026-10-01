@@ -1,24 +1,33 @@
-# Temporary, read-only: DNS for Resend on title-22.com, and title22.app/meet.
-# Changes nothing. Deleted with its branch after one run.
+# Temporary, read-only. Changes nothing.
+#  - title22-email's EMAIL_FROM: name and type, and the value only if it is a
+#    plain-text var (a secret's value cannot be read by anyone). No other
+#    binding's value is printed.
+#  - title22.app/meet and the partner-tello Worker health.
+#  - whether the PARTNER_TELLO_TEST_KEY secret exists (yes/no only).
 name: Read-only checks (temporary)
 on:
   push:
     branches: [claude/readonly-checks]
+env:
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Resend DNS records for title-22.com
+      - name: title22-email EMAIL_FROM (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          for q in "resend._domainkey.title-22.com TXT" "send.title-22.com TXT" "send.title-22.com MX" "_dmarc.title-22.com TXT"; do
-            set -- $q; echo "== $1 $2"; dig +short "$1" "$2" || true
-          done
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/title22-email/settings" \
+            | jq -r '"success: \(.success)", (.result.bindings[]? | select(.name=="EMAIL_FROM") | "EMAIL_FROM type=\(.type) value=\(if .type=="plain_text" then .text else "(secret: value not readable)" end)"), "binding names: \([.result.bindings[]?.name] | join(", "))"'
       - name: title22.app/meet
         run: |
-          for u in "https://title22.app/meet" "https://title22.app/meet?k=not-a-real-key" "https://title22.app/partner_tello"; do
-            code=$(curl -s -o page.html -w '%{http_code}' "$u"); echo "$u -> $code"
-            grep -o 'AI assistant for Title22 partners' page.html | head -1 || true
-            grep -o 'noindex[^"]*' page.html | head -1 || true
-          done
-      - name: partner-tello Worker health
+          code=$(curl -s -o page.html -w '%{http_code}' "https://title22.app/meet?k=check"); echo "title22.app/meet -> $code"
+          grep -o 'AI assistant for Title22 partners' page.html | head -1 || true
+      - name: partner-tello health
         run: curl -s https://partner-tello.infomomtelo.workers.dev/api/partner_tello/health; echo
+      - name: PARTNER_TELLO_TEST_KEY set?
+        env:
+          K: ${{ secrets.PARTNER_TELLO_TEST_KEY }}
+        run: if [ -n "$K" ]; then echo "PARTNER_TELLO_TEST_KEY: set"; else echo "PARTNER_TELLO_TEST_KEY: NOT set"; fi
