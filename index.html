@@ -286,6 +286,53 @@
   #td-nudge b{color:#e8a23d}
   @keyframes tdNudge{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){#td-nudge.show{animation:none}}
+  /* Tello's button, the setup bar and the dock panel slide out of the way
+     while the account menu is open, and on the Ask Tello screen, and slide
+     back when either ends. Moved, never closed: an open panel comes back
+     open. Two classes on #page-app, one per reason, so leaving one does not
+     undo the other (t22SetDockAway). */
+  #tello-dock-btn,#td-nudge,#tello-dock{transition:transform .25s ease,opacity .25s ease,visibility 0s linear 0s}
+  #page-app.t22-away-menu #tello-dock-btn,#page-app.t22-away-menu #td-nudge,#page-app.t22-away-menu #tello-dock,
+  #page-app.t22-away-ai #tello-dock-btn,#page-app.t22-away-ai #td-nudge,#page-app.t22-away-ai #tello-dock{
+    transform:translateX(calc(100% + 120px));opacity:0;visibility:hidden;pointer-events:none;
+    transition:transform .25s ease,opacity .25s ease,visibility 0s linear .25s}
+  @media (prefers-reduced-motion:reduce){#tello-dock-btn,#td-nudge,#tello-dock,
+    #page-app.t22-away-menu #tello-dock-btn,#page-app.t22-away-menu #td-nudge,#page-app.t22-away-menu #tello-dock,
+    #page-app.t22-away-ai #tello-dock-btn,#page-app.t22-away-ai #td-nudge,#page-app.t22-away-ai #tello-dock{transition:none}}
+  /* App Tello's own Cabinet (the Ask Tello screen). Separate from Partner
+     Tello's and from title22.app/tello's. Its list is written in the page,
+     never filled in later, so it cannot open empty. */
+  .ai-cab-btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid #123a30;background:#fff;color:#123a30;font:600 14px inherit;font-family:inherit;cursor:pointer}
+  #ai-cab{position:fixed;inset:0;z-index:960;background:rgba(18,32,27,.45);display:flex;justify-content:flex-end;visibility:hidden;opacity:0;transition:opacity .2s,visibility 0s .25s}
+  #ai-cab.open{visibility:visible;opacity:1;transition:opacity .2s}
+  #ai-cab .ai-cab-in{width:min(420px,100%);height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#f9f5ed;padding:16px 16px calc(24px + env(safe-area-inset-bottom));padding-top:calc(16px + env(safe-area-inset-top));transform:translateX(100%);transition:transform .25s ease}
+  #ai-cab.open .ai-cab-in{transform:none}
+  @media (prefers-reduced-motion:reduce){#ai-cab,#ai-cab .ai-cab-in{transition:none}}
+  .ai-cab-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .ai-cab-top strong{flex:1;font-family:'Zilla Slab',Georgia,serif;font-size:22px;color:#123a30}
+  .ai-cab-x{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:#fff;color:#123a30;font-size:20px;cursor:pointer}
+  .ai-cab-sec{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 14px}
+  .ai-cab-sec h3{font-family:'Zilla Slab',Georgia,serif;font-size:17px;color:#123a30;margin:0 0 4px}
+  .ai-cab-sec p{font-size:12.5px;color:var(--text2);margin:0 0 8px}
+  .ai-cab-ask{display:block;width:100%;text-align:left;padding:11px 13px;margin-top:8px;border-radius:12px;border:1.5px solid var(--border);background:#f9f5ed;color:#123a30;font:600 14.5px inherit;font-family:inherit;cursor:pointer}
+  .ai-cab-ask:hover{border-color:#e8a23d}
+  /* The Ask Tello box: full width, 3 lines to start, grows to about 6, then
+     scrolls; the send arrow sits inside it; held at the bottom of the screen
+     and above the keyboard (--t22-kb, from visualViewport). */
+  #ai-compose{position:sticky;bottom:calc(var(--t22-kb,0px) + env(safe-area-inset-bottom));z-index:5;background:var(--white);padding:10px 0 2px;margin:0 -2px}
+  /* On a phone the box is pinned to the bottom of the screen (above the
+     keyboard), full width; the screen gets room at the bottom so the last
+     answer is never under it. */
+  @media(max-width:768px){
+    #ai-compose{position:fixed;left:0;right:0;bottom:var(--t22-kb,0px);margin:0;z-index:150;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border);box-shadow:0 -6px 18px rgba(18,58,48,.08)}
+    #tab-ai{padding-bottom:190px}
+  }
+  #ai-compose .wrap{position:relative}
+  #ai-query-input{display:block;width:100%;min-height:86px;max-height:156px;padding:11px 56px 11px 13px;border:1.5px solid var(--border);border-radius:var(--radius-lg);font-size:16px;line-height:1.4;outline:none;resize:none;font-family:inherit;overflow-y:auto;background:#fff}
+  #ai-query-input:focus{border-color:#1d5c4d;box-shadow:0 0 0 3px rgba(232,162,61,.16)}
+  #ai-send{position:absolute;right:8px;bottom:8px;width:40px;height:40px;border-radius:50%;border:none;background:#123a30;color:#f9f5ed;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  #ai-send svg{width:20px;height:20px}
+  #ai-send:disabled{opacity:.45;cursor:default}
   @media(max-width:520px){
     #tello-dock{right:8px;left:8px;width:auto;bottom:86px}
     #tello-dock-btn{right:14px;bottom:14px}
@@ -314,7 +361,7 @@
     nav{padding:0.85rem 1rem;flex-wrap:wrap;row-gap:8px}
     .nav-actions{gap:8px}
   }
-  #user-menu{max-height:calc(100vh - 90px);max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain}
+  #user-menu{max-height:calc(100vh - 90px);max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:calc(8px + env(safe-area-inset-bottom)) !important}
   .btn{padding:8px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
   .btn-outline{border-color:var(--border);background:var(--white);color:var(--text)}
   .btn-outline:hover{border-color:var(--teal);color:var(--teal)}
@@ -1475,7 +1522,7 @@
 
       <!-- AI -->
       <div id="tab-ai" style="display:none">
-        <div class="page-header"><div style="display:flex;align-items:center;gap:14px"><span class="t-mark lg" aria-hidden="true" style="width:48px;height:48px"></span><div><div class="t-kicker">Title22 · AI assistant</div><h1 class="t-name" style="margin:0;font-size:30px">Tello</h1></div></div><span class="badge badge-teal">Included in your plan</span></div>
+        <div class="page-header"><div style="display:flex;align-items:center;gap:14px"><span class="t-mark lg" aria-hidden="true" style="width:48px;height:48px"></span><div><div class="t-kicker">Title22 · AI assistant</div><h1 class="t-name" style="margin:0;font-size:30px">Tello</h1></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge badge-teal">Included in your plan</span><button type="button" class="ai-cab-btn" id="ai-cab-btn" onclick="openAiCabinet()" aria-controls="ai-cab" aria-expanded="false">Cabinet</button></div></div>
         <div style="font-size:13px;color:var(--text2);background:var(--amber-light);border:1px solid #e6c170;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;"><svg class="ic"><use href="#i-alert"/></svg> Tello is an AI assistant and can be wrong. She answers general questions from her own knowledge and compliance questions from what is recorded in Title22 — check anything you would show an inspector. She will not give medical advice about a resident; that is for the nurse or physician.<span id="ai-lite-note" style="display:none"> This edition holds no resident, medication or MAR records, so she cannot see them.</span></div>
         <!-- Tello settings. One switch today: the daily briefing's voice (B1).
              Saved on the account (user_metadata), so it follows the person
@@ -1497,20 +1544,32 @@
         </div>
         <div class="card" style="margin-bottom:16px;">
           <div id="ai-chat-messages" style="display:flex;flex-direction:column;gap:12px;min-height:160px;margin-bottom:16px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-            <button class="filter-btn" onclick="sendAIQuery(this)">What do I need to do today?</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Am I ready for DSS?</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Who has expired certs?</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Simulate DSS inspection</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">How do training hours work?</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Who can see what?</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Help me word a difficult call to a family</button>
-            <button class="filter-btn" onclick="sendAIQuery(this)">Explain this to me like I am new</button>
+          <!-- The 8 suggestions moved to the Cabinet ("What Tello can do"). -->
+          <div id="ai-compose">
+            <div class="wrap">
+              <textarea id="ai-query-input" placeholder="Ask Tello anything..." rows="3" aria-label="Your question for Tello" oninput="aiComposeGrow()" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendAIQuery();}"></textarea>
+              <button type="button" id="ai-send" onclick="sendAIQuery()" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;">
-            <textarea id="ai-query-input" placeholder="Ask Tello anything..." rows="2" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;resize:none;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIQuery();}"></textarea>
-            <button class="btn btn-primary" style="align-self:flex-end;padding:9px 16px;" onclick="sendAIQuery()">↑ Ask</button>
-          </div>
+        </div>
+      </div>
+
+      <!-- App Tello's Cabinet. A child of #page-app, so it is gone with the app. -->
+      <div id="ai-cab" aria-hidden="true" onclick="if(event.target===this)closeAiCabinet()">
+        <div class="ai-cab-in" role="dialog" aria-modal="true" aria-label="Cabinet">
+          <div class="ai-cab-top"><span class="t-mark" aria-hidden="true" style="width:30px;height:30px"></span><strong>Cabinet</strong><button type="button" class="ai-cab-x" onclick="closeAiCabinet()" aria-label="Close">&times;</button></div>
+          <section class="ai-cab-sec">
+            <h3>What Tello can do</h3>
+            <p>Tap one and it is sent as your question.</p>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">What do I need to do today?</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">Am I ready for DSS?</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">Who has expired certs?</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">Simulate DSS inspection</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">How do training hours work?</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">Who can see what?</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">Help me word a difficult call to a family</button>
+            <button type="button" class="ai-cab-ask" onclick="aiCabinetAsk(this)">Explain this to me like I am new</button>
+          </section>
         </div>
       </div>
 
@@ -2337,6 +2396,8 @@ function switchTab(name){
     if(!isPartnerAdmin){alert('You do not have permission to access this section.');return;}
   }else if(!allowedTabs().includes(name)){alert('You do not have permission to access this section.');return;}
   closeUserMenu();
+  t22SetDockAway('ai',name==='ai');
+  if(name!=='ai')closeAiCabinet(true);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
   ['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
@@ -2404,6 +2465,14 @@ let t22MenuCloseTimer=null;
 function t22ReducedMotion(){
   try{return !!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(e){return false;}
 }
+// Slides Tello's button, setup bar and dock panel out (true) or back (false)
+// for one reason: 'menu' (the account menu is open) or 'ai' (the Ask Tello
+// screen is showing). Each reason is its own class, so the menu closing on
+// the Ask Tello screen does not bring them back over the text box.
+function t22SetDockAway(reason,away){
+  const host=document.getElementById('page-app');
+  if(host)host.classList.toggle('t22-away-'+reason,!!away);
+}
 function openUserMenu(){
   const menu=document.getElementById('user-menu');
   if(!menu)return;
@@ -2412,12 +2481,14 @@ function openUserMenu(){
   menu.style.display='block';
   if(!t22ReducedMotion()){void menu.offsetWidth;menu.classList.add('t22-open');}
   t22MenuCascade(menu);
+  t22SetDockAway('menu',true);
 }
 function closeUserMenu(instant){
   const menu=document.getElementById('user-menu');
   if(!menu||menu.style.display==='none')return;
   clearTimeout(t22MenuCloseTimer);
   const done=()=>{menu.style.display='none';menu.classList.remove('t22-closing','t22-open');};
+  t22SetDockAway('menu',false);
   if(instant===true||t22ReducedMotion()){done();return;}
   menu.classList.remove('t22-open');void menu.offsetWidth;menu.classList.add('t22-closing');
   t22MenuCloseTimer=setTimeout(done,180);
@@ -7593,6 +7664,36 @@ Three things that hold whatever the question is:
 3. When they ask about a form ("how do I use LIC 501?"), answer from forms_library in the facility data: what it is, who fills it in, when, and where the finished copy goes. Blank forms only: never offer to fill one in, and never put anyone's details on one. If printable_now is false, say its link is still being checked and point them to the CDSS forms page or their licensing office; do not give a web address. To print, they can type "print LIC" and the number, or use the Forms tab.
 `;
 
+// App Tello's Cabinet on the Ask Tello screen. Slides in from the right.
+let aiCabFocus=null;
+function openAiCabinet(){
+  const c=document.getElementById('ai-cab');if(!c)return;
+  aiCabFocus=document.activeElement;
+  c.classList.add('open');c.setAttribute('aria-hidden','false');
+  const b=document.getElementById('ai-cab-btn');if(b)b.setAttribute('aria-expanded','true');
+  setTimeout(()=>{const x=c.querySelector('.ai-cab-x');if(x)x.focus();},60);
+}
+function closeAiCabinet(silent){
+  const c=document.getElementById('ai-cab');if(!c||!c.classList.contains('open'))return;
+  c.classList.remove('open');c.setAttribute('aria-hidden','true');
+  const b=document.getElementById('ai-cab-btn');if(b)b.setAttribute('aria-expanded','false');
+  if(silent!==true&&aiCabFocus&&aiCabFocus.focus)aiCabFocus.focus();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAiCabinet();});
+function aiCabinetAsk(btn){closeAiCabinet(true);sendAIQuery(btn);}
+// Grows the box with what is typed: 3 lines to start, about 6 at most, then
+// it scrolls (min/max height in the CSS).
+function aiComposeGrow(){
+  const t=document.getElementById('ai-query-input');if(!t)return;
+  t.style.height='auto';t.style.height=Math.min(t.scrollHeight+3,156)+'px';
+}
+// Keeps the box above the on-screen keyboard: how much of the window the
+// keyboard covers, as --t22-kb for #ai-compose's sticky bottom.
+(function(){
+  const vv=window.visualViewport;if(!vv)return;
+  const set=()=>{const kb=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);document.documentElement.style.setProperty('--t22-kb',Math.round(kb)+'px');};
+  vv.addEventListener('resize',set);vv.addEventListener('scroll',set);
+})();
 async function sendAIQuery(btn){
   const input=document.getElementById('ai-query-input');
   const query=btn?btn.textContent.trim():input?.value?.trim();
@@ -7603,7 +7704,7 @@ async function sendAIQuery(btn){
   // and the box is left holding what they typed so they can rewrite it.
   const askPhi=t22PhiBlock([['Your question',query]]);
   if(askPhi){alert(askPhi);return;}
-  if(input)input.value='';
+  if(input){input.value='';aiComposeGrow();}
   addAIMessage(query,'user');
   const printed=telloFormsIntent(query);
   if(printed){addAIMessage(printed,'assistant');return;}
@@ -8327,7 +8428,7 @@ function askTelloAboutForm(code){
   const f=T22_FORMS.find(x=>x.code===code);if(!f)return;
   switchTab('ai');
   const i=document.getElementById('ai-query-input');
-  if(i){i.value=`How do I use ${f.code} (${f.name})? Who fills it in, when, and where does it go?`;i.focus();}
+  if(i){i.value=`How do I use ${f.code} (${f.name})? Who fills it in, when, and where does it go?`;aiComposeGrow();i.focus();}
 }
 // A blank, printable checklist. Written from the owner's own new-hire and
 // admission checklists with every home-specific name taken out. A line to
