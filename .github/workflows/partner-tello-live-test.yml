@@ -1,0 +1,26 @@
+# The owner's 14 Partner Tello tests, against the LIVE Worker, after a deploy.
+# Actions -> "Partner Tello live test" -> Run workflow. The full transcript is
+# on the run's Summary page.
+#
+# Reads one repository secret: PARTNER_TELLO_TEST_KEY, the key of the
+# "Test Partner" row (select key from public.partner_tello_links where
+# name = 'Test Partner';). Every message is stored and emailed like a real
+# one: expect about a dozen "Partner Tello · Test Partner: ..." emails (test 8).
+name: Partner Tello live test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run the 14 tests
+        working-directory: workers/partner_tello
+        env:
+          PARTNER_TELLO_TEST_KEY: ${{ secrets.PARTNER_TELLO_TEST_KEY }}
+        run: node live-test.mjs

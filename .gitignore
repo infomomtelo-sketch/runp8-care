@@ -9,3 +9,7 @@
 
 # Tello's home-screen icon is served by the site; *.png above would drop it.
 !tello-apple-touch-icon.png
+
+# Partner Tello's Worker installs the Anthropic SDK; the lockfile is committed.
+workers/partner_tello/node_modules/
+workers/partner_tello/.wrangler/

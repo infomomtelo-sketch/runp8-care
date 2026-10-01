@@ -1,0 +1,118 @@
+# Deploy the partner-tello Worker (Partner Tello, title22.app/meet).
+# Actions -> "Deploy partner-tello Worker" -> Run workflow.
+#
+# Manual only, like the other Workers. The ONLY repository secret read here is
+# CLOUDFLARE_API_TOKEN (already set; the other deploy workflows use it).
+#
+# The Worker's own three secrets (ANTHROPIC_API_KEY, RESEND_API_KEY,
+# PARTNER_TELLO_DB_SECRET) are added by the owner in the Cloudflare dashboard,
+# never here. On the FIRST run the Worker does not exist yet, so there is
+# nowhere to add them: run this once, add the three, and Partner Tello works
+# (secrets take effect at once; no second deploy is needed). The last step
+# reads /health and names any secret still missing.
+#
+# Before deploying it reads the live Worker's bindings (NAMES AND TYPES ONLY)
+# and stops if a deploy would erase one: any plain-text var that wrangler.toml
+# does not declare (the 2026-09-13 stripe-webhook outage), or one of the three
+# secrets stored as plain text instead of as a secret.
+name: Deploy partner-tello Worker
+
+on:
+  workflow_dispatch:
+
+env:
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  WRANGLER_VERSION: '4.130.0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the token is set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions, then run this again."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install
+        working-directory: workers/partner_tello
+        run: npm ci --no-audit --no-fund
+
+      - name: Test
+        working-directory: workers/partner_tello
+        run: node test.mjs
+
+      - name: Would this deploy erase a binding?
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/partner-tello/settings" \
+            | jq '{success, codes: [.errors[]?.code], bindings: [.result.bindings[]? | {name, type}]}' > live.json
+          if [ "$(jq -r .success live.json)" != "true" ]; then
+            if jq -e '.codes | index(10007)' live.json > /dev/null; then
+              echo "First deploy: partner-tello does not exist yet, so there is nothing to erase."
+              exit 0
+            fi
+            echo "::error::Could not read the live Worker's bindings, so this cannot prove a deploy is safe. Nothing was deployed."
+            exit 1
+          fi
+          echo "Live bindings (names and types only):"
+          jq -r '.bindings[] | "  \(.name)  \(.type)"' live.json
+          fail=0
+          declared=$(sed -n '/^\[vars\]/,/^\[/p' workers/partner_tello/wrangler.toml | grep -oE '^[A-Z_]+' || true)
+          for s in ANTHROPIC_API_KEY RESEND_API_KEY PARTNER_TELLO_DB_SECRET; do
+            t=$(jq -r --arg n "$s" '.bindings[] | select(.name==$n) | .type' live.json)
+            if [ "$t" = "plain_text" ]; then
+              echo "::error::$s is stored as plain text, which a deploy erases. Re-add it as type Secret (Workers & Pages -> partner-tello -> Settings -> Variables and Secrets)."
+              fail=1
+            fi
+          done
+          for v in $(jq -r '.bindings[] | select(.type=="plain_text") | .name' live.json); do
+            if ! grep -qx "$v" <<< "$declared"; then
+              echo "::error::Plain-text var $v exists on the live Worker but not in wrangler.toml. A deploy would delete it."
+              fail=1
+            fi
+          done
+          [ "$fail" = 0 ] && echo "Safe: a deploy keeps every binding."
+          exit $fail
+
+      - name: Build check (no deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/partner_tello
+          command: deploy --dry-run
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/partner_tello
+          command: deploy
+
+      - name: Which secrets are still missing?
+        run: |
+          sleep 5
+          body=$(curl -sS https://partner-tello.infomomtelo.workers.dev/api/partner_tello/health || true)
+          echo "$body"
+          missing=$(echo "$body" | jq -r '.missing // [] | join(", ")' 2>/dev/null || echo "")
+          if [ -n "$missing" ]; then
+            echo "::warning::Deployed. Partner Tello will not answer until these are added as Secrets in Cloudflare (Workers & Pages -> partner-tello -> Settings -> Variables and Secrets): $missing"
+          else
+            echo "Deployed, and every binding is set."
+          fi

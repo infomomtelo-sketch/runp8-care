@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Tello for Title22 partners</title>
+<!-- Partner Tello, served at title22.app/meet (see _redirects). Only reachable
+     with a link from the Title22 team: title22.app/meet?k=<key>. Not linked
+     from any page, not in a sitemap, never indexed. Its own page, its own
+     Worker (workers/partner_tello), its own tables: nothing here is shared
+     with App Tello (index.html, tello.html). -->
+<meta name="robots" content="noindex,nofollow,noarchive"/>
+<meta name="referrer" content="no-referrer"/>
+<meta name="theme-color" content="#123a30"/>
+<link rel="icon" href="/partner_tello-icon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+/* Tello's colours (cream, deep green, gold), with the badge turned around:
+   App Tello is a green badge with a cream T; Partner Tello is a GOLD badge
+   with a deep-green T. */
+:root{
+  --cream:#f9f5ed; --green:#123a30; --green2:#1d5c4d; --gold:#e8a23d; --gold-soft:rgba(232,162,61,.16);
+  --ink:#1d2b26; --muted:rgba(18,58,48,.66); --line:#e4dccb; --white:#fff; --bad:#8a2b2b; --bad-bg:#fbeaea; --r:14px;
+  --mark:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-166 -166 332 332%22%3E%3Ccircle r=%22166%22 fill=%22%23e8a23d%22/%3E%3Ccircle r=%22125%22 fill=%22none%22 stroke=%22%23123a30%22 stroke-width=%2216%22/%3E%3Cpath fill=%22%23123a30%22 d=%22M-46 -54H45L48 -19H29V-36H10V34H27V51H-27V34H-11V-36H-29V-19H-48Z%22/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var(--cream);color:var(--ink);line-height:1.55;font-size:16px;
+  -webkit-text-size-adjust:100%;display:flex;flex-direction:column;overflow:hidden}
+button,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none !important}
+.mark{display:inline-block;flex:none;width:34px;height:34px;border-radius:50%;background:var(--mark) center/contain no-repeat}
+.slab{font-family:'Zilla Slab',Georgia,serif;font-weight:700;color:var(--green)}
+
+.bar{flex:none;background:var(--green);color:var(--cream);border-bottom:2px solid var(--gold);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
+.bar-in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.bar h1{flex:1;min-width:0;font-size:15px;font-weight:600;line-height:1.25}
+.bar h1 b{font-family:'Zilla Slab',Georgia,serif;font-size:19px;font-weight:700;color:var(--gold)}
+.cab-btn{flex:none;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:20px;border:1px solid rgba(249,245,237,.38);background:rgba(249,245,237,.08);color:var(--cream);font-size:14px;font-weight:600;min-height:40px}
+.cab-btn:hover{background:rgba(249,245,237,.16)}
+
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+#convo{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 16px 8px}
+.convo-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.turn{max-width:86%;padding:10px 14px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px}
+.turn.tello{align-self:flex-start;background:var(--white);border:1px solid var(--line);border-bottom-left-radius:5px}
+.turn.me{align-self:flex-end;background:var(--green);color:var(--cream);border-bottom-right-radius:5px}
+.turn.me.removed{background:#5c6b66;font-style:italic}
+.turn.note{align-self:center;max-width:100%;background:var(--bad-bg);color:var(--bad);font-size:13.5px;border-radius:12px;text-align:center}
+.turn.wait{color:var(--muted);font-style:italic}
+
+.compose{flex:none;border-top:1px solid var(--line);background:var(--cream);padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+.compose-in{max-width:760px;margin:0 auto}
+.row{display:flex;gap:8px;align-items:flex-end}
+#say{flex:1;min-width:0;resize:none;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);padding:11px 13px;font-size:16px;line-height:1.4;max-height:140px;outline:none}
+#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gold-soft)}
+#send{flex:none;min-height:46px;padding:0 20px;border:none;border-radius:var(--r);background:var(--green);color:var(--cream);font-weight:600}
+#send:disabled{opacity:.55}
+.footer{margin-top:7px;font-size:12.5px;color:var(--muted);text-align:center}
+
+/* the "link isn't active" screen */
+#closed{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px;text-align:center}
+#closed p{max-width:420px;font-size:17px}
+
+/* ---- Cabinet: everything that is not the conversation ---- */
+.cab{position:fixed;inset:0;z-index:20;background:rgba(18,32,27,.45);display:flex;justify-content:flex-end;visibility:hidden;opacity:0;transition:opacity .2s,visibility 0s .2s}
+.cab.open{visibility:visible;opacity:1;transition:opacity .2s}
+.cab-in{width:min(440px,100%);height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--cream);padding:14px 16px calc(24px + env(safe-area-inset-bottom));padding-top:calc(14px + env(safe-area-inset-top));transform:translateX(100%);transition:transform .25s ease}
+.cab.open .cab-in{transform:none}
+.cab-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.cab-top strong{flex:1;font-family:'Zilla Slab',Georgia,serif;font-size:22px;color:var(--green)}
+.x{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--green);font-size:20px;line-height:1}
+/* Sections are buttons that show and hide a block that is ALREADY in the
+   page. Nothing is built when a section opens, so it cannot open empty (the
+   app Cabinet's "What Tello can do" opened empty on an iPhone). */
+.sec{background:var(--white);border:1px solid var(--line);border-radius:14px;margin-bottom:10px}
+.sec-head{width:100%;display:flex;align-items:center;gap:8px;text-align:left;background:none;border:none;padding:13px 14px;min-height:50px}
+.sec-head .slab{flex:1;font-size:17px;line-height:1.2}
+.sec-head .chev{width:9px;height:9px;border-right:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
+.sec-head[aria-expanded="true"] .chev{transform:rotate(-135deg)}
+.sec-body{padding:0 14px 14px}
+.ask{display:block;width:100%;text-align:left;padding:11px 13px;margin-top:8px;border-radius:12px;border:1.5px solid var(--line);background:var(--cream);color:var(--green);font-weight:600;font-size:15px}
+.ask:first-child{margin-top:0}
+.ask:hover{border-color:var(--gold)}
+.vid{margin-top:12px}
+.vid:first-child{margin-top:0}
+.vid-btn{display:flex;width:100%;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--cream);color:var(--green);font-weight:600;font-size:15px}
+.vid-btn small{display:block;font-weight:400;color:var(--muted);font-size:12.5px}
+.vid-btn .play{flex:none;width:30px;height:30px;border-radius:50%;background:var(--green);position:relative}
+.vid-btn .play::after{content:"";position:absolute;left:11px;top:8px;border-left:11px solid var(--cream);border-top:7px solid transparent;border-bottom:7px solid transparent}
+.vid video{display:block;width:100%;margin-top:8px;border-radius:10px;background:#000;aspect-ratio:16/9}
+#direct-text{width:100%;min-height:96px;resize:vertical;border:1.5px solid var(--line);border-radius:12px;background:var(--cream);padding:10px 12px;font-size:16px;outline:none}
+#direct-text:focus{border-color:var(--green2)}
+.btn{display:block;width:100%;min-height:46px;margin-top:8px;border:none;border-radius:12px;background:var(--green);color:var(--cream);font-weight:600;font-size:15px}
+.btn.ghost{background:var(--white);border:1.5px solid var(--line);color:var(--green)}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+#direct-done{margin-top:8px;padding:9px 12px;border-radius:10px;background:#eef5ef;color:var(--green);border:1px solid #b9d5bf;font-size:14px}
+#direct-err{margin-top:8px;padding:9px 12px;border-radius:10px;background:var(--bad-bg);color:var(--bad);font-size:14px}
+.cab-foot{margin-top:16px;font-size:13px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <span class="mark" role="img" aria-label="Tello"></span>
+    <h1><b>Tello</b> · AI assistant for Title22 partners</h1>
+    <button class="cab-btn" id="cab-btn" type="button" aria-controls="cab" aria-expanded="false" hidden>Cabinet</button>
+  </div>
+</header>
+
+<div id="closed" hidden><p id="closed-text">This link isn't active. Please contact hello@title-22.com.</p></div>
+
+<main id="chat" hidden>
+  <div id="convo" aria-live="polite"><div class="convo-in" id="turns"></div></div>
+  <div class="compose">
+    <div class="compose-in">
+      <form class="row" id="form" autocomplete="off">
+        <textarea id="say" rows="1" maxlength="2000" placeholder="Ask Tello about Title22" aria-label="Your message"></textarea>
+        <button id="send" type="submit">Send</button>
+      </form>
+      <p class="footer">Tello is an AI. All messages are sent to the Title22 team.</p>
+    </div>
+  </div>
+</main>
+
+<div class="cab" id="cab" aria-hidden="true">
+  <div class="cab-in" role="dialog" aria-modal="true" aria-label="Cabinet">
+    <div class="cab-top"><span class="mark"></span><strong>Cabinet</strong><button class="x" type="button" id="cab-close" aria-label="Close">&times;</button></div>
+
+    <section class="sec">
+      <button class="sec-head" type="button" aria-expanded="true" aria-controls="sec-ask"><span class="slab">Sample questions</span><span class="chev"></span></button>
+      <div class="sec-body" id="sec-ask">
+        <button class="ask" type="button">What does Title22 track?</button>
+        <button class="ask" type="button">What does Title22 NOT hold?</button>
+        <button class="ask" type="button">Do you support ARF?</button>
+        <button class="ask" type="button">Does medication training change with home size?</button>
+        <button class="ask" type="button">How does the trainer program work?</button>
+        <button class="ask" type="button">Can training courses run inside Title22?</button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <button class="sec-head" type="button" aria-expanded="false" aria-controls="sec-vid"><span class="slab">Videos</span><span class="chev"></span></button>
+      <!-- Published on title-22.com; approved for this page by the owner
+           (2026-10-01). Played from there, not copied. -->
+      <div class="sec-body" id="sec-vid" hidden>
+        <div class="vid" data-src="https://title-22.com/videos/title22-30-day-proof.mp4" data-poster="https://title-22.com/videos/title22-30-day-proof-poster.png">
+          <button class="vid-btn" type="button"><span class="play"></span><span>The 30-Day Proof<small>0:53 · every home on one screen</small></span></button>
+        </div>
+        <div class="vid" data-src="https://title-22.com/videos/howto/checklist.mp4" data-poster="https://title-22.com/videos/howto/checklist-poster.jpg">
+          <button class="vid-btn" type="button"><span class="play"></span><span>Read your checklist<small>0:18 · how-to</small></span></button>
+        </div>
+        <div class="vid" data-src="https://title-22.com/videos/howto/meet-tello.mp4" data-poster="https://title-22.com/videos/howto/meet-tello-poster.jpg">
+          <button class="vid-btn" type="button"><span class="play"></span><span>Meet Tello<small>0:23 · how-to</small></span></button>
+        </div>
+        <div class="vid" data-src="https://title-22.com/videos/title22-tello-intro.mp4" data-poster="https://title-22.com/videos/title22-tello-intro-poster.jpg">
+          <button class="vid-btn" type="button"><span class="play"></span><span>Hi, I'm Tello<small>0:37</small></span></button>
+        </div>
+        <div class="vid" data-src="https://title-22.com/videos/title22-trainer-pitch.mp4" data-poster="">
+          <button class="vid-btn" type="button"><span class="play"></span><span>For trainers<small>0:34</small></span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <button class="sec-head" type="button" aria-expanded="false" aria-controls="sec-direct"><span class="slab">Message the team directly</span><span class="chev"></span></button>
+      <div class="sec-body" id="sec-direct" hidden>
+        <label for="direct-text" class="hint" style="display:block;margin:0 0 6px">A note straight to the Title22 team, marked priority. A person will reply.</label>
+        <textarea id="direct-text" maxlength="2000"></textarea>
+        <button class="btn" type="button" id="direct-send">Send to the team</button>
+        <div id="direct-done" hidden></div>
+        <div id="direct-err" hidden></div>
+      </div>
+    </section>
+
+    <button class="btn ghost" type="button" id="new-convo">New conversation</button>
+
+    <p class="cab-foot">Tello is an AI. All messages are sent to the Title22 team.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var API = 'https://partner-tello.infomomtelo.workers.dev/api/partner_tello';
+  // Fixed text, the same words as workers/partner_tello/app.js (GREETING).
+  var GREETING = "Hi, I'm Tello, Title22's AI assistant. Every message you send here is passed to the Title22 team, so nothing gets lost. I can answer questions about Title22 anytime. For anything about terms, pricing or commitments, a person from our team will reply personally.";
+  var INACTIVE = "This link isn't active. Please contact hello@title-22.com.";
+  var REMOVED = '[removed: possible health information]';
+  var MAX = 2000;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var key = (new URLSearchParams(location.search).get('k') || '').trim();
+  var store = function (name) { return 'partner_tello_' + name + '_' + key.slice(0, 12); };
+  var read = function (name, d) { try { var v = localStorage.getItem(store(name)); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+  var write = function (name, v) { try { localStorage.setItem(store(name), JSON.stringify(v)); } catch (e) {} };
+  var uuid = function () {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    var b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  };
+
+  var conv = null, turns = [], busy = false;
+
+  function closed(text) {
+    $('chat').hidden = true; $('cab-btn').hidden = true; $('closed').hidden = false;
+    $('closed-text').textContent = text || INACTIVE;
+  }
+
+  function post(path, body) {
+    return fetch(API + '/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j }; }); });
+  }
+
+  function bubble(t) {
+    var d = document.createElement('div');
+    d.className = 'turn ' + t.who + (t.removed ? ' removed' : '') + (t.wait ? ' wait' : '');
+    d.textContent = t.text;
+    $('turns').appendChild(d);
+    var c = $('convo'); c.scrollTop = c.scrollHeight;
+    return d;
+  }
+  function render() { $('turns').textContent = ''; turns.forEach(bubble); }
+  function save() { write('conv', { id: conv, turns: turns.slice(-60) }); }
+  function add(t) { turns.push(t); save(); return bubble(t); }
+
+  function startConversation() {
+    conv = uuid(); turns = [{ who: 'tello', text: GREETING }]; save(); render();
+  }
+
+  function setBusy(b) { busy = b; $('send').disabled = b; }
+
+  function send(text) {
+    text = String(text || '').trim();
+    if (!text || busy) return;
+    if (text.length > MAX) { add({ who: 'note', text: 'Please keep a message under 2,000 characters.' }); return; }
+    setBusy(true);
+    var mine = { who: 'me', text: text };
+    turns.push(mine);
+    var mineEl = bubble(mine);
+    var wait = bubble({ who: 'tello', text: 'Tello is writing…', wait: true });
+    post('chat', { k: key, conversation_id: conv, message: text }).then(function (r) {
+      wait.remove();
+      if (r.status === 404 && r.body.error === 'inactive') { closed(r.body.message); return; }
+      if (r.status !== 200 || !r.body.reply) {
+        // Not stored, so not sent: take it back out and give it back.
+        turns.pop(); mineEl.remove(); save();
+        if (!$('say').value) $('say').value = text;
+        add({ who: 'note', text: (r.body && r.body.message) || "Your message didn't go through, so it was not sent. Please try again." });
+        turns.pop(); save();   // a note is not part of the conversation
+        return;
+      }
+      if (r.body.removed) { mine.text = REMOVED; mine.removed = true; mineEl.textContent = REMOVED; mineEl.classList.add('removed'); }
+      save();
+      add({ who: 'tello', text: r.body.reply });
+    }, function () {
+      wait.remove(); turns.pop(); mineEl.remove(); save();
+      if (!$('say').value) $('say').value = text;
+      add({ who: 'note', text: "Tello can't be reached right now, so your message was not sent. Please try again in a moment." });
+      turns.pop(); save();
+    }).then(function () { setBusy(false); });
+  }
+
+  // ---- compose
+  var say = $('say');
+  function grow() { say.style.height = 'auto'; say.style.height = Math.min(say.scrollHeight, 140) + 'px'; }
+  say.addEventListener('input', grow);
+  say.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && window.matchMedia('(pointer:fine)').matches) { e.preventDefault(); $('form').requestSubmit ? $('form').requestSubmit() : $('send').click(); }
+  });
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var t = say.value; if (!t.trim() || busy) return;
+    say.value = ''; grow(); send(t);
+  });
+
+  // ---- Cabinet
+  var cab = $('cab'), lastFocus = null;
+  function openCab() { lastFocus = document.activeElement; cab.classList.add('open'); cab.setAttribute('aria-hidden', 'false'); $('cab-btn').setAttribute('aria-expanded', 'true'); setTimeout(function () { $('cab-close').focus(); }, 50); }
+  function closeCab() {
+    cab.classList.remove('open'); cab.setAttribute('aria-hidden', 'true'); $('cab-btn').setAttribute('aria-expanded', 'false');
+    Array.prototype.forEach.call(cab.querySelectorAll('video'), function (v) { v.pause(); });
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  $('cab-btn').addEventListener('click', openCab);
+  $('cab-close').addEventListener('click', closeCab);
+  cab.addEventListener('click', function (e) { if (e.target === cab) closeCab(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && cab.classList.contains('open')) closeCab(); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.sec-head'), function (h) {
+    h.addEventListener('click', function () {
+      var body = $(h.getAttribute('aria-controls'));
+      var open = h.getAttribute('aria-expanded') !== 'true';
+      h.setAttribute('aria-expanded', open ? 'true' : 'false');
+      body.hidden = !open;
+      if (!open) Array.prototype.forEach.call(body.querySelectorAll('video'), function (v) { v.pause(); });
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.ask'), function (b) {
+    b.addEventListener('click', function () { if (busy) return; closeCab(); send(b.textContent); });
+  });
+
+  // A video element is made on the first tap, inside that tap, so iOS
+  // Safari lets it play inline with sound.
+  Array.prototype.forEach.call(document.querySelectorAll('.vid'), function (box) {
+    box.querySelector('.vid-btn').addEventListener('click', function () {
+      var v = box.querySelector('video');
+      if (!v) {
+        v = document.createElement('video');
+        v.controls = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+        v.preload = 'metadata';
+        if (box.getAttribute('data-poster')) v.poster = box.getAttribute('data-poster');
+        v.src = box.getAttribute('data-src');
+        box.appendChild(v);
+      }
+      Array.prototype.forEach.call(cab.querySelectorAll('video'), function (o) { if (o !== v) o.pause(); });
+      var p = v.play(); if (p && p.catch) p.catch(function () {});
+    });
+  });
+
+  $('direct-send').addEventListener('click', function () {
+    var t = $('direct-text').value.trim();
+    $('direct-done').hidden = true; $('direct-err').hidden = true;
+    if (!t) { $('direct-err').textContent = 'Write a note first.'; $('direct-err').hidden = false; return; }
+    var btn = $('direct-send'); btn.disabled = true;
+    post('direct', { k: key, conversation_id: conv, message: t }).then(function (r) {
+      if (r.status === 404 && r.body.error === 'inactive') { closeCab(); closed(r.body.message); return; }
+      if (r.status !== 200 || !r.body.ok) { $('direct-err').textContent = (r.body && r.body.message) || 'That did not go through, so it was not sent. Please try again.'; $('direct-err').hidden = false; return; }
+      $('direct-text').value = '';
+      $('direct-done').textContent = r.body.message; $('direct-done').hidden = false;
+      add({ who: 'me', text: r.body.removed ? REMOVED : 'To the Title22 team: ' + t, removed: !!r.body.removed });
+      add({ who: 'tello', text: r.body.message });
+    }, function () {
+      $('direct-err').textContent = "Tello can't be reached right now, so your note was not sent. Please try again in a moment."; $('direct-err').hidden = false;
+    }).then(function () { btn.disabled = false; });
+  });
+
+  $('new-convo').addEventListener('click', function () {
+    if (busy) return;
+    $('direct-done').hidden = true; $('direct-err').hidden = true;
+    startConversation(); closeCab(); say.focus();
+  });
+
+  // ---- start: the link decides everything
+  if (!/^[A-Za-z0-9_-]{24,128}$/.test(key)) { closed(INACTIVE); return; }
+  post('open', { k: key }).then(function (r) {
+    if (r.status !== 200 || !r.body.ok) {
+      closed(r.status === 404 ? INACTIVE : 'Tello is not available right now. Please try again in a moment, or contact hello@title-22.com.');
+      return;
+    }
+    $('closed').hidden = true; $('chat').hidden = false; $('cab-btn').hidden = false;
+    var saved = read('conv', null);
+    if (saved && saved.id && Array.isArray(saved.turns) && saved.turns.length) { conv = saved.id; turns = saved.turns.filter(function (t) { return t.who !== 'note'; }); render(); }
+    else startConversation();
+  }, function () {
+    closed('Tello is not available right now. Please try again in a moment, or contact hello@title-22.com.');
+  });
+})();
+</script>
+</body>
+</html>

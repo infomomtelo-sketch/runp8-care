@@ -554,7 +554,7 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
 - **No sign-up needed (2026-09-29, the owner: no pressure on visitors).** A
   visitor who is not signed in lands in the chat, not the gate
   (`guestStart`), and talks to Tello through the PUBLIC assistant endpoint
-  (`/api/assistant/chat`, assistant `tello`, see the Charrise section): same
+  (`/api/assistant/chat`, assistant `tello`, in `workers/title22-ai/assistant.js`): same
   rules and daily limits, nothing stored on the server, the chat in
   sessionStorage. The Cabinet offers "Send to Title22" (a lead) and "Sign in
   to keep your conversations" (the gate, with "Not now"). Guests get no Play
@@ -564,53 +564,76 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 
-## Charrise: "talk to my assistant" (title22.app/charrise, 2026-09-29)
+## Partner Tello: title22.app/meet (2026-10-01)
 
-The owner does not want to take meetings face to face, and wants a product
-other shy owners can use. First step: a public link that stands in for a
-meeting. `charrise.html` (the page, title22.app/charrise; first built as
-`meet.html`), `workers/title22-ai/assistant.js`
-(`/api/assistant/chat`, `/api/assistant/lead`), and
-`migrations/2026-09-29_title22_assistant_charrise.sql`.
+A second Tello for partners and people interested in Title22 (trainers,
+consultants, training companies). Replaced Charrise: `charrise.html` and
+the `title22` (Charrise) entry in `assistant.js` were deleted on 2026-10-01.
+Her table `assistant_leads` was empty when checked that day and is kept as
+is, as is `migrations/2026-09-29_title22_assistant_charrise.sql`. The
+"Charrise ·" label in `tello.html`'s Leads drawer is a separate follow-up.
 
-- **No sign-in**, so the endpoint is public. What keeps it safe: a per-visitor
-  (40/day) and per-assistant (1,500/day) limit counted in the database by
-  `assistant_take()`, keyed on a HASH of the IP (never the IP), and failing
-  CLOSED if the counter cannot be read; the chat is not stored anywhere but
-  the visitor's own tab (sessionStorage); the server sees the last 16 turns
-  for one answer. Model: Haiku 4.5.
-- **She is an AI and says so. She speaks as Title22, the business, and names
-  nobody** (the owner's wish, 2026-09-29: he does not want his circle to know
-  he built it, and there is no team, so she must not invent one). Asked who
-  runs it: "Title22 is a small, independent business in California. I can
-  pass your question on." Never put the owner's name back into `charrise.html`,
-  `assistant.js` or the Marketing messages. She promises nothing (price,
-  discount, date, contract): she sends people to "Send to Title22". She
-  states no licensing requirement as fact.
-- **Send to Title22** keeps the visitor's own fields plus a three-line summary of
-  the chat (written, then the chat dropped). 5 per visitor per day. Leads show
-  in Tello's Cabinet, "Leads from Charrise" (partner-admin RPCs). The leads
-  come to the owner; the visitor is told only that Title22 will reply.
-- Contact details and identifiers typed into the CHAT are refused on the page
-  and pointed at the form: the chat goes to the model, the form goes to Eli.
-- **Her voice is the phone's own** (`speechSynthesis`), so she speaks any
-  language the phone has a voice for, at no cost per reply; listening is the
-  browser's speech recognition in the language picked. Not Tello's Kokoro
-  voice, which is English-only and needs a signed-in user.
-- title-22.com still names Eli on its partner pages ("Eli pays you
-  directly") and in `assets/tello.js`. Not changed yet: partners are owed
-  money and are owed a real person to deal with.
-- "Powered by Tello · Get your own assistant" records a `wants-own` lead: demand for the product, before it is built.
-- **Kept separate from Tello on purpose** (the owner, 2026-09-29: "remove
-  Charrise for now... don't waste it, make a separate page"). Nothing in
-  Tello, its Marketing drawer or title-22.com links to her; the owner shares
-  her link himself. Her leads still land in the Cabinet's Leads drawer,
-  labelled Charrise. The same endpoint serves Tello's no-sign-up guests.
-- Another business = another `ASSISTANTS` entry with its own knowledge. Not
-  self-serve yet.
-- NOT live until: the migration is run, `deploy-title22-ai.yml` is run, and
-  the page is merged. Until the migration runs, every chat answers 429 (the
-  counter fails closed).
+Everything is named `partner_tello`: `partner_tello.html` (served at /meet
+by `_redirects`), `partner_tello-icon.svg`, `workers/partner_tello/` (the
+Worker is `partner-tello`, since Cloudflare names cannot hold `_`; routes
+`/api/partner_tello/*`), `migrations/2026-10-01_partner_tello.sql`
+(tables `partner_tello_links`, `_messages`, `_usage`, `_config`), and the
+workflows `deploy-partner-tello.yml` and `partner-tello-live-test.yml`.
+
+- **Kept apart from App Tello.** Nothing in index.html, tello.html or
+  title22-ai changed for it, and nothing there reads its tables. It never sees
+  a facility, staff member, document or user: the Worker has NO service key.
+  It calls `partner_tello_*` security-definer functions with the public anon
+  key plus `PARTNER_TELLO_DB_SECRET`, which each function checks against
+  `partner_tello_config.secret` (generated in the database by the
+  migration). The tables are closed to anon and authenticated.
+- **Access is by link only**: `title22.app/meet?k=<key>`, one
+  `partner_tello_links` row per person. No key, a wrong key or an inactive
+  one shows "This link isn't active. Please contact hello@title-22.com." The
+  page is noindex and linked from nowhere. The only row in git is the
+  invented "Test Partner" / "Sample Training Co."; the owner adds real rows.
+- **Disclosure (B&P Code §17941), word for word:** the fixed first message,
+  the footer "Tello is an AI. All messages are sent to the Title22 team.",
+  and the fixed answer to "are you a real person?". Who-runs-it and
+  terms/money questions get fixed answers too (`fixedReply`), without the
+  model. Never put a person's name in anything a partner sees or hears; the
+  Worker also replaces the owner's first name in every reply.
+- **Every message is stored before anything is said about it**, and every
+  exchange is emailed to the team with the whole conversation so far
+  (Resend, directly from this Worker; title22-email is not involved). A
+  failed email is retried 3 times at once, then by a cron run every 10
+  minutes (up to 8 runs), and logged on the row (`email_status`,
+  `email_error`). "Message the team directly" emails a PRIORITY note.
+  Where the emails go and who they come from are in `partner_tello_config`
+  (`notify_to`, `email_from`), set by hand, because this repository is
+  public. Until they are set, emails wait as `pending` and lose no try.
+- **Health information:** the app's six identifier rules (copied from
+  `T22_PHI_RULES`; `test.mjs` fails if they drift) plus a Partner-only check
+  for a person word and a health detail together. A flagged message never
+  reaches the model and is stored and emailed as "[removed: possible health
+  information]".
+- **Limits:** 30 messages an hour per key (direct notes included), 2,000
+  characters a message.
+- **Model:** `PARTNER_TELLO_MODEL` in wrangler.toml (Opus 5.5 at low effort,
+  with the prompt and knowledge cached and the API's server-side fallback
+  on). If the model fails, the question is still stored and emailed and the
+  partner is told a person will reply.
+- **Knowledge:** `workers/partner_tello/knowledge.md`, checked against the
+  code and the site, dated per section, with an "Unverified, not included"
+  list. Her rules are `prompt.md`. Both are bundled into the Worker, so a
+  change needs `deploy-partner-tello.yml` to go live.
+
+**RULE: when a feature, a price, a plan, the trial or the partner program
+changes, update `workers/partner_tello/knowledge.md` in the same PR**, with
+the date it was checked and where. Partner Tello may say only what that file
+says; a stale line there is a false statement made to a partner. Its tests
+check the training hours against `training-rules.js`.
+
+Not live until: the migration is run, the deploy workflow is run, the three
+Worker secrets are added in Cloudflare (`ANTHROPIC_API_KEY`,
+`RESEND_API_KEY`, `PARTNER_TELLO_DB_SECRET`), `notify_to`/`email_from` are
+set, and the page is merged. Then `partner-tello-live-test.yml` (repository
+secret `PARTNER_TELLO_TEST_KEY`) runs the owner's tests against it.
 
 ## Forms library — blank forms, and how to use them (2026-09-27)
 
