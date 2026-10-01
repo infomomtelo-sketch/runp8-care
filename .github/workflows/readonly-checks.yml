@@ -18,9 +18,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/title22-email/settings" \
-            | jq -r '"success: \(.success)", (.result.bindings[]? | select(.name=="EMAIL_FROM") | "EMAIL_FROM type=\(.type) value=\(if .type=="plain_text" then .text else "(secret: value not readable)" end)"), "binding names: \([.result.bindings[]?.name] | join(", "))"'
+          H="Authorization: Bearer $CLOUDFLARE_API_TOKEN"; B="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts"
+          echo "Worker names:"; curl -sS -H "$H" "$B" | jq -r '"  success=\(.success) errors=\([.errors[]?.message]|join("; "))", (.result[]?.id | "  " + .)'
+          for w in title22-email title22email; do
+            echo "== $w settings"
+            curl -sS -H "$H" "$B/$w/settings" | jq -r '"  success=\(.success) errors=\([.errors[]? | "\(.code) \(.message)"]|join("; "))", (.result.bindings[]? | select(.name=="EMAIL_FROM") | "  EMAIL_FROM type=\(.type) value=\(if .type=="plain_text" then .text else "(secret: value not readable)" end)"), "  binding names: \([.result.bindings[]?.name] | join(", "))"'
+          done
       - name: title22.app/meet
         run: |
           code=$(curl -s -o page.html -w '%{http_code}' "https://title22.app/meet?k=check"); echo "title22.app/meet -> $code"
