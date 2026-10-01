@@ -6,5 +6,8 @@
 /legal.html             /legal                               308
 # Partner Tello (partner_tello.html). A rewrite, not a redirect: the address
 # bar keeps title22.app/meet?k=<key>.
+/meet/admin             /partner_tello_admin                 200
 /meet                   /partner_tello                       200
 /meet/                  /partner_tello                       200
+# Short links: title22.app/meet/charise-k7q2xm (made on /meet/admin).
+/meet/*                 /partner_tello                       200

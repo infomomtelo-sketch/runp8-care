@@ -31,6 +31,7 @@ function reset() {
     links: [
       { key: KEY, name: 'Test Partner', org: 'Sample Training Co.', brief: 'Sample row for testing.', active: true },
       { key: OFF_KEY, name: 'Old Link', org: null, brief: null, active: false },
+      { key: 'charise-k7q2xm', name: 'Charise', org: 'Title22', brief: null, active: true },
     ],
     messages: [], usage: {}, config: { notify_to: 'team@example.test', email_from: 'Tello <noreply@example.test>' },
   };
@@ -202,7 +203,11 @@ for (const k of [undefined, '', 'short', OFF_KEY, 'x'.repeat(32), '<script>' + '
 }
 r = await call('/api/partner_tello/chat', { k: OFF_KEY, conversation_id: CONV, message: 'hi' });
 assert.equal(r.status, 404); assert.equal(db.messages.length, 0); assert.equal(anthropic.length, 0);
-ok('a valid key opens; missing, unknown, malformed and inactive keys get "This link isn\'t active", and an inactive key cannot chat');
+r = await call('/api/partner_tello/open', { k: 'charise-k7q2xm' });
+assert.equal(r.status, 200, 'a short key made on /meet/admin opens');
+r = await call('/api/partner_tello/open', { k: 'abc-123' });
+assert.equal(r.status, 404, 'under 8 characters is refused before the database');
+ok('a valid key opens (long or short); missing, unknown, malformed and inactive keys get "This link isn\'t active", and an inactive key cannot chat');
 
 // --------------------------------------------------------- one exchange --
 reset();

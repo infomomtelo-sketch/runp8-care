@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Partner links · Tello</title>
+<!-- title22.app/meet/admin (see _redirects): make and manage Partner Tello
+     links without SQL. Only an account with profiles.title22_is_partner_admin
+     gets anything back: every call is a partner_tello_admin_* function that
+     checks it (migrations/2026-10-02_partner_tello_admin.sql). Not linked
+     from anywhere, never indexed. Uses the app's own sign-in, so being signed
+     in to title22.app on this phone is enough. -->
+<meta name="robots" content="noindex,nofollow,noarchive"/>
+<meta name="referrer" content="no-referrer"/>
+<meta name="theme-color" content="#123a30"/>
+<link rel="icon" href="/partner_tello-icon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --cream:#f9f5ed; --green:#123a30; --green2:#1d5c4d; --gold:#e8a23d; --gold-soft:rgba(232,162,61,.16);
+  --ink:#1d2b26; --muted:rgba(18,58,48,.66); --line:#e4dccb; --white:#fff; --bad:#8a2b2b; --bad-bg:#fbeaea; --good-bg:#eef5ef; --r:14px;
+  --mark:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-166 -166 332 332%22%3E%3Ccircle r=%22166%22 fill=%22%23e8a23d%22/%3E%3Ccircle r=%22125%22 fill=%22none%22 stroke=%22%23123a30%22 stroke-width=%2216%22/%3E%3Cpath fill=%22%23123a30%22 d=%22M-46 -54H45L48 -19H29V-36H10V34H27V51H-27V34H-11V-36H-29V-19H-48Z%22/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var(--cream);color:var(--ink);line-height:1.5;font-size:16px;-webkit-text-size-adjust:100%;min-height:100vh}
+button,input,textarea{font-family:inherit;font-size:16px;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none !important}
+.bar{background:var(--green);color:var(--cream);border-bottom:2px solid var(--gold);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top))}
+.bar-in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.mark{flex:none;width:32px;height:32px;border-radius:50%;background:var(--mark) center/contain no-repeat}
+.bar h1{font-size:15px;font-weight:600}
+.bar h1 b{font-family:'Zilla Slab',Georgia,serif;font-size:19px;color:var(--gold)}
+main{max-width:640px;margin:0 auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom))}
+.card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+h2{font-family:'Zilla Slab',Georgia,serif;font-size:21px;color:var(--green);margin-bottom:10px}
+label{display:block;font-size:13.5px;font-weight:600;color:var(--green);margin:10px 0 5px}
+label small{font-weight:400;color:var(--muted)}
+input,textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;background:var(--cream);padding:11px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gold-soft)}
+textarea{min-height:76px;resize:vertical}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:0 18px;border:none;border-radius:12px;background:var(--green);color:var(--cream);font-weight:600}
+.btn.wide{width:100%;margin-top:14px}
+.btn.ghost{background:var(--white);border:1.5px solid var(--line);color:var(--green)}
+.btn:disabled{opacity:.55}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.row .btn{flex:1 1 30%;min-height:42px;padding:0 10px;font-size:14.5px}
+.msg{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:14.5px}
+.msg.bad{background:var(--bad-bg);color:var(--bad)}
+.msg.good{background:var(--good-bg);color:var(--green);border:1px solid #b9d5bf}
+.link{display:block;margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--gold-soft);color:var(--green);font-weight:600;word-break:break-all;font-size:15px}
+.hint{font-size:13.5px;color:var(--muted);margin-top:6px}
+.item{border-top:1px solid var(--line);padding:14px 0}
+.item:first-of-type{border-top:none;padding-top:4px}
+.item-top{display:flex;align-items:flex-start;gap:10px}
+.item-top .who{flex:1;min-width:0}
+.who b{display:block;font-size:16px}
+.who span{display:block;font-size:13.5px;color:var(--muted)}
+.item.off .who b{color:var(--muted)}
+.switch{flex:none;display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted)}
+.switch button{width:52px;height:30px;border-radius:15px;border:none;background:#cfc8b8;position:relative;transition:background .15s}
+.switch button::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.switch button[aria-checked="true"]{background:var(--green2)}
+.switch button[aria-checked="true"]::after{transform:translateX(22px)}
+@media (prefers-reduced-motion:reduce){.switch button,.switch button::after{transition:none}}
+.empty{color:var(--muted);font-size:14.5px}
+.google{background:var(--white);border:1.5px solid var(--line);color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="bar"><div class="bar-in"><span class="mark" role="img" aria-label="Tello"></span><h1><b>Tello</b> · Partner links</h1></div></header>
+<main>
+  <p id="loading" class="hint">Loading…</p>
+
+  <!-- Signed out -->
+  <section class="card" id="signin" hidden>
+    <h2>Sign in</h2>
+    <p class="hint" style="margin:0 0 4px">Use your Title22 account. If you are signed in to title22.app on this phone, you will not see this.</p>
+    <form id="signin-form">
+      <label for="em">Email</label><input id="em" type="email" autocomplete="email"/>
+      <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password"/>
+      <button class="btn wide" type="submit" id="in-btn">Sign in</button>
+    </form>
+    <button class="btn wide google" type="button" id="google-btn">Sign in with Google</button>
+    <div class="msg bad" id="signin-msg" hidden></div>
+  </section>
+
+  <!-- Signed in, not a partner admin -->
+  <section class="card" id="denied" hidden>
+    <h2>This page isn't available</h2>
+    <p id="denied-text">This account cannot make Partner Tello links.</p>
+  </section>
+
+  <!-- The admin's page -->
+  <div id="admin" hidden>
+    <section class="card">
+      <h2>New partner link</h2>
+      <form id="new-form" autocomplete="off">
+        <label for="f-name">Name</label><input id="f-name" maxlength="120" required/>
+        <label for="f-org">Organization <small>(optional)</small></label><input id="f-org" maxlength="200"/>
+        <label for="f-email">Email <small>(optional, for your records; Tello never shows it)</small></label><input id="f-email" type="email" maxlength="200"/>
+        <label for="f-brief">Note for Tello <small>(optional: what they are interested in; she never reads it back)</small></label><textarea id="f-brief" maxlength="1000"></textarea>
+        <button class="btn wide" type="submit" id="create-btn">Create link</button>
+      </form>
+      <div class="msg bad" id="create-msg" hidden></div>
+      <div id="made" hidden>
+        <div class="msg good" id="made-title"></div>
+        <a class="link" id="made-link" target="_blank" rel="noopener"></a>
+        <div class="row">
+          <button class="btn" type="button" id="made-copy">Copy</button>
+          <button class="btn" type="button" id="made-share">Share</button>
+          <a class="btn ghost" id="made-email">Email it</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Links</h2>
+      <div id="list"><p class="empty">Loading…</p></div>
+      <p class="hint">Off means the link shows "This link isn't active." Turn it back on any time. Every message a partner sends is emailed to you.</p>
+    </section>
+  </div>
+</main>
+
+<script src="/vendor/supabase-js-2.110.5.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
+  var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
+  // The app's own client settings and storage, so the app's sign-in on this
+  // phone counts here. This page never signs anyone out.
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, flowType: 'implicit' }
+  });
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id) { ['loading', 'signin', 'denied', 'admin'].forEach(function (x) { $(x).hidden = x !== id; }); };
+  var linkFor = function (key) { return 'https://title22.app/meet/' + key; };
+  var firstName = function (n) { return String(n || '').trim().split(/\s+/)[0] || ''; };
+  var invite = function (name, link) {
+    var f = firstName(name);
+    return (f ? 'Hi ' + f + ', h' : 'H') + "ere is your private link to Tello, Title22's AI assistant. Ask her anything about Title22: " + link +
+      '\n\nEvery message you send is passed to the Title22 team, and a person will reply personally.';
+  };
+  var when = function (iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  function msg(id, text, ok) { var m = $(id); m.textContent = text; m.className = 'msg ' + (ok ? 'good' : 'bad'); m.hidden = !text; }
+  function friendly(err) {
+    var t = (err && (err.message || err.details)) || '';
+    if (err && err.code === 'PGRST202') return 'The database is not set up for this page yet: run migrations/2026-10-02_partner_tello_admin.sql in Supabase.';
+    if (/not a partner admin/i.test(t)) return 'This account cannot make Partner Tello links.';
+    return t || 'Something went wrong. Please try again.';
+  }
+  function copy(text, btn) {
+    var done = function () { var o = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = o; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { prompt('Copy this link:', text); });
+    else prompt('Copy this link:', text);
+  }
+  function share(name, link, btn) {
+    var text = invite(name, link);
+    if (navigator.share) navigator.share({ title: 'Tello · Title22', text: text }).catch(function () {});
+    else copy(text, btn);
+  }
+  function mailto(email, name, link) {
+    return 'mailto:' + encodeURIComponent(email || '') + '?subject=' + encodeURIComponent('Your link to Tello, Title22\'s AI assistant') +
+      '&body=' + encodeURIComponent(invite(name, link));
+  }
+
+  // ---- sign in
+  $('signin-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var em = $('em').value.trim(), pw = $('pw').value;
+    if (!em || !pw) { msg('signin-msg', 'Email and password, please.'); return; }
+    $('in-btn').disabled = true;
+    sb.auth.signInWithPassword({ email: em, password: pw }).then(function (r) {
+      $('in-btn').disabled = false;
+      if (r.error) msg('signin-msg', r.error.message); else start();
+    });
+  });
+  // If Supabase does not list this page as a redirect URL, Google sends the
+  // person to title22.app instead, signed in. Opening this page again then
+  // works, because it shares the app's sign-in.
+  $('google-btn').addEventListener('click', function () {
+    sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'https://title22.app/meet/admin' } }).then(function (r) {
+      if (r.error) msg('signin-msg', r.error.message);
+    });
+  });
+
+  // ---- list
+  function render(rows) {
+    var list = $('list');
+    list.textContent = '';
+    if (!rows.length) { list.innerHTML = '<p class="empty">No links yet.</p>'; return; }
+    rows.forEach(function (r) {
+      var link = linkFor(r.key);
+      var item = document.createElement('div'); item.className = 'item' + (r.active ? '' : ' off');
+      var top = document.createElement('div'); top.className = 'item-top';
+      var who = document.createElement('div'); who.className = 'who';
+      var b = document.createElement('b'); b.textContent = r.name; who.appendChild(b);
+      var s1 = document.createElement('span'); s1.textContent = [r.org, r.email].filter(Boolean).join(' · '); if (s1.textContent) who.appendChild(s1);
+      var s2 = document.createElement('span');
+      s2.textContent = 'Made ' + when(r.created_at) + ' · ' + (r.messages ? r.messages + ' message' + (r.messages == 1 ? '' : 's') + ', last ' + when(r.last_message_at) : 'no messages yet');
+      who.appendChild(s2);
+      var sw = document.createElement('div'); sw.className = 'switch';
+      var lab = document.createElement('span'); lab.textContent = r.active ? 'On' : 'Off';
+      var tog = document.createElement('button'); tog.type = 'button'; tog.setAttribute('role', 'switch');
+      tog.setAttribute('aria-checked', r.active ? 'true' : 'false'); tog.setAttribute('aria-label', 'Link for ' + r.name + ' on or off');
+      tog.addEventListener('click', function () {
+        var next = tog.getAttribute('aria-checked') !== 'true';
+        tog.disabled = true;
+        sb.rpc('partner_tello_admin_set_active', { p_key: r.key, p_active: next }).then(function (res) {
+          tog.disabled = false;
+          if (res.error) { alert(friendly(res.error)); return; }
+          r.active = next; tog.setAttribute('aria-checked', next ? 'true' : 'false'); lab.textContent = next ? 'On' : 'Off';
+          item.classList.toggle('off', !next);
+        });
+      });
+      sw.appendChild(lab); sw.appendChild(tog);
+      top.appendChild(who); top.appendChild(sw); item.appendChild(top);
+      var a = document.createElement('a'); a.className = 'link'; a.href = link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = link.replace('https://', '');
+      item.appendChild(a);
+      var row = document.createElement('div'); row.className = 'row';
+      var c = document.createElement('button'); c.className = 'btn ghost'; c.type = 'button'; c.textContent = 'Copy';
+      c.addEventListener('click', function () { copy(link, c); });
+      var sh = document.createElement('button'); sh.className = 'btn ghost'; sh.type = 'button'; sh.textContent = 'Share';
+      sh.addEventListener('click', function () { share(r.name, link, sh); });
+      row.appendChild(c); row.appendChild(sh);
+      item.appendChild(row);
+      list.appendChild(item);
+    });
+  }
+  function load() {
+    return sb.rpc('partner_tello_admin_links').then(function (res) {
+      if (res.error) {
+        if (/not a partner admin/i.test(res.error.message || '')) { show('denied'); return false; }
+        show('admin'); $('list').innerHTML = ''; var p = document.createElement('p'); p.className = 'msg bad'; p.textContent = friendly(res.error); $('list').appendChild(p);
+        return true;
+      }
+      show('admin'); render(res.data || []); return true;
+    });
+  }
+
+  // ---- create
+  var made = null;
+  $('new-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    msg('create-msg', '');
+    var name = $('f-name').value.trim();
+    if (!name) { msg('create-msg', 'A name, please.'); return; }
+    $('create-btn').disabled = true;
+    sb.rpc('partner_tello_admin_create', {
+      p_name: name, p_org: $('f-org').value.trim() || null, p_email: $('f-email').value.trim() || null, p_brief: $('f-brief').value.trim() || null
+    }).then(function (res) {
+      $('create-btn').disabled = false;
+      if (res.error) { msg('create-msg', friendly(res.error)); return; }
+      var link = linkFor(res.data);
+      made = { name: name, email: $('f-email').value.trim(), link: link };
+      $('made-title').textContent = 'Link made for ' + name + '. Send it to them:';
+      $('made-link').href = link; $('made-link').textContent = link.replace('https://', '');
+      $('made-email').href = mailto(made.email, name, link);
+      $('made').hidden = false;
+      $('new-form').reset();
+      load();
+    });
+  });
+  $('made-copy').addEventListener('click', function () { if (made) copy(made.link, $('made-copy')); });
+  $('made-share').addEventListener('click', function () { if (made) share(made.name, made.link, $('made-share')); });
+
+  // ---- start
+  function start() {
+    sb.auth.getSession().then(function (r) {
+      if (!r.data || !r.data.session) { show('signin'); return; }
+      load();
+    });
+  }
+  start();
+})();
+</script>
+</body>
+</html>
