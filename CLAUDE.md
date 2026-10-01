@@ -623,6 +623,18 @@ workflows `deploy-partner-tello.yml` and `partner-tello-live-test.yml`.
   list. Her rules are `prompt.md`. Both are bundled into the Worker, so a
   change needs `deploy-partner-tello.yml` to go live.
 
+**Making links: title22.app/meet/admin (2026-10-02).** `partner_tello_admin.html`,
+no SQL: a form (name, organization, email, note for Tello) makes a SHORT link,
+`title22.app/meet/<name>-<6 random>` (e.g. `charise-k7q2xm`), with Copy, Share
+and Email it; a list shows every link with its message count and an On/Off
+switch. Only `profiles.title22_is_partner_admin` accounts get anything: the
+three `partner_tello_admin_*` functions in
+`migrations/2026-10-02_partner_tello_admin.sql` check it themselves. The page
+uses the app's own sign-in storage, so being signed in to title22.app is
+enough, and it never signs anyone out. Keys may now be 8 to 128 characters
+(table check, Worker `KEY_RE`, page); the first 64-character links still work,
+as `/meet?k=` or `/meet/<key>`. Nothing on that page returns message text.
+
 **RULE: when a feature, a price, a plan, the trial or the partner program
 changes, update `workers/partner_tello/knowledge.md` in the same PR**, with
 the date it was checked and where. Partner Tello may say only what that file

@@ -131,7 +131,9 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 export const REQUIRED_BINDINGS = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'ANTHROPIC_API_KEY', 'RESEND_API_KEY', 'PARTNER_TELLO_DB_SECRET'];
 const missingBindings = (env) => REQUIRED_BINDINGS.filter((n) => !env[n]);
 
-const KEY_RE = /^[A-Za-z0-9_-]{24,128}$/;
+// Long keys (64 hex, the first links) and short ones (name-xxxxxx, made on
+// title22.app/meet/admin since 2026-10-02). Same rule as the table's check.
+const KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

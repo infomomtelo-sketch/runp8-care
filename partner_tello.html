@@ -194,7 +194,10 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
   var MAX = 2000;
 
   var $ = function (id) { return document.getElementById(id); };
-  var key = (new URLSearchParams(location.search).get('k') || '').trim();
+  // The link is title22.app/meet/<key> (short links, made on /meet/admin) or
+  // title22.app/meet?k=<key> (the first links). Both work.
+  var pathKey = (location.pathname.match(/^\/meet\/([A-Za-z0-9_-]+)\/?$/) || [])[1] || '';
+  var key = (new URLSearchParams(location.search).get('k') || pathKey).trim();
   var store = function (name) { return 'partner_tello_' + name + '_' + key.slice(0, 12); };
   var read = function (name, d) { try { var v = localStorage.getItem(store(name)); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
   var write = function (name, v) { try { localStorage.setItem(store(name), JSON.stringify(v)); } catch (e) {} };
@@ -348,7 +351,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
   });
 
   // ---- start: the link decides everything
-  if (!/^[A-Za-z0-9_-]{24,128}$/.test(key)) { closed(INACTIVE); return; }
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(key)) { closed(INACTIVE); return; }
   post('open', { k: key }).then(function (r) {
     if (r.status !== 200 || !r.body.ok) {
       closed(r.status === 404 ? INACTIVE : 'Tello is not available right now. Please try again in a moment, or contact hello@title-22.com.');
