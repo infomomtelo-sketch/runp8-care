@@ -1043,6 +1043,17 @@ Every RPC the app calls resolves: `title22_member_entitlement`,
 last one's body carries the edu exclusion. The entitlement path, which is
 where both earlier silent failures lived, is intact.
 
+**Present is not the same as correct, though.** `title22_member_entitlement`
+was written before Lite and Multi-Home and only covered a team on trial, edu,
+starter, pro, specialist or agency. Checked live 2026-10-01: covers_lite =
+false, covers_multi = false, 0 members under a Lite or Multi-Home owner. So on
+the two plans sold, an invited team member would go read-only when their own
+trial ended. Fixed by `migrations/2026-10-01_title22_member_entitlement_lite_multi.sql`
+(replaces the one function; tested on Postgres 16: Lite and Multi caregivers
+covered, cancelled-and-ended refused, trial team unchanged). RUN on the live
+database 2026-10-01 by the owner; the one-line check in its last comment read
+covers_lite = true, covers_multi = true. Re-running it is harmless.
+
 **A sentinel bug worth remembering.** The first run reported
 `2026-09-07_lic_checklist_items` as NOT applied. It ran. Its sentinel was one
 of the 16 titles that `2026-09-08`'s dedupe deliberately DELETED as
