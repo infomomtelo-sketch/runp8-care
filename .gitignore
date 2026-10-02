@@ -13,3 +13,6 @@
 # Partner Tello's Worker installs the Anthropic SDK; the lockfile is committed.
 workers/partner_tello/node_modules/
 workers/partner_tello/.wrangler/
+
+# Partner Tello's home-screen icon (/meet).
+!partner_tello-apple-touch-icon.png
