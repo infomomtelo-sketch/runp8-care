@@ -13,6 +13,13 @@
 <meta name="referrer" content="no-referrer"/>
 <meta name="theme-color" content="#123a30"/>
 <link rel="icon" href="/partner_tello-icon.svg"/>
+<!-- Home screen (Add to Home Screen): its own gold icon and name. Without
+     these an iPhone falls back to /apple-touch-icon.png, the main app's green
+     badge. No manifest on purpose: a manifest's start page would drop each
+     partner's personal key, and the saved icon would open "This link isn't
+     active". Saved as is, the icon opens the exact link it was saved from. -->
+<link rel="apple-touch-icon" href="/partner_tello-apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-title" content="Tello Partners"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@600;700&display=swap" rel="stylesheet"/>
