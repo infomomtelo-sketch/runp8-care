@@ -189,6 +189,23 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .cab-list button:last-child{border-bottom:none;color:var(--muted)}
 .cab-list button:hover{background:var(--cream2)}
 .cab-fine{font-size:12px;color:var(--muted);line-height:1.6}
+/* ---- signed-out visitor: the way back and the way in, always in sight ---- */
+.bar-back{flex:none;display:flex;align-items:center;gap:3px;color:rgba(249,245,237,.85);font-size:13.5px;font-weight:600;text-decoration:none;padding:6px 4px 6px 0;white-space:nowrap}
+.bar-back:hover{color:#fff}
+.guest-strip{flex:none;background:var(--gold-soft);border-bottom:1px solid rgba(232,162,61,.45)}
+.gs-in{max-width:780px;margin:0 auto;padding:7px 16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--green)}
+.gs-in span{flex:1;min-width:0}
+.cta{flex:none;display:inline-block;padding:7px 12px;border-radius:20px;background:var(--green);color:var(--cream);font-weight:600;font-size:13px;text-decoration:none;border:none;white-space:nowrap}
+.cta:hover{background:var(--green2)}
+.cta.ghost{background:var(--white);color:var(--green);border:1.5px solid var(--line)}
+.nudge{align-self:stretch;margin-left:40px;background:#fff8ea;border:1px solid rgba(232,162,61,.55);border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.5;color:var(--green)}
+.nudge .row,.limit-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.limit-acts{margin:-6px 0 0 40px}
+.is-guest .new-btn span{display:none}
+.is-guest .new-btn{padding:7px 10px}
+.cab-list a{display:block;text-decoration:none;border-bottom:1px solid var(--line);padding:13px 14px;font-size:15px;color:var(--green);font-weight:500}
+.cab-list a:hover{background:var(--cream2)}
+.cab-list .pri{font-weight:700}
 @media(prefers-reduced-motion:reduce){.cab,.cab-in,.drawer summary::after{transition:none}}
 
 /* ---- voice bar: the only sign on the main screen that she is talking ---- */
@@ -265,11 +282,16 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 <body>
 
 <div class="bar"><div class="bar-in">
+  <a class="bar-back" id="bar-back" hidden href="/" aria-label="Back to Title22"><span aria-hidden="true">&lsaquo;</span> Title22</a>
   <span class="t-mark"></span>
   <div class="who"><span class="name">Tello</span><span class="kicker" id="bar-kicker">AI assistant</span></div>
   <span class="spacer"></span>
   <button class="cab-btn new-btn" id="new-btn" hidden onclick="newConversation()" aria-label="New conversation" title="New conversation"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>New</span></button>
   <button class="cab-btn" id="cab-btn" hidden onclick="openCabinet()" aria-haspopup="dialog" aria-controls="cabinet" aria-label="Open the cabinet: tools, memory and settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 6h4M10 12h4M10 18h4"/></svg><span>Cabinet</span><i class="dot" id="cab-dot" hidden></i></button>
+</div></div>
+<div class="guest-strip" id="guest-strip" hidden><div class="gs-in">
+  <span>Your own account: 30 days free · no card</span>
+  <a class="cta" id="strip-up" href="/?utm_source=tello-guest#signup">Create an account</a>
 </div></div>
 
 <div class="wrap">
@@ -292,7 +314,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <label for="pw">Password</label>
       <input type="password" id="pw" autocomplete="current-password" placeholder="At least 8 characters"/>
       <button class="btn" id="in-btn" type="submit">Sign in</button>
-      <button class="btn btn-ghost" id="up-btn" type="button" onclick="signUp()">Create an account</button>
+      <a class="btn btn-ghost" id="up-btn" href="/?utm_source=tello-gate#signup" style="display:block;text-align:center;text-decoration:none">Create an account</a>
     </form>
     <p class="note">Tello is an AI assistant and can be wrong, so check anything that matters. She will not give medical or dosage advice about a specific person; that is for a nurse, doctor or pharmacist. Please don't share anyone's health information with her.</p>
   </div>
@@ -370,8 +392,10 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <div class="drawer-body" id="mkt"></div>
     </details>
     <div class="cab-list">
+      <a id="guest-up" class="pri" hidden href="/?utm_source=tello-guest#signup">Create an account</a>
+      <button type="button" id="guest-in" hidden onclick="closeCabinet();showGate()">Sign in</button>
       <button type="button" id="guest-send" hidden onclick="closeCabinet();openLead()">Send to Title22</button>
-      <button type="button" id="guest-in" hidden onclick="closeCabinet();showGate()">Sign in to keep your conversations</button>
+      <a id="guest-back" hidden href="/">Back to Title22</a>
       <button type="button" id="fresh" onclick="closeCabinet();newConversation()">New conversation</button>
       <button type="button" id="mem" onclick="closeCabinet();openMemory()">What Tello remembers</button>
       <button type="button" id="out" onclick="signOut()">Sign out</button>
@@ -453,16 +477,10 @@ async function signIn(){
   $('in-btn').disabled=false;
   if(error)gateMsg(error.message);
 }
-async function signUp(){
-  const em=$('em').value.trim(),pw=$('pw').value;
-  if(!em||!pw)return gateMsg('Email and password, please.');
-  if(pw.length<8)return gateMsg('Password needs at least 8 characters.');
-  $('up-btn').disabled=true;
-  const{error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:'https://title22.app/tello'}});
-  $('up-btn').disabled=false;
-  if(error)return gateMsg(error.message);
-  gateMsg('Check your email for a confirmation link.',true);
-}
+// No account is made on this page. "Create an account" goes to the app's own
+// sign-up (/#signup), which makes the profile, stamps the trial and walks the
+// person into their first home. An account made here used to have none of
+// that until they found the app and signed in a second time.
 // Needs https://title22.app/tello in Supabase -> Auth -> URL Configuration ->
 // Redirect URLs. Without it Supabase sends people to the Site URL
 // (title22.app) instead: they land signed in to the app, not here.
@@ -495,7 +513,8 @@ async function boot(){
   if(!signedIn){closeCabinet();$('credits').hidden=true;$('cab-partner').hidden=true;guestStart();return}
   $('gate').hidden=true; $('chat').hidden=false; $('cab-btn').hidden=false; $('new-btn').hidden=false;
   ['fresh','mem','out','attach-btn'].forEach(id=>$(id).hidden=false);
-  ['guest-in','guest-send'].forEach(id=>$(id).hidden=true);
+  ['guest-in','guest-send','guest-up','guest-back','bar-back','guest-strip'].forEach(id=>$(id).hidden=true);
+  document.body.classList.remove('is-guest');
   $('thread').innerHTML='';
   let who;
   try{who=await api('/me')}
@@ -824,12 +843,14 @@ async function ask(text,opts){
     thinking.remove();
     const turn=say(d.reply,'her');
     reply=d.reply;
+    if(mode==='guest')guestCounted();
     if(reply.length>SPEAK_MAX)longTurn=turn;
     if(d.noted){const n=document.createElement('div');n.className='divider';n.textContent=d.noted.ok?'Tello will remember that':'Not saved: '+(d.noted.message||'try again');$('thread').appendChild(n)}
     if(d.memory)held+=2;
     showCredits(d);
   }catch(e){
     thinking.remove();
+    if(mode==='guest'&&e.status===429){guestLimit(e.message);return null}
     say(e.status===402?(e.data.message||'You\'ve used this month\'s messages.'):'Something went wrong. '+e.message,'her err');
   }finally{
     busy=false;$('send').disabled=false;
@@ -1227,10 +1248,10 @@ let guestChat=[];
 try{guestChat=JSON.parse(sessionStorage.getItem('tello_guest')||'[]')}catch(e){guestChat=[]}
 function guestSave(){try{sessionStorage.setItem('tello_guest',JSON.stringify(guestChat.slice(-40)))}catch(e){}}
 function guestStart(){
-  mode='guest';document.body.classList.remove('is-partner');
+  mode='guest';document.body.classList.remove('is-partner');document.body.classList.add('is-guest');
   $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;$('new-btn').hidden=false;
   ['fresh','mem','out','attach-btn','talk-btn'].forEach(id=>$(id).hidden=true);
-  ['guest-in','guest-send'].forEach(id=>$(id).hidden=false);
+  ['guest-in','guest-send','guest-up','guest-back','bar-back','guest-strip'].forEach(id=>$(id).hidden=false);
   ['drawer-mkt','drawer-ptn','drawer-leads'].forEach(id=>$(id).hidden=true);
   $('say').placeholder='Ask Tello anything…';
   renderTools($('cab-tools'),false);
@@ -1246,6 +1267,43 @@ async function guestAsk(q){
   if(!r.ok||!d.reply){guestChat.pop();guestSave();const e=new Error(d.message||'I could not answer just now.');e.status=r.status;e.data=d;throw e}
   guestChat.push({role:'assistant',content:d.reply});guestSave();
   return{reply:d.reply};
+}
+// Where a signed-out visitor came from: the app's landing page
+// (?src=app-landing) or its sign-up screen (?src=app-signup). Kept for the tab,
+// so Back still knows after a reload.
+const GUEST_SRC=(()=>{
+  let s=(new URLSearchParams(location.search).get('src')||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,40);
+  try{if(s)sessionStorage.setItem('tello_src',s);else s=sessionStorage.getItem('tello_src')||''}catch(e){}
+  return s;
+})();
+// The app's own sign-up, so a new customer gets the normal first-time setup.
+// utm_source lands in profiles.title22_utm_source on the new account.
+const APP_SIGNUP='/?utm_source=tello-guest#signup';
+const APP_BACK=GUEST_SRC==='app-signup'?'/#signup':'/';
+$('bar-back').href=$('guest-back').href=APP_BACK;
+// The "Create a free account" card: after this many questions, once more at
+// NUDGE_AGAIN, then not again this session. Never a redirect.
+const NUDGE_AT=5,NUDGE_AGAIN=NUDGE_AT*3;
+function guestCounted(){
+  let n=0;try{n=(+sessionStorage.getItem('tello_guest_n')||0)+1;sessionStorage.setItem('tello_guest_n',String(n))}catch(e){return}
+  if(n===NUDGE_AT||n===NUDGE_AGAIN)guestNudge();
+}
+function guestNudge(){
+  const c=document.createElement('div');c.className='nudge';
+  c.append(document.createTextNode("Want Tello to work with your own home's records? Create a free account."));
+  const row=document.createElement('div');row.className='row';
+  const up=document.createElement('a');up.className='cta';up.href=APP_SIGNUP;up.textContent='Create an account';
+  const no=document.createElement('button');no.type='button';no.className='cta ghost';no.textContent='Keep chatting';no.onclick=()=>{c.remove();$('say').focus()};
+  row.append(up,no);c.appendChild(row);$('thread').appendChild(c);
+}
+// The daily limit (429 from the public endpoint). The Worker's own words,
+// then the two ways forward.
+function guestLimit(text){
+  say(text||'That is all the questions I can take today.','her err',true);
+  const row=document.createElement('div');row.className='limit-acts';
+  const up=document.createElement('a');up.className='cta';up.href=APP_SIGNUP;up.textContent='Create an account';
+  const send=document.createElement('button');send.type='button';send.className='cta ghost';send.textContent='Send to Title22';send.onclick=openLead;
+  row.append(up,send);$('thread').appendChild(row);
 }
 function showGate(){$('new-btn').hidden=true;$('chat').hidden=true;$('gate').hidden=false;$('gate-back').hidden=!!me;window.scrollTo(0,0)}
 function backToGuest(){if(!me)guestStart()}

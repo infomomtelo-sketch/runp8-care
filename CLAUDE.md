@@ -556,11 +556,38 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   (`guestStart`), and talks to Tello through the PUBLIC assistant endpoint
   (`/api/assistant/chat`, assistant `tello`, in `workers/title22-ai/assistant.js`): same
   rules and daily limits, nothing stored on the server, the chat in
-  sessionStorage. The Cabinet offers "Send to Title22" (a lead) and "Sign in
-  to keep your conversations" (the gate, with "Not now"). Guests get no Play
-  (the Kokoro voice needs an account), no photos, no memory, no mic. This is
-  NOT a mode switch on `/api/tello`: that endpoint still decides who she is
-  from the signed-in account alone.
+  sessionStorage. Guests get no Play (the Kokoro voice needs an account), no
+  photos, no memory, no mic. This is NOT a mode switch on `/api/tello`: that
+  endpoint still decides who she is from the signed-in account alone.
+
+  **Never forced out of the chat, but the next step is always visible
+  (2026-10-03).** A visitor arrived from the app with no way back and no
+  visible way to sign up. Now, guest mode only:
+  - "‹ Title22" in the bar and "Back to Title22" in the Cabinet return to
+    where they came from: `?src=app-signup` → `/#signup`, anything else → `/`
+    (`GUEST_SRC`, kept in sessionStorage for the tab). The chat is in
+    sessionStorage on the same origin, so it is still there when they come
+    back in the same tab.
+  - "Create an account", in a strip under the bar, in the Cabinet, on the
+    card and under the limit message, goes to the APP's sign-up
+    (`/?utm_source=tello-guest#signup`), so the account gets its profile,
+    trial and first home like any other. `index.html` opens sign-up on
+    `#signup`. The gate's own button goes there too (`utm_source=tello-gate`);
+    `tello.html` no longer creates accounts, because one made here had no
+    profile, no trial and no home until the person found the app and signed
+    in again.
+  - A fixed (not AI) card after the `NUDGE_AT`th (5) question and once more
+    after the 15th, then never that session; "Keep chatting" removes it. No
+    automatic redirect, ever.
+  - At the daily limit (429), the Worker's message, then Create an account and
+    Send to Title22. Page only; the Worker is unchanged.
+  - Count them: `select title22_utm_source, count(*) from profiles where
+    title22_utm_source like 'tello-%' group by 1`. `utm_source` now also rides
+    in the sign-up's user_metadata, because the confirmation link opens a new
+    tab where sessionStorage is empty; before that, email sign-ups lost their
+    tag. Google sign-ups keep it through the redirect either way.
+  - "30 days free · no card" is `T22_TRIAL_DAYS` and a sign-up that asks for
+    nothing but an email. Change the strip if either changes.
 - The comment on line 2 of `tello.html` is the owner's and private. Never
   surface it in any UI or copy, and do not repeat it anywhere else.
 

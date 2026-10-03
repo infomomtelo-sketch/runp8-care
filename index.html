@@ -2799,7 +2799,7 @@ async function stampSignupAttribution(user){
   try{
     const patch={};
     const plan=sessionStorage.getItem('title22_signup_plan');
-    const src=sessionStorage.getItem('title22_utm_source');
+    const src=sessionStorage.getItem('title22_utm_source')||String(user?.user_metadata?.utm_source||'').slice(0,100)||null;
     const camp=sessionStorage.getItem('title22_utm_campaign');
     if(plan)patch.title22_signup_plan=plan;
     if(src)patch.title22_utm_source=src;
@@ -2826,7 +2826,9 @@ async function handleSignup(){
   t22LastAuthFailure=null;
   let data,error;
   try{
-    ({data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy}}}));
+    // utm_source rides in the metadata like referred_by: the confirmation
+    // link usually opens a new tab, where sessionStorage is empty.
+    ({data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:'https://title22.app',data:{referred_by:referredBy,utm_source:sessionStorage.getItem('title22_utm_source')||null}}}));
   }catch(e){error=e;}
   if(btn){btn.textContent='Create account';btn.disabled=false;}
   if(error){
@@ -12023,7 +12025,9 @@ function showSetNewPassword(){
       const invited=!!readInviteToken();
       renderInviteNotice();
       // A marketing CTA arrived with ?plan= — take them straight to signup.
-      showPage((invited||sessionStorage.getItem('title22_signup_plan'))?'signup':'landing');
+      // So does title22.app/#signup: Tello's "Create an account" and its
+      // "Back to Title22" for a visitor who came from the sign-up screen.
+      showPage((invited||sessionStorage.getItem('title22_signup_plan')||location.hash==='#signup')?'signup':'landing');
     }
   }catch(e){
     document.getElementById('nav-public').style.display='flex';
