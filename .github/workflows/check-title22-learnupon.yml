@@ -1,0 +1,20 @@
+# Is the LearnUpon webhook Worker live? Actions -> "Check title22-learnupon
+# Worker" -> Run workflow. Deploys nothing and reads no secret: it calls
+# /health and sends one unsigned post that must be refused. See
+# workers/title22-learnupon/check-live.sh.
+name: Check title22-learnupon Worker
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'workers/title22-learnupon/check-live.sh'
+      - '.github/workflows/check-title22-learnupon.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Live check
+        run: bash workers/title22-learnupon/check-live.sh
