@@ -508,6 +508,18 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   is reading the brief aloud, paused, or waiting for the tap an iPhone needs
   ("Tello has your brief ready · Listen"), with Pause/Resume and a stop.
   She reads the brief once per day per brief kind (`maybeAutoplay`).
+- **The owner's Cabinet is sorted (partner only, 2026-10-05; the owner:
+  "every item looks identical").** `buildOwnerCabinet` / `OSECS` in
+  `tello.html` fold the tools and drawers into seven sections (Today, Write,
+  Post, Decide, Partners, Share, Memory), one open at a time, each with its
+  own icon and accent. Every item carries a tag (Ask / Write / Open / Watch /
+  Link), shows its hint only when tapped, and has a star that pins it to My
+  shortcuts (up to 4). The open section and the pins are in localStorage
+  (`tello_cab_section`, `tello_cab_pins`), this phone only. A tool still
+  goes through `runTool()` unchanged, and a drawer is the same `<details>`
+  moved, so what each item sends did not change. A tool no section names
+  shows under "More" rather than vanishing. Guests and customers keep
+  `#drawer-tools`, unchanged.
 - **Talk mode (partner only, 2026-09-28).** The mic button (`#talk-btn`,
   `talkStart`/`talkListen`/`talkSpeak`) listens with the browser's speech
   recognition (Apple's dictation on an iPhone, Google's in Chrome), sends the
