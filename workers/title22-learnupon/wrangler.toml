@@ -1,0 +1,27 @@
+name = "title22-learnupon"
+main = "index.js"
+compatibility_date = "2026-10-05"
+# node:crypto, for MD5 (LearnUpon v1 signatures) and HMAC-SHA256 (v2).
+compatibility_flags = ["nodejs_compat"]
+
+# New Worker, first deployed from this repo — nothing was ever typed into the
+# dashboard for it, so this file is the whole authority. SUPABASE_URL is a
+# plain-text var in [vars] at the bottom, the stripe-webhook lesson
+# (2026-09-09): a var that lives only in the dashboard is erased by the next
+# `wrangler deploy`.
+#
+# Secrets (set via `wrangler secret put <NAME>` — never stored here):
+#   LEARNUPON_WEBHOOK_SECRET — the webhook secret key from the LearnUpon
+#                              portal (Settings -> Integrations). Generated in the
+#                              partner's SANDBOX portal and revoked after
+#                              testing. Never email it.
+#   SUPABASE_SERVICE_KEY     — service_role key, to write learnupon_events.
+#
+# Public address for the partner's portal (workers.dev, no custom route):
+#   https://title22-learnupon.infomomtelo.workers.dev/api/learnupon/webhook
+#
+# Needs migrations/2026-10-05_learnupon_events.sql run first.
+
+# Keep this table last.
+[vars]
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
