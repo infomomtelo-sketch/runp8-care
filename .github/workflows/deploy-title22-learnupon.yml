@@ -17,7 +17,6 @@ on:
 env:
   CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
   WRANGLER_VERSION: '4.130.0'
-  HEALTH_URL: https://title22-learnupon.infomomtelo.workers.dev/health
 
 jobs:
   deploy:
@@ -62,20 +61,16 @@ jobs:
           workingDirectory: workers/title22-learnupon
           command: deploy
 
-      # A first deploy has no secrets yet, so this reports rather than fails:
-      # "missing_config" is expected until both secrets are set.
-      - name: Health
+      # Waits for the address to go live (a brand-new workers.dev answers
+      # "error code: 1042" for a while), then checks /health and that an
+      # unsigned post is refused. "missing_config" in health is expected until
+      # both secrets are set.
+      - name: Live check
         run: |
-          sleep 5
-          body=$(curl -sS "$HEALTH_URL" || true)
-          echo "$body"
           {
             echo "### title22-learnupon deployed"
             echo '```'
             echo "${{ steps.deploy.outputs.command-output }}"
             echo '```'
-            echo "Health: \`$body\`"
-            echo ""
-            echo "Webhook address for the partner portal: https://title22-learnupon.infomomtelo.workers.dev/api/learnupon/webhook"
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "$body" | grep -q '"accepts"' || { echo "::error::Health does not answer from the new code."; exit 1; }
+          bash workers/title22-learnupon/check-live.sh
