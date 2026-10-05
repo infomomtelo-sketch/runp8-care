@@ -520,6 +520,14 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   moved, so what each item sends did not change. A tool no section names
   shows under "More" rather than vanishing. Guests and customers keep
   `#drawer-tools`, unchanged.
+- **Share kit and partner messages (2026-10-05).** Under "Give out a new
+  code" in Codes and payouts: four links (from `MKT.links`) and the videos
+  (from `MKT.videos`) as tiles that play in place. Every code card has Kit
+  (`partner-kit/?code=`) and Copy message. `ptnMessage(p)` is the ONE
+  partner message, built from the code's saved commission and trial, and
+  used after Create code too, so an edited rate shows. Keep "When you share
+  it, say that you earn a commission" in it. The app's Partners tab
+  (index.html `createTrainerCode`) has its own, different message.
 - **Talk mode (partner only, 2026-09-28).** The mic button (`#talk-btn`,
   `talkStart`/`talkListen`/`talkSpeak`) listens with the browser's speech
   recognition (Apple's dictation on an iPhone, Google's in Chrome), sends the

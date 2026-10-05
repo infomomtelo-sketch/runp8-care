@@ -286,6 +286,22 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .ptn-list button{border:none;background:none;color:var(--bad);font-size:12px;padding:0 2px}
 .ptn-err{font-size:12.5px;color:var(--bad);margin-top:6px}
 
+/* ---- share kit, under the code maker ---- */
+.kit-row{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px;background:var(--white)}
+.kit-t{flex:1;min-width:0}
+.kit-t b{display:block;font-size:14px;color:var(--green)}
+.kit-t small{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.kit-row .mkt-btns{margin-top:0;flex:none;flex-wrap:nowrap}
+.kit-vids{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.kit-vid{position:relative;border:1px solid var(--line);border-radius:12px;background:var(--green);overflow:hidden}
+.kit-vid.on{grid-column:1/-1}
+.kit-play{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:92px;padding:10px;background:none;border:none;text-align:left;color:var(--cream)}
+.kit-play b{font-size:13.5px;line-height:1.25}
+.kit-play small{font-size:11.5px;color:rgba(249,245,237,.8);line-height:1.3}
+.kit-tri{width:0;height:0;border-left:12px solid var(--gold);border-top:8px solid transparent;border-bottom:8px solid transparent;margin-bottom:6px}
+.kit-vid video{display:block;width:100%;max-height:70vh;background:#000}
+.kit-x{position:absolute;top:6px;right:6px;font-size:12.5px;padding:5px 11px;border-radius:14px;border:none;background:var(--cream);color:var(--green);font-weight:600}
+
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
 .sheet.open{display:flex}
@@ -1213,6 +1229,8 @@ const MKT={
     {name:'30-Day Proof',note:'For owners with two or more homes',url:'https://title-22.com/pilot/'},
     {name:'For trainers',note:'Course instructors',url:'https://title-22.com/for-trainers/'},
     {name:'Partner media kit',note:'Images, QR codes and posts with their code',url:'https://title-22.com/partner-kit/'},
+    {name:'Affiliate page',note:'How the affiliate program works',url:'https://title-22.com/affiliates/'},
+    {name:'All videos',note:'Every video on one page',url:'https://title-22.com/videos/'},
     {name:'Follow Title22',note:'All the accounts on one page',url:'https://title-22.com/follow/'},
     {name:'Tello',note:'Her own page',url:'https://title22.app/tello'},
   ],
@@ -1305,6 +1323,8 @@ function renderPartners(){
   d.partners.forEach(p=>el.appendChild(ptnCard(p)));
   el.appendChild(ptnEl('div','mkt-h','Give out a new code'));
   el.appendChild(ptnNewForm());
+  el.appendChild(ptnEl('div','mkt-h','Share kit'));
+  el.appendChild(ptnShareKit());
   if(d.unregistered_codes&&d.unregistered_codes.length){
     el.appendChild(ptnEl('div','mkt-h','Codes people used, not registered yet'));
     el.appendChild(ptnEl('p','mkt-note','Their signups count as soon as you register the code.'));
@@ -1337,15 +1357,51 @@ async function ptnCreate(btn){
   if(error){btn.disabled=false;btn.textContent='Create code';err.textContent=/duplicate|unique/i.test(error.message)?'That code is taken. Try another.':error.message;return}
   const row=Array.isArray(data)?data[0]:data;
   if(kind!=='trainer')await sb.rpc('title22_update_partner',{p_id:row.id,p_kind:kind});
-  const first=(row.name||'').trim().split(/\s+/)[0]||row.name;
-  const msg=`Hi ${first}, here is your Title22 link: https://title-22.com/r/${row.code}\n\nAnyone who signs up through it gets a ${row.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(row.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nImages, QR codes and posts with your link built in: https://title-22.com/partner-kit/?code=${encodeURIComponent(row.code)}`;
   await loadPartners();
+  // The message is built from the row as saved, the same way as the Copy
+  // message button on every code card.
+  const saved=(ptnData&&ptnData.partners.find(p=>p.code===row.code))||row;
+  const first=ptnFirst(saved),msg=ptnMessage(saved);
   const out=$('ptn-new-out');out.innerHTML='';
   const r=ptnEl('div','mkt-row');r.appendChild(ptnEl('b',null,'Created. Send this to '+first+':'));r.appendChild(ptnEl('p',null,msg));
   const w=ptnEl('div','mkt-btns');w.append(mktBtn('Share',()=>mktShare({name:'Your Title22 link',text:msg}),true),mktBtn('Copy',b=>copyText(msg,b)));
   if(row.email){w.appendChild(mktLink('Email','mailto:'+encodeURIComponent(row.email)+'?subject='+encodeURIComponent('Your Title22 partner link')+'&body='+encodeURIComponent(msg)))}
   r.appendChild(w);out.appendChild(r);out.scrollIntoView({block:'center'});
 }
+// The message for a partner, from what is saved for their code NOW: the
+// commission and trial they have today, not the ones they started on.
+function ptnFirst(p){return(p.name||'').trim().split(/\s+/)[0]||p.name}
+function ptnKitUrl(code){return 'https://title-22.com/partner-kit/?code='+encodeURIComponent(code)}
+function ptnMessage(p){
+  return `Hi ${ptnFirst(p)}, here is your Title22 link: https://title-22.com/r/${p.code}\n\nAnyone who signs up through it gets a ${p.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(p.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nImages, QR codes and posts with your link built in: ${ptnKitUrl(p.code)}`;
+}
+// Share kit: what to send a partner, under the code maker. Reads MKT.links
+// and MKT.videos, so a link or video changes in one place.
+const KIT_LINKS=['Partner media kit','Affiliate page','For trainers','All videos'];
+function ptnShareKit(){
+  const box=ptnEl('div','kit');
+  KIT_LINKS.map(n=>MKT.links.find(l=>l.name===n)).filter(Boolean).forEach(l=>{
+    const r=ptnEl('div','kit-row');const t=ptnEl('div','kit-t');t.append(ptnEl('b',null,l.name),ptnEl('small',null,l.url.replace('https://','')));
+    const w=ptnEl('div','mkt-btns');w.append(mktLink('Open',l.url),mktBtn('Copy link',b=>copyText(l.url,b)));
+    r.append(t,w);box.appendChild(r)});
+  const g=ptnEl('div','kit-vids');
+  MKT.videos.forEach(v=>{
+    const tile=ptnEl('div','kit-vid');
+    const play=document.createElement('button');play.type='button';play.className='kit-play';
+    play.setAttribute('aria-label','Play '+v.name);
+    play.append(ptnEl('span','kit-tri'),ptnEl('b',null,v.name),ptnEl('small',null,v.note));
+    play.onclick=()=>{
+      g.querySelectorAll('.kit-vid.on').forEach(x=>x!==tile&&kitClose(x));
+      tile.classList.add('on');play.hidden=true;
+      const vid=document.createElement('video');vid.src=v.url;vid.controls=true;vid.playsInline=true;vid.setAttribute('playsinline','');vid.preload='metadata';
+      const x=mktBtn('Close',()=>kitClose(tile));x.className='kit-x';
+      tile.append(vid,x);vid.play().catch(()=>{});
+    };
+    tile.appendChild(play);g.appendChild(tile)});
+  box.appendChild(g);return box;
+}
+function kitClose(tile){const v=tile.querySelector('video');if(v){v.pause();v.removeAttribute('src');v.load();v.remove()}
+  const x=tile.querySelector('.kit-x');if(x)x.remove();tile.querySelector('.kit-play').hidden=false;tile.classList.remove('on')}
 function ptnCard(p){
   const c=ptnEl('div','ptn-card'+(p.active?'':' off'));
   const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,p.name),ptnEl('span','ptn-tag',(PTN_KINDS[p.kind]||p.kind)+' · '+p.code+(p.active?'':' · paused')));c.appendChild(top);
@@ -1356,6 +1412,7 @@ function ptnCard(p){
   const w=ptnEl('div','mkt-btns');const link='https://title-22.com/r/'+p.code;
   w.append(mktBtn('Share link',()=>mktShare({name:'Title22',url:link}),true),mktBtn('Copy link',b=>copyText(link,b)));
   if(!p.paid_this_month&&owe>0)w.appendChild(mktBtn('Record payout',()=>ptnToggle(c,'pay',p)));
+  w.append(mktLink('Kit',ptnKitUrl(p.code)),mktBtn('Copy message',b=>copyText(ptnMessage(p),b)));
   w.append(mktBtn('Edit',()=>ptnToggle(c,'edit',p)),mktBtn('Students ('+p.signups+')',()=>ptnToggle(c,'stu',p)));
   if(p.payouts.length)w.appendChild(mktBtn('Payouts ('+p.payouts.length+')',()=>ptnToggle(c,'hist',p)));
   c.appendChild(w);const box=ptnEl('div');box.className='ptn-box';c.appendChild(box);
