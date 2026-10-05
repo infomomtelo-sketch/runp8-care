@@ -191,6 +191,50 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .cab-fine{font-size:12px;color:var(--muted);line-height:1.6}
 @media(prefers-reduced-motion:reduce){.cab,.cab-in,.drawer summary::after{transition:none}}
 
+/* ---- the owner's Cabinet: sections, tags, shortcuts (partner only) ---- */
+.opins{margin:0 0 12px}
+.opins .kicker{margin:0 0 6px}
+.opins-empty{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5}
+.opins-empty.full{color:var(--bad);margin-top:6px}
+.opins-g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.opin-chip{display:flex;align-items:center;gap:7px;min-height:44px;padding:7px 10px;border-radius:12px;border:1px solid var(--line);border-left:4px solid var(--acc);background:var(--white);color:var(--green);font-weight:600;font-size:13.5px;line-height:1.25;text-align:left}
+.opin-chip svg{flex:none;color:var(--acc-ink)}
+.osec{background:var(--white);border:1px solid var(--line);border-left:5px solid var(--acc);border-radius:14px;margin-bottom:8px}
+.osec-h{width:100%;display:flex;align-items:center;gap:11px;min-height:54px;padding:8px 14px 8px 10px;background:none;border:none;text-align:left;color:var(--green);position:relative}
+.osec-ic{flex:none;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:var(--acc-bg);color:var(--acc-ink)}
+.osec-n{flex:1;font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:18px}
+.osec-c{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--green);background:var(--cream2);border-radius:10px;padding:2px 8px;margin-right:22px}
+.osec-h::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--green);border-bottom:2px solid var(--green);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.osec.open .osec-h::after{transform:translateY(-30%) rotate(-135deg)}
+.osec.open .osec-h{border-bottom:1px solid var(--line)}
+.osec-b{padding:4px 8px 10px}
+.oi{border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;background:var(--cream);margin:6px 0 0}
+.oi-row{display:flex;align-items:stretch}
+.oi-h{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:46px;padding:6px 4px 6px 11px;background:none;border:none;text-align:left;color:var(--green)}
+.oi-t{flex:1;min-width:0;font-weight:600;font-size:15px;line-height:1.3}
+.opin{flex:none;width:42px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--muted)}
+.opin.on{color:var(--acc-ink,#7a4f0e)}
+.oi-b{padding:0 11px 11px}
+.oi-hint{font-size:13px;color:var(--muted);line-height:1.45;margin:0 0 8px}
+.oi-go{display:flex;flex-wrap:wrap;gap:6px}
+.oi.open{background:#fffaf0}
+.otag{flex:none;min-width:60px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:7px;border:1px solid transparent;line-height:1.2}
+.otag-ask{background:var(--green);color:var(--cream)}
+.otag-write{background:var(--white);color:var(--green);border-color:var(--green)}
+.otag-open{background:#fbefd9;color:#6b4510;border-color:#ecd3a6}
+.otag-watch{background:#e3eaf0;color:#2f4a60;border-color:#c8d5e0}
+.otag-link{background:#f6e6df;color:#7d3b24;border-color:#e8cbbd}
+/* A drawer that is an item: same row, its own body below. */
+.osec .drawer.oi{margin:6px 0 0;background:var(--cream)}
+.osec .drawer.oi>summary{flex-direction:row;align-items:center;gap:8px;min-height:46px;padding:6px 0 6px 11px}
+.osec .drawer.oi>summary::after{display:none}
+.osec .drawer.oi>summary .kicker{display:none}
+.osec .drawer.oi>summary .slab{flex:1;min-width:0;font-family:'Public Sans',system-ui,sans-serif;font-weight:600;font-size:15px;line-height:1.3;color:var(--green)}
+.osec .drawer.oi>summary .opin{align-self:stretch;margin-left:-4px}
+.osec .drawer.oi[open]{background:#fffaf0}
+.osec .drawer.oi>.drawer-body{padding:0 11px 11px}
+@media(prefers-reduced-motion:reduce){.osec-h::after{transition:none}}
+
 /* ---- voice bar: the only sign on the main screen that she is talking ---- */
 .voice-bar{flex:none;display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px 8px 8px;border-radius:14px;background:var(--green);color:var(--cream)}
 .voice-bar .t-mark{box-shadow:0 0 0 3px rgba(232,162,61,.45);animation:vbPulse 1.6s ease-in-out infinite}
@@ -329,13 +373,18 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <span class="spacer"></span>
       <button class="linkbtn dark" onclick="closeCabinet()">Close</button>
     </div>
-    <details class="drawer">
+    <details class="drawer" id="drawer-tools">
       <summary><span class="kicker">Tap one</span><span class="slab">What Tello can do</span></summary>
       <div class="drawer-body tools" id="cab-tools"></div>
     </details>
+    <!-- The owner's Cabinet (partner mode only). buildOwnerCabinet() sorts
+         the drawers below and the tools into folding sections; nothing here
+         is shown to a guest or a customer. -->
     <div id="cab-partner" hidden>
       <div class="setup" id="setup-note" hidden></div>
-      <details class="drawer" id="drawer-brief">
+      <div class="opins" id="opins"></div>
+      <div id="osecs"></div>
+      <details class="drawer" id="drawer-brief" data-tag="open" data-title="Today's brief">
         <summary><span class="kicker" id="brief-kicker">Tello · today</span><span class="slab" id="brief-title">Three things for today</span></summary>
         <div class="drawer-body">
           <div id="brief-text" class="loading">Reading the numbers…</div>
@@ -347,28 +396,45 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
           </div>
         </div>
       </details>
-      <details class="drawer">
+      <details class="drawer" id="drawer-nums" data-tag="open">
         <summary><span class="kicker">Counts only</span><span class="slab">Live numbers</span></summary>
         <div class="drawer-body">
+          <div class="small oi-keep">Counts only. No names.</div>
           <div class="tiles" id="tiles"></div>
           <div class="small" id="funnel"></div>
           <div class="small" id="codes"></div>
           <div class="small">MRR is list price times active subscriptions in our own records. Stripe is the source of truth for money.</div>
         </div>
       </details>
+      <details class="drawer" id="drawer-leads" data-tag="open">
+        <summary><span class="kicker">Send to Title22</span><span class="slab">Leads</span></summary>
+        <div class="drawer-body" id="leads"></div>
+      </details>
+      <details class="drawer" id="drawer-ptn" data-tag="open">
+        <summary><span class="kicker">Trainers, affiliates, graduates</span><span class="slab">Codes and payouts</span></summary>
+        <div class="drawer-body" id="ptn"></div>
+      </details>
+      <details class="drawer" id="drawer-class" data-tag="open">
+        <summary><span class="kicker">For a trainer who teaches with the app</span><span class="slab">Classroom account</span></summary>
+        <div class="drawer-body" id="ptn-class"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-msg" data-tag="link">
+        <summary><span class="kicker">Share, copy, text or email</span><span class="slab">Ready messages</span></summary>
+        <div class="drawer-body" id="mkt-msg"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-links" data-tag="link">
+        <summary><span class="kicker">Share, copy or open</span><span class="slab">Links to send</span></summary>
+        <div class="drawer-body" id="mkt-links"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-vid" data-tag="watch">
+        <summary><span class="kicker">To post or send</span><span class="slab">Videos</span></summary>
+        <div class="drawer-body" id="mkt-vid"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-acct" data-tag="link">
+        <summary><span class="kicker">Signed in as you</span><span class="slab">Your accounts</span></summary>
+        <div class="drawer-body" id="mkt-acct"></div>
+      </details>
     </div>
-    <details class="drawer" id="drawer-leads" hidden>
-      <summary><span class="kicker">Send to Title22</span><span class="slab">Leads</span></summary>
-      <div class="drawer-body" id="leads"></div>
-    </details>
-    <details class="drawer" id="drawer-ptn" hidden>
-      <summary><span class="kicker">Trainers, affiliates, graduates</span><span class="slab">Partners and payouts</span></summary>
-      <div class="drawer-body" id="ptn"></div>
-    </details>
-    <details class="drawer" id="drawer-mkt" hidden>
-      <summary><span class="kicker">Post, send, share</span><span class="slab">Marketing</span></summary>
-      <div class="drawer-body" id="mkt"></div>
-    </details>
     <div class="cab-list">
       <button type="button" id="guest-send" hidden onclick="closeCabinet();openLead()">Send to Title22</button>
       <button type="button" id="guest-in" hidden onclick="closeCabinet();showGate()">Sign in to keep your conversations</button>
@@ -504,9 +570,9 @@ async function boot(){
   const partner=mode==='partner';
   document.body.classList.toggle('is-partner',partner);
   $('cab-partner').hidden=!partner;
-  $('drawer-mkt').hidden=!partner;if(partner)renderMarketing();
-  $('drawer-ptn').hidden=!partner;
-  $('drawer-leads').hidden=!partner;
+  $('drawer-tools').hidden=partner;
+  $('mem').hidden=partner;
+  if(partner)renderMarketing();
   $('talk-btn').hidden=!partner||!SpeechRec;
   $('bar-kicker').textContent=partner?'Your business partner · '+who.client:'AI assistant · '+who.client;
   $('say').placeholder='Ask Tello anything…';
@@ -520,6 +586,7 @@ async function boot(){
     loadBrief(monday?'weekly':'today');
   }
   renderTools($('cab-tools'),false);
+  if(partner)buildOwnerCabinet();
   await loadMemory(partner);
 }
 
@@ -763,8 +830,153 @@ function closeCabinet(){const c=$('cabinet');if(!c.classList.contains('open'))re
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCabinet()});
 document.addEventListener('toggle',e=>{if(e.target&&e.target.id==='drawer-ptn'&&e.target.open&&!ptnData)loadPartners()},true);
 document.addEventListener('toggle',e=>{if(e.target&&e.target.id==='drawer-leads'&&e.target.open)loadLeads()},true);
+document.addEventListener('toggle',e=>{const c=$('ptn-class');if(e.target&&e.target.id==='drawer-class'&&e.target.open&&c&&!c.firstChild)c.appendChild(ptnClassroom())},true);
 function openIdeas(){renderTools($('ideas-list'),false);$('ideas').classList.add('open')}
 function closeIdeas(){$('ideas').classList.remove('open')}
+
+/* ------------------------------------------------- owner's cabinet -- */
+// Partner mode only (2026-10-05, the owner: "every item looks identical").
+// The same tools and drawers as before, sorted into folding sections, each
+// with its own icon and accent, and every item marked with what a tap does.
+// Nothing here changes what an item sends: a tool still goes through
+// runTool(), and a drawer is the same <details> element, moved.
+// Guests and customers never reach this; their Cabinet is #drawer-tools.
+const OTAGS={ask:'Ask',write:'Write',open:'Open',watch:'Watch',link:'Link'};
+const OICON={
+  today:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  write:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  post:'<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+  decide:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>',
+  partners:'<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5 5.5"/>',
+  share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
+  memory:'<path d="M6 3h12v18l-6-4-6 4Z"/>',
+  more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+};
+// Accents: the page's green, gold and its darker gold, plus two calm extra
+// tones (clay, slate). The name and the icon carry the section too.
+const OSECS=[
+  {id:'today',name:'Today',acc:'#e8a23d',ink:'#7a4f0e',bg:'#fbefd9',drawers:['drawer-brief','drawer-nums','drawer-leads']},
+  {id:'write',name:'Write',acc:'#123a30',ink:'#123a30',bg:'#e3ebe7',tools:['Fix my grammar','Rewrite it','Translate','Reply to a message','Write an email','Read a photo or PDF','Message to my staff','Caregiver job post','Trial follow-up message']},
+  {id:'post',name:'Post',acc:'#a4553a',ink:'#8a4329',bg:'#f6e6df',tools:['Post caption','Post ideas for this week','Turn my notes into a post','Check a post before I publish']},
+  {id:'decide',name:'Decide',acc:'#3e5c76',ink:'#34506a',bg:'#e3eaf0',tools:['Should I…?','One next step today','Where are signups stuck?','Check this claim','Explain a business word','Explain a word or form']},
+  {id:'partners',name:'Partners',acc:'#8a5a12',ink:'#7a4f0e',bg:'#f3e8d6',drawers:['drawer-ptn','drawer-class']},
+  {id:'share',name:'Share',acc:'#1d5c4d',ink:'#1d5c4d',bg:'#e0eee9',drawers:['drawer-mkt-msg','drawer-mkt-links','drawer-mkt-vid','drawer-mkt-acct']},
+  {id:'memory',name:'Memory',acc:'#5f7169',ink:'#4b5c55',bg:'#e9ece9',tools:['Remember something'],extra:'mem'},
+];
+const OPIN_MAX=4,OSEC_KEY='tello_cab_section',OPIN_KEY='tello_cab_pins';
+const OITEMS={};
+function oGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function oSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function oSvg(id){return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+OICON[id]+'</svg>'}
+function oTagOf(t){return t.ask||t.send?'ask':'write'}
+function oTag(k){const e=document.createElement('span');e.className='otag otag-'+k;e.textContent=OTAGS[k];return e}
+function oPinBtn(id){
+  const b=document.createElement('button');b.type='button';b.className='opin';b.dataset.pin=id;
+  b.onclick=e=>{e.preventDefault();e.stopPropagation();oTogglePin(id)};
+  return b;
+}
+function oToolItem(t,sec){
+  const id='t:'+t.label,w=document.createElement('div');w.className='oi';w.dataset.id=id;
+  const h=document.createElement('button');h.type='button';h.className='oi-h';h.setAttribute('aria-expanded','false');
+  const n=document.createElement('span');n.className='oi-t';n.textContent=t.label;
+  h.append(n,oTag(oTagOf(t)));
+  const row=document.createElement('div');row.className='oi-row';row.append(h,oPinBtn(id));
+  const body=document.createElement('div');body.className='oi-b';body.hidden=true;
+  const hint=(mode!=='partner'&&t.hintCustomer)||t.hint;
+  if(hint){const p=document.createElement('p');p.className='oi-hint';p.textContent=hint;body.appendChild(p)}
+  const go=document.createElement('div');go.className='oi-go';
+  if(t.options)t.options.forEach(o=>{const c=document.createElement('button');c.type='button';c.className='pill';c.textContent=o;c.onclick=()=>runTool(t,o);go.appendChild(c)});
+  else{const c=document.createElement('button');c.type='button';c.className='pill primary';c.textContent=t.pick?'Choose a photo or PDF':t.ask?'Ask now':'Start writing';c.onclick=()=>runTool(t);go.appendChild(c)}
+  body.appendChild(go);
+  h.onclick=()=>{const open=body.hidden;body.hidden=!open;h.setAttribute('aria-expanded',String(open));w.classList.toggle('open',open)};
+  w.append(row,body);
+  OITEMS[id]={sec,title:t.label,tool:t,el:w,open:()=>{body.hidden=false;h.setAttribute('aria-expanded','true');w.classList.add('open')}};
+  return w;
+}
+function oDrawerItem(d,sec){
+  const id='d:'+d.id;d.classList.add('oi','od');d.dataset.id=id;
+  const sum=d.querySelector('summary');
+  if(!sum.querySelector('.otag')){sum.append(oTag(d.dataset.tag||'open'),oPinBtn(id))}
+  OITEMS[id]={sec,title:d.dataset.title||sum.querySelector('.slab').textContent,el:d,open:()=>{d.open=true}};
+  return d;
+}
+function oMemItem(sec){
+  const id='d:mem',w=document.createElement('div');w.className='oi';w.dataset.id=id;
+  const h=document.createElement('button');h.type='button';h.className='oi-h';
+  const n=document.createElement('span');n.className='oi-t';n.textContent='What Tello remembers';
+  h.append(n,oTag('open'));h.onclick=()=>{closeCabinet();openMemory()};
+  const row=document.createElement('div');row.className='oi-row';row.append(h,oPinBtn(id));w.appendChild(row);
+  OITEMS[id]={sec,title:'What Tello remembers',el:w,run:()=>{closeCabinet();openMemory()}};
+  return w;
+}
+function buildOwnerCabinet(){
+  const box=$('osecs');if(box.dataset.done){oRenderPins();return}box.dataset.done='1';
+  const tools={};toolsFor().forEach(g=>g.items.forEach(t=>{tools[t.label]=t}));
+  const placed=new Set();
+  const secs=OSECS.slice();
+  // Anything Tello can do that no section names still shows, under More,
+  // so a tool added later is never silently dropped from the Cabinet.
+  const rest=Object.keys(tools).filter(l=>!OSECS.some(s=>(s.tools||[]).includes(l)));
+  if(rest.length)secs.push({id:'more',name:'More',acc:'#5f7169',ink:'#4b5c55',bg:'#e9ece9',tools:rest});
+  secs.forEach(s=>{
+    const sec=document.createElement('section');sec.className='osec';sec.dataset.sec=s.id;
+    sec.style.setProperty('--acc',s.acc);sec.style.setProperty('--acc-ink',s.ink);sec.style.setProperty('--acc-bg',s.bg);
+    const h=document.createElement('button');h.type='button';h.className='osec-h';h.id='osec-h-'+s.id;h.setAttribute('aria-expanded','false');h.setAttribute('aria-controls','osec-b-'+s.id);
+    const ic=document.createElement('span');ic.className='osec-ic';ic.innerHTML=oSvg(s.id);
+    const nm=document.createElement('span');nm.className='osec-n';nm.textContent=s.name;
+    const ct=document.createElement('span');ct.className='osec-c';
+    h.append(ic,nm,ct);h.onclick=()=>oOpenSec(s.id,true);
+    const body=document.createElement('div');body.className='osec-b';body.id='osec-b-'+s.id;body.hidden=true;body.setAttribute('role','region');body.setAttribute('aria-labelledby',h.id);
+    (s.drawers||[]).forEach(id=>{const d=$(id);if(d)body.appendChild(oDrawerItem(d,s.id))});
+    (s.tools||[]).forEach(l=>{if(tools[l]&&!placed.has(l)){placed.add(l);body.appendChild(oToolItem(tools[l],s.id))}});
+    if(s.extra==='mem')body.appendChild(oMemItem(s.id));
+    const count=body.querySelectorAll(':scope>.oi').length;ct.textContent=count;ct.setAttribute('aria-label',count+' items');
+    sec.append(h,body);box.appendChild(sec);
+  });
+  oRenderPins();
+  const last=oGet(OSEC_KEY,null);if(last&&box.querySelector('[data-sec="'+last+'"]'))oOpenSec(last,false);
+}
+// One section open at a time; a second tap on the open one folds it.
+function oOpenSec(id,fromTap){
+  let opened=null;
+  $('osecs').querySelectorAll('.osec').forEach(sec=>{
+    const on=sec.dataset.sec===id&&(!fromTap||!sec.classList.contains('open'));
+    sec.classList.toggle('open',on);sec.querySelector('.osec-b').hidden=!on;sec.querySelector('.osec-h').setAttribute('aria-expanded',String(on));
+    if(on)opened=sec;
+  });
+  oSet(OSEC_KEY,opened?id:null);
+  if(opened&&fromTap)opened.scrollIntoView({block:'nearest',behavior:'smooth'});
+  return opened;
+}
+function oTogglePin(id){
+  let pins=oGet(OPIN_KEY,[]).filter(p=>OITEMS[p]);
+  if(pins.includes(id))pins=pins.filter(p=>p!==id);
+  else if(pins.length>=OPIN_MAX){oRenderPins();const m=document.createElement('p');m.className='opins-empty full';m.setAttribute('role','status');m.textContent='You have 4 shortcuts. Unpin one first (tap its star).';$('opins').appendChild(m);$('opins').scrollIntoView({block:'nearest'});return}
+  else pins.push(id);
+  oSet(OPIN_KEY,pins);oRenderPins();
+}
+function oRenderPins(){
+  const pins=oGet(OPIN_KEY,[]).filter(p=>OITEMS[p]),box=$('opins');box.innerHTML='';
+  document.querySelectorAll('#osecs .opin').forEach(b=>{const on=pins.includes(b.dataset.pin);b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));
+    b.setAttribute('aria-label',(on?'Unpin ':'Pin to My shortcuts: ')+OITEMS[b.dataset.pin].title);b.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(on?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9Z"/></svg>'});
+  const k=document.createElement('div');k.className='kicker';k.textContent='My shortcuts';box.appendChild(k);
+  if(!pins.length){const p=document.createElement('p');p.className='opins-empty';p.textContent='Tap the star on any item to keep it here. Up to 4, on this phone only.';box.appendChild(p);return}
+  const g=document.createElement('div');g.className='opins-g';
+  pins.forEach(id=>{const it=OITEMS[id],s=OSECS.find(x=>x.id===it.sec)||{acc:'#5f7169',ink:'#4b5c55',bg:'#e9ece9'};
+    const b=document.createElement('button');b.type='button';b.className='opin-chip';b.style.setProperty('--acc',s.acc);b.style.setProperty('--acc-ink',s.ink);b.style.setProperty('--acc-bg',s.bg);
+    b.innerHTML=oSvg(it.sec);const t=document.createElement('span');t.textContent=it.title;b.appendChild(t);
+    b.onclick=()=>oRunPin(id);g.appendChild(b)});
+  box.appendChild(g);
+}
+// A shortcut does in one tap what the item does. A tool with choices, or a
+// drawer, opens in its section so the choice is still yours.
+function oRunPin(id){
+  const it=OITEMS[id];if(!it)return;
+  if(it.run){it.run();return}
+  if(it.tool&&!it.tool.options){runTool(it.tool);return}
+  oOpenSec(it.sec,false);it.open();
+  setTimeout(()=>it.el.scrollIntoView({block:'start',behavior:'smooth'}),30);
+}
 
 // The box shows what she can do while it is empty, one example at a time.
 const EXAMPLES={
@@ -1025,9 +1237,13 @@ function mktShare(o){
 }
 function mktBtn(label,fn,pri){const b=document.createElement('button');b.type='button';b.textContent=label;if(pri)b.className='pri';b.onclick=()=>fn(b);return b}
 function mktLink(label,href){const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener';a.textContent=label;return a}
+let mktDone=false;
 function renderMarketing(){
-  const el=$('mkt');if(!el||el.dataset.done)return;el.dataset.done='1';
-  const h=t=>{const d=document.createElement('div');d.className='mkt-h';d.textContent=t;el.appendChild(d)};
+  // One drawer each for the four kinds of thing, in the owner's Share
+  // section. Same rows and buttons as before; only where they sit changed.
+  if(mktDone)return;mktDone=true;
+  let el=$('mkt-acct');
+  const h=t=>{el=$({'Your accounts':'mkt-acct','Messages, ready to send':'mkt-msg','Links to send':'mkt-links','Videos':'mkt-vid'}[t])};
   const note=t=>{const p=document.createElement('p');p.className='mkt-note';p.textContent=t;el.appendChild(p)};
   const row=(o,btns)=>{const r=document.createElement('div');r.className='mkt-row';
     const b=document.createElement('b');b.textContent=o.name;r.appendChild(b);
@@ -1095,8 +1311,6 @@ function renderPartners(){
     d.unregistered_codes.forEach(u=>{const r=ptnEl('div','mkt-row');r.appendChild(ptnEl('b',null,u.code));r.appendChild(ptnEl('small',null,u.signups+' signup'+(u.signups>1?'s':'')));
       const w=ptnEl('div','mkt-btns');w.appendChild(mktBtn('Register',()=>{const f=$('ptn-code');f.value=u.code;f.scrollIntoView({block:'center'});$('ptn-name').focus()},true));r.appendChild(w);el.appendChild(r)});
   }
-  el.appendChild(ptnEl('div','mkt-h','Classroom account for a trainer'));
-  el.appendChild(ptnClassroom());
 }
 function ptnInput(id,label,attrs){const w=document.createElement('div');const l=ptnEl('label',null,label);l.htmlFor=id;const i=document.createElement(attrs&&attrs.tag||'input');i.id=id;
   Object.entries(attrs||{}).forEach(([k,v])=>{if(k==='tag'||k==='options')return;i.setAttribute(k,v)});
@@ -1231,7 +1445,7 @@ function guestStart(){
   $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;$('new-btn').hidden=false;
   ['fresh','mem','out','attach-btn','talk-btn'].forEach(id=>$(id).hidden=true);
   ['guest-in','guest-send'].forEach(id=>$(id).hidden=false);
-  ['drawer-mkt','drawer-ptn','drawer-leads'].forEach(id=>$(id).hidden=true);
+  $('cab-partner').hidden=true;$('drawer-tools').hidden=false;
   $('say').placeholder='Ask Tello anything…';
   renderTools($('cab-tools'),false);
   $('thread').innerHTML='';
