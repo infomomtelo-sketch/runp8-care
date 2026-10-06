@@ -1728,9 +1728,14 @@ Owner-only while it is tested (the Partners tab card).
   record and no person; the learner link is written when the link is made.
   Only the token's SHA-256 is stored (`learnupon_staff_invites`,
   `migrations/2026-10-06b_learnupon_staff_links.sql`); 30 days; a new link
-  switches the old one off. Owner-only like sign-on, and real staff only once
-  the partner agrees: every link opened creates a learner on THEIR portal.
-  A new learner sees only courses the portal enrols them in.
+  switches the old one off. Also a "Training link" button on each active
+  staff card, so no customer waits on us (the owner: "they will not contact
+  me and wait for my reply"). Who: the home's owner or an `administrator` in
+  `facility_members`. ONE SWITCH, two places, still OFF: `STAFF_LINKS_OPEN`
+  in the Worker's wrangler.toml and `T22_STAFF_TRAINING_LINKS_OPEN` in
+  index.html. Off = only the app owner. Turn both on only once the partner
+  agrees, because every link opened creates a learner on THEIR portal. A new
+  learner sees only courses the portal enrols them in.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.

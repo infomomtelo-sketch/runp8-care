@@ -18,6 +18,7 @@ const OTHER_STAFF = '99999999-2222-3333-4444-555555555555';
 const db = {
   staff: { [STAFF]: 'fac-1', [OTHER_STAFF]: 'fac-2' },
   facilities: { 'fac-1': 'u-owner', 'fac-2': 'someone-else' },
+  members: [{ facility_id: 'fac-2', user_id: 'u-member', role: 'administrator' }],
   links: [], catalog: [], trainings: [], trainingWrites: [], trainingStatus: 201, invites: [],
 };
 // Sign-on stubs: token 'owner' is the partner admin, 'member' is not.
@@ -44,6 +45,11 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.startsWith('https://db.example/rest/v1/facilities?')) {
     const owner = db.facilities[q.get('id').replace('eq.', '')];
     return new Response(JSON.stringify(owner && owner === q.get('user_id').replace('eq.', '') ? [{ id: 1 }] : []), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/facility_members?')) {
+    const hit = db.members.filter(m => m.facility_id === q.get('facility_id').replace('eq.', '')
+      && m.user_id === q.get('user_id').replace('eq.', '') && m.role === q.get('role').replace('eq.', ''));
+    return new Response(JSON.stringify(hit.map(() => ({ id: 1 }))), { status: 200 });
   }
   if (url.startsWith('https://db.example/rest/v1/learnupon_staff_invites')) {
     if (init.method === 'POST') { db.invites.push({ use_count: 0, revoked_at: null, ...JSON.parse(init.body) }); return new Response('', { status: 201 }); }
@@ -352,6 +358,21 @@ const v2Headers = (body, secret = SECRET) => ({
   ok(g.status === 404 && !g.headers.get('location'), 'malformed link -> 404');
   g = await worker.fetch(new Request('https://w.example/t/' + 'B'.repeat(32), { method: 'GET' }), env);
   ok(g.status === 503 && !g.headers.get('location'), 'sign-on not configured -> 503 page');
+
+
+  // Opened to customers: an administrator on a home's team sends their own
+  // staff's links, and still cannot reach another home's staff.
+  {
+    const OPEN = { ...SSO, STAFF_LINKS_OPEN: 'true' };
+    const member = { Origin: 'https://title22.app', Authorization: 'Bearer member' };
+    const before = db.invites.length;
+    let r2 = await call('/api/learnupon/staff-link', { headers: member, e: OPEN, body: JSON.stringify({ staff_id: OTHER_STAFF }) });
+    ok(r2.status === 200 && r2.data.link && db.invites.length === before + 1, 'switch on: a home\'s administrator makes their own staff link');
+    r2 = await call('/api/learnupon/staff-link', { headers: member, e: OPEN, body: JSON.stringify({ staff_id: STAFF }) });
+    ok(r2.status === 404 && db.invites.length === before + 1, 'switch on: still refused for another home\'s staff');
+    r2 = await call('/api/learnupon/staff-link', { headers: member, e: { ...SSO, STAFF_LINKS_OPEN: 'false' }, body: JSON.stringify({ staff_id: OTHER_STAFF }) });
+    ok(r2.status === 403, 'switch off: administrator refused');
+  }
 
   // The staff learner's completion lands on that staff member.
   const e = {

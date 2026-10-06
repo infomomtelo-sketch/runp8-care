@@ -1762,9 +1762,50 @@ async function openPartnerTraining(){
   }catch(e){if(win)win.close();show('Could not open the course portal. Try again.',true);}
 }
 const LEARNUPON_STAFF_LINK_WORKER = 'https://title22-learnupon.infomomtelo.workers.dev/api/learnupon/staff-link';
-// A link the owner texts to one staff member, who opens it on their own phone
-// and lands on the course portal as their own learner. The Worker makes and
-// stores it (only a hash); finished courses land on that person's training.
+// Staff training links go to every home's owner and administrators once the
+// training partner agrees to learners being created on its portal. Until then
+// only the app owner sees the button. The Worker enforces the same switch
+// (STAFF_LINKS_OPEN in its wrangler.toml); flip both together.
+const T22_STAFF_TRAINING_LINKS_OPEN = false;
+function canSendTrainingLink(){
+  return !demoMode && canEdit() && currentUserRole==='administrator' && (T22_STAFF_TRAINING_LINKS_OPEN || isPartnerAdmin);
+}
+// A link sent to one staff member, who opens it on their own phone, wherever
+// they are, and lands on the course portal as their own learner. The Worker
+// makes and stores it (only a hash); finished courses land on their training.
+// Renders into `out`; returns false with a message in `show` on failure.
+async function requestStaffTrainingLink(staffId,who,out,show){
+  show('Making the link…');
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session){show('Please sign in again.',true);return false;}
+    const res=await fetch(LEARNUPON_STAFF_LINK_WORKER,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({staff_id:staffId})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.link){
+      show({not_configured:'Training links are not switched on yet.',not_allowed:'Training links are not available for your account yet.',not_signed_in:'Please sign in again.',staff_not_found:'Only this home\'s administrator can send training links.',link_failed:'Could not make the link. Try again.'}[data.error]||'Could not make the link. Try again.',true);
+      return false;
+    }
+    show('');
+    const text='Hi '+who.split(' ')[0]+', here is your training link. Open it on your phone to start your courses. No password needed: '+data.link;
+    const until=new Date(data.expires_at).toLocaleDateString();
+    out.innerHTML='<div style="font-weight:600;margin-bottom:6px">Training link for '+esc(who)+'</div>'
+      +'<div style="word-break:break-all;font-family:monospace;font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">'+esc(data.link)+'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-primary btn-sm" data-act="copy">Copy</button>'
+      +(navigator.share?'<button class="btn btn-outline btn-sm" data-act="share">Share</button>':'')
+      +'<a class="btn btn-outline btn-sm" style="text-decoration:none" href="sms:?&body='+encodeURIComponent(text)+'">Text it</a>'
+      +'</div>'
+      +'<div style="margin-top:8px;font-size:12px;color:var(--text2)">Works until '+esc(until)+'. Courses '+esc(who)+' finishes are added to their training here. Only send it to them: anyone with the link can take courses as them. Making a new link switches this one off.</div>';
+    out.style.display='block';
+    const cp=out.querySelector('[data-act=copy]');
+    cp.onclick=()=>{navigator.clipboard.writeText(data.link).then(()=>{cp.textContent='Copied';setTimeout(()=>{cp.textContent='Copy';},1600);},()=>{cp.textContent='Press and hold the link to copy';});};
+    const sh=out.querySelector('[data-act=share]');
+    if(sh)sh.onclick=()=>navigator.share({title:'Your training link',text}).catch(()=>{});
+    track('staff_training_link');
+    return true;
+  }catch(e){show('Could not make the link. Try again.',true);return false;}
+}
+// Partners card: for the staff member picked there.
 async function makeStaffTrainingLink(){
   const msg=document.getElementById('partner-sso-msg');
   const out=document.getElementById('partner-staff-link');
@@ -1773,35 +1814,24 @@ async function makeStaffTrainingLink(){
   const pick=document.getElementById('partner-sso-staff');
   const staffId=pick&&pick.value||null;
   if(!staffId){show('Pick the staff member first, in "Log completed courses as training for".',true);return;}
-  const who=pick.selectedOptions[0]?pick.selectedOptions[0].textContent:'this staff member';
-  show('Making the link…');
-  try{
-    const{data:{session}}=await sb.auth.getSession();
-    if(!session){show('Please sign in again.',true);return;}
-    const res=await fetch(LEARNUPON_STAFF_LINK_WORKER,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({staff_id:staffId})});
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok||!data.link){
-      show({not_configured:'Sign-on is not switched on yet.',not_allowed:'Only the owner can use this while it is being tested.',not_signed_in:'Please sign in again.',staff_not_found:'That staff member was not found in a home you own.',link_failed:'Could not make the link. Try again.'}[data.error]||'Could not make the link. Try again.',true);
-      return;
-    }
-    show('');
-    const text='Here is your training link for Title22. Open it on your phone to start your courses. No password needed: '+data.link;
-    const until=new Date(data.expires_at).toLocaleDateString();
-    out.innerHTML='<div style="font-weight:600;margin-bottom:6px">Training link for '+esc(who)+'</div>'
-      +'<div style="word-break:break-all;font-family:monospace;font-size:12px;background:#fff;border-radius:6px;padding:8px;margin-bottom:8px">'+esc(data.link)+'</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +'<button class="btn btn-primary btn-sm" id="psl-copy">Copy</button>'
-      +(navigator.share?'<button class="btn btn-outline btn-sm" id="psl-share">Share</button>':'')
-      +'<a class="btn btn-outline btn-sm" href="sms:?&body='+encodeURIComponent(text)+'">Text it</a>'
-      +'</div>'
-      +'<div style="margin-top:8px;color:var(--text2)">Works until '+esc(until)+'. Only send it to '+esc(who)+': anyone with the link can take courses as them.</div>';
-    out.style.display='block';
-    const cp=document.getElementById('psl-copy');
-    cp.onclick=()=>{navigator.clipboard.writeText(data.link).then(()=>{cp.textContent='Copied';setTimeout(()=>{cp.textContent='Copy';},1600);},()=>{cp.textContent='Press and hold the link to copy';});};
-    const sh=document.getElementById('psl-share');
-    if(sh)sh.onclick=()=>navigator.share({title:'Your training link',text}).catch(()=>{});
-    track('staff_training_link');
-  }catch(e){show('Could not make the link. Try again.',true);}
+  await requestStaffTrainingLink(staffId,pick.selectedOptions[0]?pick.selectedOptions[0].textContent:'this staff member',out,show);
+}
+// Staff card: "Training link" opens a small window with the link for that person.
+function openStaffTrainingLink(staffId){
+  const s=(staffList||[]).find(x=>x.id===staffId);
+  const who=s&&(s.full_name||s.name)||'this staff member';
+  let m=document.getElementById('staff-link-modal');
+  if(!m){
+    m=document.createElement('div');m.id='staff-link-modal';m.className='modal-overlay';
+    m.innerHTML='<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-weight:600;font-size:16px">Send a training link</div><button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'staff-link-modal\').classList.remove(\'open\')">Close</button></div>'
+      +'<div id="slm-msg" style="font-size:13px;margin-bottom:8px"></div><div id="slm-out" style="display:none;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div></div>';
+    m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+    document.body.appendChild(m);
+  }
+  const msg=m.querySelector('#slm-msg'),out=m.querySelector('#slm-out');
+  out.style.display='none';
+  m.classList.add('open');
+  requestStaffTrainingLink(staffId,who,out,(t,bad)=>{msg.style.display=t?'block':'none';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t||'';});
 }
 // The staff picker on that card: the open home's active staff, names only.
 function fillPartnerStaffPick(){
@@ -5580,6 +5610,7 @@ function renderStaff(){
       <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">${certHtml}</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${esc(s.id)}')">Edit</button>
+        ${canSendTrainingLink()&&s.active===true?`<button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffTrainingLink('${esc(s.id)}')">Training link</button>`:''}
         ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${esc(s.id)}','${esc(nameField.replace(/'/g,"\\'"))}')"><svg class="ic"><use href="#i-trash"/></svg></button>`:''}
       </div>
     </div>`;

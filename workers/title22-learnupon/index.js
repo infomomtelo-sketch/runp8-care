@@ -121,6 +121,21 @@ async function ownedStaffFacility(staffId, userId, env) {
   return (await f.json()).length ? s.facility_id : null;
 }
 
+// As ownedStaffFacility, but an administrator on the home's team counts too:
+// the person running the home day to day sends their staff's links.
+async function adminStaffFacility(staffId, userId, env) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(staffId))) return null;
+  const owned = await ownedStaffFacility(staffId, userId, env);
+  if (owned) return owned;
+  const r = await REST(env, `staff?id=eq.${staffId}&select=facility_id`);
+  if (!r.ok) return null;
+  const s = (await r.json())[0];
+  if (!s || !s.facility_id) return null;
+  const m = await REST(env, `facility_members?facility_id=eq.${s.facility_id}&user_id=eq.${encodeURIComponent(userId)}&role=eq.administrator&select=id`);
+  if (!m.ok) return null;
+  return (await m.json()).length ? s.facility_id : null;
+}
+
 async function handleSso(request, env) {
   const cors = ssoCors(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -183,14 +198,18 @@ async function handleStaffLink(request, env) {
   }
   const user = await signedInUser(request, env);
   if (!user || !user.id) return json({ error: 'not_signed_in' }, 401, cors);
-  // Test phase, as for sign-on: every link creates a learner on the partner's
-  // portal, so only the app owner may make one until the partner agrees.
-  if (!(await isPartnerAdmin(user.id, env))) return json({ error: 'not_allowed' }, 403, cors);
+  // Every link opened creates a learner on the partner's portal. Until the
+  // partner agrees (STAFF_LINKS_OPEN = "true" in wrangler.toml, and the app's
+  // T22_STAFF_TRAINING_LINKS_OPEN), only the app owner may make one. After
+  // that, each home's owner and administrators send their own, with no one
+  // to wait for.
+  const open = String(env.STAFF_LINKS_OPEN || '').toLowerCase() === 'true';
+  if (!open && !(await isPartnerAdmin(user.id, env))) return json({ error: 'not_allowed' }, 403, cors);
 
   let body = {};
   try { body = await request.json(); } catch { body = {}; }
   const staffId = body && body.staff_id;
-  const facilityId = staffId ? await ownedStaffFacility(staffId, user.id, env) : null;
+  const facilityId = staffId ? await adminStaffFacility(staffId, user.id, env) : null;
   if (!facilityId) return json({ error: 'staff_not_found' }, 404, cors);
 
   const s = await REST(env, `staff?id=eq.${staffId}&select=full_name`);
