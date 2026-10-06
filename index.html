@@ -1610,8 +1610,13 @@
           <label for="partner-sso-staff" style="font-size:12px;color:var(--text2)">Log completed courses as training for</label>
           <select id="partner-sso-staff" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;margin:4px 0 6px"></select>
           <div style="font-size:12px;color:var(--text2);margin-bottom:12px">A course finished on the portal is added to this person's training hours, if the course's hours are set up in Title22. Pick no one to only look around.</div>
-          <button class="btn btn-primary" onclick="openPartnerTraining()">Open partner courses</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="openPartnerTraining()">Open partner courses</button>
+            <button class="btn btn-outline" onclick="makeStaffTrainingLink()">Send training link</button>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:8px">Send training link: makes a link for the person picked above to open on their own phone, wherever they are. No password and no email needed. It works for 30 days, and making a new one switches the old one off.</div>
           <div id="partner-sso-msg" style="display:none;margin-top:10px;font-size:13px"></div>
+          <div id="partner-staff-link" style="display:none;margin-top:12px;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div>
         </div>
 
         <div class="card" style="margin-bottom:20px">
@@ -1755,6 +1760,48 @@ async function openPartnerTraining(){
     const who=staffId&&pick.selectedOptions[0]?pick.selectedOptions[0].textContent:'';
     show('Opened in a new tab as '+data.email+'.'+(who?' Courses you finish there will be logged for '+who+'.':''));
   }catch(e){if(win)win.close();show('Could not open the course portal. Try again.',true);}
+}
+const LEARNUPON_STAFF_LINK_WORKER = 'https://title22-learnupon.infomomtelo.workers.dev/api/learnupon/staff-link';
+// A link the owner texts to one staff member, who opens it on their own phone
+// and lands on the course portal as their own learner. The Worker makes and
+// stores it (only a hash); finished courses land on that person's training.
+async function makeStaffTrainingLink(){
+  const msg=document.getElementById('partner-sso-msg');
+  const out=document.getElementById('partner-staff-link');
+  const show=(t,bad)=>{if(msg){msg.style.display=t?'block':'none';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t||'';}};
+  if(out)out.style.display='none';
+  const pick=document.getElementById('partner-sso-staff');
+  const staffId=pick&&pick.value||null;
+  if(!staffId){show('Pick the staff member first, in "Log completed courses as training for".',true);return;}
+  const who=pick.selectedOptions[0]?pick.selectedOptions[0].textContent:'this staff member';
+  show('Making the link…');
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session){show('Please sign in again.',true);return;}
+    const res=await fetch(LEARNUPON_STAFF_LINK_WORKER,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({staff_id:staffId})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.link){
+      show({not_configured:'Sign-on is not switched on yet.',not_allowed:'Only the owner can use this while it is being tested.',not_signed_in:'Please sign in again.',staff_not_found:'That staff member was not found in a home you own.',link_failed:'Could not make the link. Try again.'}[data.error]||'Could not make the link. Try again.',true);
+      return;
+    }
+    show('');
+    const text='Here is your training link for Title22. Open it on your phone to start your courses. No password needed: '+data.link;
+    const until=new Date(data.expires_at).toLocaleDateString();
+    out.innerHTML='<div style="font-weight:600;margin-bottom:6px">Training link for '+esc(who)+'</div>'
+      +'<div style="word-break:break-all;font-family:monospace;font-size:12px;background:#fff;border-radius:6px;padding:8px;margin-bottom:8px">'+esc(data.link)+'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-primary btn-sm" id="psl-copy">Copy</button>'
+      +(navigator.share?'<button class="btn btn-outline btn-sm" id="psl-share">Share</button>':'')
+      +'<a class="btn btn-outline btn-sm" href="sms:?&body='+encodeURIComponent(text)+'">Text it</a>'
+      +'</div>'
+      +'<div style="margin-top:8px;color:var(--text2)">Works until '+esc(until)+'. Only send it to '+esc(who)+': anyone with the link can take courses as them.</div>';
+    out.style.display='block';
+    const cp=document.getElementById('psl-copy');
+    cp.onclick=()=>{navigator.clipboard.writeText(data.link).then(()=>{cp.textContent='Copied';setTimeout(()=>{cp.textContent='Copy';},1600);},()=>{cp.textContent='Press and hold the link to copy';});};
+    const sh=document.getElementById('psl-share');
+    if(sh)sh.onclick=()=>navigator.share({title:'Your training link',text}).catch(()=>{});
+    track('staff_training_link');
+  }catch(e){show('Could not make the link. Try again.',true);}
 }
 // The staff picker on that card: the open home's active staff, names only.
 function fillPartnerStaffPick(){

@@ -1720,6 +1720,17 @@ Owner-only while it is tested (the Partners tab card).
   who, which course, how many hours, under Training. It opens the dock unless a
   form or the tour is open. Runs 2.5 s after the home opens (staff loaded) and
   whenever the tab comes back into view. Written in the page, no AI call.
+- **Staff train from their own phone (2026-10-06, the owner: "I cannot hand
+  them the computer").** "Send training link" on the same Partners card makes
+  `title22.app/train/<token>` for the picked staff member (`_redirects` sends
+  it to the Worker's `/t/<token>`, which signs them on by SQSSO). The learner
+  is `staff-<staff id>@learners.title22.app`, a made-up address naming the
+  record and no person; the learner link is written when the link is made.
+  Only the token's SHA-256 is stored (`learnupon_staff_invites`,
+  `migrations/2026-10-06b_learnupon_staff_links.sql`); 30 days; a new link
+  switches the old one off. Owner-only like sign-on, and real staff only once
+  the partner agrees: every link opened creates a learner on THEIR portal.
+  A new learner sees only courses the portal enrols them in.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.
