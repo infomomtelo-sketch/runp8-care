@@ -2,7 +2,9 @@
 // Runs the real Worker against a stubbed Supabase: no network, no secret.
 // Payloads are LearnUpon's documented examples, with invented learners.
 import { createHash } from 'node:crypto';
-import worker, { signV1, signV2, toRow, sqssoUrl } from './index.js';
+import { createRequire } from 'node:module';
+import worker, { signV1, signV2, toRow, sqssoUrl, courseToEntries, pacificDate } from './index.js';
+const T22T = createRequire(import.meta.url)('../../training-rules.js');
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
@@ -11,6 +13,13 @@ const SECRET = 'test-secret';
 const env = { LEARNUPON_WEBHOOK_SECRET: SECRET, SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'service' };
 
 let inserts, insertStatus = 201;
+const STAFF = '11111111-2222-3333-4444-555555555555';
+const OTHER_STAFF = '99999999-2222-3333-4444-555555555555';
+const db = {
+  staff: { [STAFF]: 'fac-1', [OTHER_STAFF]: 'fac-2' },
+  facilities: { 'fac-1': 'u-owner', 'fac-2': 'someone-else' },
+  links: [], catalog: [], trainings: [], trainingWrites: [], trainingStatus: 201,
+};
 // Sign-on stubs: token 'owner' is the partner admin, 'member' is not.
 const USERS = { owner: { id: 'u-owner', email: 'Owner@Title22.example' }, member: { id: 'u-member', email: 'member@title22.example' } };
 globalThis.fetch = async (url, init = {}) => {
@@ -25,6 +34,39 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.startsWith('https://db.example/rest/v1/learnupon_events')) {
     inserts.push({ url, init, rows: JSON.parse(init.body) });
     return new Response('', { status: insertStatus });
+  }
+  // A tiny stand-in for the four tables the hours path reads and writes.
+  const q = new URL(url).searchParams;
+  if (url.startsWith('https://db.example/rest/v1/staff?')) {
+    const s = db.staff[q.get('id').replace('eq.', '')];
+    return new Response(JSON.stringify(s ? [{ facility_id: s }] : []), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/facilities?')) {
+    const owner = db.facilities[q.get('id').replace('eq.', '')];
+    return new Response(JSON.stringify(owner && owner === q.get('user_id').replace('eq.', '') ? [{ id: 1 }] : []), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/learnupon_learner_links')) {
+    if (init.method === 'POST') {
+      db.links.push({ ...JSON.parse(init.body), created_at: new Date().toISOString() });
+      return new Response('', { status: 201 });
+    }
+    const email = q.get('learner_email').replace('eq.', '');
+    const before = q.get('created_at').replace('lte.', '');
+    const hit = db.links.filter(l => l.learner_email === email && l.created_at <= before)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+    return new Response(JSON.stringify(hit ? [hit] : []), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/title22_course_catalog')) {
+    const c = db.catalog.find(c => c.external_ref === q.get('external_ref').replace('eq.', ''));
+    return new Response(JSON.stringify(c ? [c] : []), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/staff_trainings')) {
+    if (db.trainingStatus !== 201) return new Response('nope', { status: db.trainingStatus });
+    db.trainingWrites.push({ url, init, rows: JSON.parse(init.body) });
+    for (const r of JSON.parse(init.body)) {
+      if (!db.trainings.some(t => t.source_ref === r.source_ref && t.topic_area === r.topic_area)) db.trainings.push(r);
+    }
+    return new Response('', { status: 201 });
   }
   return new Response('unexpected ' + url, { status: 500 });
 };
@@ -164,6 +206,89 @@ const v2Headers = (body, secret = SECRET) => ({
 
   const h = await call('/health', { method: 'GET' });
   ok(h.data.status === 'ok' && h.data.sso.LEARNUPON_SQSSO_SECRET === false, 'webhook health stays ok without sign-on; sso reported separately');
+}
+
+// A completion becomes training hours, only with a staff link and a catalog entry.
+{
+  const SSO = { ...env, LEARNUPON_SQSSO_SECRET: 'sso-secret', LEARNUPON_PORTAL_URL: 'https://portal.example' };
+  const origin = { Origin: 'https://title22.app', Authorization: 'Bearer owner' };
+  const completion = (o = {}) => {
+    const e = {
+      header: { source: 'LearnUpon', version: 1, signature: '', webhookId: 9, attempt: 1, webHookType: 'course_completion' },
+      user: { userId: 5, email: 'Owner@Title22.example' },
+      enrollmentId: 555, courseId: 2024, courseName: 'Eval', enrollmentStatus: 'completed', percentage: 100,
+      dateCompleted: new Date(Date.now() + 1000).toISOString(), ...o,
+    };
+    e.header.signature = signV1(e, SECRET);
+    return JSON.stringify(e);
+  };
+
+  // Sign-on for a staff member of someone else's home is refused, and links no one.
+  let r = await call('/api/learnupon/sso', { headers: origin, e: SSO, body: JSON.stringify({ staff_id: OTHER_STAFF }) });
+  ok(r.status === 404 && !r.data.url && db.links.length === 0, 'sign-on for another owner\'s staff -> 404, no link');
+  r = await call('/api/learnupon/sso', { headers: origin, e: SSO, body: JSON.stringify({ staff_id: 'not-a-uuid' }) });
+  ok(r.status === 404 && db.links.length === 0, 'malformed staff id -> 404');
+
+  // No link yet: logged, no hours, and the log says why.
+  r = await call('/api/learnupon/webhook', { body: completion() });
+  ok(r.status === 200 && inserts[0].rows[0].training_status === 'no_staff_link' && db.trainings.length === 0, 'no sign-on link -> no hours, status no_staff_link');
+
+  // Signed on for our own staff member: the link is written.
+  r = await call('/api/learnupon/sso', { headers: origin, e: SSO, body: JSON.stringify({ staff_id: STAFF }) });
+  ok(r.status === 200 && r.data.url && db.links.length === 1 && db.links[0].staff_id === STAFF
+    && db.links[0].facility_id === 'fac-1' && db.links[0].learner_email === 'owner@title22.example', 'sign-on for own staff -> link written');
+
+  // Linked, but the course has no catalog entry: no hours invented.
+  r = await call('/api/learnupon/webhook', { body: completion() });
+  ok(inserts[0].rows[0].training_status === 'no_course_hours' && db.trainings.length === 0, 'no catalog entry -> no hours, status no_course_hours');
+
+  // With a catalog entry: hours land on that staff member, in that facility.
+  db.catalog.push({ id: 'c-1', external_ref: '2024', title: 'Sandbox test course: Eval', credit_hours: 1, topic_hours: {}, delivery: 'self_paced', counts_toward: 'direct_care', phase: null });
+  r = await call('/api/learnupon/webhook', { body: completion() });
+  const t = db.trainings[0];
+  ok(r.status === 200 && inserts[0].rows[0].training_status === 'recorded' && db.trainings.length === 1, 'linked + catalogued -> recorded');
+  ok(t && t.staff_id === STAFF && t.facility_id === 'fac-1' && t.hours === 1 && t.topic_area === 'other'
+    && t.course_id === 'c-1' && t.source_ref === 'learnupon:555' && t.delivery === 'self_paced', 'training row: right person, home, hours, course');
+  ok(db.trainingWrites[0].url.includes('on_conflict=source_ref,topic_area') && /ignore-duplicates/.test(db.trainingWrites[0].init.headers.Prefer), 'training insert dedupes');
+
+  // A retry of the same completion does not double the hours.
+  r = await call('/api/learnupon/webhook', { body: completion() });
+  ok(r.status === 200 && db.trainings.length === 1, 'retried completion -> still one training row');
+
+  // A split course makes one row per topic.
+  db.catalog.push({ id: 'c-2', external_ref: '3030', title: 'Dementia basics', credit_hours: 3, topic_hours: { dementia: 2, postural_hospice: 1 }, delivery: 'self_paced', counts_toward: 'direct_care', phase: null });
+  r = await call('/api/learnupon/webhook', { body: completion({ enrollmentId: 777, courseId: 3030 }) });
+  const split = db.trainings.filter(x => x.source_ref === 'learnupon:777');
+  ok(split.length === 2 && split.find(x => x.topic_area === 'dementia').hours === 2 && split.find(x => x.topic_area === 'postural_hospice').hours === 1, 'topic split -> one row per topic');
+
+  // Not finished: nothing logged as hours.
+  r = await call('/api/learnupon/webhook', { body: completion({ enrollmentId: 888, enrollmentStatus: 'in_progress' }) });
+  ok(inserts[0].rows[0].training_status === 'not_completed' && !db.trainings.some(x => x.source_ref === 'learnupon:888'), 'unfinished enrollment -> no hours');
+
+  // Other event types are only logged.
+  const mod = JSON.parse(completion({ enrollmentId: 999 })); mod.header.webHookType = 'module_complete'; mod.header.signature = signV1(mod, SECRET);
+  r = await call('/api/learnupon/webhook', { body: JSON.stringify(mod) });
+  ok(r.status === 200 && inserts[0].rows[0].training_status === null && !db.trainings.some(x => x.source_ref === 'learnupon:999'), 'module event -> logged only');
+
+  // A failed training write is a 500 (LearnUpon retries) and writes no log row yet.
+  db.trainingStatus = 500;
+  r = await call('/api/learnupon/webhook', { body: completion({ enrollmentId: 1001 }) });
+  ok(r.status === 500 && r.data.error === 'training_write_failed' && inserts.length === 0, 'training write failure -> 500, retried later');
+  db.trainingStatus = 201;
+
+  // A completion before the sign-on link was made is not credited to it.
+  r = await call('/api/learnupon/webhook', { body: completion({ enrollmentId: 1002, dateCompleted: '2020-01-01T00:00:00Z' }) });
+  ok(inserts[0].rows[0].training_status === 'no_staff_link', 'completion older than the link -> not credited');
+
+  // Same arithmetic as the app's training-rules.js.
+  const c = { id: 'x', title: 'T', credit_hours: 3, topic_hours: { dementia: 2, other: 1 }, delivery: 'live', counts_toward: 'admin_ce', phase: 'phase1' };
+  ok(JSON.stringify(courseToEntries(c, 's', '2026-10-06')) === JSON.stringify(T22T.courseToEntries(c, 's', '2026-10-06')), 'courseToEntries matches training-rules.js (split)');
+  const c0 = { ...c, topic_hours: {} };
+  ok(JSON.stringify(courseToEntries(c0, 's', '2026-10-06')) === JSON.stringify(T22T.courseToEntries(c0, 's', '2026-10-06')), 'courseToEntries matches training-rules.js (no split)');
+
+  // The training date is the California day.
+  ok(pacificDate('2026-10-07T00:30:00Z') === '2026-10-06', '5:30 pm in California on the 6th -> the 6th');
+  ok(pacificDate('2026-10-06T16:56:59Z') === '2026-10-06', 'morning completion -> same day');
 }
 
 insertStatus = 201;

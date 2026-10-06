@@ -3,9 +3,10 @@
 // TEST ENDPOINT. A training partner hosts its staff courses on LearnUpon; Title22 staff will launch them by single sign-on and the
 // completion comes back here. This Worker is the first half of that: it
 // proves a completion can travel from the partner's sandbox portal into our database.
-// It writes ONLY to public.learnupon_events, a log, and never to
-// staff_trainings — turning a completion into training hours is the next step,
-// once we have seen real payloads and agreed the course-to-hours mapping.
+// Every event goes to public.learnupon_events, a log. A course completion is
+// also turned into staff_trainings rows when the Worker can say who and how
+// many hours without guessing (see recordTraining); otherwise the log row says
+// why not, in training_status.
 //
 // For now this receives test data only: invented learners on the partner's
 // sandbox portal. No resident information is involved, ever;
@@ -94,6 +95,29 @@ async function isPartnerAdmin(userId, env) {
   return !!(rows[0] && rows[0].title22_is_partner_admin);
 }
 
+const REST = (env, path, init = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
+  ...init,
+  headers: {
+    'apikey': env.SUPABASE_SERVICE_KEY,
+    'Authorization': 'Bearer ' + env.SUPABASE_SERVICE_KEY,
+    'Content-Type': 'application/json',
+    ...(init.headers || {}),
+  },
+});
+
+// The staff member the owner is signing on for must be in a facility the
+// owner owns. Returns the facility id, or null.
+async function ownedStaffFacility(staffId, userId, env) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(staffId))) return null;
+  const r = await REST(env, `staff?id=eq.${staffId}&select=facility_id`);
+  if (!r.ok) return null;
+  const s = (await r.json())[0];
+  if (!s || !s.facility_id) return null;
+  const f = await REST(env, `facilities?id=eq.${s.facility_id}&user_id=eq.${encodeURIComponent(userId)}&select=id`);
+  if (!f.ok) return null;
+  return (await f.json()).length ? s.facility_id : null;
+}
+
 async function handleSso(request, env) {
   const cors = ssoCors(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -106,6 +130,21 @@ async function handleSso(request, env) {
   if (!(await isPartnerAdmin(user.id, env))) return json({ error: 'not_allowed' }, 403, cors);
 
   const email = String(user.email).trim().toLowerCase();
+
+  // Optional: the staff member these courses are for. The completion that
+  // comes back for this learner is logged as that person's training hours.
+  let body = {};
+  try { body = await request.json(); } catch { body = {}; }
+  if (body && body.staff_id) {
+    const facilityId = await ownedStaffFacility(body.staff_id, user.id, env);
+    if (!facilityId) return json({ error: 'staff_not_found' }, 404, cors);
+    const link = await REST(env, 'learnupon_learner_links', {
+      method: 'POST', headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ learner_email: email, staff_id: body.staff_id, facility_id: facilityId, linked_by: user.id }),
+    });
+    if (!link.ok) return json({ error: 'link_failed' }, 500, cors);
+  }
+
   const ts = Math.floor(Date.now() / 1000);
   const url = sqssoUrl(env.LEARNUPON_PORTAL_URL, email, ts, env.LEARNUPON_SQSSO_SECRET);
   return json({ url, email }, 200, { ...cors, 'Cache-Control': 'no-store' });
@@ -162,7 +201,10 @@ const num = (v) => (v === undefined || v === null || v === '' || isNaN(Number(v)
 // a list of {name, number}; summed into credit_hours for a first look only —
 // the real mapping comes from title22_course_catalog, not from this sum.
 export function toRow(event, { version, type, deliveryId }) {
-  const user = (event && event.user) || {};
+  const user = (event && event.user) || {
+    userId: event && event.userId, username: event && event.username,
+    email: event && (event.userEmail || event.email),
+  };
   const credits = Array.isArray(event && event.credits) ? event.credits : [];
   const creditSum = credits.reduce((n, c) => n + (num(c && c.number) || 0), 0);
   return {
@@ -180,8 +222,78 @@ export function toRow(event, { version, type, deliveryId }) {
     percentage: num(event && event.percentage),
     credit_hours: credits.length ? creditSum : null,
     completed_at: str(event && event.dateCompleted),
+    // Filled in for course completions; every row carries the keys because
+    // PostgREST refuses a bulk insert whose rows have different keys.
+    training_status: null,
+    training_note: null,
     payload: event,
   };
+}
+
+// --- Completion -> training hours -----------------------------------------
+
+export const isCourseCompletion = (row) => /course_?completion/i.test(row.webhook_type || '');
+const DONE = new Set(['completed', 'passed']);
+
+// The day the course was finished, in California, not UTC: a completion at
+// 5 pm on the 6th is 00:00 UTC on the 7th.
+export function pacificDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+// Same result as courseToEntries in training-rules.js (test.mjs checks they
+// agree): one row per topic in the course's split, or one "other" row.
+export function courseToEntries(course, staffId, date) {
+  const split = (course && course.topic_hours) || {};
+  const keys = Object.keys(split).filter(k => (parseFloat(split[k]) || 0) > 0);
+  const base = { staff_id: staffId, training_date: date, course_id: course.id || null,
+    delivery: course.delivery || null, counts_toward: course.counts_toward || 'direct_care', phase: course.phase || null };
+  if (!keys.length) return [Object.assign({}, base, { topic: course.title, hours: course.credit_hours, topic_area: 'other', hands_on: false })];
+  return keys.map(k => Object.assign({}, base, { topic: course.title, hours: parseFloat(split[k]), topic_area: k, hands_on: false }));
+}
+
+// Decides, and writes, the training rows for one completion. Returns
+// { status, note } for the log row, or { error } when a write failed and
+// LearnUpon should retry.
+export async function recordTraining(env, row) {
+  if (!DONE.has(String(row.status || '').toLowerCase())) return { status: 'not_completed', note: `status ${row.status || 'missing'}` };
+  if (!row.learner_email || !row.course_id || !row.enrollment_id || !row.completed_at) {
+    return { status: 'no_staff_link', note: 'completion is missing the learner, course, enrollment or date' };
+  }
+
+  const links = await REST(env, `learnupon_learner_links?learner_email=eq.${encodeURIComponent(row.learner_email)}`
+    + `&created_at=lte.${encodeURIComponent(new Date(row.completed_at).toISOString())}`
+    + '&select=staff_id,facility_id&order=created_at.desc&limit=1');
+  if (!links.ok) return { error: 'link_lookup_failed' };
+  const link = (await links.json())[0];
+  if (!link) return { status: 'no_staff_link', note: 'no one signed on from Title22 as this learner before the completion' };
+
+  const cat = await REST(env, `title22_course_catalog?external_ref=eq.${encodeURIComponent(String(row.course_id))}`
+    + '&select=id,title,credit_hours,topic_hours,delivery,counts_toward,phase&limit=1');
+  if (!cat.ok) return { error: 'catalog_lookup_failed' };
+  const course = (await cat.json())[0];
+  if (!course) return { status: 'no_course_hours', note: `course ${row.course_id} has no catalog entry, so no hours were logged` };
+
+  const date = pacificDate(row.completed_at);
+  const entries = courseToEntries(course, link.staff_id, date).map(e => ({
+    ...e,
+    facility_id: link.facility_id,
+    hours: Number(e.hours),
+    notes: 'Completed on the training partner\'s course portal.',
+    source_ref: `learnupon:${row.enrollment_id}`,
+  }));
+  const ins = await REST(env, 'staff_trainings?on_conflict=source_ref,topic_area', {
+    method: 'POST', headers: { 'Prefer': 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify(entries),
+  });
+  if (!ins.ok) {
+    console.error('staff_trainings insert failed', ins.status, await ins.text().catch(() => ''));
+    return { error: 'training_write_failed' };
+  }
+  const hours = entries.reduce((n, e) => n + e.hours, 0);
+  return { status: 'recorded', note: `${hours} h on ${date}` };
 }
 
 async function insertRows(env, rows) {
@@ -248,9 +360,20 @@ export default {
     const rows = v.events.filter(Boolean).map((e) => toRow(e, { version: v.version, type: v.type, deliveryId }));
     if (!rows.length) return json({ ok: true, stored: 0 });
 
+    // Completions first, so the log row can say what happened. A failed
+    // training write is 500 and LearnUpon retries; source_ref makes the retry
+    // safe, and the log row is not written until the outcome is known.
+    for (const row of rows) {
+      if (!isCourseCompletion(row)) continue;
+      const t = await recordTraining(env, row);
+      if (t.error) return json({ error: t.error }, 500);
+      row.training_status = t.status;
+      row.training_note = t.note;
+    }
+
     // 500 on a failed write, so LearnUpon retries rather than the completion
     // vanishing; the dedupe key makes the retry safe.
     if (!(await insertRows(env, rows))) return json({ error: 'store_failed' }, 500);
-    return json({ ok: true, stored: rows.length });
+    return json({ ok: true, stored: rows.length, training: rows.filter(isCourseCompletion).map(r => r.training_status) });
   },
 };
