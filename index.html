@@ -4223,6 +4223,8 @@ async function initFacility(){
   mountTelloDock();
   maybeIntroNav();
   maybeOpenTelloGuide();
+  // After staff has loaded, so the announcement can name the person.
+  setTimeout(telloPartnerNews,2500);
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
   }else if(t22Plan==='trial'&&!t22CoveredByFacility){
@@ -8260,6 +8262,66 @@ function maybeOpenTelloGuide(){
   // Long enough for staff and documents to load, so the ticks are right.
   setTimeout(attempt,1800);
 }
+
+// ── Tello says who just finished a partner course (2026-10-06, the owner:
+// "Tello should mention who just finished the training") ─────────────────────
+// The title22-learnupon Worker logs a finished partner course as staff_trainings
+// rows with source_ref 'learnupon:<enrollment>'. When a new one appears for
+// this home, Tello adds a line to the dock naming the staff member, the course
+// and the hours, and opens the dock if nothing else is on screen. Written in the
+// page from the rows themselves: no AI call. Each completion is announced once
+// per browser (the seen list is kept per home). Checked when the home opens and
+// whenever this tab comes back into view, which is what happens after finishing
+// a course in the partner portal's own tab.
+let telloPartnerNewsAt=0;
+function telloPartnerSeenKey(){return 'title22_tello_partner_seen_'+(currentFacility&&currentFacility.id);}
+async function telloPartnerNews(){
+  if(demoMode||!currentFacility||!currentUser||!document.getElementById('tello-dock'))return;
+  if(Date.now()-telloPartnerNewsAt<15000)return;
+  telloPartnerNewsAt=Date.now();
+  const fid=currentFacility.id;
+  const since=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+  let rows;
+  try{
+    const{data,error}=await sb.from('staff_trainings').select('staff_id,topic,hours,training_date,source_ref')
+      .eq('facility_id',fid).like('source_ref','learnupon:%').gte('training_date',since);
+    if(error)return; // source_ref not there yet (migration not run): nothing to say
+    rows=data||[];
+  }catch(e){return;}
+  if(!currentFacility||currentFacility.id!==fid||!rows.length)return;
+  let seen=[];
+  try{seen=JSON.parse(localStorage.getItem(telloPartnerSeenKey())||'[]');if(!Array.isArray(seen))seen=[];}catch(e){seen=[];}
+  // One course can be several rows (one per topic); one line per completion.
+  const byRef={};
+  rows.forEach(r=>{
+    if(seen.includes(r.source_ref))return;
+    const c=byRef[r.source_ref]||(byRef[r.source_ref]={staff_id:r.staff_id,topic:r.topic,date:r.training_date,hours:0});
+    c.hours+=Number(r.hours)||0;
+  });
+  const fresh=Object.keys(byRef);
+  if(!fresh.length)return;
+  const fmtDate=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});}catch(e){return d;}};
+  for(const ref of fresh){
+    const c=byRef[ref];
+    let st=staffList.find(x=>x.id===c.staff_id);
+    if(!st){try{const{data}=await sb.from('staff').select('*').eq('id',c.staff_id).maybeSingle();st=data;}catch(e){}}
+    const who=st?(st.name||st.full_name||'A staff member'):'A staff member';
+    const h=Math.round(c.hours*100)/100;
+    telloDockMessages.push({role:'assistant',content:
+      `**${who}** just finished **${c.topic||'a course'}** on the partner course portal. I added ${h} hour${h===1?'':'s'} to their training, dated ${fmtDate(c.date)}. You can see it under Training.`});
+  }
+  try{localStorage.setItem(telloPartnerSeenKey(),JSON.stringify(seen.concat(fresh).slice(-200)));}catch(e){}
+  writeTelloDockHistory();
+  track('tello_partner_news',{count:fresh.length});
+  const panel=document.getElementById('tello-dock');
+  const busy=document.querySelector('.modal-overlay.open')||tourIdx>=0;
+  if(panel&&!panel.classList.contains('open')&&!busy)toggleTelloDock();
+  else renderTelloDock();
+  if(document.getElementById('tab-training')?.style.display!=='none')loadTrainings();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')telloPartnerNews();
+});
 
 function renderTelloDock(){
   const box=document.getElementById('td-msgs');if(!box)return;

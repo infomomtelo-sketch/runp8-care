@@ -1713,6 +1713,13 @@ Owner-only while it is tested (the Partners tab card).
   no_staff_link / no_course_hours / not_completed. A failed training write is
   500 so LearnUpon retries; `source_ref = learnupon:<enrollment id>` keeps a
   retry from doubling the hours.
+- **Tello says who finished (2026-10-06, the owner's ask).** `telloPartnerNews`
+  in index.html reads this home's `staff_trainings` rows with a `learnupon:`
+  source_ref from the last 14 days and, for each completion not yet announced
+  in this browser (`title22_tello_partner_seen_<facility>`), adds a dock line:
+  who, which course, how many hours, under Training. It opens the dock unless a
+  form or the tour is open. Runs 2.5 s after the home opens (staff loaded) and
+  whenever the tab comes back into view. Written in the page, no AI call.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.
