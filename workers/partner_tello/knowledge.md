@@ -225,13 +225,22 @@ dosage advice and never states a licensing requirement as fact.
 - Lessons: a trainer can write lessons in the app or load a starter set and
   edit it.
 
-## Courses inside Title22 (checked 2026-10-01)
+## Courses inside Title22 (checked 2026-10-06: index.html Training tab, workers/title22-learnupon)
 
 - SCORM course integration is NOT built. Title22 cannot run or import a SCORM
   package today. Say so plainly and make no promise about when.
-- What works today: a completed course's hours are logged on the Training tab
-  (with topic, delivery and a certificate attached), and they count toward the
-  requirements above.
+- What works today for every home: a completed course's hours are logged on
+  the Training tab (with topic, delivery and a certificate attached), and they
+  count toward the requirements above.
+- Being tested with one training partner, not open to homes yet, no date:
+  courses hosted on the partner's own course portal. The administrator texts a
+  staff member a personal training link; the staff member opens it on their
+  own phone with no password and takes the course on the partner's portal.
+  When they finish, Title22 adds the hours to that person's training record by
+  itself, using the hours the partner gave for that course. The Training tab
+  opens with "What each person still needs" and, under each person, the
+  partner courses that cover their gaps. Never name the partner, and never say
+  when it will open; pass that question to the Title22 team.
 
 ## Security, as published (checked 2026-10-01: site /security/)
 

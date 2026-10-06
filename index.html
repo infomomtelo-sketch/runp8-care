@@ -7116,9 +7116,16 @@ async function buildFacilityContext(opts){
     // empty, for the reason above.
     const facility_type=facType==='arf'?'ARF (Adult Residential Facility, adults 18 to 59; 22 CCR §80000 and §85000)':(facType==='cbrc'?'CBRC':'RCFE (Residential Care Facility for the Elderly; 22 CCR §87100)');
     const training_rules=t22TrainingRulesForTello(facType);
+    // What the online courses can do for THIS person, so Tello describes the
+    // buttons they actually have and never one they cannot see.
+    const links=canSendTrainingLink();
+    if(links&&!trainingPartnerCourses.length)await loadPartnerCourses();
+    const online_courses=links
+      ?{training_links:true,courses:trainingPartnerCourses.map(c=>({course:c.title,hours:Number(c.credit_hours),topics:c.topic_hours||{}}))}
+      :{training_links:false};
     const payload=withPhi
-      ?{today,facility:currentFacility?.name,facility_type,residents,staff,compliance_tasks,training_rules,recent_incidents,recent_mar,document_guidance,forms_library}
-      :{today,facility:currentFacility?.name,facility_type,staff,compliance_tasks,training_rules,recent_incidents,document_guidance,forms_library};
+      ?{today,facility:currentFacility?.name,facility_type,residents,staff,compliance_tasks,training_rules,online_courses,recent_incidents,recent_mar,document_guidance,forms_library}
+      :{today,facility:currentFacility?.name,facility_type,staff,compliance_tasks,training_rules,online_courses,recent_incidents,document_guidance,forms_library};
     return{json:JSON.stringify(payload,null,2)};
   }catch(e){return{failed:['your facility data ('+((e&&e.message)||e)+')']};}
 }
@@ -7788,6 +7795,14 @@ Three things that hold whatever the question is:
 2. When they ask how to get a missing document on file, answer from document_guidance in the facility data — that is written and checked by the people who build Title22, so you can give it as it stands. It says what each document is and who issues it. It does not say how often anything is due, how long it stays valid, or what an inspector will accept, and you must not extend it into any of those. If a document has no entry there, say you do not have guidance for that one rather than improvising a procedure.
 
 3. When they ask about a form ("how do I use LIC 501?"), answer from forms_library in the facility data: what it is, who fills it in, when, and where the finished copy goes. Blank forms only: never offer to fill one in, and never put anyone's details on one. If printable_now is false, say its link is still being checked and point them to the CDSS forms page or their licensing office; do not give a web address. To print, they can type "print LIC" and the number, or use the Forms tab.
+
+4. Training and online courses. Logging by hand: account menu, Training, "Log training": pick the person, type the course, choose the topic area, hours and date; for hands-on, tick "Hands-on training" and type the supervisor who watched; then "Save training". The top of the Training tab, "What each person still needs", lists each person's gaps by topic.
+   If online_courses.training_links is true, this account can also send online courses:
+   - On the Training tab, each person has a "Courses to finish" box with the online courses that fit what they still need, and a "Send <name> a training link" button. The same "Training link" button is on each staff card on the Staff tab.
+   - The link opens on the staff member's own phone, wherever they are. No password and no email needed. They take the course there.
+   - When they finish, the hours are added to their training record by themselves, with the course name, and I'll mention who finished. Only hours from courses listed in online_courses.courses are counted, at the hours shown there.
+   - A new link for the same person switches the old one off; a link works for 30 days. If a link was shared by mistake, make a new one.
+   If online_courses.training_links is false, online courses are not switched on for this account yet: say so plainly, and that hours can be logged by hand meanwhile. Never describe buttons they do not have, and never name the course provider.
 `;
 
 // App Tello's Cabinet on the Ask Tello screen. Slides in from the right.
@@ -10343,9 +10358,9 @@ function trainingCoursesRow(s,need){
     ?`<ul style="margin:6px 0 0 18px;padding:0;font-size:12px">${fits.map(c=>`<li>${esc(c.title)} · ${esc(c.credit_hours)} hr${c.topic_hours&&Object.keys(c.topic_hours).length?' ('+Object.entries(c.topic_hours).filter(([,h])=>Number(h)>0).map(([k,h])=>esc((T22T.TOPICS.find(t=>t.key===k)||{label:k}).label)+' '+esc(h)).join(', ')+')':''}</li>`).join('')}</ul>`
     :`<div style="font-size:12px;color:var(--text2);margin-top:4px">${need.any||need.dementia||need.postural_hospice?'No partner courses are listed yet. They will show here as the training partner adds them.':'Nothing left to finish right now.'}</div>`;
   return `<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--teal);border-radius:var(--radius);background:var(--teal-light)">
-    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong style="font-size:13px">Courses to finish</strong>
-    <button type="button" class="btn btn-primary" style="font-size:12px;padding:4px 10px" onclick="openStaffTrainingLink('${esc(s.id)}')">Send ${name} a training link</button></div>
+    <strong style="font-size:13px">Courses to finish</strong>
     ${list}
+    <button type="button" class="btn btn-primary" style="font-size:12px;padding:6px 12px;margin-top:8px" onclick="openStaffTrainingLink('${esc(s.id)}')">Send ${name} a training link</button>
     <div style="font-size:11px;color:var(--text2);margin-top:6px">${name} opens the link on their own phone and takes the courses there. Finished courses are added here by themselves.</div>
   </div>`;
 }
