@@ -13,6 +13,7 @@
 //
 // Routes:
 //   POST /api/learnupon/webhook   the address given to the partner for its portal
+//   POST /api/learnupon/sso       signed sign-on link for the signed-in Title22 user
 //   GET  /health                  yes/no for each secret, never a value
 //
 // LearnUpon has two webhook formats and the portal decides which it sends:
@@ -39,8 +40,75 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+function json(data, status = 200, extra = {}) {
+  return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...extra } });
+}
+
+// Only the app may ask for a sign-on link from a browser. The webhook needs no
+// CORS: LearnUpon posts server to server.
+const SSO_ORIGINS = ['https://title22.app', 'https://www.title22.app'];
+
+function ssoCors(request) {
+  const origin = request.headers.get('origin');
+  if (!origin || !SSO_ORIGINS.includes(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin',
+  };
+}
+
+// LearnUpon SQSSO ("signed query string" sign-on). The partner portal's
+// Settings -> Integrations -> SQSSO page sets the format, and these are its
+// values: the link is <portal>/sqsso?Email=<email>&TS=<unix seconds>&SSOToken=<t>
+// where t = hex SHA-256 of "USER=<email>&TS=<ts>&KEY=<secret>". Built here, on
+// the server, because the secret must never reach a browser.
+export function sqssoUrl(portal, email, ts, secret) {
+  const token = createHash('sha256').update(`USER=${email}&TS=${ts}&KEY=${secret}`).digest('hex');
+  const base = String(portal).replace(/\/+$/, '');
+  return `${base}/sqsso?Email=${encodeURIComponent(email)}&TS=${ts}&SSOToken=${token}`;
+}
+
+async function signedInUser(request, env) {
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!token) return null;
+  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+    headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + token },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+// Test phase: only the app owner (profiles.title22_is_partner_admin) may sign
+// on. Anyone else would be created as a learner on the partner's portal the
+// moment they tapped, which nobody has agreed to yet.
+async function isPartnerAdmin(userId, env) {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=title22_is_partner_admin`,
+    { headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + env.SUPABASE_SERVICE_KEY } }
+  );
+  if (!res.ok) return false;
+  const rows = await res.json();
+  return !!(rows[0] && rows[0].title22_is_partner_admin);
+}
+
+async function handleSso(request, env) {
+  const cors = ssoCors(request);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, cors);
+  if (!env.LEARNUPON_SQSSO_SECRET || !env.LEARNUPON_PORTAL_URL || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) {
+    return json({ error: 'not_configured' }, 503, cors);
+  }
+  const user = await signedInUser(request, env);
+  if (!user || !user.id || !user.email) return json({ error: 'not_signed_in' }, 401, cors);
+  if (!(await isPartnerAdmin(user.id, env))) return json({ error: 'not_allowed' }, 403, cors);
+
+  const email = String(user.email).trim().toLowerCase();
+  const ts = Math.floor(Date.now() / 1000);
+  const url = sqssoUrl(env.LEARNUPON_PORTAL_URL, email, ts, env.LEARNUPON_SQSSO_SECRET);
+  return json({ url, email }, 200, { ...cors, 'Cache-Control': 'no-store' });
 }
 
 function safeEqualHex(a, b) {
@@ -151,8 +219,15 @@ export default {
           SUPABASE_SERVICE_KEY: !!env.SUPABASE_SERVICE_KEY,
         },
         accepts: ['v1', 'v2'],
+        // Sign-on is separate: the webhook works without it.
+        sso: {
+          LEARNUPON_SQSSO_SECRET: !!env.LEARNUPON_SQSSO_SECRET,
+          LEARNUPON_PORTAL_URL: !!env.LEARNUPON_PORTAL_URL,
+        },
       });
     }
+
+    if (url.pathname === '/api/learnupon/sso') return handleSso(request, env);
 
     if (url.pathname !== '/api/learnupon/webhook') return json({ error: 'not_found' }, 404);
     if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);

@@ -1,7 +1,8 @@
 // node workers/title22-learnupon/test.mjs
 // Runs the real Worker against a stubbed Supabase: no network, no secret.
 // Payloads are LearnUpon's documented examples, with invented learners.
-import worker, { signV1, signV2, toRow } from './index.js';
+import { createHash } from 'node:crypto';
+import worker, { signV1, signV2, toRow, sqssoUrl } from './index.js';
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
@@ -10,8 +11,17 @@ const SECRET = 'test-secret';
 const env = { LEARNUPON_WEBHOOK_SECRET: SECRET, SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'service' };
 
 let inserts, insertStatus = 201;
+// Sign-on stubs: token 'owner' is the partner admin, 'member' is not.
+const USERS = { owner: { id: 'u-owner', email: 'Owner@Title22.example' }, member: { id: 'u-member', email: 'member@title22.example' } };
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
+  if (url === 'https://db.example/auth/v1/user') {
+    const u = USERS[(init.headers.Authorization || '').replace('Bearer ', '')];
+    return u ? new Response(JSON.stringify(u), { status: 200 }) : new Response('{}', { status: 401 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/profiles')) {
+    return new Response(JSON.stringify([{ title22_is_partner_admin: url.includes('u-owner') }]), { status: 200 });
+  }
   if (url.startsWith('https://db.example/rest/v1/learnupon_events')) {
     inserts.push({ url, init, rows: JSON.parse(init.body) });
     return new Response('', { status: insertStatus });
@@ -118,6 +128,42 @@ const v2Headers = (body, secret = SECRET) => ({
 {
   const row = toRow({}, { version: 2, type: null, deliveryId: null });
   ok(row.enrollment_id === null && row.learner_email === null && row.credit_hours === null, 'sparse event -> nulls, no throw');
+}
+
+// Sign-on (SQSSO).
+{
+  const SSO = { ...env, LEARNUPON_SQSSO_SECRET: 'sso-secret', LEARNUPON_PORTAL_URL: 'https://portal.example/' };
+  const origin = { Origin: 'https://title22.app' };
+
+  // The token is SHA-256 of the portal's documented message format.
+  const u = new URL(sqssoUrl('https://portal.example', 'jondoe@examplelms.com', 1791308100, 'k'));
+  const want = createHash('sha256').update('USER=jondoe@examplelms.com&TS=1791308100&KEY=k').digest('hex');
+  ok(u.pathname === '/sqsso' && u.searchParams.get('Email') === 'jondoe@examplelms.com'
+    && u.searchParams.get('TS') === '1791308100' && u.searchParams.get('SSOToken') === want, 'sqssoUrl matches the portal format');
+
+  let r = await call('/api/learnupon/sso', { headers: { ...origin, Authorization: 'Bearer owner' }, e: SSO });
+  const link = r.data.url ? new URL(r.data.url) : null;
+  ok(r.status === 200 && link && link.origin === 'https://portal.example' && link.pathname === '/sqsso', 'owner gets a link on the portal');
+  ok(link && link.searchParams.get('Email') === 'owner@title22.example', 'email is lowercased');
+  const ts = link && Number(link.searchParams.get('TS'));
+  ok(ts && Math.abs(ts - Date.now() / 1000) < 5, 'timestamp is now, in seconds');
+  ok(link && link.searchParams.get('SSOToken') === createHash('sha256').update(`USER=owner@title22.example&TS=${ts}&KEY=sso-secret`).digest('hex'), 'token signs email, time and key');
+  ok(!JSON.stringify(r.data).includes('sso-secret'), 'response never contains the secret');
+
+  r = await call('/api/learnupon/sso', { headers: { ...origin, Authorization: 'Bearer member' }, e: SSO });
+  ok(r.status === 403 && !r.data.url, 'non-owner refused during the test phase');
+  r = await call('/api/learnupon/sso', { headers: origin, e: SSO });
+  ok(r.status === 401 && !r.data.url, 'no sign-in -> 401');
+  r = await call('/api/learnupon/sso', { headers: { ...origin, Authorization: 'Bearer owner' } });
+  ok(r.status === 503 && !r.data.url, 'missing sign-on secret -> 503');
+
+  const pre = await worker.fetch(new Request('https://w.example/api/learnupon/sso', { method: 'OPTIONS', headers: origin }), SSO);
+  ok(pre.status === 204 && pre.headers.get('access-control-allow-origin') === 'https://title22.app', 'preflight allows the app');
+  const evil = await worker.fetch(new Request('https://w.example/api/learnupon/sso', { method: 'OPTIONS', headers: { Origin: 'https://evil.example' } }), SSO);
+  ok(!evil.headers.get('access-control-allow-origin'), 'preflight refuses other sites');
+
+  const h = await call('/health', { method: 'GET' });
+  ok(h.data.status === 'ok' && h.data.sso.LEARNUPON_SQSSO_SECRET === false, 'webhook health stays ok without sign-on; sso reported separately');
 }
 
 insertStatus = 201;
