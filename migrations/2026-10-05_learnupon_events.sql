@@ -3,8 +3,9 @@
 -- Written only by the title22-learnupon Worker (service role). One row per
 -- webhook event from the partner's LearnUpon SANDBOX portal: test learners only, no
 -- resident information, ever. This is a log to see what LearnUpon sends; it is
--- not training hours. Nothing in the app reads it, and nothing turns a row
--- into staff_trainings yet.
+-- not training hours. Nothing in the app reads it. Since
+-- 2026-10-06_learnupon_training_hours.sql the Worker also turns a course
+-- completion into staff_trainings rows, and says on each row whether it did.
 --
 -- RLS on with no policies: the browser cannot read or write it. Safe to run
 -- twice. When testing ends: `drop table public.learnupon_events;`

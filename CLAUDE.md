@@ -1690,3 +1690,27 @@ webhook section above. Do NOT create that table to "fix" this: it would be a
 third store of who has paid, alongside profiles.title22_* and
 public.subscriptions, and those two already disagree with each other often
 enough.
+
+## Partner course completions become training hours (2026-10-06)
+
+`workers/title22-learnupon` turns a LearnUpon `course_completion` into
+`staff_trainings` rows, on `migrations/2026-10-06_learnupon_training_hours.sql`.
+Owner-only while it is tested (the Partners tab card).
+
+- **Who:** the owner picks a staff member on the card before "Open partner
+  courses"; the Worker writes `learnupon_learner_links` (learner email ->
+  staff, facility) after checking the staff member is in a home the owner
+  owns. The latest link made before the completion wins.
+- **How many hours:** ONLY from `title22_course_catalog`, matched on
+  `external_ref` = LearnUpon course id, split by `courseToEntries` (the Worker's
+  copy is tested against `training-rules.js`). Never from the payload's credits.
+  A course with no catalog row logs no hours. Real courses get their hours from
+  the partner; do not invent them. The one catalog row the migration adds is
+  the sandbox test course, 1 h, inactive, labelled as a test.
+- Every completion's log row says what happened: `training_status` recorded /
+  no_staff_link / no_course_hours / not_completed. A failed training write is
+  500 so LearnUpon retries; `source_ref = learnupon:<enrollment id>` keeps a
+  retry from doubling the hours.
+- How real staff (not the owner's own account) get a LearnUpon identity is NOT
+  decided. Staff records have no email. Decide with the partner before opening
+  this past the owner.
