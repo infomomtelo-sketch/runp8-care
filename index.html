@@ -1154,11 +1154,11 @@
         <div id="forms-body"></div>
       </div>
       <div id="tab-launch" style="display:none">
-        <div class="page-header"><h1>Start Your Home</h1><span class="badge badge-teal">Simulan ang Bahay</span></div>
+        <div class="page-header"><h1>Start Your Home</h1><span class="badge badge-teal" id="lh-badge">Empiece su hogar</span></div>
         <div class="lh-note">
           <strong>This is the usual order of things, in plain words — it is not legal advice, and it is not a statement of what the Department requires.</strong>
           Dates, fees and what an inspector will accept change, and they are your licensing analyst's to give you. Use this to keep track of where you are.
-          <div style="margin-top:8px"><em>Ito ay gabay lamang. Ang inyong licensing analyst ang masusunod.</em></div>
+          <div style="margin-top:8px" id="lh-guide-line"><em>Esto es solo una guía. Lo que diga su analista de licencias es lo que cuenta.</em></div>
         </div>
         <div class="lh-note" style="background:var(--amber-light);border-color:#e6c170;color:var(--text)">
           <strong>Photograph the house, the paperwork in your own name, and your own certificates.</strong>
@@ -8618,8 +8618,9 @@ const LAUNCH_LANGS=[
   {key:'es', label:'Español'},
   {key:'pa', label:'ਪੰਜਾਬੀ'},
 ];
-// Tagalog is the fallback rather than English, so an existing user who has
-// never touched the picker sees exactly what they saw before this change.
+// Spanish is the fallback when the browser names none of the four (the
+// owner's call, 2026-10-06; it was Tagalog until then). A choice made on the
+// picker is kept per browser and always wins.
 function launchDefaultLang(){
   try{
     const saved=localStorage.getItem('title22_launch_lang');
@@ -8629,7 +8630,7 @@ function launchDefaultLang(){
     if(nav.startsWith('pa'))return 'pa';
     if(nav.startsWith('tl')||nav.startsWith('fil'))return 'tl';
   }catch(e){/* private mode: fall through */}
-  return 'tl';
+  return 'es';
 }
 let launchLang=launchDefaultLang();
 function setLaunchLang(k){
@@ -8640,12 +8641,30 @@ function setLaunchLang(k){
   track('launch_lang',{lang:k});
 }
 // The translated line for a card or a step. Returns '' for English, and falls
-// back to Tagalog rather than to nothing if a translation is ever missing —
+// back to Spanish, then Tagalog, rather than to nothing if one is missing —
 // a missing line should be a visible gap in one language, not an empty tab.
+// The page's own fixed lines (the badge, the guide line, the buttons), which
+// must follow the picker exactly like the cards and steps do. Until
+// 2026-10-06 these were written in Tagalog in the markup and stayed Tagalog
+// whatever was picked.
+const LAUNCH_UI={
+  badge:{tl:'Simulan ang Bahay',es:'Empiece su hogar',pa:'ਆਪਣਾ ਘਰ ਸ਼ੁਰੂ ਕਰੋ'},
+  guide:{tl:'Ito ay gabay lamang. Ang inyong licensing analyst ang masusunod.',
+         es:'Esto es solo una guía. Lo que diga su analista de licencias es lo que cuenta.',
+         pa:'ਇਹ ਸਿਰਫ਼ ਇੱਕ ਗਾਈਡ ਹੈ। ਤੁਹਾਡੇ ਲਾਇਸੰਸਿੰਗ ਐਨਾਲਿਸਟ ਦੀ ਗੱਲ ਹੀ ਮੰਨੀ ਜਾਵੇਗੀ।'},
+  done:{tl:'Tapos na',es:'Hecho',pa:'ਹੋ ਗਿਆ'},
+  markDone:{tl:'Tapos na',es:'Marcar como hecho',pa:'ਹੋ ਗਿਆ'},
+  photoSaved:{tl:'May larawan na',es:'Foto guardada',pa:'ਫੋਟੋ ਸੇਵ ਹੋ ਗਈ'},
+};
+// English first, then the picked language after a dot; English only for 'en'.
+function launchUi(key,en){
+  const t=launchTr({tr:LAUNCH_UI[key]});
+  return t?en+' · '+t:en;
+}
 function launchTr(o){
   if(launchLang==='en')return '';
   const tr=o&&o.tr; if(!tr)return '';
-  return tr[launchLang]||tr.tl||'';
+  return tr[launchLang]||tr.es||tr.tl||'';
 }
 
 function launchAllSteps(){return LAUNCH_CARDS.reduce((a,c)=>a.concat(c.steps),[]);}
@@ -8729,6 +8748,10 @@ function renderLaunchHub(errMsg){
     pa:all.length+' ਵਿੱਚੋਂ '+doneCount+' ਹੋ ਗਏ',
   };
   if(label)label.textContent=done.en+(launchLang!=='en'?'  ·  '+(done[launchLang]||done.tl):'');
+  const badge=document.getElementById('lh-badge');
+  if(badge){const t=launchTr({tr:LAUNCH_UI.badge});badge.textContent=t;badge.style.display=t?'':'none';}
+  const guide=document.getElementById('lh-guide-line');
+  if(guide){const t=launchTr({tr:LAUNCH_UI.guide});guide.innerHTML=t?'<em>'+esc(t)+'</em>':'';guide.style.display=t?'':'none';}
   const langBar=document.getElementById('lh-lang');
   if(langBar)langBar.innerHTML=LAUNCH_LANGS.map(l=>
     `<button class="lh-lang-btn${l.key===launchLang?' on':''}" onclick="setLaunchLang('${l.key}')">${esc(l.label)}</button>`
@@ -8761,7 +8784,7 @@ function renderLaunchHub(errMsg){
             <div class="lh-actions">
               <button class="lh-btn${stt.done?' is-done':''}" ${editable?'':'disabled'} onclick="setLaunchDone('${st.key}',${stt.done?'false':'true'})">
                 <svg viewBox="0 0 24 24">${stt.done?'<polyline points="20 6 9 17 4 12"/>':'<circle cx="12" cy="12" r="9"/>'}</svg>
-                ${stt.done?'Done · Tapos na':'Mark done · Tapos na'}
+                ${esc(stt.done?launchUi('done','Done'):launchUi('markDone','Mark done'))}
               </button>
               <button class="lh-btn" ${editable?'':'disabled'} onclick="pickLaunchPhoto('${st.key}')">
                 <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -8771,7 +8794,7 @@ function renderLaunchHub(errMsg){
             ${stt.photo_path?`
             <div class="lh-photo">
               <img id="lh-img-${st.key}" alt="Photo for: ${esc(st.title)}"/>
-              <span class="lh-photo-name">Photo saved · May larawan na</span>
+              <span class="lh-photo-name">${esc(launchUi('photoSaved','Photo saved'))}</span>
               <button class="btn btn-ghost" ${editable?'':'disabled'} style="color:var(--red)" onclick="removeLaunchPhoto('${st.key}')">Remove</button>
             </div>`:''}
           </div>`;

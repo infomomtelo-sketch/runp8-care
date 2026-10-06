@@ -995,12 +995,14 @@ Three rules it is built on, and none is decoration:
   heading; a picker (`LAUNCH_LANGS`, `setLaunchLang`, `launchTr`) chooses which
   translation sits under it — Tagalog, Español, ਪੰਜਾਬੀ, or English only for
   none. Stored per browser in `title22_launch_lang`, defaulted from
-  `navigator.language`, falling back to **Tagalog** so a user who never touches
-  the picker sees exactly what shipped before. Every card, every step and the
-  progress counter follow it. Stacking all three under twelve steps would
+  `navigator.language`, falling back to **Spanish** (the owner's call,
+  2026-10-06; it was Tagalog before). Every card, every step, the
+  progress counter, the header badge, the guide line and the button labels
+  follow it (`LAUNCH_UI`; until 2026-10-06 those last three were fixed
+  Tagalog in the markup and ignored the picker). Stacking all three under twelve steps would
   triple the reading on a screen whose whole design is one decision per
-  screenful — hence one line, never three. `launchTr` falls back to Tagalog if
-  a translation is ever missing, so a gap shows in one language rather than
+  screenful — hence one line, never three. `launchTr` falls back to Spanish, then
+  Tagalog, if a translation is ever missing, so a gap shows in one language rather than
   blanking the line.
 
   **The Spanish and Punjabi are machine-produced and have not been read by a
