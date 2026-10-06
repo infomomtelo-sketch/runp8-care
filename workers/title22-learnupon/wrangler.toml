@@ -31,5 +31,10 @@ compatibility_flags = ["nodejs_compat"]
 # Needs migrations/2026-10-05_learnupon_events.sql run first.
 
 # Keep this table last.
+# STAFF_LINKS_OPEN: "false" = only the app owner can make staff training links
+# (test phase). "true" = every home's owner and administrators can. Turn on
+# only once the training partner agrees, together with the app's
+# T22_STAFF_TRAINING_LINKS_OPEN, then run the deploy workflow.
 [vars]
 SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
+STAFF_LINKS_OPEN = "false"

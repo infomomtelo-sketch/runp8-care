@@ -3,7 +3,7 @@
 // Payloads are LearnUpon's documented examples, with invented learners.
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import worker, { signV1, signV2, toRow, sqssoUrl, courseToEntries, pacificDate } from './index.js';
+import worker, { signV1, signV2, toRow, sqssoUrl, courseToEntries, pacificDate, staffLearnerEmail, splitName } from './index.js';
 const T22T = createRequire(import.meta.url)('../../training-rules.js');
 
 let fails = 0;
@@ -18,7 +18,8 @@ const OTHER_STAFF = '99999999-2222-3333-4444-555555555555';
 const db = {
   staff: { [STAFF]: 'fac-1', [OTHER_STAFF]: 'fac-2' },
   facilities: { 'fac-1': 'u-owner', 'fac-2': 'someone-else' },
-  links: [], catalog: [], trainings: [], trainingWrites: [], trainingStatus: 201,
+  members: [{ facility_id: 'fac-2', user_id: 'u-member', role: 'administrator' }],
+  links: [], catalog: [], trainings: [], trainingWrites: [], trainingStatus: 201, invites: [],
 };
 // Sign-on stubs: token 'owner' is the partner admin, 'member' is not.
 const USERS = { owner: { id: 'u-owner', email: 'Owner@Title22.example' }, member: { id: 'u-member', email: 'member@title22.example' } };
@@ -44,6 +45,20 @@ globalThis.fetch = async (url, init = {}) => {
   if (url.startsWith('https://db.example/rest/v1/facilities?')) {
     const owner = db.facilities[q.get('id').replace('eq.', '')];
     return new Response(JSON.stringify(owner && owner === q.get('user_id').replace('eq.', '') ? [{ id: 1 }] : []), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/facility_members?')) {
+    const hit = db.members.filter(m => m.facility_id === q.get('facility_id').replace('eq.', '')
+      && m.user_id === q.get('user_id').replace('eq.', '') && m.role === q.get('role').replace('eq.', ''));
+    return new Response(JSON.stringify(hit.map(() => ({ id: 1 }))), { status: 200 });
+  }
+  if (url.startsWith('https://db.example/rest/v1/learnupon_staff_invites')) {
+    if (init.method === 'POST') { db.invites.push({ use_count: 0, revoked_at: null, ...JSON.parse(init.body) }); return new Response('', { status: 201 }); }
+    const patch = init.method === 'PATCH' ? JSON.parse(init.body) : null;
+    const hits = db.invites.filter(i => (!q.get('token_hash') || i.token_hash === q.get('token_hash').replace('eq.', ''))
+      && (!q.get('staff_id') || i.staff_id === q.get('staff_id').replace('eq.', ''))
+      && (!q.get('revoked_at') || i.revoked_at === null));
+    if (patch) { hits.forEach(i => Object.assign(i, patch)); return new Response(null, { status: 204 }); }
+    return new Response(JSON.stringify(hits), { status: 200 });
   }
   if (url.startsWith('https://db.example/rest/v1/learnupon_learner_links')) {
     if (init.method === 'POST') {
@@ -289,6 +304,87 @@ const v2Headers = (body, secret = SECRET) => ({
   // The training date is the California day.
   ok(pacificDate('2026-10-07T00:30:00Z') === '2026-10-06', '5:30 pm in California on the 6th -> the 6th');
   ok(pacificDate('2026-10-06T16:56:59Z') === '2026-10-06', 'morning completion -> same day');
+}
+
+// A staff member trains from their own phone: the owner makes a link, the
+// staff member opens it, and their completions land on their record.
+{
+  const SSO = { ...env, LEARNUPON_SQSSO_SECRET: 'sso-secret', LEARNUPON_PORTAL_URL: 'https://portal.example' };
+  const origin = { Origin: 'https://title22.app', Authorization: 'Bearer owner' };
+  const go = (token) => worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), SSO);
+  db.links.length = 0;
+
+  ok(staffLearnerEmail(STAFF) === `staff-${STAFF}@learners.title22.app`, 'learner address names the staff record, no person');
+  ok(splitName(' Maria  de la Cruz ').first === 'Maria' && splitName('Maria de la Cruz').last === 'de la Cruz' && splitName(null).first === '', 'names split for the portal');
+
+  let r = await call('/api/learnupon/staff-link', { headers: { Origin: 'https://title22.app', Authorization: 'Bearer member' }, e: SSO, body: JSON.stringify({ staff_id: STAFF }) });
+  ok(r.status === 403 && !r.data.link && db.invites.length === 0, 'non-owner cannot make a staff link');
+  r = await call('/api/learnupon/staff-link', { headers: origin, e: SSO, body: JSON.stringify({ staff_id: OTHER_STAFF }) });
+  ok(r.status === 404 && db.invites.length === 0, 'link for another owner\'s staff -> 404');
+  r = await call('/api/learnupon/staff-link', { headers: origin, e: SSO, body: '{}' });
+  ok(r.status === 404 && db.invites.length === 0, 'no staff picked -> 404');
+
+  r = await call('/api/learnupon/staff-link', { headers: origin, e: SSO, body: JSON.stringify({ staff_id: STAFF }) });
+  const token1 = r.data.link && r.data.link.replace('https://title22.app/train/', '');
+  ok(r.status === 200 && /^https:\/\/title22\.app\/train\/[A-Za-z0-9_-]{32}$/.test(r.data.link), 'owner gets a title22.app/train link');
+  ok(db.invites.length === 1 && db.invites[0].token_hash === createHash('sha256').update(token1).digest('hex')
+    && !JSON.stringify(db.invites).includes(token1), 'only the token\'s hash is stored');
+  ok(db.links.length === 1 && db.links[0].learner_email === staffLearnerEmail(STAFF) && db.links[0].staff_id === STAFF, 'learner linked to the staff member at once');
+  const days = (new Date(r.data.expires_at) - Date.now()) / 86400e3;
+  ok(days > 29.9 && days <= 30, 'link lasts 30 days');
+
+  let g = await go(token1);
+  const dest = g.headers.get('location') ? new URL(g.headers.get('location')) : null;
+  const ts = dest && dest.searchParams.get('TS');
+  ok(g.status === 302 && dest && dest.origin === 'https://portal.example' && dest.searchParams.get('Email') === staffLearnerEmail(STAFF), 'opening the link signs on as the staff learner');
+  ok(dest && dest.searchParams.get('SSOToken') === createHash('sha256').update(`USER=${staffLearnerEmail(STAFF)}&TS=${ts}&KEY=sso-secret`).digest('hex'), 'staff sign-on is signed');
+  ok(g.headers.get('referrer-policy') === 'no-referrer' && db.invites[0].use_count === 1 && db.invites[0].last_used_at, 'use counted, no referrer');
+
+  // A second link switches the first off.
+  r = await call('/api/learnupon/staff-link', { headers: origin, e: SSO, body: JSON.stringify({ staff_id: STAFF }) });
+  const token2 = r.data.link.replace('https://title22.app/train/', '');
+  g = await go(token1);
+  ok(g.status === 404 && !g.headers.get('location'), 'old link stops working when a new one is made');
+  g = await go(token2);
+  ok(g.status === 302, 'new link works');
+
+  // Expired, unknown and malformed links show a plain page, never a sign-on.
+  db.invites.find(i => i.token_hash === createHash('sha256').update(token2).digest('hex')).expires_at = '2020-01-01T00:00:00Z';
+  g = await go(token2);
+  ok(g.status === 404 && /isn't active/.test(await g.text()), 'expired link -> not active page');
+  g = await go('A'.repeat(32));
+  ok(g.status === 404 && !g.headers.get('location'), 'unknown link -> 404');
+  g = await go('<script>');
+  ok(g.status === 404 && !g.headers.get('location'), 'malformed link -> 404');
+  g = await worker.fetch(new Request('https://w.example/t/' + 'B'.repeat(32), { method: 'GET' }), env);
+  ok(g.status === 503 && !g.headers.get('location'), 'sign-on not configured -> 503 page');
+
+
+  // Opened to customers: an administrator on a home's team sends their own
+  // staff's links, and still cannot reach another home's staff.
+  {
+    const OPEN = { ...SSO, STAFF_LINKS_OPEN: 'true' };
+    const member = { Origin: 'https://title22.app', Authorization: 'Bearer member' };
+    const before = db.invites.length;
+    let r2 = await call('/api/learnupon/staff-link', { headers: member, e: OPEN, body: JSON.stringify({ staff_id: OTHER_STAFF }) });
+    ok(r2.status === 200 && r2.data.link && db.invites.length === before + 1, 'switch on: a home\'s administrator makes their own staff link');
+    r2 = await call('/api/learnupon/staff-link', { headers: member, e: OPEN, body: JSON.stringify({ staff_id: STAFF }) });
+    ok(r2.status === 404 && db.invites.length === before + 1, 'switch on: still refused for another home\'s staff');
+    r2 = await call('/api/learnupon/staff-link', { headers: member, e: { ...SSO, STAFF_LINKS_OPEN: 'false' }, body: JSON.stringify({ staff_id: OTHER_STAFF }) });
+    ok(r2.status === 403, 'switch off: administrator refused');
+  }
+
+  // The staff learner's completion lands on that staff member.
+  const e = {
+    header: { source: 'LearnUpon', version: 1, signature: '', webhookId: 9, attempt: 1, webHookType: 'course_completion' },
+    user: { userId: 6, email: staffLearnerEmail(STAFF) },
+    enrollmentId: 4242, courseId: 2024, courseName: 'Eval', enrollmentStatus: 'completed', percentage: 100,
+    dateCompleted: new Date(Date.now() + 1000).toISOString(),
+  };
+  e.header.signature = signV1(e, SECRET);
+  r = await call('/api/learnupon/webhook', { body: JSON.stringify(e) });
+  const row = db.trainings.find(x => x.source_ref === 'learnupon:4242');
+  ok(r.status === 200 && row && row.staff_id === STAFF && row.facility_id === 'fac-1', 'staff learner completion -> hours on that staff member');
 }
 
 insertStatus = 201;

@@ -1154,11 +1154,11 @@
         <div id="forms-body"></div>
       </div>
       <div id="tab-launch" style="display:none">
-        <div class="page-header"><h1>Start Your Home</h1><span class="badge badge-teal">Simulan ang Bahay</span></div>
+        <div class="page-header"><h1>Start Your Home</h1><span class="badge badge-teal" id="lh-badge">Empiece su hogar</span></div>
         <div class="lh-note">
           <strong>This is the usual order of things, in plain words — it is not legal advice, and it is not a statement of what the Department requires.</strong>
           Dates, fees and what an inspector will accept change, and they are your licensing analyst's to give you. Use this to keep track of where you are.
-          <div style="margin-top:8px"><em>Ito ay gabay lamang. Ang inyong licensing analyst ang masusunod.</em></div>
+          <div style="margin-top:8px" id="lh-guide-line"><em>Esto es solo una guía. Lo que diga su analista de licencias es lo que cuenta.</em></div>
         </div>
         <div class="lh-note" style="background:var(--amber-light);border-color:#e6c170;color:var(--text)">
           <strong>Photograph the house, the paperwork in your own name, and your own certificates.</strong>
@@ -1297,6 +1297,12 @@
       <div id="tab-training" style="display:none">
         <div class="page-header"><h1>Staff training</h1></div>
         <div class="card">
+          <div class="card-title">What each person still needs</div>
+          <div class="t22-search"><input type="search" id="training-search" placeholder="Search by staff name (hours and history)" aria-label="Search training by staff name" autocomplete="off" oninput="t22SearchInput('training-search',renderTrainings)"/><span id="training-search-count" class="t22-search-count" aria-live="polite"></span></div>
+          <div id="training-rules-note" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
+          <div id="training-summary" style="display:grid;gap:14px;font-size:13px"></div>
+        </div>
+        <div class="card" id="training-log-card" style="margin-top:16px">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
           <div class="form-group"><label>Course or session</label><input type="text" id="tr-topic" autocomplete="off" placeholder="e.g., Understanding dementia, CPR review..."/></div>
@@ -1344,12 +1350,6 @@
           </div>
           <div class="error-msg" id="tr-error"></div>
           <button class="btn btn-primary" style="margin-top:10px" onclick="saveTraining()">Save training</button>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <div class="card-title">Hours by staff member</div>
-          <div class="t22-search"><input type="search" id="training-search" placeholder="Search by staff name (hours and history)" aria-label="Search training by staff name" autocomplete="off" oninput="t22SearchInput('training-search',renderTrainings)"/><span id="training-search-count" class="t22-search-count" aria-live="polite"></span></div>
-          <div id="training-rules-note" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
-          <div id="training-summary" style="display:grid;gap:14px;font-size:13px"></div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Training history</div>
@@ -1610,8 +1610,13 @@
           <label for="partner-sso-staff" style="font-size:12px;color:var(--text2)">Log completed courses as training for</label>
           <select id="partner-sso-staff" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;margin:4px 0 6px"></select>
           <div style="font-size:12px;color:var(--text2);margin-bottom:12px">A course finished on the portal is added to this person's training hours, if the course's hours are set up in Title22. Pick no one to only look around.</div>
-          <button class="btn btn-primary" onclick="openPartnerTraining()">Open partner courses</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="openPartnerTraining()">Open partner courses</button>
+            <button class="btn btn-outline" onclick="makeStaffTrainingLink()">Send training link</button>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:8px">Send training link: makes a link for the person picked above to open on their own phone, wherever they are. No password and no email needed. It works for 30 days, and making a new one switches the old one off.</div>
           <div id="partner-sso-msg" style="display:none;margin-top:10px;font-size:13px"></div>
+          <div id="partner-staff-link" style="display:none;margin-top:12px;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div>
         </div>
 
         <div class="card" style="margin-bottom:20px">
@@ -1755,6 +1760,78 @@ async function openPartnerTraining(){
     const who=staffId&&pick.selectedOptions[0]?pick.selectedOptions[0].textContent:'';
     show('Opened in a new tab as '+data.email+'.'+(who?' Courses you finish there will be logged for '+who+'.':''));
   }catch(e){if(win)win.close();show('Could not open the course portal. Try again.',true);}
+}
+const LEARNUPON_STAFF_LINK_WORKER = 'https://title22-learnupon.infomomtelo.workers.dev/api/learnupon/staff-link';
+// Staff training links go to every home's owner and administrators once the
+// training partner agrees to learners being created on its portal. Until then
+// only the app owner sees the button. The Worker enforces the same switch
+// (STAFF_LINKS_OPEN in its wrangler.toml); flip both together.
+const T22_STAFF_TRAINING_LINKS_OPEN = false;
+function canSendTrainingLink(){
+  return !demoMode && canEdit() && currentUserRole==='administrator' && (T22_STAFF_TRAINING_LINKS_OPEN || isPartnerAdmin);
+}
+// A link sent to one staff member, who opens it on their own phone, wherever
+// they are, and lands on the course portal as their own learner. The Worker
+// makes and stores it (only a hash); finished courses land on their training.
+// Renders into `out`; returns false with a message in `show` on failure.
+async function requestStaffTrainingLink(staffId,who,out,show){
+  show('Making the link…');
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session){show('Please sign in again.',true);return false;}
+    const res=await fetch(LEARNUPON_STAFF_LINK_WORKER,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({staff_id:staffId})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.link){
+      show({not_configured:'Training links are not switched on yet.',not_allowed:'Training links are not available for your account yet.',not_signed_in:'Please sign in again.',staff_not_found:'Only this home\'s administrator can send training links.',link_failed:'Could not make the link. Try again.'}[data.error]||'Could not make the link. Try again.',true);
+      return false;
+    }
+    show('');
+    const text='Hi '+who.split(' ')[0]+', here is your training link. Open it on your phone to start your courses. No password needed: '+data.link;
+    const until=new Date(data.expires_at).toLocaleDateString();
+    out.innerHTML='<div style="font-weight:600;margin-bottom:6px">Training link for '+esc(who)+'</div>'
+      +'<div style="word-break:break-all;font-family:monospace;font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">'+esc(data.link)+'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-primary btn-sm" data-act="copy">Copy</button>'
+      +(navigator.share?'<button class="btn btn-outline btn-sm" data-act="share">Share</button>':'')
+      +'<a class="btn btn-outline btn-sm" style="text-decoration:none" href="sms:?&body='+encodeURIComponent(text)+'">Text it</a>'
+      +'</div>'
+      +'<div style="margin-top:8px;font-size:12px;color:var(--text2)">Works until '+esc(until)+'. Courses '+esc(who)+' finishes are added to their training here. Only send it to them: anyone with the link can take courses as them. Making a new link switches this one off.</div>';
+    out.style.display='block';
+    const cp=out.querySelector('[data-act=copy]');
+    cp.onclick=()=>{navigator.clipboard.writeText(data.link).then(()=>{cp.textContent='Copied';setTimeout(()=>{cp.textContent='Copy';},1600);},()=>{cp.textContent='Press and hold the link to copy';});};
+    const sh=out.querySelector('[data-act=share]');
+    if(sh)sh.onclick=()=>navigator.share({title:'Your training link',text}).catch(()=>{});
+    track('staff_training_link');
+    return true;
+  }catch(e){show('Could not make the link. Try again.',true);return false;}
+}
+// Partners card: for the staff member picked there.
+async function makeStaffTrainingLink(){
+  const msg=document.getElementById('partner-sso-msg');
+  const out=document.getElementById('partner-staff-link');
+  const show=(t,bad)=>{if(msg){msg.style.display=t?'block':'none';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t||'';}};
+  if(out)out.style.display='none';
+  const pick=document.getElementById('partner-sso-staff');
+  const staffId=pick&&pick.value||null;
+  if(!staffId){show('Pick the staff member first, in "Log completed courses as training for".',true);return;}
+  await requestStaffTrainingLink(staffId,pick.selectedOptions[0]?pick.selectedOptions[0].textContent:'this staff member',out,show);
+}
+// Staff card: "Training link" opens a small window with the link for that person.
+function openStaffTrainingLink(staffId){
+  const s=(staffList||[]).find(x=>x.id===staffId);
+  const who=s&&(s.full_name||s.name)||'this staff member';
+  let m=document.getElementById('staff-link-modal');
+  if(!m){
+    m=document.createElement('div');m.id='staff-link-modal';m.className='modal-overlay';
+    m.innerHTML='<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-weight:600;font-size:16px">Send a training link</div><button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'staff-link-modal\').classList.remove(\'open\')">Close</button></div>'
+      +'<div id="slm-msg" style="font-size:13px;margin-bottom:8px"></div><div id="slm-out" style="display:none;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:13px"></div></div>';
+    m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+    document.body.appendChild(m);
+  }
+  const msg=m.querySelector('#slm-msg'),out=m.querySelector('#slm-out');
+  out.style.display='none';
+  m.classList.add('open');
+  requestStaffTrainingLink(staffId,who,out,(t,bad)=>{msg.style.display=t?'block':'none';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t||'';});
 }
 // The staff picker on that card: the open home's active staff, names only.
 function fillPartnerStaffPick(){
@@ -4223,6 +4300,8 @@ async function initFacility(){
   mountTelloDock();
   maybeIntroNav();
   maybeOpenTelloGuide();
+  // After staff has loaded, so the announcement can name the person.
+  setTimeout(telloPartnerNews,2500);
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
   }else if(t22Plan==='trial'&&!t22CoveredByFacility){
@@ -5531,6 +5610,7 @@ function renderStaff(){
       <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">${certHtml}</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffModal('${esc(s.id)}')">Edit</button>
+        ${canSendTrainingLink()&&s.active===true?`<button class="btn btn-outline" style="flex:1;font-size:12px;padding:6px" onclick="openStaffTrainingLink('${esc(s.id)}')">Training link</button>`:''}
         ${canDelete()?`<button class="btn btn-outline" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:var(--red-light)" onclick="deleteStaff('${esc(s.id)}','${esc(nameField.replace(/'/g,"\\'"))}')"><svg class="ic"><use href="#i-trash"/></svg></button>`:''}
       </div>
     </div>`;
@@ -8261,6 +8341,66 @@ function maybeOpenTelloGuide(){
   setTimeout(attempt,1800);
 }
 
+// ── Tello says who just finished a partner course (2026-10-06, the owner:
+// "Tello should mention who just finished the training") ─────────────────────
+// The title22-learnupon Worker logs a finished partner course as staff_trainings
+// rows with source_ref 'learnupon:<enrollment>'. When a new one appears for
+// this home, Tello adds a line to the dock naming the staff member, the course
+// and the hours, and opens the dock if nothing else is on screen. Written in the
+// page from the rows themselves: no AI call. Each completion is announced once
+// per browser (the seen list is kept per home). Checked when the home opens and
+// whenever this tab comes back into view, which is what happens after finishing
+// a course in the partner portal's own tab.
+let telloPartnerNewsAt=0;
+function telloPartnerSeenKey(){return 'title22_tello_partner_seen_'+(currentFacility&&currentFacility.id);}
+async function telloPartnerNews(){
+  if(demoMode||!currentFacility||!currentUser||!document.getElementById('tello-dock'))return;
+  if(Date.now()-telloPartnerNewsAt<15000)return;
+  telloPartnerNewsAt=Date.now();
+  const fid=currentFacility.id;
+  const since=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+  let rows;
+  try{
+    const{data,error}=await sb.from('staff_trainings').select('staff_id,topic,hours,training_date,source_ref')
+      .eq('facility_id',fid).like('source_ref','learnupon:%').gte('training_date',since);
+    if(error)return; // source_ref not there yet (migration not run): nothing to say
+    rows=data||[];
+  }catch(e){return;}
+  if(!currentFacility||currentFacility.id!==fid||!rows.length)return;
+  let seen=[];
+  try{seen=JSON.parse(localStorage.getItem(telloPartnerSeenKey())||'[]');if(!Array.isArray(seen))seen=[];}catch(e){seen=[];}
+  // One course can be several rows (one per topic); one line per completion.
+  const byRef={};
+  rows.forEach(r=>{
+    if(seen.includes(r.source_ref))return;
+    const c=byRef[r.source_ref]||(byRef[r.source_ref]={staff_id:r.staff_id,topic:r.topic,date:r.training_date,hours:0});
+    c.hours+=Number(r.hours)||0;
+  });
+  const fresh=Object.keys(byRef);
+  if(!fresh.length)return;
+  const fmtDate=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});}catch(e){return d;}};
+  for(const ref of fresh){
+    const c=byRef[ref];
+    let st=staffList.find(x=>x.id===c.staff_id);
+    if(!st){try{const{data}=await sb.from('staff').select('*').eq('id',c.staff_id).maybeSingle();st=data;}catch(e){}}
+    const who=st?(st.name||st.full_name||'A staff member'):'A staff member';
+    const h=Math.round(c.hours*100)/100;
+    telloDockMessages.push({role:'assistant',content:
+      `**${who}** just finished **${c.topic||'a course'}** on the partner course portal. I added ${h} hour${h===1?'':'s'} to their training, dated ${fmtDate(c.date)}. You can see it under Training.`});
+  }
+  try{localStorage.setItem(telloPartnerSeenKey(),JSON.stringify(seen.concat(fresh).slice(-200)));}catch(e){}
+  writeTelloDockHistory();
+  track('tello_partner_news',{count:fresh.length});
+  const panel=document.getElementById('tello-dock');
+  const busy=document.querySelector('.modal-overlay.open')||tourIdx>=0;
+  if(panel&&!panel.classList.contains('open')&&!busy)toggleTelloDock();
+  else renderTelloDock();
+  if(document.getElementById('tab-training')?.style.display!=='none')loadTrainings();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')telloPartnerNews();
+});
+
 function renderTelloDock(){
   const box=document.getElementById('td-msgs');if(!box)return;
   box.innerHTML='';
@@ -8618,8 +8758,9 @@ const LAUNCH_LANGS=[
   {key:'es', label:'Español'},
   {key:'pa', label:'ਪੰਜਾਬੀ'},
 ];
-// Tagalog is the fallback rather than English, so an existing user who has
-// never touched the picker sees exactly what they saw before this change.
+// Spanish is the fallback when the browser names none of the four (the
+// owner's call, 2026-10-06; it was Tagalog until then). A choice made on the
+// picker is kept per browser and always wins.
 function launchDefaultLang(){
   try{
     const saved=localStorage.getItem('title22_launch_lang');
@@ -8629,7 +8770,7 @@ function launchDefaultLang(){
     if(nav.startsWith('pa'))return 'pa';
     if(nav.startsWith('tl')||nav.startsWith('fil'))return 'tl';
   }catch(e){/* private mode: fall through */}
-  return 'tl';
+  return 'es';
 }
 let launchLang=launchDefaultLang();
 function setLaunchLang(k){
@@ -8640,12 +8781,30 @@ function setLaunchLang(k){
   track('launch_lang',{lang:k});
 }
 // The translated line for a card or a step. Returns '' for English, and falls
-// back to Tagalog rather than to nothing if a translation is ever missing —
+// back to Spanish, then Tagalog, rather than to nothing if one is missing —
 // a missing line should be a visible gap in one language, not an empty tab.
+// The page's own fixed lines (the badge, the guide line, the buttons), which
+// must follow the picker exactly like the cards and steps do. Until
+// 2026-10-06 these were written in Tagalog in the markup and stayed Tagalog
+// whatever was picked.
+const LAUNCH_UI={
+  badge:{tl:'Simulan ang Bahay',es:'Empiece su hogar',pa:'ਆਪਣਾ ਘਰ ਸ਼ੁਰੂ ਕਰੋ'},
+  guide:{tl:'Ito ay gabay lamang. Ang inyong licensing analyst ang masusunod.',
+         es:'Esto es solo una guía. Lo que diga su analista de licencias es lo que cuenta.',
+         pa:'ਇਹ ਸਿਰਫ਼ ਇੱਕ ਗਾਈਡ ਹੈ। ਤੁਹਾਡੇ ਲਾਇਸੰਸਿੰਗ ਐਨਾਲਿਸਟ ਦੀ ਗੱਲ ਹੀ ਮੰਨੀ ਜਾਵੇਗੀ।'},
+  done:{tl:'Tapos na',es:'Hecho',pa:'ਹੋ ਗਿਆ'},
+  markDone:{tl:'Tapos na',es:'Marcar como hecho',pa:'ਹੋ ਗਿਆ'},
+  photoSaved:{tl:'May larawan na',es:'Foto guardada',pa:'ਫੋਟੋ ਸੇਵ ਹੋ ਗਈ'},
+};
+// English first, then the picked language after a dot; English only for 'en'.
+function launchUi(key,en){
+  const t=launchTr({tr:LAUNCH_UI[key]});
+  return t?en+' · '+t:en;
+}
 function launchTr(o){
   if(launchLang==='en')return '';
   const tr=o&&o.tr; if(!tr)return '';
-  return tr[launchLang]||tr.tl||'';
+  return tr[launchLang]||tr.es||tr.tl||'';
 }
 
 function launchAllSteps(){return LAUNCH_CARDS.reduce((a,c)=>a.concat(c.steps),[]);}
@@ -8729,6 +8888,10 @@ function renderLaunchHub(errMsg){
     pa:all.length+' ਵਿੱਚੋਂ '+doneCount+' ਹੋ ਗਏ',
   };
   if(label)label.textContent=done.en+(launchLang!=='en'?'  ·  '+(done[launchLang]||done.tl):'');
+  const badge=document.getElementById('lh-badge');
+  if(badge){const t=launchTr({tr:LAUNCH_UI.badge});badge.textContent=t;badge.style.display=t?'':'none';}
+  const guide=document.getElementById('lh-guide-line');
+  if(guide){const t=launchTr({tr:LAUNCH_UI.guide});guide.innerHTML=t?'<em>'+esc(t)+'</em>':'';guide.style.display=t?'':'none';}
   const langBar=document.getElementById('lh-lang');
   if(langBar)langBar.innerHTML=LAUNCH_LANGS.map(l=>
     `<button class="lh-lang-btn${l.key===launchLang?' on':''}" onclick="setLaunchLang('${l.key}')">${esc(l.label)}</button>`
@@ -8761,7 +8924,7 @@ function renderLaunchHub(errMsg){
             <div class="lh-actions">
               <button class="lh-btn${stt.done?' is-done':''}" ${editable?'':'disabled'} onclick="setLaunchDone('${st.key}',${stt.done?'false':'true'})">
                 <svg viewBox="0 0 24 24">${stt.done?'<polyline points="20 6 9 17 4 12"/>':'<circle cx="12" cy="12" r="9"/>'}</svg>
-                ${stt.done?'Done · Tapos na':'Mark done · Tapos na'}
+                ${esc(stt.done?launchUi('done','Done'):launchUi('markDone','Mark done'))}
               </button>
               <button class="lh-btn" ${editable?'':'disabled'} onclick="pickLaunchPhoto('${st.key}')">
                 <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -8771,7 +8934,7 @@ function renderLaunchHub(errMsg){
             ${stt.photo_path?`
             <div class="lh-photo">
               <img id="lh-img-${st.key}" alt="Photo for: ${esc(st.title)}"/>
-              <span class="lh-photo-name">Photo saved · May larawan na</span>
+              <span class="lh-photo-name">${esc(launchUi('photoSaved','Photo saved'))}</span>
               <button class="btn btn-ghost" ${editable?'':'disabled'} style="color:var(--red)" onclick="removeLaunchPhoto('${st.key}')">Remove</button>
             </div>`:''}
           </div>`;
@@ -10115,6 +10278,7 @@ let trainingStaffById={};     // every staff member, inactive too: names for the
 // hour with no certificate is the same self-reported claim the document slots
 // exist to replace, so the history shows which entries actually have proof.
 let trainingCerts={};
+let trainingPartnerCourses=[]; // active catalog courses on the training partner's portal (external_ref set)
 let pendingTrainingCert=null;   // file chosen on the Log training form
 let trainingCertTarget=null;    // training id an attach button is filing to
 
@@ -10151,7 +10315,39 @@ async function loadTrainings(){
   trainingStaffById=byId;
   trainings=trainingAll.slice(0,TRAINING_HISTORY_MAX).map(t=>({...t,staff:byId[t.staff_id]||null}));
   await loadTrainingCerts();
+  await loadPartnerCourses();
   renderTrainings();
+}
+// The partner's courses, as listed in title22_course_catalog (readable when
+// active). Only courses with an external_ref live on the partner's portal.
+// A failed read leaves the list empty; the hours above do not depend on it.
+async function loadPartnerCourses(){
+  trainingPartnerCourses=[];
+  if(!canSendTrainingLink())return;
+  try{
+    const{data}=await sb.from('title22_course_catalog').select('*').eq('active',true).not('external_ref','is',null).order('title');
+    trainingPartnerCourses=data||[];
+  }catch(e){}
+}
+// One person's "courses to finish" row on the Training tab: the partner
+// courses that cover what they still need, and the link that starts them on
+// their own phone. `need` is read from the gaps the checks above report, so
+// it says nothing the requirement blocks do not already say.
+function trainingCoursesRow(s,need){
+  if(!canSendTrainingLink()||s.active===false)return '';
+  const has=(c,k)=>c.topic_hours&&Number(c.topic_hours[k])>0;
+  const fits=trainingPartnerCourses.filter(c=>(need.dementia&&has(c,'dementia'))||(need.postural_hospice&&has(c,'postural_hospice')))
+    .concat(need.any?trainingPartnerCourses:[]).filter((c,i,a)=>a.indexOf(c)===i);
+  const name=esc((s.full_name||s.name||'this person').split(' ')[0]);
+  const list=fits.length
+    ?`<ul style="margin:6px 0 0 18px;padding:0;font-size:12px">${fits.map(c=>`<li>${esc(c.title)} · ${esc(c.credit_hours)} hr${c.topic_hours&&Object.keys(c.topic_hours).length?' ('+Object.entries(c.topic_hours).filter(([,h])=>Number(h)>0).map(([k,h])=>esc((T22T.TOPICS.find(t=>t.key===k)||{label:k}).label)+' '+esc(h)).join(', ')+')':''}</li>`).join('')}</ul>`
+    :`<div style="font-size:12px;color:var(--text2);margin-top:4px">${need.any||need.dementia||need.postural_hospice?'No partner courses are listed yet. They will show here as the training partner adds them.':'Nothing left to finish right now.'}</div>`;
+  return `<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--teal);border-radius:var(--radius);background:var(--teal-light)">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong style="font-size:13px">Courses to finish</strong>
+    <button type="button" class="btn btn-primary" style="font-size:12px;padding:4px 10px" onclick="openStaffTrainingLink('${esc(s.id)}')">Send ${name} a training link</button></div>
+    ${list}
+    <div style="font-size:11px;color:var(--text2);margin-top:6px">${name} opens the link on their own phone and takes the courses there. Finished courses are added here by themselves.</div>
+  </div>`;
 }
 
 // training_id comes from migration 2026-08-09b. Until that has been run the
@@ -10345,7 +10541,7 @@ function startHandsOnEntry(staffId){
   const cb=document.getElementById('tr-hands-on');cb.checked=true;
   document.getElementById('tr-supervisor-wrap').style.display='block';
   document.getElementById('tr-topic').focus();
-  document.getElementById('tab-training').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('training-log-card').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function trainingBlock(title,st,extra){
   const done=st.status==='complete';
@@ -10460,6 +10656,8 @@ function renderTrainings(){
       summary.innerHTML=!people.length?t22NoMatch(q):people.map(s=>{
         const rows=trainingRowsFor(s.id);
         let blocks='';
+        const need={any:false,dementia:false,postural_hospice:false};
+        const noteNeed=st=>{if(!st||st.status==='complete'||st.status==='needs_hire_date')return;need.any=true;(st.gaps||[]).forEach(g=>{if(/dementia/i.test(g))need.dementia=true;if(/postural/i.test(g))need.postural_hospice=true;});};
         // An administrator is shown the direct care blocks only if hours have
         // been logged for them as direct care: they are not a caregiver by role.
         const directCare=s.role!=='administrator'||rows.some(r=>(r.counts_toward||'direct_care')==='direct_care');
@@ -10474,6 +10672,7 @@ function renderTrainings(){
             +(byTopic.untagged?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--amber-light)">No topic recorded ${byTopic.untagged} hr</span>`:'');
           const annualHours=annual.hours?`<div style="font-size:12px;margin-top:4px">${annual.hours.total} / ${R.annual.total_hours} hours · dementia ${annual.hours.dementia} / ${R.annual.minimums.dementia} · postural / restricted / hospice ${annual.hours.postural_hospice} / ${R.annual.minimums.postural_hospice}</div>`:'';
           // Inside the first four weeks the Initial block is the one that applies.
+          if(!initialEnd||today>initialEnd)noteNeed(annual);
           if(!initialEnd||today>initialEnd)blocks+=trainingBlock('Annual training',annual,annualHours+(chips?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips}</div>`:''));
           const hired=s.hire_date?new Date(s.hire_date+'T12:00:00'):null;
           // Hidden when the staff record already says initial training is done:
@@ -10481,6 +10680,7 @@ function renderTrainings(){
           if(hired&&(Date.now()-hired.getTime())<396*86400000&&!s.initial_training_complete&&!s.initial_training_completed){
             const firstAidOnFile=!!(s.first_aid_cert_date||s.first_aid_cert_expiry);
             const ini=T22T.initialStatus(rows,s.hire_date,today,{firstAidOnFile});
+            noteNeed(ini);
             blocks+=trainingBlock('Initial training',ini,trainingInitialDetail(ini,s,firstAidOnFile));
           }
           const ea=T22T.elderAbuseStatus(rows,s.hire_date,today);
@@ -10492,6 +10692,7 @@ function renderTrainings(){
             blocks+=trainingBlock('Medication training (assists with self-administration)',med,med.size?`<div style="font-size:12px;margin-top:4px">Licensed for ${esc(currentFacility.capacity)}: ${med.size.total_hours} hours · hands-on shadowing ${mh.hands_on||0} / ${med.size.hands_on} (before assisting) · other ${mh.other||0} / ${med.size.other} (within ${med.size.other_within_days/7} weeks)</div><div style="font-size:11px;margin-top:4px;color:var(--text2)">The course must cover ${esc(R.medication.must_cover)}. Then ${R.medication.annual_hours} hours every year. ${esc(R.medication.citation)}.</div>`:'');
           }
         }
+        if(trainingAppliesHere()&&directCare)blocks+=trainingCoursesRow(s,need);
         if(trainingAppliesHere()&&directCare)blocks+=trainingHandsOnLog(s,rows,edit);
         if(trainingAppliesHere()&&admins.includes(s)){
           const exp=trainingAdminExpiry(s,admins);

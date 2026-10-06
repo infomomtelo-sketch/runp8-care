@@ -995,12 +995,14 @@ Three rules it is built on, and none is decoration:
   heading; a picker (`LAUNCH_LANGS`, `setLaunchLang`, `launchTr`) chooses which
   translation sits under it — Tagalog, Español, ਪੰਜਾਬੀ, or English only for
   none. Stored per browser in `title22_launch_lang`, defaulted from
-  `navigator.language`, falling back to **Tagalog** so a user who never touches
-  the picker sees exactly what shipped before. Every card, every step and the
-  progress counter follow it. Stacking all three under twelve steps would
+  `navigator.language`, falling back to **Spanish** (the owner's call,
+  2026-10-06; it was Tagalog before). Every card, every step, the
+  progress counter, the header badge, the guide line and the button labels
+  follow it (`LAUNCH_UI`; until 2026-10-06 those last three were fixed
+  Tagalog in the markup and ignored the picker). Stacking all three under twelve steps would
   triple the reading on a screen whose whole design is one decision per
-  screenful — hence one line, never three. `launchTr` falls back to Tagalog if
-  a translation is ever missing, so a gap shows in one language rather than
+  screenful — hence one line, never three. `launchTr` falls back to Spanish, then
+  Tagalog, if a translation is ever missing, so a gap shows in one language rather than
   blanking the line.
 
   **The Spanish and Punjabi are machine-produced and have not been read by a
@@ -1711,6 +1713,38 @@ Owner-only while it is tested (the Partners tab card).
   no_staff_link / no_course_hours / not_completed. A failed training write is
   500 so LearnUpon retries; `source_ref = learnupon:<enrollment id>` keeps a
   retry from doubling the hours.
+- **Tello says who finished (2026-10-06, the owner's ask).** `telloPartnerNews`
+  in index.html reads this home's `staff_trainings` rows with a `learnupon:`
+  source_ref from the last 14 days and, for each completion not yet announced
+  in this browser (`title22_tello_partner_seen_<facility>`), adds a dock line:
+  who, which course, how many hours, under Training. It opens the dock unless a
+  form or the tour is open. Runs 2.5 s after the home opens (staff loaded) and
+  whenever the tab comes back into view. Written in the page, no AI call.
+- **Staff train from their own phone (2026-10-06, the owner: "I cannot hand
+  them the computer").** "Send training link" on the same Partners card makes
+  `title22.app/train/<token>` for the picked staff member (`_redirects` sends
+  it to the Worker's `/t/<token>`, which signs them on by SQSSO). The learner
+  is `staff-<staff id>@learners.title22.app`, a made-up address naming the
+  record and no person; the learner link is written when the link is made.
+  Only the token's SHA-256 is stored (`learnupon_staff_invites`,
+  `migrations/2026-10-06b_learnupon_staff_links.sql`); 30 days; a new link
+  switches the old one off. Also a "Training link" button on each active
+  staff card, so no customer waits on us (the owner: "they will not contact
+  me and wait for my reply"). Who: the home's owner or an `administrator` in
+  `facility_members`. ONE SWITCH, two places, still OFF: `STAFF_LINKS_OPEN`
+  in the Worker's wrangler.toml and `T22_STAFF_TRAINING_LINKS_OPEN` in
+  index.html. Off = only the app owner. Turn both on only once the partner
+  agrees, because every link opened creates a learner on THEIR portal. A new
+  learner sees only courses the portal enrols them in.
+- **The Training tab leads with what each person still needs (2026-10-06,
+  the owner: the menu's Training should open the courses they need to
+  finish).** "What each person still needs" now sits above Log training. Each
+  person gets a "Courses to finish" box: the partner courses
+  (`title22_course_catalog`, active, `external_ref` set) that cover the gaps
+  the requirement checks already report, and "Send <name> a training link".
+  Same switch as the links: owner-only until the partner agrees. Empty until
+  the partner's real courses and hours are in the catalog. This is the HOME
+  flow; trainers and their students are a separate flow, not designed yet.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.

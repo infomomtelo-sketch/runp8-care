@@ -15,6 +15,9 @@
 // Routes:
 //   POST /api/learnupon/webhook   the address given to the partner for its portal
 //   POST /api/learnupon/sso       signed sign-on link for the signed-in Title22 user
+//   POST /api/learnupon/staff-link a link the owner texts to ONE staff member
+//   GET  /t/<token>               that link, opened on the staff member's phone
+//                                 (title22.app/train/<token> redirects here)
 //   GET  /health                  yes/no for each secret, never a value
 //
 // LearnUpon has two webhook formats and the portal decides which it sends:
@@ -37,7 +40,7 @@
 // node:crypto (nodejs_compat in wrangler.toml) rather than Web Crypto because
 // Web Crypto has no MD5 in Node, and the test runs the real file under Node.
 
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -118,6 +121,21 @@ async function ownedStaffFacility(staffId, userId, env) {
   return (await f.json()).length ? s.facility_id : null;
 }
 
+// As ownedStaffFacility, but an administrator on the home's team counts too:
+// the person running the home day to day sends their staff's links.
+async function adminStaffFacility(staffId, userId, env) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(staffId))) return null;
+  const owned = await ownedStaffFacility(staffId, userId, env);
+  if (owned) return owned;
+  const r = await REST(env, `staff?id=eq.${staffId}&select=facility_id`);
+  if (!r.ok) return null;
+  const s = (await r.json())[0];
+  if (!s || !s.facility_id) return null;
+  const m = await REST(env, `facility_members?facility_id=eq.${s.facility_id}&user_id=eq.${encodeURIComponent(userId)}&role=eq.administrator&select=id`);
+  if (!m.ok) return null;
+  return (await m.json()).length ? s.facility_id : null;
+}
+
 async function handleSso(request, env) {
   const cors = ssoCors(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -148,6 +166,117 @@ async function handleSso(request, env) {
   const ts = Math.floor(Date.now() / 1000);
   const url = sqssoUrl(env.LEARNUPON_PORTAL_URL, email, ts, env.LEARNUPON_SQSSO_SECRET);
   return json({ url, email }, 200, { ...cors, 'Cache-Control': 'no-store' });
+}
+
+// ---- A staff member trains from their own phone -----------------------------
+// The owner makes a link for one staff member and texts it; the staff member
+// opens it anywhere and lands on the portal signed in as their OWN learner.
+// Staff records have no email, so the learner gets an address that names the
+// staff record and no one. migrations/2026-10-06b_learnupon_staff_links.sql.
+const LEARNER_DOMAIN = 'learners.title22.app';
+const LINK_DAYS = 30;
+const APP_TRAIN_URL = 'https://title22.app/train/';
+
+export function staffLearnerEmail(staffId) {
+  return `staff-${String(staffId).toLowerCase()}@${LEARNER_DOMAIN}`;
+}
+const hashToken = (t) => createHash('sha256').update(String(t)).digest('hex');
+
+// "Maria de la Cruz" -> Maria / de la Cruz. Only used to name the learner on
+// the portal; an empty name is fine.
+export function splitName(full) {
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+  return { first: parts[0] || '', last: parts.slice(1).join(' ') };
+}
+
+async function handleStaffLink(request, env) {
+  const cors = ssoCors(request);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, cors);
+  if (!env.LEARNUPON_SQSSO_SECRET || !env.LEARNUPON_PORTAL_URL || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) {
+    return json({ error: 'not_configured' }, 503, cors);
+  }
+  const user = await signedInUser(request, env);
+  if (!user || !user.id) return json({ error: 'not_signed_in' }, 401, cors);
+  // Every link opened creates a learner on the partner's portal. Until the
+  // partner agrees (STAFF_LINKS_OPEN = "true" in wrangler.toml, and the app's
+  // T22_STAFF_TRAINING_LINKS_OPEN), only the app owner may make one. After
+  // that, each home's owner and administrators send their own, with no one
+  // to wait for.
+  const open = String(env.STAFF_LINKS_OPEN || '').toLowerCase() === 'true';
+  if (!open && !(await isPartnerAdmin(user.id, env))) return json({ error: 'not_allowed' }, 403, cors);
+
+  let body = {};
+  try { body = await request.json(); } catch { body = {}; }
+  const staffId = body && body.staff_id;
+  const facilityId = staffId ? await adminStaffFacility(staffId, user.id, env) : null;
+  if (!facilityId) return json({ error: 'staff_not_found' }, 404, cors);
+
+  const s = await REST(env, `staff?id=eq.${staffId}&select=full_name`);
+  const name = splitName(s.ok ? ((await s.json())[0] || {}).full_name : '');
+  const email = staffLearnerEmail(staffId);
+
+  // One live link per staff member: a new one switches the old one off.
+  const off = await REST(env, `learnupon_staff_invites?staff_id=eq.${staffId}&revoked_at=is.null`, {
+    method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ revoked_at: new Date().toISOString() }),
+  });
+  if (!off.ok) return json({ error: 'link_failed' }, 500, cors);
+
+  const token = randomBytes(24).toString('base64url');
+  const expires = new Date(Date.now() + LINK_DAYS * 86400e3).toISOString();
+  const inv = await REST(env, 'learnupon_staff_invites', {
+    method: 'POST', headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      token_hash: hashToken(token), expires_at: expires, staff_id: staffId, facility_id: facilityId,
+      learner_email: email, first_name: name.first || null, last_name: name.last || null, created_by: user.id,
+    }),
+  });
+  if (!inv.ok) return json({ error: 'link_failed' }, 500, cors);
+
+  // Completions by this learner are this staff member's hours from now on.
+  const link = await REST(env, 'learnupon_learner_links', {
+    method: 'POST', headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ learner_email: email, staff_id: staffId, facility_id: facilityId, linked_by: user.id }),
+  });
+  if (!link.ok) return json({ error: 'link_failed' }, 500, cors);
+
+  return json({ link: APP_TRAIN_URL + token, expires_at: expires }, 200, { ...cors, 'Cache-Control': 'no-store' });
+}
+
+function page(title, text, status) {
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return new Response(
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">`
+    + `<title>${esc(title)}</title><body style="font-family:system-ui,sans-serif;max-width:420px;margin:15vh auto;padding:0 20px;color:#1d2b2a">`
+    + `<h1 style="font-size:20px">${esc(title)}</h1><p style="font-size:16px;line-height:1.5">${esc(text)}</p></body>`,
+    { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } }
+  );
+}
+
+async function handleStaffGo(token, env) {
+  const dead = () => page('This link isn\'t active', 'Ask your administrator to send you a new training link.', 404);
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return dead();
+  if (!env.LEARNUPON_SQSSO_SECRET || !env.LEARNUPON_PORTAL_URL || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) {
+    return page('Training is not available right now', 'Please try again later.', 503);
+  }
+  const h = hashToken(token);
+  const r = await REST(env, `learnupon_staff_invites?token_hash=eq.${h}&select=learner_email,first_name,last_name,expires_at,revoked_at,use_count`);
+  if (!r.ok) return page('Training is not available right now', 'Please try again later.', 503);
+  const inv = (await r.json())[0];
+  if (!inv || inv.revoked_at || !(new Date(inv.expires_at) > new Date())) return dead();
+
+  await REST(env, `learnupon_staff_invites?token_hash=eq.${h}`, {
+    method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ last_used_at: new Date().toISOString(), use_count: (inv.use_count || 0) + 1 }),
+  }).catch(() => null);
+
+  const ts = Math.floor(Date.now() / 1000);
+  let url = sqssoUrl(env.LEARNUPON_PORTAL_URL, inv.learner_email, ts, env.LEARNUPON_SQSSO_SECRET);
+  // Names the new learner on the portal. Not part of the signed message.
+  if (inv.first_name) url += '&FirstName=' + encodeURIComponent(inv.first_name);
+  if (inv.last_name) url += '&LastName=' + encodeURIComponent(inv.last_name);
+  return new Response(null, { status: 302, headers: { Location: url, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
 function safeEqualHex(a, b) {
@@ -340,6 +469,8 @@ export default {
     }
 
     if (url.pathname === '/api/learnupon/sso') return handleSso(request, env);
+    if (url.pathname === '/api/learnupon/staff-link') return handleStaffLink(request, env);
+    if (request.method === 'GET' && url.pathname.startsWith('/t/')) return handleStaffGo(url.pathname.slice(3), env);
 
     if (url.pathname !== '/api/learnupon/webhook') return json({ error: 'not_found' }, 404);
     if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
