@@ -1745,6 +1745,13 @@ Owner-only while it is tested (the Partners tab card).
   Same switch as the links: owner-only until the partner agrees. Empty until
   the partner's real courses and hours are in the catalog. This is the HOME
   flow; trainers and their students are a separate flow, not designed yet.
+- **All three Tellos know this (2026-10-06).** App Tello (tab and dock) gets
+  `online_courses` in `buildFacilityContext` — `training_links` from
+  `canSendTrainingLink()`, plus the active catalog courses — and rule 4 of
+  `TELLO_CHARACTER` describes the buttons only when that is true. Tello's page
+  (`title22-knowledge.js`) and Partner Tello (`knowledge.md`) say it is being
+  tested with one partner and not open yet. Never name the partner in any of
+  them. When the switch is flipped, update both knowledge files in the same PR.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.

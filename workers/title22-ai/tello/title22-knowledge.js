@@ -30,6 +30,18 @@ Title22 gives you that list with your own dates against it. It warns you before 
 6. **"I run more than one home."** You switch between homes from one account, and each home's records stay separated by license number.
 7. **"Mornings are chaos."** Tello's daily briefing says in plain language what needs attention today.
 
+## Online courses with a training partner (checked 2026-10-06: index.html Training tab, workers/title22-learnupon)
+
+Being tested with one training partner. It is NOT open to every home yet, and there is no date for when it will be. Never name the partner.
+
+How it works where it is switched on:
+- The Training tab opens with "What each person still needs". Under each person, "Courses to finish" lists the online courses that cover what they are short on, with a "Send <name> a training link" button. Each staff card has a "Training link" button too.
+- The administrator texts that link to the staff member. They open it on their own phone, wherever they are. No password, no email, and no handing them the office computer.
+- When they finish a course, the hours land in their training record by themselves, with the course name, and Tello says who finished.
+- A link works for 30 days. Making a new one for the same person switches the old one off.
+
+If someone asks whether they can use it: say it is being tested and not open yet, that hours from any course can be logged by hand on the Training tab today, and to email hello@title-22.com to hear when it opens.
+
 ## What Title22 does NOT do (say this openly; it builds trust)
 
 - **No resident records, no medications, no MAR, no LIC 601 or 602A.** This is on purpose: "No PHI by design." Because it holds no resident health information, there's no business associate agreement to sign, and that's why it costs $29. Homes keep using whatever they already use for medication administration.
