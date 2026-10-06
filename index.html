@@ -1297,6 +1297,12 @@
       <div id="tab-training" style="display:none">
         <div class="page-header"><h1>Staff training</h1></div>
         <div class="card">
+          <div class="card-title">What each person still needs</div>
+          <div class="t22-search"><input type="search" id="training-search" placeholder="Search by staff name (hours and history)" aria-label="Search training by staff name" autocomplete="off" oninput="t22SearchInput('training-search',renderTrainings)"/><span id="training-search-count" class="t22-search-count" aria-live="polite"></span></div>
+          <div id="training-rules-note" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
+          <div id="training-summary" style="display:grid;gap:14px;font-size:13px"></div>
+        </div>
+        <div class="card" id="training-log-card" style="margin-top:16px">
           <div class="card-title">Log training</div>
           <div class="form-group"><label>Staff member</label><select id="tr-staff"><option value="">Select staff...</option></select></div>
           <div class="form-group"><label>Course or session</label><input type="text" id="tr-topic" autocomplete="off" placeholder="e.g., Understanding dementia, CPR review..."/></div>
@@ -1344,12 +1350,6 @@
           </div>
           <div class="error-msg" id="tr-error"></div>
           <button class="btn btn-primary" style="margin-top:10px" onclick="saveTraining()">Save training</button>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <div class="card-title">Hours by staff member</div>
-          <div class="t22-search"><input type="search" id="training-search" placeholder="Search by staff name (hours and history)" aria-label="Search training by staff name" autocomplete="off" oninput="t22SearchInput('training-search',renderTrainings)"/><span id="training-search-count" class="t22-search-count" aria-live="polite"></span></div>
-          <div id="training-rules-note" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
-          <div id="training-summary" style="display:grid;gap:14px;font-size:13px"></div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-title">Training history</div>
@@ -10278,6 +10278,7 @@ let trainingStaffById={};     // every staff member, inactive too: names for the
 // hour with no certificate is the same self-reported claim the document slots
 // exist to replace, so the history shows which entries actually have proof.
 let trainingCerts={};
+let trainingPartnerCourses=[]; // active catalog courses on the training partner's portal (external_ref set)
 let pendingTrainingCert=null;   // file chosen on the Log training form
 let trainingCertTarget=null;    // training id an attach button is filing to
 
@@ -10314,7 +10315,39 @@ async function loadTrainings(){
   trainingStaffById=byId;
   trainings=trainingAll.slice(0,TRAINING_HISTORY_MAX).map(t=>({...t,staff:byId[t.staff_id]||null}));
   await loadTrainingCerts();
+  await loadPartnerCourses();
   renderTrainings();
+}
+// The partner's courses, as listed in title22_course_catalog (readable when
+// active). Only courses with an external_ref live on the partner's portal.
+// A failed read leaves the list empty; the hours above do not depend on it.
+async function loadPartnerCourses(){
+  trainingPartnerCourses=[];
+  if(!canSendTrainingLink())return;
+  try{
+    const{data}=await sb.from('title22_course_catalog').select('*').eq('active',true).not('external_ref','is',null).order('title');
+    trainingPartnerCourses=data||[];
+  }catch(e){}
+}
+// One person's "courses to finish" row on the Training tab: the partner
+// courses that cover what they still need, and the link that starts them on
+// their own phone. `need` is read from the gaps the checks above report, so
+// it says nothing the requirement blocks do not already say.
+function trainingCoursesRow(s,need){
+  if(!canSendTrainingLink()||s.active===false)return '';
+  const has=(c,k)=>c.topic_hours&&Number(c.topic_hours[k])>0;
+  const fits=trainingPartnerCourses.filter(c=>(need.dementia&&has(c,'dementia'))||(need.postural_hospice&&has(c,'postural_hospice')))
+    .concat(need.any?trainingPartnerCourses:[]).filter((c,i,a)=>a.indexOf(c)===i);
+  const name=esc((s.full_name||s.name||'this person').split(' ')[0]);
+  const list=fits.length
+    ?`<ul style="margin:6px 0 0 18px;padding:0;font-size:12px">${fits.map(c=>`<li>${esc(c.title)} · ${esc(c.credit_hours)} hr${c.topic_hours&&Object.keys(c.topic_hours).length?' ('+Object.entries(c.topic_hours).filter(([,h])=>Number(h)>0).map(([k,h])=>esc((T22T.TOPICS.find(t=>t.key===k)||{label:k}).label)+' '+esc(h)).join(', ')+')':''}</li>`).join('')}</ul>`
+    :`<div style="font-size:12px;color:var(--text2);margin-top:4px">${need.any||need.dementia||need.postural_hospice?'No partner courses are listed yet. They will show here as the training partner adds them.':'Nothing left to finish right now.'}</div>`;
+  return `<div style="margin-top:8px;padding:10px 12px;border:1px solid var(--teal);border-radius:var(--radius);background:var(--teal-light)">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong style="font-size:13px">Courses to finish</strong>
+    <button type="button" class="btn btn-primary" style="font-size:12px;padding:4px 10px" onclick="openStaffTrainingLink('${esc(s.id)}')">Send ${name} a training link</button></div>
+    ${list}
+    <div style="font-size:11px;color:var(--text2);margin-top:6px">${name} opens the link on their own phone and takes the courses there. Finished courses are added here by themselves.</div>
+  </div>`;
 }
 
 // training_id comes from migration 2026-08-09b. Until that has been run the
@@ -10508,7 +10541,7 @@ function startHandsOnEntry(staffId){
   const cb=document.getElementById('tr-hands-on');cb.checked=true;
   document.getElementById('tr-supervisor-wrap').style.display='block';
   document.getElementById('tr-topic').focus();
-  document.getElementById('tab-training').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('training-log-card').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function trainingBlock(title,st,extra){
   const done=st.status==='complete';
@@ -10623,6 +10656,8 @@ function renderTrainings(){
       summary.innerHTML=!people.length?t22NoMatch(q):people.map(s=>{
         const rows=trainingRowsFor(s.id);
         let blocks='';
+        const need={any:false,dementia:false,postural_hospice:false};
+        const noteNeed=st=>{if(!st||st.status==='complete'||st.status==='needs_hire_date')return;need.any=true;(st.gaps||[]).forEach(g=>{if(/dementia/i.test(g))need.dementia=true;if(/postural/i.test(g))need.postural_hospice=true;});};
         // An administrator is shown the direct care blocks only if hours have
         // been logged for them as direct care: they are not a caregiver by role.
         const directCare=s.role!=='administrator'||rows.some(r=>(r.counts_toward||'direct_care')==='direct_care');
@@ -10637,6 +10672,7 @@ function renderTrainings(){
             +(byTopic.untagged?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--amber-light)">No topic recorded ${byTopic.untagged} hr</span>`:'');
           const annualHours=annual.hours?`<div style="font-size:12px;margin-top:4px">${annual.hours.total} / ${R.annual.total_hours} hours · dementia ${annual.hours.dementia} / ${R.annual.minimums.dementia} · postural / restricted / hospice ${annual.hours.postural_hospice} / ${R.annual.minimums.postural_hospice}</div>`:'';
           // Inside the first four weeks the Initial block is the one that applies.
+          if(!initialEnd||today>initialEnd)noteNeed(annual);
           if(!initialEnd||today>initialEnd)blocks+=trainingBlock('Annual training',annual,annualHours+(chips?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips}</div>`:''));
           const hired=s.hire_date?new Date(s.hire_date+'T12:00:00'):null;
           // Hidden when the staff record already says initial training is done:
@@ -10644,6 +10680,7 @@ function renderTrainings(){
           if(hired&&(Date.now()-hired.getTime())<396*86400000&&!s.initial_training_complete&&!s.initial_training_completed){
             const firstAidOnFile=!!(s.first_aid_cert_date||s.first_aid_cert_expiry);
             const ini=T22T.initialStatus(rows,s.hire_date,today,{firstAidOnFile});
+            noteNeed(ini);
             blocks+=trainingBlock('Initial training',ini,trainingInitialDetail(ini,s,firstAidOnFile));
           }
           const ea=T22T.elderAbuseStatus(rows,s.hire_date,today);
@@ -10655,6 +10692,7 @@ function renderTrainings(){
             blocks+=trainingBlock('Medication training (assists with self-administration)',med,med.size?`<div style="font-size:12px;margin-top:4px">Licensed for ${esc(currentFacility.capacity)}: ${med.size.total_hours} hours · hands-on shadowing ${mh.hands_on||0} / ${med.size.hands_on} (before assisting) · other ${mh.other||0} / ${med.size.other} (within ${med.size.other_within_days/7} weeks)</div><div style="font-size:11px;margin-top:4px;color:var(--text2)">The course must cover ${esc(R.medication.must_cover)}. Then ${R.medication.annual_hours} hours every year. ${esc(R.medication.citation)}.</div>`:'');
           }
         }
+        if(trainingAppliesHere()&&directCare)blocks+=trainingCoursesRow(s,need);
         if(trainingAppliesHere()&&directCare)blocks+=trainingHandsOnLog(s,rows,edit);
         if(trainingAppliesHere()&&admins.includes(s)){
           const exp=trainingAdminExpiry(s,admins);

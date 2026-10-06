@@ -1736,6 +1736,15 @@ Owner-only while it is tested (the Partners tab card).
   index.html. Off = only the app owner. Turn both on only once the partner
   agrees, because every link opened creates a learner on THEIR portal. A new
   learner sees only courses the portal enrols them in.
+- **The Training tab leads with what each person still needs (2026-10-06,
+  the owner: the menu's Training should open the courses they need to
+  finish).** "What each person still needs" now sits above Log training. Each
+  person gets a "Courses to finish" box: the partner courses
+  (`title22_course_catalog`, active, `external_ref` set) that cover the gaps
+  the requirement checks already report, and "Send <name> a training link".
+  Same switch as the links: owner-only until the partner agrees. Empty until
+  the partner's real courses and hours are in the catalog. This is the HOME
+  flow; trainers and their students are a separate flow, not designed yet.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.
