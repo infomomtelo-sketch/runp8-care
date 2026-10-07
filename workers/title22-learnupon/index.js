@@ -366,25 +366,16 @@ async function addOnce(env, path, body, label, steps) {
 
 // Every portal answer is kept in `steps`, so a failure can be read afterwards
 // (handleStaffGo logs it to learnupon_events and /health shows the latest).
-// The live sandbox refused both { user_id, course_id } and { userId, courseId }
-// with 400 "failed to find the enrollment specified" (2026-10-07). Until the
-// right shape is known, try each candidate in turn (first success wins, so no
-// course is enrolled twice), and if all are refused, list the portal's courses
-// (portalCourses) so the log shows the ids it does know.
-const ENROLL_SHAPES = [
-  (u, c) => ({ Enrollment: { userId: u, courseId: c } }),
-  (u, c) => ({ Enrollment: { user_id: u, course_id: c } }),
-  (u, c) => ({ Enrollment: { userId: String(u), courseId: String(c) } }),
-  (u, c, email) => ({ Enrollment: { email, courseId: c } }),
-];
-
-async function enrollOnce(env, userId, email, c, steps) {
-  for (let i = 0; i < ENROLL_SHAPES.length; i++) {
-    const r = await portalApi(env, 'enrollments', { method: 'POST', body: JSON.stringify(ENROLL_SHAPES[i](userId, c, email)) }, steps);
-    const text = await r.text().catch(() => '');
-    steps.push({ step: `enrollment ${c} shape ${i + 1}`, http: r.status, says: portalSays(text) });
-    if (r.ok || /already/i.test(text)) return null;
-  }
+// The body is the documented one (LearnUpon API guide, "Create an
+// enrollment", read 2026-10-07): the user by EMAIL and the course by
+// course_id. A numeric user id is not accepted there, which is why
+// { user_id, course_id } and { userId, courseId } were both refused with 400
+// "failed to find the enrollment specified".
+async function enrollOnce(env, email, c, steps) {
+  const r = await portalApi(env, 'enrollments', { method: 'POST', body: JSON.stringify({ Enrollment: { email, course_id: c } }) }, steps);
+  const text = await r.text().catch(() => '');
+  steps.push({ step: `enrollment ${c}`, http: r.status, says: portalSays(text) });
+  if (r.ok || /already/i.test(text)) return null;
   return `enrollment ${c} refused`;
 }
 
@@ -443,7 +434,7 @@ export async function joinStaffGroup(env, inv) {
     const g = staffGroupId(env);
     const results = await Promise.all([
       g ? addOnce(env, 'group_memberships', { GroupMembership: { user_id: userId, group_id: g } }, 'group membership', steps) : null,
-      ...staffCourseIds(env).map(c => enrollOnce(env, userId, inv.learner_email, c, steps)),
+      ...staffCourseIds(env).map(c => enrollOnce(env, inv.learner_email, c, steps)),
     ].map(p => p && p.catch(err => String((err && err.name === 'TimeoutError') ? 'timeout' : (err && err.message) || err))));
     const problems = results.filter(Boolean);
     if (problems.length) {

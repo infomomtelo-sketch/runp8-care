@@ -124,10 +124,11 @@ globalThis.fetch = async (url, init = {}) => {
     }
     if (path === 'enrollments' && init.method === 'POST') {
       const raw = JSON.parse(init.body).Enrollment;
-      // Stand-in for whichever shape the real portal wants: here, only the
-      // snake_case one (shape 2), so the earlier shapes are seen to fall through.
-      if (!raw.user_id || !raw.course_id) return new Response('{"message":"failed to find the enrollment specified"}', { status: 400 });
-      const e = { user_id: raw.user_id, course_id: raw.course_id };
+      // As the live portal does: the user by email, the course by course_id;
+      // a numeric user id is refused with the portal's own words.
+      const who = raw.email && portal.users.find(u => u.email === raw.email);
+      if (!who || !Number.isInteger(raw.course_id) || raw.user_id || raw.userId) return new Response('{"message":"failed to find the enrollment specified"}', { status: 400 });
+      const e = { user_id: who.id, course_id: raw.course_id };
       if (portal.mode === 'enroll_fails' && e.course_id === 22) return new Response('{"message":"Course not found"}', { status: 404 });
       if (portal.enrollments.some(x => x.user_id === e.user_id && x.course_id === e.course_id)) return new Response('{"message":"User is already enrolled on this course"}', { status: 422 });
       portal.enrollments.push(e);
@@ -519,11 +520,11 @@ const v2Headers = (body, secret = SECRET) => ({
   ok(res.status === 200 && portal.calls.length === 0, 'the welcome page (and a link preview) never touches the portal');
 
   ok(joins.length >= 1 && joins.every(j => j.webhook_version === 0 && j.learner_email === inv.learner_email) && joins.slice(-1)[0].training_status === 'ready'
-    && joins.slice(-1)[0].payload.steps.some(x => x.step.startsWith('enrollment 11 shape') && x.http === 422 && /already/.test(x.says)), 'each Start my training is logged with every portal answer');
+    && joins.slice(-1)[0].payload.steps.some(x => x.step === 'enrollment 11' && x.http === 422 && /already/.test(x.says)), 'each Start my training is logged with every portal answer');
   portal.mode = 'enroll_fails'; portal.enrollments.length = 0;
   res = await go(CRS);
   const lastJ = joins.slice(-1)[0];
-  ok(res.status === 303 && lastJ.training_status === 'failed' && lastJ.payload.steps.some(x => x.step.startsWith('enrollment 22 shape') && x.http === 404 && /Course not found/.test(x.says)), 'a refused enrollment is logged with the portal\'s words');
+  ok(res.status === 303 && lastJ.training_status === 'failed' && lastJ.payload.steps.some(x => x.step === 'enrollment 22' && x.http === 404 && /Course not found/.test(x.says)), 'a refused enrollment is logged with the portal\'s words');
   portal.mode = 'ok';
   r = await call('/health', { method: 'GET', e: CRS });
   ok(r.data.staff_group.last_join && r.data.staff_group.last_join.status === 'failed' && r.data.staff_group.last_join.steps.length >= 2
