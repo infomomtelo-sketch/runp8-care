@@ -107,10 +107,17 @@ globalThis.fetch = async (url, init = {}) => {
       portal.members.push(m);
       return new Response(JSON.stringify({ id: 1, ...m }), { status: 201 });
     }
+    if (path === 'enrollments' && init.method === 'POST') {
+      const e = JSON.parse(init.body).Enrollment;
+      if (portal.mode === 'enroll_fails' && e.course_id === 22) return new Response('{"message":"Course not found"}', { status: 404 });
+      if (portal.enrollments.some(x => x.user_id === e.user_id && x.course_id === e.course_id)) return new Response('{"message":"User is already enrolled on this course"}', { status: 422 });
+      portal.enrollments.push(e);
+      return new Response(JSON.stringify({ id: 1 }), { status: 201 });
+    }
   }
   return new Response('unexpected ' + url, { status: 500 });
 };
-const portal = { calls: [], users: [], members: [], mode: 'ok' };
+const portal = { calls: [], users: [], members: [], enrollments: [], mode: 'ok' };
 
 async function call(path, { method = 'POST', body = '', headers = {}, e = env } = {}) {
   inserts = [];
@@ -429,52 +436,71 @@ const v2Headers = (body, secret = SECRET) => ({
   ok(r.status === 200 && row && row.staff_id === STAFF && row.facility_id === 'fac-1', 'staff learner completion -> hours on that staff member');
 }
 
-// Staff join the portal's staff group before signing on.
+// Staff are enrolled in their courses (and optionally a group) before signing on.
 {
   const SSO = { ...env, LEARNUPON_SQSSO_SECRET: 'sso-secret', LEARNUPON_PORTAL_URL: 'https://portal.example' };
-  const GRP = { ...SSO, LEARNUPON_API_USERNAME: 'api-user', LEARNUPON_API_PASSWORD: 'api-pass', LEARNUPON_STAFF_GROUP_ID: '555' };
+  const KEYS = { ...SSO, LEARNUPON_API_USERNAME: 'api-user', LEARNUPON_API_PASSWORD: 'api-pass' };
+  const CRS = { ...KEYS, LEARNUPON_STAFF_COURSE_IDS: ' 11, 22 ,x,' };
+  const GRP = { ...KEYS, LEARNUPON_STAFF_GROUP_ID: '555' };
   const inv = { learner_email: staffLearnerEmail(STAFF), first_name: 'Daniel', last_name: 'Reyes' };
 
-  ok(!staffGroupReady(SSO) && !staffGroupReady({ ...GRP, LEARNUPON_STAFF_GROUP_ID: '' }) && !staffGroupReady({ ...GRP, LEARNUPON_STAFF_GROUP_ID: 'abc' }) && staffGroupReady(GRP), 'group step needs both keys and a numeric group id');
+  ok(!staffGroupReady(SSO) && !staffGroupReady(KEYS) && !staffGroupReady({ ...KEYS, LEARNUPON_STAFF_GROUP_ID: 'abc', LEARNUPON_STAFF_COURSE_IDS: 'x,y' })
+    && staffGroupReady(GRP) && staffGroupReady(CRS), 'needs both keys and a course list or a numeric group id');
   portal.calls.length = 0;
-  ok((await joinStaffGroup(SSO, inv)).status === 'off' && portal.calls.length === 0, 'not set up -> no portal call at all');
+  ok((await joinStaffGroup(SSO, inv)).status === 'off' && (await joinStaffGroup(KEYS, inv)).status === 'off' && portal.calls.length === 0, 'not set up -> no portal call at all');
 
-  let g = await joinStaffGroup(GRP, inv);
+  let g = await joinStaffGroup(CRS, inv);
   const made = portal.users.find(u => u.email === inv.learner_email);
-  ok(g.status === 'joined' && made && made.first_name === 'Daniel' && made.last_name === 'Reyes', 'new staff learner is made with their name and joins the group');
-  ok(portal.members.length === 1 && portal.members[0].group_id === 555 && portal.members[0].user_id === made.id, 'membership is for that learner and the set group');
+  ok(g.status === 'joined' && made && made.first_name === 'Daniel' && made.last_name === 'Reyes', 'new staff learner is made with their name');
+  ok(portal.enrollments.length === 2 && portal.enrollments.every(e => e.user_id === made.id) && portal.enrollments.map(e => e.course_id).join() === '11,22', 'enrolled in each listed course, junk in the list ignored');
+  ok(portal.members.length === 0, 'no group step when no group is set');
   const create = portal.calls.find(c => c.url.endsWith('/users') && c.init.method === 'POST');
   ok(create && !JSON.stringify(portal.calls).includes('sso-secret') && JSON.parse(create.init.body).User.password.length >= 24, 'random unused password, sign-on secret never sent');
 
   portal.calls.length = 0;
-  g = await joinStaffGroup(GRP, inv);
-  ok(g.status === 'already' && portal.users.length === 1 && !portal.calls.some(c => c.url.endsWith('/users')), 'second time: existing learner found, already in the group, nothing made');
+  g = await joinStaffGroup(CRS, inv);
+  ok(g.status === 'ready' && portal.users.length === 1 && portal.enrollments.length === 2 && !portal.calls.some(c => c.url.endsWith('/users')), 'second time: existing learner, already enrolled counts as fine, nothing made twice');
 
-  portal.mode = 'group_fails';
-  g = await joinStaffGroup(GRP, { ...inv, learner_email: 'staff-x@learners.title22.app' });
-  ok(g.status === 'failed' && /422/.test(g.note), 'a group the portal refuses -> failed, with the reason');
-  portal.mode = 'down';
   g = await joinStaffGroup(GRP, inv);
+  ok(g.status === 'ready' && portal.members.length === 1 && portal.members[0].group_id === 555 && portal.members[0].user_id === made.id, 'group set: learner joins that group');
+
+  portal.mode = 'enroll_fails';
+  g = await joinStaffGroup(CRS, { ...inv, learner_email: 'staff-x@learners.title22.app' });
+  ok(g.status === 'failed' && /enrollment 22 404/.test(g.note) && portal.enrollments.some(e => e.course_id === 11 && e.user_id !== made.id), 'one course refused -> the others still enrolled, failure names it');
+  portal.mode = 'group_fails';
+  g = await joinStaffGroup(GRP, { ...inv, learner_email: 'staff-y@learners.title22.app' });
+  ok(g.status === 'failed' && /group membership 422/.test(g.note), 'a group the portal refuses -> failed, with the reason');
+  portal.mode = 'down';
+  g = await joinStaffGroup(CRS, inv);
   ok(g.status === 'failed', 'portal unreachable -> failed, not thrown');
-  g = await joinStaffGroup({ ...GRP, LEARNUPON_API_PASSWORD: 'wrong' }, inv);
+  portal.mode = 'ok';
+  g = await joinStaffGroup({ ...CRS, LEARNUPON_API_PASSWORD: 'wrong' }, inv);
   ok(g.status === 'failed', 'wrong key -> failed');
 
-  // "Start my training" still signs on whatever the group step did.
+  // "Start my training" still signs on whatever the enrollment step did.
   db.invites.length = 0;
-  let r = await call('/api/learnupon/staff-link', { headers: { Origin: 'https://title22.app', Authorization: 'Bearer owner' }, e: GRP, body: JSON.stringify({ staff_id: STAFF }) });
+  let r = await call('/api/learnupon/staff-link', { headers: { Origin: 'https://title22.app', Authorization: 'Bearer owner' }, e: CRS, body: JSON.stringify({ staff_id: STAFF }) });
   const token = r.data.link.replace('https://title22.app/train/', '');
   const go = (e) => worker.fetch(new Request('https://w.example/t/' + token, { method: 'POST' }), e);
-  let res = await go(GRP);
+  portal.mode = 'down';
+  let res = await go(CRS);
   ok(res.status === 303 && new URL(res.headers.get('location')).origin === 'https://portal.example', 'portal down: staff still signed on');
   portal.mode = 'ok'; portal.calls.length = 0;
-  res = await go(GRP);
-  ok(res.status === 303 && portal.calls.some(c => c.url.endsWith('/group_memberships')), 'portal up: group step runs, then sign-on');
+  res = await go(CRS);
+  ok(res.status === 303 && portal.calls.some(c => c.url.endsWith('/enrollments')), 'portal up: enrollment runs, then sign-on');
   portal.calls.length = 0;
-  res = await worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), GRP);
+  res = await worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), CRS);
   ok(res.status === 200 && portal.calls.length === 0, 'the welcome page (and a link preview) never touches the portal');
 
-  r = await call('/health', { method: 'GET', e: GRP });
-  ok(r.data.staff_group.ready === true && !JSON.stringify(r.data).includes('api-pass'), 'health says the group step is ready, never a value');
+  r = await call('/health', { method: 'GET', e: CRS });
+  ok(r.data.staff_group.ready === true && r.data.staff_group.LEARNUPON_STAFF_COURSE_IDS === 2 && !JSON.stringify(r.data).includes('api-pass'), 'health says it is ready and how many courses, never a value');
+}
+
+// The course numbers in wrangler.toml are exactly the four the partner gave.
+{
+  const toml = (await import('node:fs')).readFileSync(new URL('./wrangler.toml', import.meta.url), 'utf8');
+  const m = toml.match(/^LEARNUPON_STAFF_COURSE_IDS = "([^"]*)"/m);
+  ok(m && m[1] === '3768123,3768117,3768111,3768109', 'wrangler.toml lists the four practice-site courses');
 }
 
 insertStatus = 201;

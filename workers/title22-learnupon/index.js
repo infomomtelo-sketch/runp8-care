@@ -18,8 +18,8 @@
 //   POST /api/learnupon/staff-link a link the owner texts to ONE staff member
 //   GET  /t/<token>               that link, opened on the staff member's phone
 //                                 (title22.app/train/<token> redirects here)
-//   POST /t/<token>               "Start my training": joins the staff group
-//                                 (when set up), then signs on
+//   POST /t/<token>               "Start my training": enrolls the staff
+//                                 learner in their courses (when set up), then signs on
 //   GET  /health                  yes/no for each secret, never a value
 //
 // LearnUpon has two webhook formats and the portal decides which it sends:
@@ -307,16 +307,21 @@ async function handleStaffWelcome(token, env) {
   return welcomePage(token, r.inv.first_name, env.TRAINING_PARTNER_NAME);
 }
 
-// The staff learner joins the portal's staff group before signing on, so the
-// courses attached to that group are waiting when they arrive. Sign-on links
-// cannot do this (LearnUpon's SQSSO has no group parameter); the portal API
-// can. Off until the API key and LEARNUPON_STAFF_GROUP_ID are both set, and
-// never in the way: any failure still signs the person on, without the group.
+// The staff learner is enrolled in their courses before signing on, so the
+// courses are waiting when they arrive. Sign-on links cannot do this
+// (LearnUpon's SQSSO has no group or course parameter); the portal API can.
+// Two ways, either or both: LEARNUPON_STAFF_COURSE_IDS enrolls in those
+// courses directly; LEARNUPON_STAFF_GROUP_ID adds the learner to a group whose
+// courses they then get. Off until the API key and one of those are set, and
+// never in the way: any failure still signs the person on.
 const API_TIMEOUT_MS = 4000;
+
+const staffCourseIds = (env) => String(env.LEARNUPON_STAFF_COURSE_IDS || '').split(',').map(x => x.trim()).filter(x => /^\d+$/.test(x)).map(Number);
+const staffGroupId = (env) => (/^\d+$/.test(String(env.LEARNUPON_STAFF_GROUP_ID || '').trim()) ? Number(String(env.LEARNUPON_STAFF_GROUP_ID).trim()) : null);
 
 export function staffGroupReady(env) {
   return !!(env.LEARNUPON_API_USERNAME && env.LEARNUPON_API_PASSWORD && env.LEARNUPON_PORTAL_URL
-    && /^\d+$/.test(String(env.LEARNUPON_STAFF_GROUP_ID || '').trim()));
+    && (staffGroupId(env) || staffCourseIds(env).length));
 }
 
 async function portalApi(env, path, init = {}) {
@@ -331,6 +336,14 @@ async function portalApi(env, path, init = {}) {
 // LearnUpon answers a user search as {"user":[...]}; accept the near shapes too.
 const firstUser = (d) => [].concat((d && (d.user || d.users)) || (Array.isArray(d) ? d : []))[0] || null;
 
+// One POST that may legitimately be refused because it is already done.
+async function addOnce(env, path, body, label) {
+  const r = await portalApi(env, path, { method: 'POST', body: JSON.stringify(body) });
+  if (r.ok) return null;
+  const text = await r.text().catch(() => '');
+  return /already/i.test(text) ? null : `${label} ${r.status}`;
+}
+
 export async function joinStaffGroup(env, inv) {
   if (!staffGroupReady(env)) return { status: 'off' };
   try {
@@ -338,9 +351,10 @@ export async function joinStaffGroup(env, inv) {
     const found = await portalApi(env, 'users/search?email=' + encodeURIComponent(inv.learner_email));
     if (found.ok) u = firstUser(await found.json().catch(() => null));
     else if (found.status !== 404) return { status: 'failed', note: `user search ${found.status}` };
+    let made = false;
     if (!u || !u.id) {
       // Made here rather than by sign-on, so the name is spelled as Title22 has it.
-      const made = await portalApi(env, 'users', {
+      const r = await portalApi(env, 'users', {
         method: 'POST',
         body: JSON.stringify({ User: {
           email: inv.learner_email, first_name: inv.first_name || 'Staff', last_name: inv.last_name || 'Member',
@@ -348,18 +362,21 @@ export async function joinStaffGroup(env, inv) {
           password: randomBytes(18).toString('base64url') + 'Aa1!',
         } }),
       });
-      const d = await made.json().catch(() => null);
+      const d = await r.json().catch(() => null);
       u = d && (d.id ? d : d.user || firstUser(d));
-      if (!made.ok || !u || !u.id) return { status: 'failed', note: `user create ${made.status}` };
+      if (!r.ok || !u || !u.id) return { status: 'failed', note: `user create ${r.status}` };
+      made = true;
     }
-    const groupId = Number(String(env.LEARNUPON_STAFF_GROUP_ID).trim());
-    const m = await portalApi(env, 'group_memberships', {
-      method: 'POST', body: JSON.stringify({ GroupMembership: { user_id: Number(u.id), group_id: groupId } }),
-    });
-    if (m.ok) return { status: 'joined' };
-    const text = await m.text().catch(() => '');
-    if (/already/i.test(text)) return { status: 'already' };
-    return { status: 'failed', note: `group membership ${m.status}` };
+    const userId = Number(u.id);
+    // All at once, so the person waits for one round trip, not five.
+    const g = staffGroupId(env);
+    const results = await Promise.all([
+      g ? addOnce(env, 'group_memberships', { GroupMembership: { user_id: userId, group_id: g } }, 'group membership') : null,
+      ...staffCourseIds(env).map(c => addOnce(env, 'enrollments', { Enrollment: { user_id: userId, course_id: c } }, `enrollment ${c}`)),
+    ].map(p => p && p.catch(err => String((err && err.name === 'TimeoutError') ? 'timeout' : (err && err.message) || err))));
+    const problems = results.filter(Boolean);
+    if (problems.length) return { status: 'failed', note: problems.join('; ') };
+    return { status: made ? 'joined' : 'ready' };
   } catch (err) {
     return { status: 'failed', note: String(err && err.name === 'TimeoutError' ? 'timeout' : (err && err.message) || err) };
   }
@@ -377,7 +394,7 @@ async function handleStaffGo(token, env) {
   }).catch(() => null);
 
   const g = await joinStaffGroup(env, inv);
-  if (g.status === 'failed') console.warn('title22-learnupon: staff group not joined:', g.note);
+  if (g.status === 'failed') console.warn('title22-learnupon: staff courses not all set up:', g.note);
 
   const ts = Math.floor(Date.now() / 1000);
   let url = sqssoUrl(env.LEARNUPON_PORTAL_URL, inv.learner_email, ts, env.LEARNUPON_SQSSO_SECRET);
@@ -573,11 +590,12 @@ export default {
           LEARNUPON_SQSSO_SECRET: !!env.LEARNUPON_SQSSO_SECRET,
           LEARNUPON_PORTAL_URL: !!env.LEARNUPON_PORTAL_URL,
         },
-        // Staff join the portal's staff group before signing on.
+        // Staff are enrolled in their courses before signing on.
         staff_group: {
           LEARNUPON_API_USERNAME: !!env.LEARNUPON_API_USERNAME,
           LEARNUPON_API_PASSWORD: !!env.LEARNUPON_API_PASSWORD,
-          LEARNUPON_STAFF_GROUP_ID: !!String(env.LEARNUPON_STAFF_GROUP_ID || '').trim(),
+          LEARNUPON_STAFF_GROUP_ID: !!staffGroupId(env),
+          LEARNUPON_STAFF_COURSE_IDS: staffCourseIds(env).length,
           ready: staffGroupReady(env),
         },
       });

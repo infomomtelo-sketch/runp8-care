@@ -1751,15 +1751,18 @@ Owner-only while it is tested (the Partners tab card).
   the partner's real courses and hours are in the catalog. This is the HOME
   flow; trainers and their students are a separate flow, not designed yet.
 - **Staff land in their courses (2026-10-07).** LearnUpon's sign-on link
-  cannot put anyone in a group or a course (SQSSO has no such parameter); only
+  cannot put anyone in a course or a group (SQSSO has no such parameter); only
   the portal API can. So "Start my training" (`POST /t/<token>`,
-  `joinStaffGroup`) first finds or makes the staff learner through the API and
-  adds them to the group `LEARNUPON_STAFF_GROUP_ID` (a var in wrangler.toml),
-  whose courses then wait for them, and only then signs on. Needs the Worker
-  secrets `LEARNUPON_API_USERNAME` / `LEARNUPON_API_PASSWORD` (the portal's
-  API key pair; generating a new pair replaces the old one) and the group id.
-  Any failure still signs the person on, just without the group; `/health`
-  says `staff_group.ready`. The welcome page (GET) never calls the portal.
+  `joinStaffGroup`) first finds or makes the staff learner through the API
+  (with their Title22 name), enrolls them in every course in
+  `LEARNUPON_STAFF_COURSE_IDS` and, if set, adds them to the group
+  `LEARNUPON_STAFF_GROUP_ID` (both vars in wrangler.toml), and only then signs
+  on. The course list is the four practice-site numbers the partner emailed on
+  2026-10-07; the real site's numbers differ. Needs the Worker secrets
+  `LEARNUPON_API_USERNAME` / `LEARNUPON_API_PASSWORD` (the portal's API key
+  pair; generating a new pair replaces the old one). Any failure still signs
+  the person on; `/health` says `staff_group.ready`. The welcome page (GET)
+  never calls the portal.
 - **Tello knows where things are (2026-10-07, the owner: first-time users ask
   "where do I find...").** Rule 5 of `TELLO_CHARACTER` lists the account menu
   top to bottom, in its own labels, with the main button on each screen. Used
