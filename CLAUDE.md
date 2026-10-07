@@ -1750,6 +1750,16 @@ Owner-only while it is tested (the Partners tab card).
   Same switch as the links: owner-only until the partner agrees. Empty until
   the partner's real courses and hours are in the catalog. This is the HOME
   flow; trainers and their students are a separate flow, not designed yet.
+- **Staff land in their courses (2026-10-07).** LearnUpon's sign-on link
+  cannot put anyone in a group or a course (SQSSO has no such parameter); only
+  the portal API can. So "Start my training" (`POST /t/<token>`,
+  `joinStaffGroup`) first finds or makes the staff learner through the API and
+  adds them to the group `LEARNUPON_STAFF_GROUP_ID` (a var in wrangler.toml),
+  whose courses then wait for them, and only then signs on. Needs the Worker
+  secrets `LEARNUPON_API_USERNAME` / `LEARNUPON_API_PASSWORD` (the portal's
+  API key pair; generating a new pair replaces the old one) and the group id.
+  Any failure still signs the person on, just without the group; `/health`
+  says `staff_group.ready`. The welcome page (GET) never calls the portal.
 - **Tello knows where things are (2026-10-07, the owner: first-time users ask
   "where do I find...").** Rule 5 of `TELLO_CHARACTER` lists the account menu
   top to bottom, in its own labels, with the main button on each screen. Used

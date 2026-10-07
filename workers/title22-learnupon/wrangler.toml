@@ -22,6 +22,11 @@ compatibility_flags = ["nodejs_compat"]
 #   LEARNUPON_PORTAL_URL     — the partner portal's address, e.g.
 #                              https://<portal>.learnupon.com. A secret only so
 #                              the partner is not named in this public repo.
+#   LEARNUPON_API_USERNAME,
+#   LEARNUPON_API_PASSWORD   — the portal's API key pair (Settings -> Integrations
+#                              -> API). Used only to put a staff learner in the
+#                              staff group before sign-on. Generating new keys in
+#                              the portal replaces the old pair.
 #   TRAINING_PARTNER_NAME    — optional: the partner's name as staff should
 #                              read it on the welcome page (title22.app/train/...).
 #                              A secret so the partner is not named here. Left
@@ -42,3 +47,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 STAFF_LINKS_OPEN = "false"
+# LEARNUPON_STAFF_GROUP_ID: the portal's group whose courses every staff
+# learner gets (the number in the group's address on the portal). Empty = no
+# group step; sign-on works as before.
+LEARNUPON_STAFF_GROUP_ID = ""

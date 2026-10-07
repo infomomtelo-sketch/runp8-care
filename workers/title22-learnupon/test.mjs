@@ -3,7 +3,7 @@
 // Payloads are LearnUpon's documented examples, with invented learners.
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import worker, { signV1, signV2, toRow, sqssoUrl, courseToEntries, pacificDate, staffLearnerEmail, splitName } from './index.js';
+import worker, { signV1, signV2, toRow, sqssoUrl, courseToEntries, pacificDate, staffLearnerEmail, splitName, joinStaffGroup, staffGroupReady } from './index.js';
 const T22T = createRequire(import.meta.url)('../../training-rules.js');
 
 let fails = 0;
@@ -83,8 +83,34 @@ globalThis.fetch = async (url, init = {}) => {
     }
     return new Response('', { status: 201 });
   }
+  // The partner portal's API, for the staff group step.
+  if (url.startsWith('https://portal.example/api/v1/')) {
+    portal.calls.push({ url, init });
+    if (portal.mode === 'down') throw new TypeError('network down');
+    if (init.headers.Authorization !== 'Basic ' + Buffer.from('api-user:api-pass').toString('base64')) return new Response('{}', { status: 401 });
+    const path = url.slice('https://portal.example/api/v1/'.length);
+    if (path.startsWith('users/search')) {
+      const email = new URL(url).searchParams.get('email');
+      const u = portal.users.find(x => x.email === email);
+      return u ? new Response(JSON.stringify({ user: [u] }), { status: 200 }) : new Response(JSON.stringify({ message: 'not found' }), { status: 404 });
+    }
+    if (path === 'users' && init.method === 'POST') {
+      const b = JSON.parse(init.body).User;
+      const u = { id: 700 + portal.users.length, email: b.email, first_name: b.first_name, last_name: b.last_name };
+      portal.users.push(u);
+      return new Response(JSON.stringify({ id: u.id }), { status: 201 });
+    }
+    if (path === 'group_memberships' && init.method === 'POST') {
+      if (portal.mode === 'group_fails') return new Response('{"message":"Group not found"}', { status: 422 });
+      const m = JSON.parse(init.body).GroupMembership;
+      if (portal.members.some(x => x.user_id === m.user_id && x.group_id === m.group_id)) return new Response('{"message":"User is already a member of this group"}', { status: 422 });
+      portal.members.push(m);
+      return new Response(JSON.stringify({ id: 1, ...m }), { status: 201 });
+    }
+  }
   return new Response('unexpected ' + url, { status: 500 });
 };
+const portal = { calls: [], users: [], members: [], mode: 'ok' };
 
 async function call(path, { method = 'POST', body = '', headers = {}, e = env } = {}) {
   inserts = [];
@@ -401,6 +427,54 @@ const v2Headers = (body, secret = SECRET) => ({
   r = await call('/api/learnupon/webhook', { body: JSON.stringify(e) });
   const row = db.trainings.find(x => x.source_ref === 'learnupon:4242');
   ok(r.status === 200 && row && row.staff_id === STAFF && row.facility_id === 'fac-1', 'staff learner completion -> hours on that staff member');
+}
+
+// Staff join the portal's staff group before signing on.
+{
+  const SSO = { ...env, LEARNUPON_SQSSO_SECRET: 'sso-secret', LEARNUPON_PORTAL_URL: 'https://portal.example' };
+  const GRP = { ...SSO, LEARNUPON_API_USERNAME: 'api-user', LEARNUPON_API_PASSWORD: 'api-pass', LEARNUPON_STAFF_GROUP_ID: '555' };
+  const inv = { learner_email: staffLearnerEmail(STAFF), first_name: 'Daniel', last_name: 'Reyes' };
+
+  ok(!staffGroupReady(SSO) && !staffGroupReady({ ...GRP, LEARNUPON_STAFF_GROUP_ID: '' }) && !staffGroupReady({ ...GRP, LEARNUPON_STAFF_GROUP_ID: 'abc' }) && staffGroupReady(GRP), 'group step needs both keys and a numeric group id');
+  portal.calls.length = 0;
+  ok((await joinStaffGroup(SSO, inv)).status === 'off' && portal.calls.length === 0, 'not set up -> no portal call at all');
+
+  let g = await joinStaffGroup(GRP, inv);
+  const made = portal.users.find(u => u.email === inv.learner_email);
+  ok(g.status === 'joined' && made && made.first_name === 'Daniel' && made.last_name === 'Reyes', 'new staff learner is made with their name and joins the group');
+  ok(portal.members.length === 1 && portal.members[0].group_id === 555 && portal.members[0].user_id === made.id, 'membership is for that learner and the set group');
+  const create = portal.calls.find(c => c.url.endsWith('/users') && c.init.method === 'POST');
+  ok(create && !JSON.stringify(portal.calls).includes('sso-secret') && JSON.parse(create.init.body).User.password.length >= 24, 'random unused password, sign-on secret never sent');
+
+  portal.calls.length = 0;
+  g = await joinStaffGroup(GRP, inv);
+  ok(g.status === 'already' && portal.users.length === 1 && !portal.calls.some(c => c.url.endsWith('/users')), 'second time: existing learner found, already in the group, nothing made');
+
+  portal.mode = 'group_fails';
+  g = await joinStaffGroup(GRP, { ...inv, learner_email: 'staff-x@learners.title22.app' });
+  ok(g.status === 'failed' && /422/.test(g.note), 'a group the portal refuses -> failed, with the reason');
+  portal.mode = 'down';
+  g = await joinStaffGroup(GRP, inv);
+  ok(g.status === 'failed', 'portal unreachable -> failed, not thrown');
+  g = await joinStaffGroup({ ...GRP, LEARNUPON_API_PASSWORD: 'wrong' }, inv);
+  ok(g.status === 'failed', 'wrong key -> failed');
+
+  // "Start my training" still signs on whatever the group step did.
+  db.invites.length = 0;
+  let r = await call('/api/learnupon/staff-link', { headers: { Origin: 'https://title22.app', Authorization: 'Bearer owner' }, e: GRP, body: JSON.stringify({ staff_id: STAFF }) });
+  const token = r.data.link.replace('https://title22.app/train/', '');
+  const go = (e) => worker.fetch(new Request('https://w.example/t/' + token, { method: 'POST' }), e);
+  let res = await go(GRP);
+  ok(res.status === 303 && new URL(res.headers.get('location')).origin === 'https://portal.example', 'portal down: staff still signed on');
+  portal.mode = 'ok'; portal.calls.length = 0;
+  res = await go(GRP);
+  ok(res.status === 303 && portal.calls.some(c => c.url.endsWith('/group_memberships')), 'portal up: group step runs, then sign-on');
+  portal.calls.length = 0;
+  res = await worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), GRP);
+  ok(res.status === 200 && portal.calls.length === 0, 'the welcome page (and a link preview) never touches the portal');
+
+  r = await call('/health', { method: 'GET', e: GRP });
+  ok(r.data.staff_group.ready === true && !JSON.stringify(r.data).includes('api-pass'), 'health says the group step is ready, never a value');
 }
 
 insertStatus = 201;
