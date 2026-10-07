@@ -1750,6 +1750,12 @@ Owner-only while it is tested (the Partners tab card).
   Same switch as the links: owner-only until the partner agrees. Empty until
   the partner's real courses and hours are in the catalog. This is the HOME
   flow; trainers and their students are a separate flow, not designed yet.
+- **Tello knows where things are (2026-10-07, the owner: first-time users ask
+  "where do I find...").** Rule 5 of `TELLO_CHARACTER` lists the account menu
+  top to bottom, in its own labels, with the main button on each screen. Used
+  by both the Tello tab and the dock. Change a menu label or move a tab, and
+  change rule 5 in the same PR, or Tello sends people to a screen that is not
+  there.
 - **All three Tellos know this (2026-10-06).** App Tello (tab and dock) gets
   `online_courses` in `buildFacilityContext` — `training_links` from
   `canSendTrainingLink()`, plus the active catalog courses — and rule 4 of
