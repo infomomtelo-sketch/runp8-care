@@ -115,8 +115,8 @@ globalThis.fetch = async (url, init = {}) => {
       portal.members.push(m);
       return new Response(JSON.stringify({ id: 1, ...m }), { status: 201 });
     }
-    if (path.startsWith('courses/')) {
-      return new Response(JSON.stringify({ courses: [{ id: Number(path.slice(8)), name: 'Course', published_status: 'draft', description: 'long text' }] }), { status: 200 });
+    if (path === 'courses') {
+      return new Response(JSON.stringify({ courses: [{ id: 11, name: 'Course 11', published_status: 'published', description: 'long text' }, { id: 22, name: 'Course 22', published_status: 'draft', description: 'long text' }] }), { status: 200 });
     }
     if (path === 'enrollments' && init.method === 'POST') {
       const raw = JSON.parse(init.body).Enrollment;
@@ -481,7 +481,7 @@ const v2Headers = (body, secret = SECRET) => ({
 
   portal.mode = 'enroll_fails';
   g = await joinStaffGroup(CRS, { ...inv, learner_email: 'staff-x@learners.title22.app' });
-  ok(g.status === 'failed' && /enrollment 22 refused/.test(g.note) && g.steps.some(x => x.step === 'course 22 lookup' && /draft/.test(x.says) && !/long text/.test(x.says)) && portal.enrollments.some(e => e.course_id === 11 && e.user_id !== made.id), 'one course refused -> the others still enrolled, failure names it');
+  ok(g.status === 'failed' && /enrollment 22 refused/.test(g.note) && g.steps.some(x => x.step === 'course list' && x.http === 200) && Array.isArray(g.courses) && g.courses.length === 2 && g.courses[1].id === 22 && g.courses[1].published_status === 'draft' && !JSON.stringify(g.courses).includes('long text') && portal.enrollments.some(e => e.course_id === 11 && e.user_id !== made.id), 'one course refused -> the others still enrolled, failure names it, the portal course list is kept without long text');
   portal.mode = 'group_fails';
   g = await joinStaffGroup(GRP, { ...inv, learner_email: 'staff-y@learners.title22.app' });
   ok(g.status === 'failed' && /group membership 422/.test(g.note), 'a group the portal refuses -> failed, with the reason');
