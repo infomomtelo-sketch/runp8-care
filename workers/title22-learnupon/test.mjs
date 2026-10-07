@@ -116,7 +116,10 @@ globalThis.fetch = async (url, init = {}) => {
       return new Response(JSON.stringify({ id: 1, ...m }), { status: 201 });
     }
     if (path === 'enrollments' && init.method === 'POST') {
-      const e = JSON.parse(init.body).Enrollment;
+      const raw = JSON.parse(init.body).Enrollment;
+      // Like the live portal: without camelCase ids it cannot find the enrollment.
+      if (!raw.userId || !raw.courseId) return new Response('{"message":"failed to find the enrollment specified"}', { status: 400 });
+      const e = { user_id: raw.userId, course_id: raw.courseId };
       if (portal.mode === 'enroll_fails' && e.course_id === 22) return new Response('{"message":"Course not found"}', { status: 404 });
       if (portal.enrollments.some(x => x.user_id === e.user_id && x.course_id === e.course_id)) return new Response('{"message":"User is already enrolled on this course"}', { status: 422 });
       portal.enrollments.push(e);

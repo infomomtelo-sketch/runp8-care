@@ -386,7 +386,10 @@ export async function joinStaffGroup(env, inv) {
     const g = staffGroupId(env);
     const results = await Promise.all([
       g ? addOnce(env, 'group_memberships', { GroupMembership: { user_id: userId, group_id: g } }, 'group membership', steps) : null,
-      ...staffCourseIds(env).map(c => addOnce(env, 'enrollments', { Enrollment: { user_id: userId, course_id: c } }, `enrollment ${c}`, steps)),
+      // LearnUpon refused { user_id, course_id } with 400 "failed to find the
+      // enrollment specified" (live, 2026-10-07): its enrollment fields are
+      // camelCase. The snake_case pair rides along, ignored if unknown.
+      ...staffCourseIds(env).map(c => addOnce(env, 'enrollments', { Enrollment: { userId, courseId: c, user_id: userId, course_id: c } }, `enrollment ${c}`, steps)),
     ].map(p => p && p.catch(err => String((err && err.name === 'TimeoutError') ? 'timeout' : (err && err.message) || err))));
     const problems = results.filter(Boolean);
     if (problems.length) return fail(problems.join('; '));
