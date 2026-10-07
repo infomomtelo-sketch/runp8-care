@@ -311,7 +311,8 @@ const v2Headers = (body, secret = SECRET) => ({
 {
   const SSO = { ...env, LEARNUPON_SQSSO_SECRET: 'sso-secret', LEARNUPON_PORTAL_URL: 'https://portal.example' };
   const origin = { Origin: 'https://title22.app', Authorization: 'Bearer owner' };
-  const go = (token) => worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), SSO);
+  const go = (token, e = SSO) => worker.fetch(new Request('https://w.example/t/' + token, { method: 'POST' }), e);
+  const look = (token, e = SSO) => worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), e);
   db.links.length = 0;
 
   ok(staffLearnerEmail(STAFF) === `staff-${STAFF}@learners.title22.app`, 'learner address names the staff record, no person');
@@ -333,10 +334,21 @@ const v2Headers = (body, secret = SECRET) => ({
   const days = (new Date(r.data.expires_at) - Date.now()) / 86400e3;
   ok(days > 29.9 && days <= 30, 'link lasts 30 days');
 
+  // Opening the link shows the welcome page and signs nobody on (a text
+  // message's link preview opens links too).
+  let w = await look(token1);
+  let html = await w.text();
+  ok(w.status === 200 && !w.headers.get('location') && /Start my training/.test(html) && html.includes(`action="/t/${token1}"`) && /method="post"/.test(html), 'opening the link shows the welcome page with one button');
+  ok(db.invites[0].use_count == null || db.invites[0].use_count === 0, 'the welcome page signs nobody on and counts no use');
+  ok(/our training partner/.test(html) && !/portal\.example/.test(html), 'no partner named unless set, portal address never shown');
+  w = await look(token1, { ...SSO, TRAINING_PARTNER_NAME: 'Acme <Training>' });
+  html = await w.text();
+  ok(html.includes("Acme &lt;Training&gt;'s training site") && !html.includes('<Training>'), 'partner name from the setting, escaped');
+
   let g = await go(token1);
   const dest = g.headers.get('location') ? new URL(g.headers.get('location')) : null;
   const ts = dest && dest.searchParams.get('TS');
-  ok(g.status === 302 && dest && dest.origin === 'https://portal.example' && dest.searchParams.get('Email') === staffLearnerEmail(STAFF), 'opening the link signs on as the staff learner');
+  ok(g.status === 303 && dest && dest.origin === 'https://portal.example' && dest.searchParams.get('Email') === staffLearnerEmail(STAFF), 'opening the link signs on as the staff learner');
   ok(dest && dest.searchParams.get('SSOToken') === createHash('sha256').update(`USER=${staffLearnerEmail(STAFF)}&TS=${ts}&KEY=sso-secret`).digest('hex'), 'staff sign-on is signed');
   ok(g.headers.get('referrer-policy') === 'no-referrer' && db.invites[0].use_count === 1 && db.invites[0].last_used_at, 'use counted, no referrer');
 
@@ -346,7 +358,7 @@ const v2Headers = (body, secret = SECRET) => ({
   g = await go(token1);
   ok(g.status === 404 && !g.headers.get('location'), 'old link stops working when a new one is made');
   g = await go(token2);
-  ok(g.status === 302, 'new link works');
+  ok(g.status === 303, 'new link works');
 
   // Expired, unknown and malformed links show a plain page, never a sign-on.
   db.invites.find(i => i.token_hash === createHash('sha256').update(token2).digest('hex')).expires_at = '2020-01-01T00:00:00Z';
@@ -356,8 +368,12 @@ const v2Headers = (body, secret = SECRET) => ({
   ok(g.status === 404 && !g.headers.get('location'), 'unknown link -> 404');
   g = await go('<script>');
   ok(g.status === 404 && !g.headers.get('location'), 'malformed link -> 404');
-  g = await worker.fetch(new Request('https://w.example/t/' + 'B'.repeat(32), { method: 'GET' }), env);
+  g = await go('B'.repeat(32), env);
   ok(g.status === 503 && !g.headers.get('location'), 'sign-on not configured -> 503 page');
+  w = await look(token2);
+  ok(w.status === 404 && /isn't active/.test(await w.text()), 'expired link -> welcome page refuses too');
+  w = await look('<script>');
+  ok(w.status === 404, 'malformed link -> no welcome page');
 
 
   // Opened to customers: an administrator on a home's team sends their own
