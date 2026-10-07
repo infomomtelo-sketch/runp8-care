@@ -20,7 +20,8 @@
 //                                 (title22.app/train/<token> redirects here)
 //   POST /t/<token>               "Start my training": enrolls the staff
 //                                 learner in their courses (when set up), then signs on
-//   GET  /health                  yes/no for each secret, never a value
+//   GET  /health                  yes/no for each secret, never a value; and
+//                                 the last staff enrollment, step by step
 //
 // LearnUpon has two webhook formats and the portal decides which it sends:
 //   v2 (current): JSON body {"data":[event, ...]}, up to 10 events per POST,
@@ -336,21 +337,32 @@ async function portalApi(env, path, init = {}) {
 // LearnUpon answers a user search as {"user":[...]}; accept the near shapes too.
 const firstUser = (d) => [].concat((d && (d.user || d.users)) || (Array.isArray(d) ? d : []))[0] || null;
 
+// What the portal said, short and with any email address taken out, so it can
+// be logged and shown on /health without naming anyone.
+export const portalSays = (t) => String(t || '').replace(/[^\s"'<>]+@[^\s"'<>]+/g, '[email]').replace(/\s+/g, ' ').trim().slice(0, 200);
+
 // One POST that may legitimately be refused because it is already done.
-async function addOnce(env, path, body, label) {
+async function addOnce(env, path, body, label, steps) {
   const r = await portalApi(env, path, { method: 'POST', body: JSON.stringify(body) });
-  if (r.ok) return null;
   const text = await r.text().catch(() => '');
+  steps.push({ step: label, http: r.status, says: portalSays(text) });
+  if (r.ok) return null;
   return /already/i.test(text) ? null : `${label} ${r.status}`;
 }
 
+// Every portal answer is kept in `steps`, so a failure can be read afterwards
+// (handleStaffGo logs it to learnupon_events and /health shows the latest).
 export async function joinStaffGroup(env, inv) {
-  if (!staffGroupReady(env)) return { status: 'off' };
+  if (!staffGroupReady(env)) return { status: 'off', steps: [] };
+  const steps = [];
+  const fail = (note) => ({ status: 'failed', note, steps });
   try {
     let u = null;
     const found = await portalApi(env, 'users/search?email=' + encodeURIComponent(inv.learner_email));
-    if (found.ok) u = firstUser(await found.json().catch(() => null));
-    else if (found.status !== 404) return { status: 'failed', note: `user search ${found.status}` };
+    const foundText = await found.text().catch(() => '');
+    steps.push({ step: 'user search', http: found.status, says: portalSays(foundText) });
+    if (found.ok) { try { u = firstUser(JSON.parse(foundText)); } catch { u = null; } }
+    else if (found.status !== 404) return fail(`user search ${found.status}`);
     let made = false;
     if (!u || !u.id) {
       // Made here rather than by sign-on, so the name is spelled as Title22 has it.
@@ -362,24 +374,51 @@ export async function joinStaffGroup(env, inv) {
           password: randomBytes(18).toString('base64url') + 'Aa1!',
         } }),
       });
-      const d = await r.json().catch(() => null);
+      const text = await r.text().catch(() => '');
+      steps.push({ step: 'user create', http: r.status, says: portalSays(text) });
+      let d = null; try { d = JSON.parse(text); } catch { d = null; }
       u = d && (d.id ? d : d.user || firstUser(d));
-      if (!r.ok || !u || !u.id) return { status: 'failed', note: `user create ${r.status}` };
+      if (!r.ok || !u || !u.id) return fail(`user create ${r.status}`);
       made = true;
     }
     const userId = Number(u.id);
     // All at once, so the person waits for one round trip, not five.
     const g = staffGroupId(env);
     const results = await Promise.all([
-      g ? addOnce(env, 'group_memberships', { GroupMembership: { user_id: userId, group_id: g } }, 'group membership') : null,
-      ...staffCourseIds(env).map(c => addOnce(env, 'enrollments', { Enrollment: { user_id: userId, course_id: c } }, `enrollment ${c}`)),
+      g ? addOnce(env, 'group_memberships', { GroupMembership: { user_id: userId, group_id: g } }, 'group membership', steps) : null,
+      ...staffCourseIds(env).map(c => addOnce(env, 'enrollments', { Enrollment: { user_id: userId, course_id: c } }, `enrollment ${c}`, steps)),
     ].map(p => p && p.catch(err => String((err && err.name === 'TimeoutError') ? 'timeout' : (err && err.message) || err))));
     const problems = results.filter(Boolean);
-    if (problems.length) return { status: 'failed', note: problems.join('; ') };
-    return { status: made ? 'joined' : 'ready' };
+    if (problems.length) return fail(problems.join('; '));
+    return { status: made ? 'joined' : 'ready', steps };
   } catch (err) {
-    return { status: 'failed', note: String(err && err.name === 'TimeoutError' ? 'timeout' : (err && err.message) || err) };
+    return fail(String(err && err.name === 'TimeoutError' ? 'timeout' : (err && err.message) || err));
   }
+}
+
+// One learnupon_events row per "Start my training", so what the portal said is
+// readable later. webhook_version 0 = written by Title22, not a webhook.
+async function logStaffJoin(env, inv, g) {
+  await REST(env, 'learnupon_events', {
+    method: 'POST', headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      webhook_version: 0, webhook_type: 'title22_staff_join', learner_email: inv.learner_email,
+      training_status: g.status, training_note: g.note || null, payload: { steps: g.steps || [] },
+    }),
+  }).catch(() => null);
+}
+
+// The latest of those rows for /health: when, the outcome, and each step's
+// HTTP status and (email-free) words. Never the learner's address.
+async function lastStaffJoin(env) {
+  try {
+    const r = await REST(env, 'learnupon_events?webhook_type=eq.title22_staff_join&select=received_at,training_status,training_note,payload&order=received_at.desc&limit=1');
+    if (!r.ok) return null;
+    const row = (await r.json())[0];
+    if (!row) return null;
+    return { at: row.received_at, status: row.training_status, note: row.training_note,
+      steps: ((row.payload && row.payload.steps) || []).map(x => ({ step: x.step, http: x.http, says: portalSays(x.says) })) };
+  } catch { return null; }
 }
 
 async function handleStaffGo(token, env) {
@@ -395,6 +434,7 @@ async function handleStaffGo(token, env) {
 
   const g = await joinStaffGroup(env, inv);
   if (g.status === 'failed') console.warn('title22-learnupon: staff courses not all set up:', g.note);
+  if (g.status !== 'off') await logStaffJoin(env, inv, g);
 
   const ts = Math.floor(Date.now() / 1000);
   let url = sqssoUrl(env.LEARNUPON_PORTAL_URL, inv.learner_email, ts, env.LEARNUPON_SQSSO_SECRET);
@@ -597,6 +637,7 @@ export default {
           LEARNUPON_STAFF_GROUP_ID: !!staffGroupId(env),
           LEARNUPON_STAFF_COURSE_IDS: staffCourseIds(env).length,
           ready: staffGroupReady(env),
+          last_join: env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY ? await lastStaffJoin(env) : null,
         },
       });
     }

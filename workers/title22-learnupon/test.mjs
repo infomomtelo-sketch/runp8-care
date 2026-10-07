@@ -13,6 +13,7 @@ const SECRET = 'test-secret';
 const env = { LEARNUPON_WEBHOOK_SECRET: SECRET, SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'service' };
 
 let inserts, insertStatus = 201;
+const joins = [];
 const STAFF = '11111111-2222-3333-4444-555555555555';
 const OTHER_STAFF = '99999999-2222-3333-4444-555555555555';
 const db = {
@@ -33,6 +34,13 @@ globalThis.fetch = async (url, init = {}) => {
     return new Response(JSON.stringify([{ title22_is_partner_admin: url.includes('u-owner') }]), { status: 200 });
   }
   if (url.startsWith('https://db.example/rest/v1/learnupon_events')) {
+    if (!init.method || init.method === 'GET') {
+      const last = joins.filter(j => url.includes('webhook_type=eq.title22_staff_join')).slice(-1)
+        .map(j => ({ received_at: '2026-10-07T18:00:00Z', training_status: j.training_status, training_note: j.training_note, payload: j.payload }));
+      return new Response(JSON.stringify(last), { status: 200 });
+    }
+    const body = JSON.parse(init.body);
+    if (body.webhook_type === 'title22_staff_join') { joins.push(body); return new Response('', { status: 201 }); }
     inserts.push({ url, init, rows: JSON.parse(init.body) });
     return new Response('', { status: insertStatus });
   }
@@ -492,6 +500,16 @@ const v2Headers = (body, secret = SECRET) => ({
   res = await worker.fetch(new Request('https://w.example/t/' + token, { method: 'GET' }), CRS);
   ok(res.status === 200 && portal.calls.length === 0, 'the welcome page (and a link preview) never touches the portal');
 
+  ok(joins.length >= 1 && joins.every(j => j.webhook_version === 0 && j.learner_email === inv.learner_email) && joins.slice(-1)[0].training_status === 'ready'
+    && joins.slice(-1)[0].payload.steps.some(x => x.step === 'enrollment 11' && x.http === 422 && /already/.test(x.says)), 'each Start my training is logged with every portal answer');
+  portal.mode = 'enroll_fails'; portal.enrollments.length = 0;
+  res = await go(CRS);
+  const lastJ = joins.slice(-1)[0];
+  ok(res.status === 303 && lastJ.training_status === 'failed' && lastJ.payload.steps.some(x => x.step === 'enrollment 22' && x.http === 404 && /Course not found/.test(x.says)), 'a refused enrollment is logged with the portal\'s words');
+  portal.mode = 'ok';
+  r = await call('/health', { method: 'GET', e: CRS });
+  ok(r.data.staff_group.last_join && r.data.staff_group.last_join.status === 'failed' && r.data.staff_group.last_join.steps.length >= 2
+    && !JSON.stringify(r.data).includes('@learners'), 'health shows the last join, step by step, with no email address');
   r = await call('/health', { method: 'GET', e: CRS });
   ok(r.data.staff_group.ready === true && r.data.staff_group.LEARNUPON_STAFF_COURSE_IDS === 2 && !JSON.stringify(r.data).includes('api-pass'), 'health says it is ready and how many courses, never a value');
 }
