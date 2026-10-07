@@ -355,23 +355,14 @@ async function addOnce(env, path, body, label, steps) {
 // The live sandbox refused both { user_id, course_id } and { userId, courseId }
 // with 400 "failed to find the enrollment specified" (2026-10-07). Until the
 // right shape is known, try each candidate in turn (first success wins, so no
-// course is enrolled twice), and if all are refused, look the course up so the
-// log says whether the portal knows it.
+// course is enrolled twice), and if all are refused, list the portal's courses
+// (portalCourses) so the log shows the ids it does know.
 const ENROLL_SHAPES = [
   (u, c) => ({ Enrollment: { userId: u, courseId: c } }),
   (u, c) => ({ Enrollment: { user_id: u, course_id: c } }),
   (u, c) => ({ Enrollment: { userId: String(u), courseId: String(c) } }),
   (u, c, email) => ({ Enrollment: { email, courseId: c } }),
 ];
-
-// The few fields of a course record that say whether it can take learners.
-function courseSummary(text) {
-  let d; try { d = JSON.parse(text); } catch { return portalSays(text); }
-  const c = [].concat((d && (d.courses || d.course)) || d)[0] || {};
-  const keep = Object.entries(c).filter(([k, v]) => v === null || typeof v !== 'object')
-    .filter(([k]) => /^(id|name|status|state|published|.*publish.*|.*version.*|.*enroll.*|course_type|type)$/i.test(k));
-  return portalSays(JSON.stringify(Object.fromEntries(keep)));
-}
 
 async function enrollOnce(env, userId, email, c, steps) {
   for (let i = 0; i < ENROLL_SHAPES.length; i++) {
@@ -380,9 +371,28 @@ async function enrollOnce(env, userId, email, c, steps) {
     steps.push({ step: `enrollment ${c} shape ${i + 1}`, http: r.status, says: portalSays(text) });
     if (r.ok || /already/i.test(text)) return null;
   }
-  const g = await portalApi(env, `courses/${c}`);
-  steps.push({ step: `course ${c} lookup`, http: g.status, says: courseSummary(await g.text().catch(() => '')) });
   return `enrollment ${c} refused`;
+}
+
+// Every shape was refused and `courses/<id>` answered 400 for all four ids
+// (2026-10-07), which suggests the ids are not the portal's course ids. So on
+// a refusal, list the courses the API does know: id, name and any
+// status/publish field, nothing else. Course titles only, no people.
+export function courseList(text) {
+  let d; try { d = JSON.parse(text); } catch { return null; }
+  const rows = [].concat((d && (d.courses || d.course)) || (Array.isArray(d) ? d : []));
+  return rows.slice(0, 30).map(c => Object.fromEntries(Object.entries(c || {})
+    .filter(([k, v]) => v === null || typeof v !== 'object')
+    .filter(([k]) => /^(id|name|status|state|published|.*publish.*|.*version.*|course_type|type|reference_code|.*code)$/i.test(k))
+    .map(([k, v]) => [k, typeof v === 'string' ? portalSays(v).slice(0, 80) : v])));
+}
+
+async function portalCourses(env, steps) {
+  const r = await portalApi(env, 'courses');
+  const text = await r.text().catch(() => '');
+  const list = r.ok ? courseList(text) : null;
+  steps.push({ step: 'course list', http: r.status, says: list ? `${list.length} courses` : portalSays(text) });
+  return list;
 }
 
 export async function joinStaffGroup(env, inv) {
@@ -422,7 +432,11 @@ export async function joinStaffGroup(env, inv) {
       ...staffCourseIds(env).map(c => enrollOnce(env, userId, inv.learner_email, c, steps)),
     ].map(p => p && p.catch(err => String((err && err.name === 'TimeoutError') ? 'timeout' : (err && err.message) || err))));
     const problems = results.filter(Boolean);
-    if (problems.length) return fail(problems.join('; '));
+    if (problems.length) {
+      const out = fail(problems.join('; '));
+      if (problems.some(p => /^enrollment /.test(p))) out.courses = await portalCourses(env, steps).catch(() => null);
+      return out;
+    }
     return { status: made ? 'joined' : 'ready', steps };
   } catch (err) {
     return fail(String(err && err.name === 'TimeoutError' ? 'timeout' : (err && err.message) || err));
@@ -436,7 +450,7 @@ async function logStaffJoin(env, inv, g) {
     method: 'POST', headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify({
       webhook_version: 0, webhook_type: 'title22_staff_join', learner_email: inv.learner_email,
-      training_status: g.status, training_note: g.note || null, payload: { steps: g.steps || [] },
+      training_status: g.status, training_note: g.note || null, payload: { steps: g.steps || [], courses: g.courses || null },
     }),
   }).catch(() => null);
 }
@@ -450,7 +464,8 @@ async function lastStaffJoin(env) {
     const row = (await r.json())[0];
     if (!row) return null;
     return { at: row.received_at, status: row.training_status, note: row.training_note,
-      steps: ((row.payload && row.payload.steps) || []).map(x => ({ step: x.step, http: x.http, says: portalSays(x.says) })) };
+      steps: ((row.payload && row.payload.steps) || []).map(x => ({ step: x.step, http: x.http, says: portalSays(x.says) })),
+      courses: (row.payload && row.payload.courses) || null };
   } catch { return null; }
 }
 
