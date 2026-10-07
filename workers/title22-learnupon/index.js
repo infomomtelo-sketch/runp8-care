@@ -352,6 +352,39 @@ async function addOnce(env, path, body, label, steps) {
 
 // Every portal answer is kept in `steps`, so a failure can be read afterwards
 // (handleStaffGo logs it to learnupon_events and /health shows the latest).
+// The live sandbox refused both { user_id, course_id } and { userId, courseId }
+// with 400 "failed to find the enrollment specified" (2026-10-07). Until the
+// right shape is known, try each candidate in turn (first success wins, so no
+// course is enrolled twice), and if all are refused, look the course up so the
+// log says whether the portal knows it.
+const ENROLL_SHAPES = [
+  (u, c) => ({ Enrollment: { userId: u, courseId: c } }),
+  (u, c) => ({ Enrollment: { user_id: u, course_id: c } }),
+  (u, c) => ({ Enrollment: { userId: String(u), courseId: String(c) } }),
+  (u, c, email) => ({ Enrollment: { email, courseId: c } }),
+];
+
+// The few fields of a course record that say whether it can take learners.
+function courseSummary(text) {
+  let d; try { d = JSON.parse(text); } catch { return portalSays(text); }
+  const c = [].concat((d && (d.courses || d.course)) || d)[0] || {};
+  const keep = Object.entries(c).filter(([k, v]) => v === null || typeof v !== 'object')
+    .filter(([k]) => /^(id|name|status|state|published|.*publish.*|.*version.*|.*enroll.*|course_type|type)$/i.test(k));
+  return portalSays(JSON.stringify(Object.fromEntries(keep)));
+}
+
+async function enrollOnce(env, userId, email, c, steps) {
+  for (let i = 0; i < ENROLL_SHAPES.length; i++) {
+    const r = await portalApi(env, 'enrollments', { method: 'POST', body: JSON.stringify(ENROLL_SHAPES[i](userId, c, email)) });
+    const text = await r.text().catch(() => '');
+    steps.push({ step: `enrollment ${c} shape ${i + 1}`, http: r.status, says: portalSays(text) });
+    if (r.ok || /already/i.test(text)) return null;
+  }
+  const g = await portalApi(env, `courses/${c}`);
+  steps.push({ step: `course ${c} lookup`, http: g.status, says: courseSummary(await g.text().catch(() => '')) });
+  return `enrollment ${c} refused`;
+}
+
 export async function joinStaffGroup(env, inv) {
   if (!staffGroupReady(env)) return { status: 'off', steps: [] };
   const steps = [];
@@ -386,10 +419,7 @@ export async function joinStaffGroup(env, inv) {
     const g = staffGroupId(env);
     const results = await Promise.all([
       g ? addOnce(env, 'group_memberships', { GroupMembership: { user_id: userId, group_id: g } }, 'group membership', steps) : null,
-      // LearnUpon refused { user_id, course_id } with 400 "failed to find the
-      // enrollment specified" (live, 2026-10-07): its enrollment fields are
-      // camelCase. The snake_case pair rides along, ignored if unknown.
-      ...staffCourseIds(env).map(c => addOnce(env, 'enrollments', { Enrollment: { userId, courseId: c, user_id: userId, course_id: c } }, `enrollment ${c}`, steps)),
+      ...staffCourseIds(env).map(c => enrollOnce(env, userId, inv.learner_email, c, steps)),
     ].map(p => p && p.catch(err => String((err && err.name === 'TimeoutError') ? 'timeout' : (err && err.message) || err))));
     const problems = results.filter(Boolean);
     if (problems.length) return fail(problems.join('; '));
