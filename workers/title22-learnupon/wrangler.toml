@@ -22,6 +22,10 @@ compatibility_flags = ["nodejs_compat"]
 #   LEARNUPON_PORTAL_URL     — the partner portal's address, e.g.
 #                              https://<portal>.learnupon.com. A secret only so
 #                              the partner is not named in this public repo.
+#   TRAINING_PARTNER_NAME    — optional: the partner's name as staff should
+#                              read it on the welcome page (title22.app/train/...).
+#                              A secret so the partner is not named here. Left
+#                              unset, the page says "our training partner".
 # Sign-on (POST /api/learnupon/sso) answers 503 until the last two are set; the
 # webhook does not need them.
 #

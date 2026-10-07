@@ -1723,7 +1723,12 @@ Owner-only while it is tested (the Partners tab card).
 - **Staff train from their own phone (2026-10-06, the owner: "I cannot hand
   them the computer").** "Send training link" on the same Partners card makes
   `title22.app/train/<token>` for the picked staff member (`_redirects` sends
-  it to the Worker's `/t/<token>`, which signs them on by SQSSO). The learner
+  it to the Worker's `/t/<token>`). Opening it shows a Title22 welcome page
+  (first name, what happens next, one "Start my training" button) and signs
+  nobody on; only the button's POST signs them on by SQSSO, so a text
+  message's link preview cannot create a learner. The page names no partner:
+  the optional `TRAINING_PARTNER_NAME` secret fills it in, else "our training
+  partner", so it works for any training center (2026-10-07). The learner
   is `staff-<staff id>@learners.title22.app`, a made-up address naming the
   record and no person; the learner link is written when the link is made.
   Only the token's SHA-256 is stored (`learnupon_staff_invites`,

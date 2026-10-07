@@ -254,17 +254,62 @@ function page(title, text, status) {
   );
 }
 
-async function handleStaffGo(token, env) {
-  const dead = () => page('This link isn\'t active', 'Ask your administrator to send you a new training link.', 404);
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return dead();
-  if (!env.LEARNUPON_SQSSO_SECRET || !env.LEARNUPON_PORTAL_URL || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) {
-    return page('Training is not available right now', 'Please try again later.', 503);
-  }
+// The staff member's first stop: a Title22 page that says what happens next,
+// with one button. Opening the link signs nobody on, so a text message's link
+// preview cannot create a learner on the partner's portal; only the button's
+// POST does. Written for any training partner: its name comes from the
+// optional TRAINING_PARTNER_NAME secret, never from this public file.
+async function readInvite(token, env) {
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return { dead: true };
+  if (!env.LEARNUPON_SQSSO_SECRET || !env.LEARNUPON_PORTAL_URL || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return { down: true };
   const h = hashToken(token);
   const r = await REST(env, `learnupon_staff_invites?token_hash=eq.${h}&select=learner_email,first_name,last_name,expires_at,revoked_at,use_count`);
-  if (!r.ok) return page('Training is not available right now', 'Please try again later.', 503);
+  if (!r.ok) return { down: true };
   const inv = (await r.json())[0];
-  if (!inv || inv.revoked_at || !(new Date(inv.expires_at) > new Date())) return dead();
+  if (!inv || inv.revoked_at || !(new Date(inv.expires_at) > new Date())) return { dead: true };
+  return { inv, h };
+}
+
+const deadPage = () => page('This link isn\'t active', 'Ask your administrator to send you a new training link.', 404);
+const downPage = () => page('Training is not available right now', 'Please try again later.', 503);
+
+export function welcomePage(token, firstName, partnerName) {
+  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const who = String(partnerName || '').trim();
+  const site = who ? `${esc(who)}'s training site` : 'our training partner\'s site';
+  const cert = who ? esc(who) : 'the training partner';
+  const hi = String(firstName || '').trim() ? `Hi ${esc(String(firstName).trim())},` : 'Hi,';
+  return new Response(
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">`
+    + `<title>Your training</title><body style="margin:0;background:#f4f7f6;font-family:system-ui,-apple-system,sans-serif;color:#1d2b2a">`
+    + `<main style="max-width:440px;margin:0 auto;padding:32px 20px 40px">`
+    + `<p style="font-weight:700;font-size:15px;letter-spacing:.02em;color:#2f6f63;margin:0 0 24px">Title22</p>`
+    + `<h1 style="font-size:24px;margin:0 0 8px">${hi}</h1>`
+    + `<p style="font-size:17px;line-height:1.5;margin:0 0 24px">Your home has set up online training for you.</p>`
+    + `<ol style="font-size:16px;line-height:1.5;padding-left:22px;margin:0 0 28px">`
+    + `<li style="margin-bottom:10px">Tap <b>Start my training</b>. You'll go to ${site}, already signed in.</li>`
+    + `<li style="margin-bottom:10px">Finish each course all the way to the end.</li>`
+    + `<li>When you finish, it shows on your training record in Title22. If a course has a certificate, it comes from ${cert}.</li>`
+    + `</ol>`
+    + `<form method="post" action="/t/${esc(token)}"><button type="submit" style="width:100%;min-height:56px;border:0;border-radius:12px;background:#2f6f63;color:#fff;font:inherit;font-size:18px;font-weight:600;cursor:pointer">Start my training</button></form>`
+    + `<p style="font-size:14px;line-height:1.5;color:#5b6b69;margin:20px 0 0">This link is just for you, so please don't share it. Questions? Ask your administrator.</p>`
+    + `</main></body></html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY' } }
+  );
+}
+
+async function handleStaffWelcome(token, env) {
+  const r = await readInvite(token, env);
+  if (r.dead) return deadPage();
+  if (r.down) return downPage();
+  return welcomePage(token, r.inv.first_name, env.TRAINING_PARTNER_NAME);
+}
+
+async function handleStaffGo(token, env) {
+  const r = await readInvite(token, env);
+  if (r.dead) return deadPage();
+  if (r.down) return downPage();
+  const { inv, h } = r;
 
   await REST(env, `learnupon_staff_invites?token_hash=eq.${h}`, {
     method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
@@ -276,7 +321,7 @@ async function handleStaffGo(token, env) {
   // Names the new learner on the portal. Not part of the signed message.
   if (inv.first_name) url += '&FirstName=' + encodeURIComponent(inv.first_name);
   if (inv.last_name) url += '&LastName=' + encodeURIComponent(inv.last_name);
-  return new Response(null, { status: 302, headers: { Location: url, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+  return new Response(null, { status: 303, headers: { Location: url, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
 function safeEqualHex(a, b) {
@@ -470,7 +515,12 @@ export default {
 
     if (url.pathname === '/api/learnupon/sso') return handleSso(request, env);
     if (url.pathname === '/api/learnupon/staff-link') return handleStaffLink(request, env);
-    if (request.method === 'GET' && url.pathname.startsWith('/t/')) return handleStaffGo(url.pathname.slice(3), env);
+    if (url.pathname.startsWith('/t/')) {
+      const token = url.pathname.slice(3);
+      if (request.method === 'GET') return handleStaffWelcome(token, env);
+      if (request.method === 'POST') return handleStaffGo(token, env);
+      return json({ error: 'method_not_allowed' }, 405);
+    }
 
     if (url.pathname !== '/api/learnupon/webhook') return json({ error: 'not_found' }, 404);
     if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
