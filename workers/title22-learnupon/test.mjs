@@ -92,11 +92,11 @@ globalThis.fetch = async (url, init = {}) => {
     return new Response('', { status: 201 });
   }
   // The partner portal's API, for the staff group step.
-  if (url.startsWith('https://portal.example/api/v1/')) {
+  if (/^https:\/\/portal2?\.example\/api\/v1\//.test(url)) {
     portal.calls.push({ url, init });
     if (portal.mode === 'down') throw new TypeError('network down');
     if (init.headers.Authorization !== 'Basic ' + Buffer.from('api-user:api-pass').toString('base64')) return new Response('{}', { status: 401 });
-    const path = url.slice('https://portal.example/api/v1/'.length);
+    const path = url.replace(/^https:\/\/portal2?\.example\/api\/v1\//, '');
     if (path.startsWith('users/search')) {
       const email = new URL(url).searchParams.get('email');
       const u = portal.users.find(x => x.email === email);
@@ -117,6 +117,10 @@ globalThis.fetch = async (url, init = {}) => {
     }
     if (path === 'courses') {
       return new Response(JSON.stringify({ courses: [{ id: 11, name: 'Course 11', published_status: 'published', description: 'long text' }, { id: 22, name: 'Course 22', published_status: 'draft', description: 'long text' }] }), { status: 200 });
+    }
+    if (portal.redirect && url.startsWith('https://portal.example/') && init.method === 'POST') {
+      // A portal that moves its API: fetch would replay this POST as a GET.
+      return new Response('', { status: 301, headers: { location: url.replace('https://portal.example/', 'https://portal2.example/') } });
     }
     if (path === 'enrollments' && init.method === 'POST') {
       const raw = JSON.parse(init.body).Enrollment;
@@ -491,6 +495,13 @@ const v2Headers = (body, secret = SECRET) => ({
   portal.mode = 'ok';
   g = await joinStaffGroup({ ...CRS, LEARNUPON_API_PASSWORD: 'wrong' }, inv);
   ok(g.status === 'failed', 'wrong key -> failed');
+  portal.redirect = true; portal.calls.length = 0;
+  g = await joinStaffGroup(CRS, { ...inv, learner_email: 'staff-z@learners.title22.app' });
+  const moved = portal.calls.filter(c => c.url.startsWith('https://portal2.example/'));
+  ok(g.status === 'joined' && moved.length >= 2 && moved.every(c => c.init.method === 'POST' && c.init.body && c.init.redirect === 'manual')
+    && g.steps.some(x => /^redirect POST enrollments$/.test(x.step) && x.http === 301 && x.says === 'portal2.example/api/v1/enrollments'),
+    'a portal that redirects: the POST is re-sent as a POST with its body, and the redirect is logged');
+  portal.redirect = false;
 
   // "Start my training" still signs on whatever the enrollment step did.
   db.invites.length = 0;

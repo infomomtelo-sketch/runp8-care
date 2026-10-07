@@ -325,13 +325,27 @@ export function staffGroupReady(env) {
     && (staffGroupId(env) || staffCourseIds(env).length));
 }
 
-async function portalApi(env, path, init = {}) {
+// redirect: 'manual' because fetch turns a POST that meets a 301/302 into a
+// GET with no body. The live portal answered every enrollment POST with 400
+// "failed to find the enrollment specified" (2026-10-07) while every GET
+// worked, which is what a POST silently replayed as GET /enrollments looks
+// like. So a redirect is followed here with the same method and body, and,
+// when `steps` is given, logged (host and path only, never the query).
+async function portalApi(env, path, init = {}, steps = null) {
   const auth = Buffer.from(`${env.LEARNUPON_API_USERNAME}:${env.LEARNUPON_API_PASSWORD}`).toString('base64');
-  return fetch(String(env.LEARNUPON_PORTAL_URL).replace(/\/+$/, '') + '/api/v1/' + path, {
-    ...init,
+  const opts = {
+    ...init, redirect: 'manual',
     headers: { 'Authorization': 'Basic ' + auth, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    signal: AbortSignal.timeout(API_TIMEOUT_MS),
-  });
+  };
+  let url = String(env.LEARNUPON_PORTAL_URL).replace(/\/+$/, '') + '/api/v1/' + path;
+  for (let hop = 0; ; hop++) {
+    const r = await fetch(url, { ...opts, signal: AbortSignal.timeout(API_TIMEOUT_MS) });
+    const loc = r.headers.get('location');
+    if (![301, 302, 303, 307, 308].includes(r.status) || !loc || hop >= 2) return r;
+    const next = new URL(loc, url);
+    if (steps) steps.push({ step: `redirect ${init.method || 'GET'} ${path.split('?')[0]}`, http: r.status, says: next.host + next.pathname });
+    url = next.toString();
+  }
 }
 
 // LearnUpon answers a user search as {"user":[...]}; accept the near shapes too.
@@ -343,7 +357,7 @@ export const portalSays = (t) => String(t || '').replace(/[^\s"'<>]+@[^\s"'<>]+/
 
 // One POST that may legitimately be refused because it is already done.
 async function addOnce(env, path, body, label, steps) {
-  const r = await portalApi(env, path, { method: 'POST', body: JSON.stringify(body) });
+  const r = await portalApi(env, path, { method: 'POST', body: JSON.stringify(body) }, steps);
   const text = await r.text().catch(() => '');
   steps.push({ step: label, http: r.status, says: portalSays(text) });
   if (r.ok) return null;
@@ -366,7 +380,7 @@ const ENROLL_SHAPES = [
 
 async function enrollOnce(env, userId, email, c, steps) {
   for (let i = 0; i < ENROLL_SHAPES.length; i++) {
-    const r = await portalApi(env, 'enrollments', { method: 'POST', body: JSON.stringify(ENROLL_SHAPES[i](userId, c, email)) });
+    const r = await portalApi(env, 'enrollments', { method: 'POST', body: JSON.stringify(ENROLL_SHAPES[i](userId, c, email)) }, steps);
     const text = await r.text().catch(() => '');
     steps.push({ step: `enrollment ${c} shape ${i + 1}`, http: r.status, says: portalSays(text) });
     if (r.ok || /already/i.test(text)) return null;
@@ -388,7 +402,7 @@ export function courseList(text) {
 }
 
 async function portalCourses(env, steps) {
-  const r = await portalApi(env, 'courses');
+  const r = await portalApi(env, 'courses', {}, steps);
   const text = await r.text().catch(() => '');
   const list = r.ok ? courseList(text) : null;
   steps.push({ step: 'course list', http: r.status, says: list ? `${list.length} courses` : portalSays(text) });
@@ -416,7 +430,7 @@ export async function joinStaffGroup(env, inv) {
           // Never used: this learner only ever arrives by signed sign-on.
           password: randomBytes(18).toString('base64url') + 'Aa1!',
         } }),
-      });
+      }, steps);
       const text = await r.text().catch(() => '');
       steps.push({ step: 'user create', http: r.status, says: portalSays(text) });
       let d = null; try { d = JSON.parse(text); } catch { d = null; }
