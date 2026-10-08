@@ -1787,6 +1787,13 @@ Owner-only while it is tested (the Partners tab card).
   linked from `welcomePage`. 47 s, Tello's voice plus captions, an invented
   staff member, no partner name or logo. It draws the course site's screens,
   so if the real portal looks different, remake the video. Never autoplay.
-- How real staff (not the owner's own account) get a LearnUpon identity is NOT
-  decided. Staff records have no email. Decide with the partner before opening
-  this past the owner.
+- **The four practice courses have catalog rows (2026-10-08).**
+  `migrations/2026-10-08_learnupon_sandbox_courses.sql`: hours from the
+  partner's 2026-10-08 email (2, 3, 1, 1), ADL -> personal_care, Dementia ->
+  dementia, inactive. Before it, a completion of any of the four logged
+  `no_course_hours` and no hours reached the record. The Worker also logs an
+  unreadable `dateCompleted` as `not_completed` instead of throwing a 500.
+- Made-up learner addresses: the partner said on 2026-10-07 they are "100%
+  fine" (they do the same by hand). Opening the links past the owner
+  (`STAFF_LINKS_OPEN` + `T22_STAFF_TRAINING_LINKS_OPEN`) is still the owner's
+  call, and the real portal's course ids are still unknown.

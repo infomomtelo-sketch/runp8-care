@@ -348,6 +348,11 @@ const v2Headers = (body, secret = SECRET) => ({
   r = await call('/api/learnupon/webhook', { body: completion({ enrollmentId: 1002, dateCompleted: '2020-01-01T00:00:00Z' }) });
   ok(inserts[0].rows[0].training_status === 'no_staff_link', 'completion older than the link -> not credited');
 
+  // An unreadable completion date is logged, not a 500 that LearnUpon retries and drops.
+  inserts.length = 0;
+  r = await call('/api/learnupon/webhook', { body: completion({ enrollmentId: 1003, dateCompleted: 'not a date' }) });
+  ok(r.status === 200 && inserts[0].rows[0].training_status === 'not_completed' && /unreadable/.test(inserts[0].rows[0].training_note), 'unreadable date -> logged as not_completed, 200');
+
   // Same arithmetic as the app's training-rules.js.
   const c = { id: 'x', title: 'T', credit_hours: 3, topic_hours: { dementia: 2, other: 1 }, delivery: 'live', counts_toward: 'admin_ce', phase: 'phase1' };
   ok(JSON.stringify(courseToEntries(c, 's', '2026-10-06')) === JSON.stringify(T22T.courseToEntries(c, 's', '2026-10-06')), 'courseToEntries matches training-rules.js (split)');

@@ -616,6 +616,9 @@ export async function recordTraining(env, row) {
   if (!row.learner_email || !row.course_id || !row.enrollment_id || !row.completed_at) {
     return { status: 'no_staff_link', note: 'completion is missing the learner, course, enrollment or date' };
   }
+  // A date the Worker cannot read would throw below and turn into a 500 that
+  // LearnUpon retries for 72 hours and then drops. Log it instead.
+  if (isNaN(new Date(row.completed_at))) return { status: 'not_completed', note: `unreadable completion date ${String(row.completed_at).slice(0, 40)}` };
 
   const links = await REST(env, `learnupon_learner_links?learner_email=eq.${encodeURIComponent(row.learner_email)}`
     + `&created_at=lte.${encodeURIComponent(new Date(row.completed_at).toISOString())}`
