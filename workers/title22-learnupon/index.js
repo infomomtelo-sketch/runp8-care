@@ -276,6 +276,11 @@ async function readInvite(token, env) {
 const deadPage = () => page('This link isn\'t active', 'Ask your administrator to send you a new training link.', 404);
 const downPage = () => page('Training is not available right now', 'Please try again later.', 503);
 
+// The how-to video on the welcome page is served by the app's own site
+// (videos/ in this repo, deployed with title22.app), not by this Worker.
+const HOWTO_VIDEO = 'https://title22.app/videos/staff-training-howto.mp4';
+const HOWTO_POSTER = 'https://title22.app/videos/staff-training-howto.jpg';
+
 export function welcomePage(token, firstName, partnerName) {
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const who = String(partnerName || '').trim();
@@ -288,10 +293,12 @@ export function welcomePage(token, firstName, partnerName) {
     + `<main style="max-width:440px;margin:0 auto;padding:32px 20px 40px">`
     + `<p style="font-weight:700;font-size:15px;letter-spacing:.02em;color:#2f6f63;margin:0 0 24px">Title22</p>`
     + `<h1 style="font-size:24px;margin:0 0 8px">${hi}</h1>`
-    + `<p style="font-size:17px;line-height:1.5;margin:0 0 24px">Your home has set up online training for you.</p>`
+    + `<p style="font-size:17px;line-height:1.5;margin:0 0 20px">Your home has set up online training for you. Watch this short video first.</p>`
+    + `<video controls playsinline preload="metadata" poster="${HOWTO_POSTER}" style="display:block;width:100%;max-height:70vh;border-radius:12px;background:#000;margin:0 0 24px"><source src="${HOWTO_VIDEO}" type="video/mp4"></video>`
     + `<ol style="font-size:16px;line-height:1.5;padding-left:22px;margin:0 0 28px">`
     + `<li style="margin-bottom:10px">Tap <b>Start my training</b>. You'll go to ${site}, already signed in.</li>`
-    + `<li style="margin-bottom:10px">Finish each course all the way to the end.</li>`
+    + `<li style="margin-bottom:10px">The first time, it asks you to complete your profile. Your name is filled in. Tap <b>Save</b>.</li>`
+    + `<li style="margin-bottom:10px">Tap a course, then <b>Start now</b>. Stay until the timer reaches zero and you see the last page. Need a break? Tap <b>Save and exit</b> and finish later.</li>`
     + `<li>When you finish, it shows on your training record in Title22. If a course has a certificate, it comes from ${cert}.</li>`
     + `</ol>`
     + `<form method="post" action="/t/${esc(token)}"><button type="submit" style="width:100%;min-height:56px;border:0;border-radius:12px;background:#2f6f63;color:#fff;font:inherit;font-size:18px;font-weight:600;cursor:pointer">Start my training</button></form>`
