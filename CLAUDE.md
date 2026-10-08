@@ -1776,6 +1776,17 @@ Owner-only while it is tested (the Partners tab card).
   (`title22-knowledge.js`) and Partner Tello (`knowledge.md`) say it is being
   tested with one partner and not open yet. Never name the partner in any of
   them. When the switch is flipped, update both knowledge files in the same PR.
+- **Enrollment is by email + course_id (2026-10-07, PR #191).** `POST
+  enrollments` with `{"Enrollment":{"email","course_id"}}`, as LearnUpon's own
+  API docs say; `user_id` is not a parameter. Proven twice that day: an
+  existing learner (4 x 200) and a brand-new one (user created, 4 x 200). A new
+  learner then meets LearnUpon's own "complete your profile" page (a portal
+  setting, not ours); the name is already filled in and Save moves on.
+- **The welcome page shows a how-to video (2026-10-08).**
+  `videos/staff-training-howto.mp4` (+ `.jpg` poster), served by title22.app,
+  linked from `welcomePage`. 47 s, Tello's voice plus captions, an invented
+  staff member, no partner name or logo. It draws the course site's screens,
+  so if the real portal looks different, remake the video. Never autoplay.
 - How real staff (not the owner's own account) get a LearnUpon identity is NOT
   decided. Staff records have no email. Decide with the partner before opening
   this past the owner.

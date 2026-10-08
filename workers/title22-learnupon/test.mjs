@@ -392,6 +392,7 @@ const v2Headers = (body, secret = SECRET) => ({
   let w = await look(token1);
   let html = await w.text();
   ok(w.status === 200 && !w.headers.get('location') && /Start my training/.test(html) && html.includes(`action="/t/${token1}"`) && /method="post"/.test(html), 'opening the link shows the welcome page with one button');
+  ok(/<video[^>]+playsinline/.test(html) && html.includes('https://title22.app/videos/staff-training-howto.mp4') && !/autoplay/.test(html), 'the welcome page shows the how-to video, never autoplaying');
   ok(db.invites[0].use_count == null || db.invites[0].use_count === 0, 'the welcome page signs nobody on and counts no use');
   ok(/our training partner/.test(html) && !/portal\.example/.test(html), 'no partner named unless set, portal address never shown');
   w = await look(token1, { ...SSO, TRAINING_PARTNER_NAME: 'Acme <Training>' });
