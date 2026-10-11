@@ -341,6 +341,9 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   const req = anthropic.at(-1);
   assert.equal(req.model, 'claude-haiku-4-5-20251001');
   assert.match(req.system, /You are Tello, Title22's AI assistant/);
+  // 2026-10-11, the owner: she helped a rental-notice rewrite only after saying it was the wrong place. Everyone is a customer.
+  assert.match(req.system, /HELP EVERYONE LIKE A CUSTOMER/);
+  assert.match(req.system, /Never say they came to the wrong place/);
   assert.match(req.system, /Never say or suggest that you are a person/);
   assert.match(req.system, /Do not name anyone behind Title22, and do not describe a team/);
   assert.ok(!/\bEli\b/.test(req.system), 'she is never told the owner\'s name');
