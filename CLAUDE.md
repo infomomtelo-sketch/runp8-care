@@ -528,6 +528,15 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   used after Create code too, so an edited rate shows. Keep "When you share
   it, say that you earn a commission" in it. The app's Partners tab
   (index.html `createTrainerCode`) has its own, different message.
+- **Classroom setup guide (2026-10-10).** `MKT.videos` has a fifth clip,
+  `title22-classroom-guide.mp4` on title-22.com (1:41, recorded from this app
+  by `title-22-site/videos/classroom-guide/record/`), so it shows as a tile
+  under the code maker and in the Marketing drawer. The app's Partners tab
+  links the same file under Create code and under Grant classroom access.
+  It films a Classroom account in the sample facility, so the menu's MAR,
+  Medications and Residents labels are on screen; the owner confirmed that is
+  fine for the practice account. Re-record it if the onboarding chooser, the
+  Lessons tab or the invite sheet changes.
 - **Talk mode (partner only, 2026-09-28).** The mic button (`#talk-btn`,
   `talkStart`/`talkListen`/`talkSpeak`) listens with the browser's speech
   recognition (Apple's dictation on an iPhone, Google's in Chrome), sends the
