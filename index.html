@@ -7,19 +7,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Title22 — RCFE Compliance App</title>
-<meta name="description" content="Title22 Lite — No PHI by design. Warns you before a staff certification lapses, keeps your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
+<meta name="description" content="Title22 — No PHI by design. Warns you before a staff certification lapses, keeps your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
 <link rel="canonical" href="https://title22.app/"/>
 <meta name="robots" content="noindex,follow"/>
 <meta property="og:site_name" content="Title22"/>
 <meta property="og:title" content="Title22 — RCFE Compliance App"/>
-<meta property="og:description" content="Title22 Lite — No PHI by design. Warns you before a staff certification lapses, keeps your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
+<meta property="og:description" content="Title22 — No PHI by design. Warns you before a staff certification lapses, keeps your training logs complete and your Title 22 checklist ready for DSS. No resident records, no medications, no MAR."/>
 <meta property="og:url" content="https://title22.app/"/>
 <meta property="og:type" content="website"/>
 <meta property="og:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
 <meta property="og:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="Title22 — RCFE Compliance App"/>
-<meta name="twitter:description" content="Title22 Lite — No PHI by design. Staff certifications, training logs and a DSS-ready Title 22 checklist."/>
+<meta name="twitter:description" content="Title22 — No PHI by design. Staff certifications, training logs and a DSS-ready Title 22 checklist."/>
 <meta name="twitter:image" content="https://title-22.com/share-kit/title22-share-card-1200x630.png"/>
 <meta name="twitter:image:alt" content="Title22 — RCFE compliance software for California facilities"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
@@ -763,7 +763,7 @@
    <div class="hero" style="padding-bottom:0">
     <div class="hero-badge">Checklists for California RCFEs and ARFs</div>
     <h1>Run a facility <span>DSS is proud to inspect</span></h1>
-    <p>Genuine compliance every day — not just inspection day. Title22 Lite warns you before a staff certification lapses, keeps your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
+    <p>Genuine compliance every day — not just inspection day. Title22 warns you before a staff certification lapses, keeps your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
       <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Create your account</button>
       <!-- The third door. Until 2026-09-19 this page offered exactly two
@@ -1073,7 +1073,7 @@
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
         <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">Your trial has ended — this is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Lite $29/mo</button></div>
-        <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 Lite — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
+        <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
           <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px"><svg class="ic"><use href="#i-spark"/></svg> New here? Let's get you started.</div>
@@ -7772,7 +7772,7 @@ async function demoBriefingHTML(){
 // all the way to an inspection. Same reason checklist citations are null.
 const TELLO_CHARACTER = `You're in a licensed residential care home in California: an RCFE (residents 60 and over) or an ARF (adults 18 to 59). facility_type in the data says which. Title 22 is the rulebook that governs how you operate.
 
-I'm Tello. I live inside Title22 Lite. Title22 Lite is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe — there is no resident health information here to leak, and no business associate agreement to sign.
+I'm Tello. I live inside Title22. Title22 is No-PHI by design — I do NOT store residents, MARs, medications, or medical records. Those tables are intentionally empty to keep you DSS-privacy safe — there is no resident health information here to leak, and no business associate agreement to sign.
 
 What I DO have:
 - Staff, training hours, certifications, clearances, expirations
@@ -7784,7 +7784,7 @@ I won't give medical advice about a resident, and I won't quote a Title 22 rule 
 
 Current state: If no staff in system, say "no staff yet, nothing to pull up." NEVER say "no residents or staff" — residents should not be mentioned as missing, because Lite doesn't store them.
 
-If user asks about residents, MARs, meds, say: "Title22 Lite is No-PHI and doesn't store residents or MARs. I can help with staff, training, certs, and DSS readiness. For resident care tracking, you'd need Full (not available in Lite)."
+If user asks about residents, MARs, meds, say: "Title22 is No-PHI and doesn't store residents or MARs. I can help with staff, training, certs, and DSS readiness. For resident care tracking, you'd need Full (not available in Lite)."
 
 Tone: Short, practical, Fresno 6-bed owner.
 
