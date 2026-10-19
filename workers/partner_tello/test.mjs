@@ -382,4 +382,27 @@ ok('migration: tables closed to anon, every function checks the secret, no app t
   ok('email HTML escapes everything a partner typed');
 }
 
+// ------------------------------------------- CTC agreement tracker pass --
+{
+  const { mintSharedHandoff, trackerAllowed } = await import('./app.js');
+  const dec = (x) => JSON.parse(atob(x.replace(/-/g, '+').replace(/_/g, '/')));
+  const pass = await mintSharedHandoff('s3cret', 1000);
+  assert.deepEqual(dec(pass.split('.')[0]), { t: 'h', r: 'shared', e: 1120 }, 'shared role, 120 seconds, a handoff');
+  const on = { ...env, SSO_SECRET: 's3cret', CTC_TRACKER_LINK_KEYS: ` ${KEY} ,zzzzzzzz` };
+  assert.equal(trackerAllowed(on, KEY), true);
+  assert.equal(trackerAllowed(on, OFF_KEY), false);
+  assert.equal(trackerAllowed({ ...on, SSO_SECRET: '' }, KEY), false, 'no secret, no button');
+  assert.equal(trackerAllowed({ ...env, SSO_SECRET: 's3cret' }, KEY), false, 'empty list allows nobody');
+  const open = await call('/api/partner_tello/open', { k: KEY }, 'POST', on);
+  assert.equal(open.status, 200); assert.equal(open.body.tracker, true);
+  const plain = await call('/api/partner_tello/open', { k: KEY });
+  assert.equal(plain.body.tracker, undefined, 'everyone else is not offered it');
+  const go = await call('/api/partner_tello/tracker', { k: KEY }, 'POST', on);
+  assert.equal(go.status, 200); assert.match(go.body.url, /^https:\/\/[^/]+\/sso\?t=[\w-]+\.[\w-]+$/);
+  assert.equal((await call('/api/partner_tello/tracker', { k: KEY })).status, 404, 'link not on the list: refused');
+  assert.equal((await call('/api/partner_tello/tracker', { k: OFF_KEY }, 'POST', on)).status, 404, 'inactive or unlisted link: refused');
+  assert.doesNotMatch(JSON.stringify(go.body), /s3cret/, 'the secret never leaves the Worker');
+  ok('tracker: only a listed, active link gets the button and a 2-minute shared pass');
+}
+
 console.log(`\nall ${passed} checks passed`);

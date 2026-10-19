@@ -31,6 +31,12 @@ crons = ["*/10 * * * *"]
 #                            public.partner_tello_config;` (generated in the
 #                            database by migrations/2026-10-01_partner_tello.sql)
 #
+#
+# Optional, for the CTC agreement tracker button (one person's link only):
+#   SSO_SECRET               same value as in the ctc-tracker and co-tello Workers
+#   CTC_TRACKER_LINK_KEYS    that person's link key (comma-separated if more)
+# Without both, no one is offered the button.
+#
 # Where the emails go (notify_to) and who they come from (email_from) are NOT
 # here: this repository is public. They are a row in partner_tello_config.
 #
@@ -44,6 +50,8 @@ SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8"
 # A model change is a one-line PR.
 PARTNER_TELLO_MODEL = "claude-opus-5-5"
+# Where the tracker button sends the one allowed link. Not a secret.
+CTC_TRACKER_URL = "https://ctc-tracker.infomomtelo.workers.dev"
 
 # Public route (workers.dev):
 #   https://partner-tello.infomomtelo.workers.dev/api/partner_tello/*

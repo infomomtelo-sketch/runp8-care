@@ -9,6 +9,7 @@
 //   POST /api/partner_tello/open    {k}                              -> {ok}
 //   POST /api/partner_tello/chat    {k, conversation_id, message}    -> {reply, stored}
 //   POST /api/partner_tello/direct  {k, conversation_id, message}    -> {ok, message}
+//   POST /api/partner_tello/tracker {k}                              -> {ok, url}   (only a link listed in CTC_TRACKER_LINK_KEYS)
 //   GET  /api/partner_tello/health                                   -> which bindings are set (names only)
 //   scheduled (cron)                                                 -> retries emails that failed
 //
@@ -303,6 +304,32 @@ export async function askModel(env, { system, link, turns, client }) {
   return text || null;
 }
 
+
+// ------------------------------------------------- CTC agreement tracker --
+// One person (CTC's contact) opens the shared agreement tracker from her own
+// link, with no second key. Her link key must be listed in the secret
+// CTC_TRACKER_LINK_KEYS (comma-separated); nobody else is offered the button
+// and nobody else gets a pass. The pass is a 2-minute, signed, "shared"-role
+// handoff the tracker swaps for its own 8-hour cookie. SSO_SECRET is a Worker
+// secret shared with the tracker; it is never in git or in any response.
+const b64u = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const sameKey = (a, b) => {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+};
+export const trackerAllowed = (env, k) =>
+  !!env.SSO_SECRET && String(env.CTC_TRACKER_LINK_KEYS || '').split(',').map((x) => x.trim()).filter(Boolean).some((x) => sameKey(x, k));
+export async function mintSharedHandoff(secret, nowSeconds = Math.floor(Date.now() / 1000)) {
+  const enc = new TextEncoder();
+  const body = b64u(enc.encode(JSON.stringify({ t: 'h', r: 'shared', e: nowSeconds + 120 })));
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return body + '.' + b64u(await crypto.subtle.sign('HMAC', key, enc.encode(body)));
+}
+const trackerUrl = async (env) =>
+  String(env.CTC_TRACKER_URL || 'https://ctc-tracker.infomomtelo.workers.dev').replace(/\/+$/, '') + '/sso?t=' + (await mintSharedHandoff(env.SSO_SECRET));
+
 // -------------------------------------------------------------- handler --
 export function createHandler({ system }) {
   return {
@@ -330,7 +357,13 @@ export function createHandler({ system }) {
         if (path === '/api/partner_tello/open') {
           const link = await openLink(env, k);
           if (!link) return json({ error: 'inactive', message: INACTIVE }, 404);
-          return json({ ok: true, greeting: GREETING, footer: FOOTER });
+          return json({ ok: true, greeting: GREETING, footer: FOOTER, ...(trackerAllowed(env, k) ? { tracker: true } : {}) });
+        }
+
+        if (path === '/api/partner_tello/tracker') {
+          const link = await openLink(env, k);
+          if (!link || !trackerAllowed(env, k)) return json({ error: 'inactive', message: INACTIVE }, 404);
+          return json({ ok: true, url: await trackerUrl(env) });
         }
 
         if (path !== '/api/partner_tello/chat' && path !== '/api/partner_tello/direct') return json({ error: 'not_found' }, 404);
