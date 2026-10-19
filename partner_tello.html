@@ -184,6 +184,16 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
       </div>
     </section>
 
+    <!-- Shown only when the Worker says this link may open the CTC agreement tracker. -->
+    <section class="sec" id="sec-tracker-wrap" hidden>
+      <button class="sec-head" type="button" aria-expanded="true" aria-controls="sec-tracker"><span class="slab">Agreement tracker</span><span class="chev"></span></button>
+      <div class="sec-body" id="sec-tracker">
+        <label class="hint" style="display:block;margin:0 0 6px">Opens the shared agreement tracker in a new tab. No key to paste.</label>
+        <button class="btn" type="button" id="tracker-open">Open the tracker</button>
+        <div id="tracker-err" hidden></div>
+      </div>
+    </section>
+
     <button class="btn ghost" type="button" id="new-convo">New conversation</button>
 
     <p class="cab-foot">Tello is an AI. All messages are sent to the Title22 team.</p>
@@ -357,6 +367,16 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
     startConversation(); closeCab(); say.focus();
   });
 
+  // ---- agreement tracker (only offered when the Worker said so)
+  $('tracker-open').addEventListener('click', function () {
+    var win = window.open('', '_blank'); // opened inside the tap so the browser allows it
+    $('tracker-err').hidden = true;
+    post('tracker', { k: key }).then(function (r) {
+      if (r.status === 200 && r.body.url) { if (win) win.location.href = r.body.url; else window.location.href = r.body.url; }
+      else { if (win) win.close(); $('tracker-err').textContent = 'Could not open the tracker. Please try again.'; $('tracker-err').hidden = false; }
+    }, function () { if (win) win.close(); $('tracker-err').textContent = 'Could not open the tracker. Please try again.'; $('tracker-err').hidden = false; });
+  });
+
   // ---- start: the link decides everything
   if (!/^[A-Za-z0-9_-]{8,128}$/.test(key)) { closed(INACTIVE); return; }
   post('open', { k: key }).then(function (r) {
@@ -365,6 +385,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
       return;
     }
     $('closed').hidden = true; $('chat').hidden = false; $('cab-btn').hidden = false;
+    if (r.body.tracker) $('sec-tracker-wrap').hidden = false;
     var saved = read('conv', null);
     if (saved && saved.id && Array.isArray(saved.turns) && saved.turns.length) { conv = saved.id; turns = saved.turns.filter(function (t) { return t.who !== 'note'; }); render(); }
     else startConversation();

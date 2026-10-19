@@ -664,6 +664,12 @@ enough, and it never signs anyone out. Keys may now be 8 to 128 characters
 (table check, Worker `KEY_RE`, page); the first 64-character links still work,
 as `/meet?k=` or `/meet/<key>`. Nothing on that page returns message text.
 
+**Agreement tracker button (2026-10-19).** One person's link (CTC's contact) can open the shared
+CTC agreement tracker from the Cabinet, with no second key: `POST /api/partner_tello/tracker`
+returns a 2-minute signed `shared` pass. Only a link key listed in the Worker secret
+`CTC_TRACKER_LINK_KEYS` (with `SSO_SECRET` set) is offered it; `open` adds `tracker:true` for that
+link only. Not in `knowledge.md` on purpose: Tello never mentions it.
+
 **RULE: when a feature, a price, a plan, the trial or the partner program
 changes, update `workers/partner_tello/knowledge.md` in the same PR**, with
 the date it was checked and where. Partner Tello may say only what that file
