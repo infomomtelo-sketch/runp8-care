@@ -14,6 +14,7 @@
 // is no button, URL or request field that turns it on. Anything uncertain
 // (table missing, read failed) answers as customer mode.
 
+import { callAI } from './ai.js';
 import { TELLO_CORE, CUSTOMER_PAGE, PARTNER_FALLBACK, PARTNER_TOOLS, PARTNER_LAST, SPOKEN, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
 import { TITLE22_KNOWLEDGE } from './tello/title22-knowledge.js';
 import { TITLE22_HISTORY } from './tello/title22-history.js';
@@ -153,16 +154,10 @@ export function plain(s) {
 }
 
 export async function callModel(env, body) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify(body),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    console.error('anthropic', r.status, JSON.stringify(data).slice(0, 300));
-    throw new Error('model_error_' + r.status);
-  }
+  // Two rails since 2026-10-26 — see ai.js. Provider bodies are logged
+  // there; callers here keep the old contract: data, or model_error_<status>.
+  const { ok, status, data } = await callAI(env, body);
+  if (!ok) throw new Error('model_error_' + (status || 'network'));
   return data;
 }
 
