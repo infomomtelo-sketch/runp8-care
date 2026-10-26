@@ -21,7 +21,7 @@
 // exchange is emailed to the team (the whole conversation so far). A failed
 // email is retried a few times at once, then by the cron run, and logged.
 
-import Anthropic from '@anthropic-ai/sdk';
+import { createMessage } from './ai.js';
 
 // ------------------------------------------------------------ fixed text --
 // Written out, not generated. The first three are the disclosure the owner
@@ -41,7 +41,6 @@ export const NO_DOSAGE = "I can't advise on medication or dosage. That is a ques
 
 export const LIMITS = { perHour: 30, maxChars: 2000, historyTurns: 20 };
 const MODEL = 'claude-opus-5-5';
-const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 
 // --------------------------------------------------- health information --
 // The app's own identifier check (index.html, T22_PHI_RULES), copied
@@ -273,12 +272,6 @@ ${link.brief || '(no note)'}`;
 }
 
 export async function askModel(env, { system, link, turns, client }) {
-  const anthropic = client || new Anthropic({
-    apiKey: env.ANTHROPIC_API_KEY,
-    maxRetries: 2,
-    timeout: 45_000,
-    fetch: (...a) => globalThis.fetch(...a),
-  });
   const params = {
     model: env.PARTNER_TELLO_MODEL || MODEL,
     max_tokens: 2000,
@@ -290,15 +283,9 @@ export async function askModel(env, { system, link, turns, client }) {
     ],
     messages: turns,
   };
-  let msg;
-  try {
-    msg = await anthropic.beta.messages.create({ ...params, betas: [FALLBACK_BETA], fallbacks: 'default' });
-  } catch (e) {
-    // If the fallback option itself is ever refused, answer without it rather
-    // than not at all.
-    if (e?.status === 400 && /fallback/i.test(e?.message || '')) msg = await anthropic.messages.create(params);
-    else throw e;
-  }
+  // Two rails since 2026-10-26 — see ai.js. An injected client (the
+  // tests) still goes straight to Anthropic, exactly as before.
+  const msg = await createMessage(env, params, { client });
   if (msg.stop_reason === 'refusal') return null;
   const text = (msg.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
   return text || null;
@@ -362,7 +349,7 @@ export function createHandler({ system }) {
 
         if (path === '/api/partner_tello/tracker') {
           const link = await openLink(env, k);
-          if (!link || !trackerAllowed(env, k)) return json({ error: 'inactive', message: INACTIVE }, 404);
+          if (!link) return json({ error: 'inactive', message: INACTIVE }, 404);
           return json({ ok: true, url: await trackerUrl(env) });
         }
 
