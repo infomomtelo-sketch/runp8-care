@@ -349,7 +349,7 @@ export function createHandler({ system }) {
 
         if (path === '/api/partner_tello/tracker') {
           const link = await openLink(env, k);
-          if (!link) return json({ error: 'inactive', message: INACTIVE }, 404);
+          if (!link || !trackerAllowed(env, k)) return json({ error: 'inactive', message: INACTIVE }, 404);
           return json({ ok: true, url: await trackerUrl(env) });
         }
 
