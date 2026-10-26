@@ -14,6 +14,8 @@
 // Entitlement is namespaced to title22_* columns on the shared nwlhs profiles
 // table and draws from the same monthly `ai_usage` bucket as title22-ai.
 
+import { callAI } from './ai.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -527,6 +529,7 @@ export default {
         scannable: { staff: Object.keys(STAFF_DOCS) },
         model: env.EXTRACT_MODEL || 'claude-opus-5',
         config,
+        rails: { anthropic: Boolean(env.ANTHROPIC_API_KEY), openrouter: Boolean(env.OPENROUTER_API_KEY) },
         ...(missing.length ? { missing, hint: `Set ${missing.join(', ')} on this Worker. Names are case-sensitive and must match exactly.` } : {}),
       });
     }
@@ -572,7 +575,8 @@ export default {
 
       // Checked before the credit is deducted below. A misconfigured Worker is
       // our problem, not the caller's, and it must not cost them an AI call.
-      if (!env.ANTHROPIC_API_KEY) {
+      // Either rail's key makes the Worker configured (2026-10-26, ai.js).
+      if (!env.ANTHROPIC_API_KEY && !env.OPENROUTER_API_KEY) {
         return json({
           error: 'not_configured',
           message: 'This Worker is missing its ANTHROPIC_API_KEY binding. No AI call was used.',
@@ -660,19 +664,19 @@ export default {
         }],
       };
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(anthropicBody)
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        return json({ error: 'extract_failed', message: data?.error?.message || 'The extraction service rejected the image.' }, 502);
+      const { ok, data, category } = await callAI(env, anthropicBody);
+      if (!ok) {
+        // A refusal of THIS image keeps the provider's own words, as
+        // before — they are about the caller's photo, not about us. A
+        // provider-side failure on every rail gets a plain sentence
+        // instead: raw provider text (a billing error, say) is logged
+        // server-side by ai.js and never shown to the caller.
+        return json({
+          error: 'extract_failed',
+          message: category === 'request'
+            ? (data?.error?.message || 'The extraction service rejected the image.')
+            : 'The extraction service could not be reached just now. Please try again in a few minutes.',
+        }, 502);
       }
 
       if (data.stop_reason === 'refusal') {
