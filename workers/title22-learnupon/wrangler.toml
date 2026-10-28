@@ -48,9 +48,13 @@ compatibility_flags = ["nodejs_compat"]
 SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 STAFF_LINKS_OPEN = "false"
 # Courses every staff learner is enrolled in before signing on, by the
-# portal's course numbers (comma-separated). Practice-site numbers, given by
-# the training partner on 2026-10-07; the real site's numbers differ.
-LEARNUPON_STAFF_COURSE_IDS = "3768123,3768117,3768111,3768109"
+# portal's course numbers (comma-separated). PRODUCTION numbers, from CTC's
+# course list for the real portal (Hannah's spreadsheet, 2026-10-23): the
+# same four courses as the practice set — Diabetes (5321476), Activities of
+# Daily Living - The Essentials (5320040), Dementia: This is Your Brain on
+# Music (5321455), Sexual Harassment (Non-Supervisory) (5321607). Switched
+# 2026-10-28, the day SQSSO was confirmed enabled on the real portal.
+LEARNUPON_STAFF_COURSE_IDS = "5321476,5320040,5321455,5321607"
 # Optionally also a portal group whose courses they get (its number). Empty =
 # no group step.
 LEARNUPON_STAFF_GROUP_ID = ""
