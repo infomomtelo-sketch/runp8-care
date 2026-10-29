@@ -74,7 +74,12 @@ function ssoCors(request) {
 export function sqssoUrl(portal, email, ts, secret) {
   const token = createHash('sha256').update(`USER=${email}&TS=${ts}&KEY=${secret}`).digest('hex');
   const base = String(portal).replace(/\/+$/, '');
-  return `${base}/sqsso?Email=${encodeURIComponent(email)}&TS=${ts}&SSOToken=${token}`;
+  // Email goes in RAW, not encodeURIComponent'd: LearnUpon's SQSSO endpoint reads
+  // the Email parameter literally and does not URL-decode it, so an encoded address
+  // arrives as "staff-...%40learners.title22.app" and matches no learner (confirmed
+  // by LearnUpon via Hannah, Oct 29, 2026 — the cause of every "Resource not
+  // available" sign-in failure). The token is signed over the raw email either way.
+  return `${base}/sqsso?Email=${email}&TS=${ts}&SSOToken=${token}`;
 }
 
 async function signedInUser(request, env) {
