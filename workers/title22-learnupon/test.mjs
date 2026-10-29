@@ -543,7 +543,10 @@ const v2Headers = (body, secret = SECRET) => ({
 {
   const toml = (await import('node:fs')).readFileSync(new URL('./wrangler.toml', import.meta.url), 'utf8');
   const m = toml.match(/^LEARNUPON_STAFF_COURSE_IDS = "([^"]*)"/m);
-  ok(m && m[1] === '3768123,3768117,3768111,3768109', 'wrangler.toml lists the four practice-site courses');
+  // Real course IDs since Oct 28, 2026 (the practice-site IDs 3768123,3768117,
+  // 3768111,3768109 were replaced when the switch to the real portal was made
+  // permanent in this file); this check keeps a deploy from restoring them.
+  ok(m && m[1] === '5321476,5320040,5321455,5321607', 'wrangler.toml lists the four real-portal courses');
 }
 
 insertStatus = 201;
