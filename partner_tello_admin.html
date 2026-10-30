@@ -25,7 +25,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Public Sans',system-ui,-apple-system,sans-serif;background:var(--cream);color:var(--ink);line-height:1.5;font-size:16px;-webkit-text-size-adjust:100%;min-height:100vh}
-button,input,textarea{font-family:inherit;font-size:16px;color:inherit}
+button,input,textarea,select{font-family:inherit;font-size:16px;color:inherit}
 button{cursor:pointer}
 [hidden]{display:none !important}
 .bar{background:var(--green);color:var(--cream);border-bottom:2px solid var(--gold);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top))}
@@ -38,8 +38,8 @@ main{max-width:640px;margin:0 auto;padding:16px 16px calc(32px + env(safe-area-i
 h2{font-family:'Zilla Slab',Georgia,serif;font-size:21px;color:var(--green);margin-bottom:10px}
 label{display:block;font-size:13.5px;font-weight:600;color:var(--green);margin:10px 0 5px}
 label small{font-weight:400;color:var(--muted)}
-input,textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;background:var(--cream);padding:11px 12px;outline:none}
-input:focus,textarea:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gold-soft)}
+input,textarea,select{width:100%;border:1.5px solid var(--line);border-radius:12px;background:var(--cream);padding:11px 12px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gold-soft)}
 textarea{min-height:76px;resize:vertical}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:0 18px;border:none;border-radius:12px;background:var(--green);color:var(--cream);font-weight:600}
 .btn.wide{width:100%;margin-top:14px}
@@ -101,6 +101,10 @@ textarea{min-height:76px;resize:vertical}
         <label for="f-name">Name</label><input id="f-name" maxlength="120" required/>
         <label for="f-org">Organization <small>(optional)</small></label><input id="f-org" maxlength="200"/>
         <label for="f-email">Email <small>(optional, for your records; Tello never shows it)</small></label><input id="f-email" type="email" maxlength="200"/>
+        <label for="f-days">Trial length on their code</label>
+        <select id="f-days"><option value="90" selected>90 days</option><option value="60">60 days</option><option value="30">30 days</option></select>
+        <label for="f-role">Partner type</label>
+        <select id="f-role"><option value="trainer" selected>Trainer</option><option value="affiliate">Affiliate</option><option value="student">Student</option></select>
         <label for="f-brief">Note for Tello <small>(optional: what they are interested in; she never reads it back)</small></label><textarea id="f-brief" maxlength="1000"></textarea>
         <button class="btn wide" type="submit" id="create-btn">Create link</button>
       </form>
@@ -216,6 +220,10 @@ textarea{min-height:76px;resize:vertical}
       var s2 = document.createElement('span');
       s2.textContent = 'Made ' + when(r.created_at) + ' · ' + (r.messages ? r.messages + ' message' + (r.messages == 1 ? '' : 's') + ', last ' + when(r.last_message_at) : 'no messages yet');
       who.appendChild(s2);
+      var meta = [];
+      if (r.trial_days) meta.push(r.trial_days + '-day trial');
+      if (r.role) meta.push(r.role.charAt(0).toUpperCase() + r.role.slice(1));
+      if (meta.length) { var s4 = document.createElement('span'); s4.textContent = meta.join(' · '); who.appendChild(s4); }
       var sw = document.createElement('div'); sw.className = 'switch';
       var lab = document.createElement('span'); lab.textContent = r.active ? 'On' : 'Off';
       var tog = document.createElement('button'); tog.type = 'button'; tog.setAttribute('role', 'switch');
@@ -258,6 +266,11 @@ textarea{min-height:76px;resize:vertical}
   }
 
   // ---- create
+  // The 90 days belong to the students: a trainer's (or a student's) code
+  // carries 90, an affiliate's carries the standard 30. Still Eli's to change.
+  $('f-role').addEventListener('change', function () {
+    $('f-days').value = this.value === 'affiliate' ? '30' : '90';
+  });
   var made = null;
   $('new-form').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -265,15 +278,17 @@ textarea{min-height:76px;resize:vertical}
     var name = $('f-name').value.trim();
     if (!name) { msg('create-msg', 'A name, please.'); return; }
     $('create-btn').disabled = true;
-    sb.rpc('partner_tello_admin_create', {
-      p_name: name, p_org: $('f-org').value.trim() || null, p_email: $('f-email').value.trim() || null, p_brief: $('f-brief').value.trim() || null
+    sb.rpc('partner_tello_admin_create_v2', {
+      p_name: name, p_org: $('f-org').value.trim() || null, p_email: $('f-email').value.trim() || null, p_brief: $('f-brief').value.trim() || null,
+      p_trial_days: parseInt($('f-days').value, 10), p_role: $('f-role').value
     }).then(function (res) {
       $('create-btn').disabled = false;
       if (res.error) { msg('create-msg', friendly(res.error)); return; }
       var link = linkFor(res.data);
       var kit = kitFor(res.data);
+      var days = $('f-days').value, role = $('f-role').value;
       made = { name: name, email: $('f-email').value.trim(), link: kit, meet: link };
-      $('made-title').textContent = 'Partner page made for ' + name + '. Send them this link:';
+      $('made-title').textContent = 'Partner page made for ' + name + ' — their code gives ' + days + ' days free · ' + role.charAt(0).toUpperCase() + role.slice(1) + '. Send them this link:';
       $('made-link').href = kit; $('made-link').textContent = kit.replace('https://', '');
       $('made-meet').href = link; $('made-meet').textContent = link.replace('https://', '');
       $('made-email').href = mailto(made.email, name, link);
