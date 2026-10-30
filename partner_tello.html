@@ -67,6 +67,13 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 #send{flex:none;min-height:46px;padding:0 20px;border:none;border-radius:var(--r);background:var(--green);color:var(--cream);font-weight:600}
 #send:disabled{opacity:.55}
 .footer{margin-top:7px;font-size:12.5px;color:var(--muted);text-align:center}
+.welcome{flex:none;background:var(--white);border-bottom:1px solid var(--line);padding:10px 16px}
+.welcome-in{max-width:760px;margin:0 auto}
+.welcome strong{font-family:'Zilla Slab',Georgia,serif;color:var(--green);font-size:16px}
+.welcome p{font-size:13.5px;color:var(--muted);margin-top:2px}
+.wlinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.wlinks a{flex:1;min-width:118px;text-align:center;text-decoration:none;padding:9px 10px;border-radius:999px;border:1.5px solid var(--line);color:var(--green);font-weight:600;font-size:13.5px;background:var(--cream)}
+.wlinks a.primary{background:var(--green);color:var(--cream);border-color:var(--green)}
 
 /* the "link isn't active" screen */
 #closed{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px;text-align:center}
@@ -122,6 +129,20 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 <div id="closed" hidden><p id="closed-text">This link isn't active. Please contact hello@title-22.com.</p></div>
 
 <main id="chat" hidden>
+  <section class="welcome" aria-label="About Title22">
+    <div class="welcome-in">
+      <strong>You're on Title22's partner page</strong>
+      <p>Title22 is compliance software for California RCFE &amp; ARF care homes. The Title22 team sent you this private page — hear Tello's welcome, open your partner tools, or ask her anything below.</p>
+      <div class="vid" data-src="https://title-22.com/videos/title22-tello-intro.mp4" data-poster="https://title-22.com/videos/title22-tello-intro-poster.jpg">
+        <button class="vid-btn" type="button"><span class="play"></span><span>Hear Tello welcome you<small>0:37 · what this page is, in her own words</small></span></button>
+      </div>
+      <div class="wlinks">
+        <a class="primary" href="https://title-22.com" target="_blank" rel="noopener">Visit title-22.com</a>
+        <a href="https://title22.app" target="_blank" rel="noopener">Open the app</a>
+        <a id="kit-link-top" href="https://title-22.com/partner-kit/" target="_blank" rel="noopener">Your partner page</a>
+      </div>
+    </div>
+  </section>
   <div id="convo" aria-live="polite"><div class="convo-in" id="turns"></div></div>
   <div class="compose">
     <div class="compose-in">
@@ -137,6 +158,16 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 <div class="cab" id="cab" aria-hidden="true">
   <div class="cab-in" role="dialog" aria-modal="true" aria-label="Cabinet">
     <div class="cab-top"><span class="mark"></span><strong>Cabinet</strong><button class="x" type="button" id="cab-close" aria-label="Close">&times;</button></div>
+
+    <section class="sec">
+      <button class="sec-head" type="button" aria-expanded="true" aria-controls="sec-tools"><span class="slab">Your partner tools</span><span class="chev"></span></button>
+      <div class="sec-body" id="sec-tools">
+        <a class="btn ghost" id="kit-link" href="https://title-22.com/partner-kit/" target="_blank" rel="noopener">Your partner page — posts &amp; images</a>
+        <p class="hint">Ready-made posts, images and videos with your code built in.</p>
+        <a class="btn ghost" id="student-link" href="https://title-22.com/" target="_blank" rel="noopener">Your student link</a>
+        <p class="hint">Share <span id="student-url">title-22.com/r/…</span> — their free trial runs on your code.</p>
+      </div>
+    </section>
 
     <section class="sec">
       <button class="sec-head" type="button" aria-expanded="true" aria-controls="sec-ask"><span class="slab">Sample questions</span><span class="chev"></span></button>
@@ -215,6 +246,12 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
   // title22.app/meet?k=<key> (the first links). Both work.
   var pathKey = (location.pathname.match(/^\/meet\/([A-Za-z0-9_-]+)\/?$/) || [])[1] || '';
   var key = (new URLSearchParams(location.search).get('k') || pathKey).trim();
+  if (key) {
+    $('kit-link').href = 'https://title-22.com/partner-kit/?code=' + encodeURIComponent(key);
+    $('kit-link-top').href = 'https://title-22.com/partner-kit/?code=' + encodeURIComponent(key);
+    $('student-link').href = 'https://title-22.com/r/' + encodeURIComponent(key);
+    $('student-url').textContent = 'title-22.com/r/' + key;
+  }
   var store = function (name) { return 'partner_tello_' + name + '_' + key.slice(0, 12); };
   var read = function (name, d) { try { var v = localStorage.getItem(store(name)); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
   var write = function (name, v) { try { localStorage.setItem(store(name), JSON.stringify(v)); } catch (e) {} };

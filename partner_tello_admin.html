@@ -141,7 +141,11 @@ textarea{min-height:76px;resize:vertical}
   var firstName = function (n) { return String(n || '').trim().split(/\s+/)[0] || ''; };
   var invite = function (name, link) {
     var f = firstName(name);
-    return (f ? 'Hi ' + f + ', h' : 'H') + "ere is your private link to Tello, Title22's AI assistant. Ask her anything about Title22: " + link +
+    var key = String(link || '').split('/meet/')[1] || '';
+    var extra = key ?
+      '\n\nYour partner page — ready-made posts, images and your student link, with your code built in: https://title-22.com/partner-kit/?code=' + key +
+      '\nShare your student link — their free trial runs on your code: https://title-22.com/r/' + key : '';
+    return (f ? 'Hi ' + f + ', h' : 'H') + "ere is your private link to Tello, Title22's AI assistant. Ask her anything about Title22: " + link + extra +
       '\n\nEvery message you send is passed to the Title22 team, and a person will reply personally.';
   };
   var when = function (iso) {
