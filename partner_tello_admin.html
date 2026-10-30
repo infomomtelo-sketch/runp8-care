@@ -108,6 +108,7 @@ textarea{min-height:76px;resize:vertical}
       <div id="made" hidden>
         <div class="msg good" id="made-title"></div>
         <a class="link" id="made-link" target="_blank" rel="noopener"></a>
+        <div class="hint">Their private Tello chat link: <a class="link" id="made-meet" target="_blank" rel="noopener"></a></div>
         <div class="row">
           <button class="btn" type="button" id="made-copy">Copy</button>
           <button class="btn" type="button" id="made-share">Share</button>
@@ -138,15 +139,19 @@ textarea{min-height:76px;resize:vertical}
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { ['loading', 'signin', 'denied', 'admin'].forEach(function (x) { $(x).hidden = x !== id; }); };
   var linkFor = function (key) { return 'https://title22.app/meet/' + key; };
+  var kitFor = function (key) { return 'https://title-22.com/partner-kit/?code=' + key; };
   var firstName = function (n) { return String(n || '').trim().split(/\s+/)[0] || ''; };
   var invite = function (name, link) {
     var f = firstName(name);
     var key = String(link || '').split('/meet/')[1] || '';
-    var extra = key ?
-      '\n\nYour partner page — ready-made posts, images and your student link, with your code built in: https://title-22.com/partner-kit/?code=' + key +
-      '\nShare your student link — their free trial runs on your code: https://title-22.com/r/' + key : '';
-    return (f ? 'Hi ' + f + ', h' : 'H') + "ere is your private link to Tello, Title22's AI assistant. Ask her anything about Title22: " + link + extra +
-      '\n\nEvery message you send is passed to the Title22 team, and a person will reply personally.';
+    if (!key) {
+      return (f ? 'Hi ' + f + ', h' : 'H') + "ere is your private link to Tello, Title22's AI assistant. Ask her anything about Title22: " + link +
+        '\n\nEvery message you send is passed to the Title22 team, and a person will reply personally.';
+    }
+    return (f ? 'Hi ' + f + ', h' : 'H') + 'ere is your Title22 partner page — how the program works, what it pays, and your posts and images with your code built in: https://title-22.com/partner-kit/?code=' + key +
+      '\n\nYour student link — share it; their free trial runs on your code: https://title-22.com/r/' + key +
+      '\n\nYour private line to Tello, Title22\'s AI assistant — ask her anything about Title22: ' + link +
+      '\nEvery message you send is passed to the Title22 team, and a person will reply personally.';
   };
   var when = function (iso) {
     if (!iso) return '';
@@ -202,6 +207,7 @@ textarea{min-height:76px;resize:vertical}
     if (!rows.length) { list.innerHTML = '<p class="empty">No links yet.</p>'; return; }
     rows.forEach(function (r) {
       var link = linkFor(r.key);
+      var kit = kitFor(r.key);
       var item = document.createElement('div'); item.className = 'item' + (r.active ? '' : ' off');
       var top = document.createElement('div'); top.className = 'item-top';
       var who = document.createElement('div'); who.className = 'who';
@@ -226,11 +232,13 @@ textarea{min-height:76px;resize:vertical}
       });
       sw.appendChild(lab); sw.appendChild(tog);
       top.appendChild(who); top.appendChild(sw); item.appendChild(top);
-      var a = document.createElement('a'); a.className = 'link'; a.href = link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = link.replace('https://', '');
+      var a = document.createElement('a'); a.className = 'link'; a.href = kit; a.target = '_blank'; a.rel = 'noopener'; a.textContent = kit.replace('https://', '');
       item.appendChild(a);
+      var s3 = document.createElement('span'); s3.className = 'hint'; s3.textContent = 'Chat link: ' + link.replace('https://', '');
+      item.appendChild(s3);
       var row = document.createElement('div'); row.className = 'row';
       var c = document.createElement('button'); c.className = 'btn ghost'; c.type = 'button'; c.textContent = 'Copy';
-      c.addEventListener('click', function () { copy(link, c); });
+      c.addEventListener('click', function () { copy(kit, c); });
       var sh = document.createElement('button'); sh.className = 'btn ghost'; sh.type = 'button'; sh.textContent = 'Share';
       sh.addEventListener('click', function () { share(r.name, link, sh); });
       row.appendChild(c); row.appendChild(sh);
@@ -263,9 +271,11 @@ textarea{min-height:76px;resize:vertical}
       $('create-btn').disabled = false;
       if (res.error) { msg('create-msg', friendly(res.error)); return; }
       var link = linkFor(res.data);
-      made = { name: name, email: $('f-email').value.trim(), link: link };
-      $('made-title').textContent = 'Link made for ' + name + '. Send it to them:';
-      $('made-link').href = link; $('made-link').textContent = link.replace('https://', '');
+      var kit = kitFor(res.data);
+      made = { name: name, email: $('f-email').value.trim(), link: kit, meet: link };
+      $('made-title').textContent = 'Partner page made for ' + name + '. Send them this link:';
+      $('made-link').href = kit; $('made-link').textContent = kit.replace('https://', '');
+      $('made-meet').href = link; $('made-meet').textContent = link.replace('https://', '');
       $('made-email').href = mailto(made.email, name, link);
       $('made').hidden = false;
       $('new-form').reset();
@@ -273,7 +283,7 @@ textarea{min-height:76px;resize:vertical}
     });
   });
   $('made-copy').addEventListener('click', function () { if (made) copy(made.link, $('made-copy')); });
-  $('made-share').addEventListener('click', function () { if (made) share(made.name, made.link, $('made-share')); });
+  $('made-share').addEventListener('click', function () { if (made) share(made.name, made.meet, $('made-share')); });
 
   // ---- start
   function start() {
