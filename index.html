@@ -788,8 +788,9 @@
       <a class="btn btn-lg" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fdf3e2;color:#123a30;border:1.5px solid #e8a23d;border-radius:999px" href="/tello?src=app-landing"><img src="/tello-icon.svg" alt="" width="24" height="24" style="border-radius:50%"/>Ask Tello first — no signup</a>
       <button class="btn btn-ghost btn-lg" onclick="showPage('login')">Log in</button>
     </div>
-    <p class="hero-note">30 days free · No credit card · Nothing to cancel</p>
+    <p class="hero-note" id="landing-trial-line">30 days free · No credit card · Nothing to cancel</p>
     <p class="ref-note" id="ref-note-landing" style="display:none"></p>
+    <p class="hero-note" style="margin-top:2px">In the sample home you can add a staff member and scan a certificate. Nothing to sign.</p>
   </div>
   <div class="features" style="margin-top:40px">
     <div style="text-align:center;margin-bottom:36px">
@@ -857,6 +858,7 @@
            (t22ReadOnly) with every record kept. If either stops being true,
            this line has to change with it. -->
       <p class="signup-noobligation" id="signup-noobligation">Take your time. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account simply turns read-only — everything you entered stays.</p>
+      <p class="signup-noobligation" style="margin-top:8px">After your free trial: $29/mo for one home · $79/mo for up to five homes. Nothing is charged unless you choose a plan — no card is taken at signup.</p>
       <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
@@ -1221,6 +1223,7 @@
       <!-- STAFF -->
       <div id="tab-staff" style="display:none">
         <div class="page-header"><h1>Staff &amp; certifications</h1><button class="btn btn-primary" style="font-size:13px" onclick="openStaffModal()">+ Add staff</button></div>
+        <div id="demo-practice-banner" style="display:none;background:#fdf3e2;border:1.5px solid #e8a23d;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;font-size:14px;line-height:1.55"><strong>Practice home.</strong> Add a staff member, then open their file and scan the sample CPR card. What you add stays in this browser only — nothing is saved or shared, and it is gone when you close the tab.</div>
         <div id="staff-search-wrap" class="t22-search" style="display:none"><input type="search" id="staff-search" placeholder="Search staff by name" aria-label="Search staff by name" autocomplete="off" oninput="t22SearchInput('staff-search',renderStaff)"/><span id="staff-search-count" class="t22-search-count" aria-live="polite"></span></div>
         <div id="staff-expiry-banner" style="margin-bottom:16px"></div>
         <div id="staff-summary" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:20px;gap:24px;flex-wrap:wrap">
@@ -2298,6 +2301,7 @@ document.addEventListener('visibilitychange',()=>{
       const row = Array.isArray(data) ? data[0] : data;
       if (row && row.trial_days) sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
     } catch (e) { /* default trial length applies */ }
+    try{sessionStorage.setItem('title22_ref_days_resolved','1');}catch(e){}
     renderRefNote();
   }
   // ?mode=sandbox — title-22.com's trial CTAs. Remembered, not acted on: the
@@ -3371,6 +3375,30 @@ let allFacilities=[];
 // ride on the anon-role RLS policies scoped to is_demo facilities
 // (migrations/2026-07-23_title22_demo_tenant.sql); writes are blocked by RLS
 // and by the readonly role in the UI.
+// ===== DEMO PRACTICE LAYER (guest sandbox) =====
+// A visitor in the demo may add staff and scan the sample certificates. That
+// work is practice: it lives in sessionStorage (this tab only) and in the
+// in-memory staffList. Nothing here ever calls Supabase — the demo facility
+// stays read-only in the database, and the practice work dies with the tab.
+const DEMO_PRACTICE_KEY='title22_demo_practice';
+function demoPracticeLoad(){
+  try{const raw=sessionStorage.getItem(DEMO_PRACTICE_KEY);if(raw){const p=JSON.parse(raw);if(p&&Array.isArray(p.staff))return p;}}catch(e){}
+  return {staff:[],scansUsed:0};
+}
+function demoPracticeSave(p){try{sessionStorage.setItem(DEMO_PRACTICE_KEY,JSON.stringify(p));}catch(e){}}
+function demoPracticeSync(){
+  const p=demoPracticeLoad();
+  p.staff=staffList.filter(s=>String(s.id||'').indexOf('demo-')===0);
+  demoPracticeSave(p);
+}
+function demoPracticeApply(){
+  if(!demoMode)return;
+  const p=demoPracticeLoad();
+  p.staff.forEach(s=>{if(!staffList.some(x=>x.id===s.id))staffList.push(s);});
+  const b=document.getElementById('demo-practice-banner');if(b)b.style.display='';
+  try{renderStaff();}catch(e){}
+}
+
 async function enterDemoMode(){
   demoMode=true;
   try{
@@ -3388,6 +3416,7 @@ async function enterDemoMode(){
     document.getElementById('nav-public').style.display='none';
     document.getElementById('nav-app').style.display='flex';
     await initFacility();
+    demoPracticeApply();
     // ?demo=1&tour=0 opts out; otherwise the tour runs once and leaves a
     // button behind so it can be replayed.
     let seen=false; try{seen=!!localStorage.getItem(TOUR_SEEN);}catch(e){}
@@ -5638,10 +5667,11 @@ function selectRoleOption(value,label){document.getElementById('staff-role').val
 function selectCustomRole(text){const slug=text.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_');document.getElementById('staff-role').value=slug||'other';document.getElementById('staff-role-search').value=text.trim();ROLE_LABELS[slug]=text.trim();document.getElementById('role-options-dropdown').classList.remove('open');}
 
 function openStaffModal(staffId){
-  if(!canEdit()){alert('You do not have permission to edit staff.');return;}
+  if(!canEdit()&&!demoMode){alert('You do not have permission to edit staff.');return;}
   currentStaffId=staffId||null;
   const s=staffId?staffList.find(x=>x.id===staffId):null;
   document.getElementById('staff-modal-title').textContent=s?'Edit staff member':'Add staff member';
+  if(demoMode)document.getElementById('staff-modal-title').textContent+=(s?'':' — practice');
   document.getElementById('staff-name').value=s?.full_name||s?.name||'';
   const roleVal=s?.role||'caregiver';
   document.getElementById('staff-role').value=roleVal;
@@ -5715,6 +5745,35 @@ async function saveStaff(andAddAnother){
     status:isActive?'active':'inactive',
     assists_with_medication:document.getElementById('staff-assists-med').checked,
   };
+  if(demoMode){
+    // Practice save: the record lives in this browser only (see the demo
+    // practice layer above). The database is never called, and a scanned
+    // sample document is never filed anywhere.
+    pendingScanDoc=null;
+    if(currentStaffId&&String(currentStaffId).indexOf('demo-')===0){
+      const idx=staffList.findIndex(s=>s.id===currentStaffId);
+      if(idx>-1)staffList[idx]={...staffList[idx],...payload,id:currentStaffId};
+    }else if(currentStaffId){
+      t22Toast('This is the shared sample home — practice on the staff member you added. Start a free trial to keep a real file.');
+      closeStaffModal();
+      return;
+    }else{
+      payload.id='demo-'+Date.now();
+      staffList.push(payload);
+    }
+    demoPracticeSync();
+    renderStaff();
+    if(andAddAnother&&wasNew){
+      openStaffModal(null);
+      const ok=document.getElementById('staff-modal-error');
+      ok.className='error-msg show is-ok';
+      ok.textContent=nameVal+' added to your practice home. Add the next one, or Cancel when done.';
+    }else{
+      closeStaffModal();
+      t22Toast('Saved to your practice home — only visible in this browser.');
+    }
+    return;
+  }
   let error;
   let savedId=currentStaffId;
   if(currentStaffId){
@@ -5760,6 +5819,7 @@ async function saveStaff(andAddAnother){
 }
 async function deleteStaff(id,name){
   if(!confirm(`Delete "${name}"?`))return;
+  if(demoMode){staffList=staffList.filter(s=>s.id!==id);demoPracticeSync();renderStaff();return;}
   await sb.from('staff').delete().eq('id',id);
   staffList=staffList.filter(s=>s.id!==id);renderStaff();
 }
@@ -7760,7 +7820,24 @@ async function demoBriefingHTML(){
   if(f.docGaps.length)items.push('<svg class="ic"><use href="#i-alert"/></svg> '+f.docGaps.length+' resident document gap'+(f.docGaps.length>1?'s':'')+' — e.g. '+f.docGaps[0]);
   if(f.marGaps)items.push('<svg class="ic"><use href="#i-alert"/></svg> '+f.marGaps+' MAR gap'+(f.marGaps>1?'s':'')+' in recent entries');
   if(!items.length)items.push('<svg class="ic"><use href="#i-check-circle"/></svg> No urgent compliance issues in the sample data.');
-  return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>';
+  // The finish Eli asked for (Oct 30, 2026): what the visitor just touched
+  // shows up in the briefing, so the sample home ends on the screen a home
+  // actually lives on every morning.
+  const practice=demoPracticeLoad().staff;
+  const fmtD=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'});}catch(e){return d;}};
+  practice.forEach(s=>{
+    const bits=[];
+    if(s.cpr_cert_expiry)bits.push('CPR on file, expires '+fmtD(s.cpr_cert_expiry));
+    if(s.first_aid_cert_expiry)bits.push('First Aid on file, expires '+fmtD(s.first_aid_cert_expiry));
+    if(s.livescan_cleared)bits.push('Live Scan cleared');
+    items.push('<svg class="ic"><use href="#i-check-circle"/></svg> New in your practice home: <strong>'+esc(s.full_name||s.name||'Staff member')+'</strong>'+(bits.length?' — '+bits.join(' · '):' — staff file started')+'.');
+  });
+  let tail='';
+  if(practice.length){
+    tail='<div style="margin-top:10px;font-size:13px">This is the briefing a home like yours gets every morning.</div>'
+      +'<div style="margin-top:10px"><a class="btn btn-primary" style="text-decoration:none;display:inline-flex" href="https://title22.app/">Keep a home like this — start your free trial</a></div>';
+  }
+  return '<div style="font-size:13px;line-height:1.9;color:var(--text)">'+items.join('<br>')+'</div>'+tail;
 }
 
 // Tello's character. Kept here rather than in the Worker because the Worker
@@ -9450,7 +9527,7 @@ function renderDocSlots(kind){
   if(!slots)return;
   const recordId=kind==='staff'?currentStaffId:currentResidentId;
   const del=canDelete();
-  const edit=canEdit()&&!demoMode;
+  const edit=canEdit()||demoMode;
   const canFaxTier=['pro','specialist','agency'].includes(t22Plan);
   slots.forEach(slot=>{
     const host=document.getElementById('docslot-'+slot.docType);
@@ -11577,12 +11654,76 @@ const SCAN_CONFIDENCE={
 
 // docType, when given, is the slot the scan was started from: the reviewer
 // should not have to re-pick "CPR card" after pressing Scan on the CPR slot.
+// ===== DEMO SAMPLE SCAN =====
+// The scanning service needs a signed-in account (it takes the user's
+// session token), so in the demo the read runs on sample documents Title22
+// printed itself: the values below are the values drawn on the sample card,
+// and the review sheet, the form fill and the save that follow are the real
+// ones a signed-in home uses. Nothing is uploaded and no AI call is made.
+const DEMO_SAMPLE_SCANS={
+  cpr_card:{title:'CPR card',
+    card:{line1:'AMERICAN SAFETY TRAINING',line2:'CPR / AED — Adult and Pediatric',holder:'Maria Santos',rows:[['Certified','Mar 14, 2025'],['Expires','Mar 14, 2027']]},
+    fields:{full_name:{value:'Maria Santos',confidence:'high',label:'Name on the document',type:'text'},
+      cpr_cert_date:{value:'2025-03-14',confidence:'high',label:'CPR certification date',type:'date'},
+      cpr_cert_expiry:{value:'2027-03-14',confidence:'high',label:'CPR expiry date',type:'date'}}},
+  first_aid:{title:'First Aid card',
+    card:{line1:'AMERICAN SAFETY TRAINING',line2:'First Aid — Basic',holder:'Maria Santos',rows:[['Certified','Mar 14, 2025'],['Expires','Mar 14, 2027']]},
+    fields:{full_name:{value:'Maria Santos',confidence:'high',label:'Name on the document',type:'text'},
+      first_aid_cert_date:{value:'2025-03-14',confidence:'high',label:'First Aid certification date',type:'date'},
+      first_aid_cert_expiry:{value:'2027-03-14',confidence:'high',label:'First Aid expiry date',type:'date'}}},
+  livescan:{title:'Live Scan clearance',
+    card:{line1:'STATE OF CALIFORNIA — SAMPLE',line2:'Live Scan — Background Clearance',holder:'Maria Santos',rows:[['Cleared','Nov 2, 2025'],['Status','ELIGIBLE']]},
+    fields:{full_name:{value:'Maria Santos',confidence:'high',label:'Name on the document',type:'text'},
+      livescan_cleared:{value:'yes',confidence:'high',label:'Live Scan cleared',type:'text'},
+      livescan_date:{value:'2025-11-02',confidence:'high',label:'Live Scan date',type:'date'}}},
+  mandated_reporter:{title:'Mandated Reporter certificate',
+    card:{line1:'CALIFORNIA TRAINING INSTITUTE — SAMPLE',line2:'Mandated Reporter — General Training',holder:'Maria Santos',rows:[['Completed','Sep 18, 2025'],['Result','PASSED']]},
+    fields:{full_name:{value:'Maria Santos',confidence:'high',label:'Name on the document',type:'text'},
+      mandated_reporter_completed:{value:'yes',confidence:'high',label:'Mandated Reporter training completed',type:'text'},
+      mandated_reporter_date:{value:'2025-09-18',confidence:'high',label:'Mandated Reporter completion date',type:'date'}}},
+  training_cert:{title:'Training certificate',
+    card:{line1:'CARE HOME UNIVERSITY — SAMPLE',line2:'Initial Training Certificate',holder:'Maria Santos',rows:[['Completed','Oct 2, 2025'],['Hours','8']]},
+    fields:{full_name:{value:'Maria Santos',confidence:'high',label:'Name on the document',type:'text'},
+      initial_training_complete:{value:'yes',confidence:'high',label:'Initial training complete',type:'text'},
+      initial_training_hours:{value:'8',confidence:'high',label:'Initial training hours',type:'number'}}},
+};
+function demoSampleCardImage(cfg){
+  const c=document.createElement('canvas');c.width=880;c.height=540;const x=c.getContext('2d');
+  x.fillStyle='#fdfdf8';x.fillRect(0,0,880,540);
+  x.strokeStyle='#123a30';x.lineWidth=10;x.strokeRect(14,14,852,512);
+  x.fillStyle='#123a30';x.textAlign='center';
+  x.font='700 29px sans-serif';x.fillText(cfg.line1,440,96);
+  x.font='600 25px sans-serif';x.fillText(cfg.line2,440,140);
+  x.font='700 40px sans-serif';x.fillText(cfg.holder,440,228);
+  x.font='22px sans-serif';x.fillStyle='#555555';
+  cfg.rows.forEach((r,i)=>{x.fillText(r[0]+':  '+r[1],440,302+i*44);});
+  x.save();x.translate(440,458);x.rotate(-0.06);x.font='700 29px sans-serif';x.fillStyle='rgba(200,40,40,0.75)';x.fillText('SAMPLE — NOT A REAL CERTIFICATE',440-440,0);x.restore();
+  return c;
+}
+function demoSampleScan(docType){
+  const sample=DEMO_SAMPLE_SCANS[docType];
+  if(!sample){showScanError('In the sample home, scanning is set up for the staff documents. In a real account this button reads the real document the same way.');return;}
+  const p=demoPracticeLoad();
+  if(p.scansUsed>=3){showScanError('You have tried the sample scan a few times now. In a real account there is no practice limit — start a free trial to scan your own documents.');return;}
+  p.scansUsed+=1;demoPracticeSave(p);
+  scanState.formType='staff';scanState.forceDocType=docType;scanState.file=null;scanState.isPdf=false;pendingScanDoc=null;
+  const card=demoSampleCardImage(sample.card);
+  scanState.canvas=card;scanState.dataUrl=card.toDataURL('image/png');
+  showScanBusy(sample.title.toLowerCase());
+  document.getElementById('scan-modal-body').innerHTML='<div class="empty">Reading the sample page…</div>';
+  setTimeout(()=>{
+    scanState.fields=JSON.parse(JSON.stringify(sample.fields));
+    scanState.notes='Sample document — Title22 printed this one, so the read is exact. In a real account Tello reads your photo of the real card the same way, and you check it here before anything is filed.';
+    renderScanReview({});
+  },1100);
+}
+
 function startScan(formType,source,docType){
   if(!SCAN_FIELD_MAP[formType])return;
   // Only a staff certificate slot can scan. No slot, TB, a resident or a
   // medication: nothing happens, and the Worker refuses the same.
   if(formType!=='staff'||!SCAN_DOC_FIELDS[docType])return;
-  if(demoMode){alert('Scan to fill needs a signed-in account. The sample facility is read-only.');return;}
+  if(demoMode){demoSampleScan(docType);return;}
   if(!canEdit()){alert('You do not have permission to add records.');return;}
   if(!currentFacility){alert('Open a facility first.');return;}
   scanState.formType=formType;
@@ -11934,6 +12075,22 @@ function renderScanReview(result){
     drawScanCrop(cv,scanState.fields[key]?.box);
     cv.addEventListener('click',()=>openScanLightbox(scanState.fields[key]?.box));
   });
+
+  if(demoMode){
+    // Tello Guide's first job, on this screen: a wrong date is where people
+    // pause and leave, so say it in plain words, once, with the fix.
+    const body=document.getElementById('scan-modal-body');
+    const pairs={cpr_card:['cpr_cert_date','cpr_cert_expiry'],first_aid:['first_aid_cert_date','first_aid_cert_expiry']};
+    const pair=pairs[scanState.forceDocType];
+    let warn='';
+    if(pair&&scanState.fields){
+      const issued=scanState.fields[pair[0]]?String(scanState.fields[pair[0]].value||''):'';
+      const expiry=scanState.fields[pair[1]]?String(scanState.fields[pair[1]].value||''):'';
+      if(!expiry||(issued&&expiry<=issued))warn='<div style="background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;line-height:1.55"><strong>Check this date against the paper.</strong> The expiry date read from this document looks wrong. Tap the date in its row and type the right one — nothing is filed until you press Fill form and then Save.</div>';
+    }
+    if(warn)body.insertAdjacentHTML('afterbegin',warn);
+    body.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--text2);margin-top:12px">Check the dates against the paper before you save. If one looks wrong, tap it and type the right date.</div>');
+  }
 
   openScanModal();
 }
@@ -12711,11 +12868,18 @@ function renderRefNote(){
   try{
     const code=sessionStorage.getItem('title22_ref');
     if(!code)return;
+    // Do not paint anything until the code's real trial length is known:
+    // painting the 30-day default first and correcting it after the lookup
+    // is exactly the flash that made partner landings read "30 days" for a
+    // 90-day code.
+    if(!sessionStorage.getItem('title22_ref_days_resolved'))return;
     const days=Math.max(parseInt(sessionStorage.getItem('title22_ref_trial_days'),10)||0,T22_TRIAL_DAYS);
     const html='<svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg> You\u2019re joining through <strong>'+esc(code)+'</strong>\u2019s link \u2014 a '+days+'-day free trial.';
     ['ref-note-landing','ref-note-signup'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML=html;el.style.display='';}});
     const line=document.getElementById('signup-trial-line');
     if(line)line.textContent=days+' days free \u00b7 No credit card \u00b7 Nothing to cancel';
+    const ll=document.getElementById('landing-trial-line');
+    if(ll)ll.textContent=days+' days free \u00b7 No credit card \u00b7 Nothing to cancel';
     const ob=document.getElementById('signup-noobligation');
     if(ob)ob.textContent=ob.textContent.replace(/When the \d+ days end/,'When the '+days+' days end');
   }catch(e){/* the note is a courtesy; signup works without it */}
