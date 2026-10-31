@@ -7589,7 +7589,10 @@ function telloVoiceOffer(el,opts){
 }
 
 async function loadDashboardAIBriefing(force){
-  if(dashBriefingLoaded&&!force)return;
+  // In the demo the briefing is computed locally (no AI call to save), and it
+  // must reflect the visitor's practice work the moment they come back to
+  // the dashboard — so the loaded-cache only guards real accounts.
+  if(dashBriefingLoaded&&!force&&!demoMode)return;
   const el=document.getElementById('dash-ai-briefing');if(!el)return;
   // A new briefing (refresh, other facility) must not keep reading the old one.
   telloVoiceReset();delete el.dataset.voice;
@@ -9507,6 +9510,10 @@ async function loadRecordDocs(kind,id){
   const seq=++recordDocsSeq;
   recordDocs=[];recordDocsNote='';
   if(!id||!currentFacility)return true;   // nothing in flight to be stale
+  // A practice record from the demo sandbox has no database row and no filed
+  // documents by definition — asking would only earn a uuid error to show a
+  // visitor. The empty state set above is the whole answer.
+  if(String(id).indexOf('demo-')===0)return true;
   const col=kind==='staff'?'staff_id':'resident_id';
   const{data,error}=await sb.from('documents').select('*').eq('facility_id',currentFacility.id).eq(col,id).order('uploaded_at',{ascending:false});
   if(seq!==recordDocsSeq)return false;   // superseded — leave the newer state alone
