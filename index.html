@@ -8853,7 +8853,7 @@ function classGuideConfirm(){
   // that did not exist — the name box had never been filled.
   if(classGuideState().beat!==5)return;
   if(classSavedRecordExists()){classBeatAdvance();return;}
-  classGuideSay('I don\u2019t see her on the list yet. The usual reason: her name box at the top of the record is empty \u2014 type **Maria Santos**, then tap **Save**.');
+  classGuideSay('I don\u2019t see her on the list yet. The usual reason: her name box at the top of the record is empty \u2014 type **Maria Santos**, then tap **Save staff member**.');
 }
 // Button by button (Eli, Nov 2): one tap per beat, one short line per beat.
 // Beats: 0 Staff · 1 + Add staff · 2 type her name · 3 Scan (beside CPR) ·
@@ -8865,7 +8865,7 @@ const CLASS_BEAT_LINES=[
   'This is her record \u2014 every document lives in here. First, type her name at the top: **Maria Santos**.',
   '**Step 2 of 3.** Tap **Scan** beside CPR. My button above does the same.',
   'Check the two dates. Then tap **Fill form**.',
-  'Now tap **Save** \u2014 at the bottom of her record.',
+  'Now tap **Save staff member** \u2014 at the bottom of her record.',
   'Saved \u2014 see her row on the list? Her dates are on it, and anyone close to expiring is flagged.\n\n**Step 3 of 3.** The morning briefing \u2014 it names what you just filed. Tap the button above.'
 ];
 function classBeatAdvance(){
@@ -8890,6 +8890,9 @@ function classGuideFinish(){
   try{track('classroom_guide_step',{step:3});}catch(e){}
   classGuideSay('That\u2019s the whole room \u2014 your link is in the card above.');
   renderTelloDock();
+  // The closing card renders above the messages; bring it into view so the
+  // trainer's code is the first thing they see, not a scroll away (walk 3).
+  setTimeout(()=>{const ms=document.getElementById('td-msgs');if(ms)ms.scrollTop=0;},80);
 }
 function classGuideTick(){
   if(!classroomMode)return;
