@@ -1225,6 +1225,7 @@ const MKT={
     {name:'Website',note:'Everything, in one place',url:'https://title-22.com/'},
     {name:'Free trial',note:'30 days, no card',url:'https://title22.app/'},
     {name:'See it first',note:'The practice home, no sign-up',url:'https://title22.app/?demo=1'},
+    {name:'Practice classroom',note:'Tello guides it, no sign-up',url:'https://title22.app/?classroom=1'},
     {name:'Pricing',note:'$29 one home, $79 up to five',url:'https://title-22.com/pricing/'},
     {name:'Readiness check',note:'10 quick questions',url:'https://title-22.com/score/'},
     {name:'30-Day Proof',note:'For owners with two or more homes',url:'https://title-22.com/pilot/'},
@@ -1375,7 +1376,7 @@ async function ptnCreate(btn){
 function ptnFirst(p){return(p.name||'').trim().split(/\s+/)[0]||p.name}
 function ptnKitUrl(code){return 'https://title-22.com/partner-kit/?code='+encodeURIComponent(code)}
 function ptnMessage(p){
-  return `Hi ${ptnFirst(p)}, here is your Title22 link: https://title-22.com/r/${p.code}\n\nAnyone who signs up through it gets a ${p.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(p.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nImages, QR codes and posts with your link built in: ${ptnKitUrl(p.code)}`;
+  return `Hi ${ptnFirst(p)}, here is your Title22 link: https://title-22.com/r/${p.code}\n\nAnyone who signs up through it gets a ${p.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(p.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nYour classroom — students practise with Tello guiding them, no signup: https://title22.app/?classroom=1&trainer=${p.code}\n\nImages, QR codes and posts with your link built in: ${ptnKitUrl(p.code)}`;
 }
 // Share kit: what to send a partner, under the code maker. Reads MKT.links
 // and MKT.videos, so a link or video changes in one place.
