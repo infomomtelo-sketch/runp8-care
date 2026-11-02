@@ -218,7 +218,7 @@ assert.equal(r.body.reply, 'Title22 tracks staff records, training hours and cle
 assert.deepEqual(db.messages.map((m) => [m.role, m.text]), [['user', 'What does Title22 track?'], ['tello', r.body.reply]]);
 {
   const a = anthropic[0];
-  assert.equal(a.body.model, 'claude-opus-5-5');
+  assert.equal(a.body.model, 'claude-sonnet-5-5');
   assert.deepEqual(a.body.output_config, { effort: 'low' });
   assert.equal(a.body.fallbacks, 'default');
   assert.match(a.headers.get('anthropic-beta') || '', /server-side-fallback-2026-07-01/);

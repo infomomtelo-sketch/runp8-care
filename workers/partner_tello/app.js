@@ -40,7 +40,7 @@ export const HEALTH_WARNING = "Please don't share health information or identify
 export const NO_DOSAGE = "I can't advise on medication or dosage. That is a question for a prescriber or pharmacist.";
 
 export const LIMITS = { perHour: 30, maxChars: 2000, historyTurns: 20 };
-const MODEL = 'claude-opus-5-5';
+const MODEL = 'claude-sonnet-5-5';
 
 // --------------------------------------------------- health information --
 // The app's own identifier check (index.html, T22_PHI_RULES), copied

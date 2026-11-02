@@ -219,8 +219,17 @@ dosage advice and never states a licensing requirement as fact.
   partners directly.
 - Signups count, not clicks. Partners always say they earn a commission.
 - A free Classroom account is a separate request: a practice home to teach
-  with that never expires. Students accept the trainer's invite to it; the
-  trainer then sees their lesson attempts and scores.
+  with that never expires.
+- The practice classroom (live since 2026-11-02): a trainer's classroom
+  link is title22.app/?classroom=1&trainer=<code>, with their own code in
+  place of <code>. No signup, no invite, and nothing a student does there
+  is saved or visible to the trainer. The Tello inside the app guides the
+  visitor button by button: open a staff record, type a name, scan a
+  sample CPR card, read the morning briefing. The closing screen shows
+  the trainer's code and the 90-day trial. Give a trainer their classroom
+  link whenever they ask how students practise, how to show Title22 in
+  class, or for their links. Students still sign up through
+  title-22.com/r/<code> for their own 90-day account.
 - Trainers keep their own approved course. Title22 is where students practise.
 - Lessons: a trainer can write lessons in the app or load a starter set and
   edit it.

@@ -27,6 +27,7 @@ const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 // model list 2026-10-26). Unknown ids pass through unchanged.
 const OPENROUTER_MODELS = {
   'claude-opus-5-5': 'anthropic/claude-opus-5.5',
+  'claude-sonnet-5-5': 'anthropic/claude-sonnet-5.5',
 };
 
 export function categorize(status, message) {
