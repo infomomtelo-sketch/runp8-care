@@ -259,6 +259,29 @@
   @media (prefers-reduced-motion:reduce){#tello-dock-btn{transition:none}#tello-dock-btn:hover{transform:none}}
   #tello-dock{position:fixed;right:20px;bottom:92px;z-index:901;width:min(380px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 130px));max-height:min(560px,calc(100dvh - 130px));display:none;flex-direction:column;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden}
   #tello-dock.open{display:flex}
+  /* ── CLASSROOM SPLIT (trainer sandbox): Tello's chat becomes a fixed rail
+     beside the app — same page, she watches the room while the visitor works.
+     On a phone the rail becomes a bottom sheet and the app scrolls above. */
+  body.classroom #tello-dock{top:0;right:0;bottom:0;width:min(400px,44vw);max-height:none;border-radius:0;border-top:0;border-bottom:0;border-right:0}
+  body.classroom #page-app{padding-right:min(400px,44vw)}
+  @media (max-width:860px){
+    body.classroom #tello-dock{top:auto;left:0;right:0;bottom:0;width:auto;height:54dvh;max-height:54dvh;border-radius:16px 16px 0 0;border-left:0;border-right:0}
+    body.classroom #page-app{padding-right:0;padding-bottom:56dvh}
+  }
+  .class-guide{background:#fdf8ec;border:1.5px solid #e8a23d;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.5;color:var(--text)}
+  .class-guide .cg-head{font-weight:700;margin-bottom:2px}
+  .class-step{display:flex;gap:10px;margin:9px 0}
+  .class-step .n{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#123a30;color:#f9f5ed;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .class-step.done .n{background:#2e7d5b}
+  .class-step small{display:block;color:var(--text2);line-height:1.45}
+  .class-step .go{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+  .class-guide .go button{background:#123a30;color:#f9f5ed;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer;font-size:13.5px}
+  .class-guide .go button.ghost{background:transparent;color:#123a30;border:1.5px solid #123a30}
+  .class-done{background:#123a30;color:#f9f5ed;border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:14px;line-height:1.55}
+  .class-done .go{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .class-done .go button{background:#e8a23d;color:#123a30;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;font-size:14px}
+  .class-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:19px;font-weight:700;letter-spacing:.04em;border:1.5px dashed #e8a23d;border-radius:10px;padding:9px 12px;text-align:center;margin:8px 0;color:#f9f5ed}
+  .class-hide{background:none;border:none;color:inherit;opacity:.75;text-decoration:underline;cursor:pointer;font-size:12.5px;margin-top:8px;padding:0}
   .td-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(18,58,48,.12);background:#f9f5ed;color:#123a30}
   .td-head .t-name{font-size:18px;line-height:1.1}
   .td-head .td-sub{display:block;margin-top:2px}
@@ -2374,6 +2397,8 @@ document.addEventListener('visibilitychange',()=>{
 let currentUser = null;
 let currentFacility = null;
 let demoMode = false;   // read-only sandbox (?demo=1): anon reads, RLS blocks all writes
+let classroomMode = false; // trainer classroom (?classroom=1): the demo sandbox, Tello-led, split screen
+let classroomCode = '';    // the trainer's code when the classroom link carries one (?code=)
 let checklistItems = [];
 let complianceTasks = [];
 let activeFilter = 'all';
@@ -3460,10 +3485,12 @@ async function enterDemoMode(){
     await initFacility();
     demoPracticeApply();
     // ?demo=1&tour=0 opts out; otherwise the tour runs once and leaves a
-    // button behind so it can be replayed.
+    // button behind so it can be replayed. In the classroom Tello leads
+    // instead — the tour stays off so there is one guide, not two.
     let seen=false; try{seen=!!localStorage.getItem(TOUR_SEEN);}catch(e){}
     const wants=new URLSearchParams(location.search).get('tour');
-    if(wants!=='0'&&(wants==='1'||!seen))setTimeout(()=>startTour(0),900);
+    if(classroomMode){setTimeout(startClassroomGuide,700);}
+    else if(wants!=='0'&&(wants==='1'||!seen))setTimeout(()=>startTour(0),900);
     else{const b=document.getElementById('tour-restart');if(b)b.style.display='block';}
   }catch(e){
     demoMode=false;
@@ -8328,7 +8355,7 @@ function writeTelloDockHistory(){
 // her, and the not-entitled fail-closed case in one read.
 function telloDockAllowed(){
   try{
-    if(demoMode)return false;           // the sandbox answers from a canned path
+    if(demoMode&&!classroomMode)return false; // the sandbox answers from a canned path; the classroom keeps the dock — Tello leads it
     if(!currentFacility||!currentUser)return false;
     if(!t22Limits.ai)return false;
     return allowedTabs().includes('ai');
@@ -8559,6 +8586,11 @@ document.addEventListener('visibilitychange',()=>{
 function renderTelloDock(){
   const box=document.getElementById('td-msgs');if(!box)return;
   box.innerHTML='';
+  if(classroomMode&&classGuideActive()){
+    const g=document.createElement('div');
+    g.innerHTML=classGuideHtml();
+    box.appendChild(g.firstElementChild);
+  }
   if(telloGuideWanted()){
     const g=document.createElement('div');
     g.innerHTML=telloGuideHtml();
@@ -8596,6 +8628,7 @@ function toggleTelloDock(){
 
 async function sendTelloDock(){
   if(telloDockBusy)return;
+  if(classroomMode){classroomAsk();return;}
   const inp=document.getElementById('td-input');
   const query=inp&&inp.value.trim();
   if(!query)return;
@@ -8657,6 +8690,231 @@ async function sendTelloDock(){
   }finally{
     telloDockBusy=false;
   }
+}
+
+
+// ===== CLASSROOM GUIDE (trainer sandbox — Tello leads, split screen) =====
+// The classroom is the demo sandbox with a teacher in it. Tello's dock becomes
+// a fixed rail beside the app (the body.classroom CSS) and she walks the
+// visitor through the room in three small steps, in chat:
+//
+//   1. Scan the sample CPR card -> the staff file fills (real review sheet)
+//   2. The class list           -> expiration flags on the roster
+//   3. The morning briefing     -> it names what the visitor just filed
+//
+// Her rules here are the Guide rules: written lines, no AI call for the guide
+// itself; she watches the room, and when the visitor wanders to the wrong tab
+// mid-step she says so ONCE for that step, then stays quiet. Free-typed
+// questions are answered by the sandbox's own canned analyzer
+// (demoComplianceAnswer) — the same deterministic read the Ask Tello tab
+// uses — capped per tab, so a public link stays a tour, not an open meter.
+//
+// The only ask in the room is the closing card, after the third step: the
+// students' 90 days and the trainer's 20%, stated plainly, with the code the
+// visitor arrived on.
+const CLASS_GUIDE_KEY='title22_classroom_guide_v1';
+const CLASS_TABS=['dashboard','staff','checklist','documents','training','forms','incidents','residents','medications','mar','daily','team','facility','launch','ai'];
+const CLASS_TAB_NAMES={dashboard:'the Dashboard',staff:'the Staff list',checklist:'the Checklist',documents:'Documents',training:'Training',forms:'Forms',incidents:'Incidents',residents:'Residents',medications:'Medications',mar:'Medications',daily:'the Daily log',team:'Team access',facility:'Facility info',launch:'Start Your Home',ai:'the Ask Tello page'};
+const CLASS_STEP_TABS=['staff','staff','dashboard'];
+const CLASS_ASK_CAP=6;
+let classGuideTimer=null;
+let classAskBusy=false;
+
+function classGuideState(){
+  try{const s=JSON.parse(sessionStorage.getItem(CLASS_GUIDE_KEY)||'null');
+    if(s&&typeof s.step==='number')return s;}catch(e){}
+  return {step:0,started:false,nudged:{},asks:0,closed:false,scanClicked:false,tabAtStepStart:null,stepSince:0,dwellTab:null,dwellSince:0,uiSet:false};
+}
+function classGuideSave(s){try{sessionStorage.setItem(CLASS_GUIDE_KEY,JSON.stringify(s));}catch(e){}}
+function classGuideActive(){
+  if(!classroomMode)return false;
+  const s=classGuideState();
+  return s.started&&!s.closed;
+}
+function classActiveTab(){
+  for(const t of CLASS_TABS){
+    const el=document.getElementById('tab-'+t);
+    if(el&&el.getClientRects().length)return t;
+  }
+  return null;
+}
+function classModalOpen(){
+  if(document.querySelector('.modal-overlay.open'))return true;
+  const sm=document.getElementById('scan-modal');
+  return !!(sm&&sm.getClientRects().length&&sm.style.display!=='none');
+}
+function classGuideSay(content){
+  telloDockMessages.push({role:'assistant',content});
+  if(telloDockMessages.length>24)telloDockMessages=telloDockMessages.slice(-24);
+  renderTelloDock();
+}
+function classStepRow(i,title,small,buttonHtml,s){
+  const done=s.step>i, cur=s.step===i;
+  return '<div class="class-step'+(done?' done':'')+'"><span class="n">'+(done?'&#10003;':(i+1))+'</span><div><b>'+title+'</b><small>'+small+'</small>'+(cur?buttonHtml:'')+'</div></div>';
+}
+function classGuideHtml(){
+  const s=classGuideState();
+  if(s.step>=3){
+    let code='';
+    try{code=classroomCode||sessionStorage.getItem('title22_ref')||'';}catch(e){}
+    const codeDisp=String(code).replace(/[^A-Za-z0-9\-_]/g,'');
+    return '<div class="class-done"><b>That\u2019s the whole room.</b>'+
+      '<p style="margin:6px 0 0">Your students get this exact room for <b>90 days \u2014 free, no card</b>. They practise in it during class; you keep teaching the way you already teach.</p>'+
+      (codeDisp?'<div class="class-code">'+codeDisp+'</div><p style="margin:0">That\u2019s your code. It is already attached to your classroom link.</p>':'<p style="margin:6px 0 0">Your trainer code attaches to this link \u2014 it is on your kit page.</p>')+
+      '<p style="margin:6px 0 0">When a home subscribes through you, you earn <b>20% of every paid month</b> \u2014 $5.80/mo on the $29 one-home plan, $15.80/mo on the $79 plan \u2014 for as long as they stay subscribed.</p>'+
+      '<div class="go"><button type="button" onclick="classGuideLink()">Open my classroom link</button></div>'+
+      '<button type="button" class="class-hide" onclick="classGuideClose()">Hide this \u2014 keep looking around</button></div>';
+  }
+  const b1=s.scanClicked
+    ?'<div class="go"><button type="button" onclick="classGuideConfirm()">I saved it \u2014 next</button><button type="button" class="ghost" onclick="classGuideScan()">Scan again</button></div>'
+    :'<div class="go"><button type="button" onclick="classGuideScan()">Scan the sample CPR card</button></div>';
+  const b2='<div class="go"><button type="button" onclick="classGuideGo(1)">Show me the class list</button></div>';
+  const b3='<div class="go"><button type="button" onclick="classGuideGo(2)">Read the morning briefing</button></div>';
+  return '<div class="class-guide"><div class="cg-head">Your classroom tour \u2014 three steps, about a minute</div>'+
+    classStepRow(0,'File a certificate','Scan the sample CPR card; the staff file fills itself.',b1,s)+
+    classStepRow(1,'See the class list','Every person\u2019s dates on their row, flags where they belong.',b2,s)+
+    classStepRow(2,'The morning briefing','The daily screen \u2014 it names what you just filed.',b3,s)+
+    '</div>';
+}
+function classGuideLink(){
+  let code='';
+  try{code=classroomCode||sessionStorage.getItem('title22_ref')||'';}catch(e){}
+  try{track('classroom_guide_link',{has_code:!!code});}catch(e){}
+  window.open(code?('https://title-22.com/partner-kit/?code='+encodeURIComponent(code)):'https://title-22.com/affiliates','_blank','noopener');
+}
+function classGuideClose(){
+  const s=classGuideState();s.closed=true;classGuideSave(s);renderTelloDock();
+}
+function classGuideScan(){
+  const s=classGuideState();s.scanClicked=true;classGuideSave(s);
+  try{currentStaffId=null;}catch(e){}
+  try{if(typeof closeStaffModal==='function')closeStaffModal();}catch(e){}
+  try{switchTab('staff');}catch(e){}
+  renderTelloDock();
+  setTimeout(()=>{try{demoSampleScan('cpr_card');}catch(e){}},450);
+}
+function classGuideGo(i){
+  if(i===1){try{switchTab('staff');}catch(e){}}
+  if(i===2){try{switchTab('dashboard');}catch(e){}window.scrollTo(0,0);}
+}
+function classGuideConfirm(){classGuideAdvance();}
+function classGuideAdvance(){
+  const s=classGuideState();
+  if(s.step>=3)return;
+  s.step+=1;s.scanClicked=false;s.dwellTab=null;s.dwellSince=0;
+  s.stepSince=Date.now();
+  s.tabAtStepStart=classActiveTab();
+  classGuideSave(s);
+  try{track('classroom_guide_step',{step:s.step});}catch(e){}
+  if(s.step===1){
+    classGuideSay('Filed. That certificate now lives in the staff file with its dates \u2014 the first thing a licensing analyst asks for, answered in one search.\n\n**Step 2 of 3 \u2014 the class list.** Every person\u2019s dates sit on their row. Anyone close to a deadline, or past one, is flagged right there. Tap the button at the top of our chat and look at yours.');
+  }else if(s.step===2){
+    classGuideSay('See the flags? That is the whole list, honest at a glance \u2014 no binder, no memory, no surprises.\n\n**Step 3 of 3 \u2014 the morning briefing.** This is the screen a home opens every day: the score, who needs what, and what changed. It names the certificate you just filed. Tap the button at the top of our chat.');
+  }else if(s.step>=3){
+    classGuideSay('That is the room your students would practise in \u2014 the real app, with made-up people, so nobody can break anything. Ask me anything about it, or use your classroom link in the card above whenever you are ready.');
+  }
+  renderTelloDock();
+}
+function classGuideTick(){
+  if(!classroomMode)return;
+  const s=classGuideState();
+  if(!s.started||s.closed)return;
+  if(!s.uiSet){
+    const scope=document.getElementById('td-scope');
+    if(scope)scope.textContent='Your classroom guide \u00b7 Sample Class';
+    const inp=document.getElementById('td-input');
+    if(inp)inp.placeholder='Ask Tello about this room\u2026';
+    if(scope&&inp){s.uiSet=true;classGuideSave(s);}
+  }
+  if(s.step>=3)return;
+  const tab=classActiveTab();
+  // Step completions read the room itself, never a promise. A step also gets
+  // a few seconds to be read before it can complete.
+  const stepAge=Date.now()-(s.stepSince||0);
+  if(s.step===0){
+    try{
+      const p=demoPracticeLoad();
+      if((p.staff||[]).some(x=>x&&(x.cpr_cert_date==='2025-03-14'||x.cpr_cert_expiry==='2027-03-14'))){classGuideAdvance();return;}
+    }catch(e){}
+  }else if(tab&&tab===CLASS_STEP_TABS[s.step]&&stepAge>4000){
+    if(s.dwellTab!==tab){s.dwellTab=tab;s.dwellSince=Date.now();classGuideSave(s);}
+    else if(Date.now()-s.dwellSince>(s.step===2?2500:1500)){classGuideAdvance();return;}
+  }
+  // Wrong turn: she says so once per step, then stays quiet.
+  const expected=CLASS_STEP_TABS[s.step];
+  if(tab&&tab!==expected&&tab!==s.tabAtStepStart&&!s.nudged[s.step]&&!classModalOpen()){
+    s.nudged[s.step]=true;classGuideSave(s);
+    classGuideSay('That\u2019s **'+(CLASS_TAB_NAMES[tab]||'another page')+'** \u2014 worth a look later. For this step we need **'+(CLASS_TAB_NAMES[expected]||'the right page')+'**; the button at the top of our chat takes you there.');
+  }
+}
+function classHtmlToText(html){
+  let t=String(html||'');
+  t=t.replace(/<svg[\s\S]*?<\/svg>/g,'');
+  t=t.replace(/<br\s*\/?>/gi,'\n');
+  t=t.replace(/<strong>([\s\S]*?)<\/strong>/gi,'**$1**');
+  t=t.replace(/<em>([\s\S]*?)<\/em>/gi,'$1');
+  t=t.replace(/<[^>]+>/g,'');
+  t=t.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&#39;/g,"'");
+  return t.trim();
+}
+async function classroomAsk(){
+  if(classAskBusy)return;
+  const inp=document.getElementById('td-input');
+  const query=inp&&inp.value.trim();
+  if(!query)return;
+  const askPhi=t22PhiBlock([['Your question',query]]);
+  if(askPhi){alert(askPhi);return;}
+  inp.value='';
+  const s=classGuideState();
+  telloDockMessages.push({role:'user',content:query});
+  if(s.asks>=CLASS_ASK_CAP){
+    s.asks+=1;classGuideSave(s);
+    telloDockMessages.push({role:'assistant',content:'That is a fair few questions for a practice room, and I have given you the shape of it. The room stays open \u2014 keep tapping around. When your students join on their trial, they get my full answers on a real home\u2019s own records.'});
+    renderTelloDock();return;
+  }
+  s.asks+=1;classGuideSave(s);
+  classAskBusy=true;
+  renderTelloDock();
+  const box=document.getElementById('td-msgs');
+  const th=document.createElement('div');
+  th.className='td-msg assistant';th.textContent='Checking the sample class\u2026';
+  if(box){box.appendChild(th);box.scrollTop=box.scrollHeight;}
+  try{
+    const html=await demoComplianceAnswer(query);
+    th.remove();
+    telloDockMessages.push({role:'assistant',content:classHtmlToText(html)||'Here is what I can see in the sample class.'});
+    if(telloDockMessages.length>24)telloDockMessages=telloDockMessages.slice(-24);
+    renderTelloDock();
+  }catch(e){
+    th.textContent='I could not read the sample class just then. Try again in a moment.';
+    telloDockMessages.pop();
+  }finally{classAskBusy=false;}
+}
+function startClassroomGuide(){
+  if(!classroomMode)return;
+  document.body.classList.add('classroom');
+  const b=document.getElementById('demo-practice-banner');
+  if(b){
+    b.innerHTML='<strong>Sample Class \u2014 practice room.</strong> Everything here is made up. Nothing is saved. This is the room your students would practise in \u2014 Tello is guiding you from the chat beside you.';
+    b.style.display='';
+  }
+  const panel=document.getElementById('tello-dock');
+  if(panel&&!panel.classList.contains('open'))toggleTelloDock();
+  const s=classGuideState();
+  if(!s.started){
+    s.started=true;s.step=0;s.stepSince=Date.now();
+    s.tabAtStepStart=classActiveTab()||'dashboard';
+    classGuideSave(s);
+    telloDockMessages=[];
+    try{track('classroom_guide_start',{});}catch(e){}
+    classGuideSay('I\u2019m Tello \u2014 your compliance instructor. This is a **sample class**: the real app, made-up people, nothing saved, and nobody can break anything.');
+    classGuideSay('**Step 1 of 3 \u2014 file a certificate.** In a real home this is the paper a licensing analyst asks for first. Tap the button at the top of our chat and watch the sample CPR card read itself into a staff file. Check the dates on the review sheet, then Save \u2014 I\u2019ll be watching for it.');
+  }else{
+    renderTelloDock();
+  }
+  if(classGuideTimer)clearInterval(classGuideTimer);
+  classGuideTimer=setInterval(classGuideTick,1000);
+  classGuideTick();
 }
 
 // ===== LAUNCH HUB =====
@@ -12486,6 +12744,15 @@ function showSetNewPassword(){
         }
       }catch(e){showResetLinkProblem();}
     },3000);
+    return;
+  }
+  // Trainer classroom: /?classroom=1 (optionally &code=<trainer code>) loads
+  // the same sandbox, framed as a sample class with Tello guiding.
+  if(qs.get('classroom')){
+    classroomMode=true;
+    classroomCode=(qs.get('code')||'').trim();
+    if(classroomCode){try{sessionStorage.setItem('title22_ref',classroomCode);}catch(e){}}
+    await enterDemoMode();
     return;
   }
   // Marketing sandbox: /?demo=1 loads the read-only demo facility, no auth.
