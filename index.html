@@ -8737,7 +8737,7 @@ let classAskBusy=false;
 function classGuideState(){
   try{const s=JSON.parse(sessionStorage.getItem(CLASS_GUIDE_KEY)||'null');
     if(s&&typeof s.step==='number')return s;}catch(e){}
-  return {step:0,sub:0,started:false,nudged:{},asks:0,closed:false,scanClicked:false,tabAtStepStart:null,stepSince:0,dwellTab:null,dwellSince:0,uiSet:false};
+  return {step:0,beat:0,beatSince:0,scanBase:0,started:false,nudged:{},asks:0,closed:false,tabAtBeatStart:null,dwellTab:null,dwellSince:0,uiSet:false};
 }
 function classGuideSave(s){try{sessionStorage.setItem(CLASS_GUIDE_KEY,JSON.stringify(s));}catch(e){}}
 function classGuideActive(){
@@ -8756,6 +8756,10 @@ function classModalOpen(){
   if(document.querySelector('.modal-overlay.open'))return true;
   const sm=document.getElementById('scan-modal');
   return !!(sm&&sm.getClientRects().length&&sm.style.display!=='none');
+}
+function classStaffModalOpen(){
+  const m=document.getElementById('staff-modal');
+  return !!(m&&m.classList.contains('open'));
 }
 function classGuideSay(content){
   telloDockMessages.push({role:'assistant',content});
@@ -8779,16 +8783,20 @@ function classGuideHtml(){
       '<div class="go"><button type="button" onclick="classGuideLink()">Open my classroom link</button></div>'+
       '<button type="button" class="class-hide" onclick="classGuideClose()">Hide this \u2014 keep looking around</button></div>';
   }
-  const b1=!s.sub
-    ?'<div class="go"><button type="button" onclick="classGuideGoStaff()">Open Staff</button></div>'
-    :(s.scanClicked
-      ?'<div class="go"><button type="button" onclick="classGuideConfirm()">I saved it \u2014 next</button><button type="button" class="ghost" onclick="classGuideScan()">Scan again</button></div>'
-      :'<div class="go"><button type="button" onclick="classGuideScan()">Scan the sample CPR card</button></div>');
-  const b2='<div class="go"><button type="button" onclick="classGuideGo(1)">Show me the class list</button></div>';
-  const b3='<div class="go"><button type="button" onclick="classGuideGo(2)">Read the morning briefing</button></div>';
+  const beatBtn=[
+    '<div class="go"><button type="button" onclick="classGuideGoStaff()">Open Staff</button></div>',
+    '<div class="go"><button type="button" onclick="classGuideAddStaff()">Add staff</button></div>',
+    '<div class="go"><button type="button" onclick="classGuideScan()">Scan the sample CPR card</button></div>',
+    '<div style="margin-top:6px"><small>The button is on the review sheet, in the middle of your screen.</small></div>',
+    '<div class="go"><button type="button" onclick="classGuideConfirm()">I saved it \u2014 next</button><button type="button" class="ghost" onclick="classGuideScan()">Scan again</button></div>',
+    '<div class="go"><button type="button" onclick="classGuideGo(2)">Read the morning briefing</button></div>'
+  ][s.beat]||'';
+  const b1=s.beat<=1?beatBtn:'';
+  const b2=(s.beat>=2&&s.beat<=4)?beatBtn:'';
+  const b3=s.beat===5?beatBtn:'';
   return '<div class="class-guide"><div class="cg-head">Your classroom tour \u2014 three steps, about a minute</div>'+
-    classStepRow(0,'Scan a CPR card','Tap Staff, then scan the sample card \u2014 the file fills itself.',b1,s)+
-    classStepRow(1,'See the class list','Every person\u2019s dates on their row, flags where they belong.',b2,s)+
+    classStepRow(0,'Open a staff record','One button at a time: Staff, then + Add staff.',b1,s)+
+    classStepRow(1,'Scan her CPR card','One button at a time: Scan, Fill form, Save.',b2,s)+
     classStepRow(2,'The morning briefing','The daily screen \u2014 it names what you just filed.',b3,s)+
     '</div>';
 }
@@ -8802,35 +8810,69 @@ function classGuideClose(){
   const s=classGuideState();s.closed=true;classGuideSave(s);renderTelloDock();
 }
 function classGuideGoStaff(){try{switchTab('staff');}catch(e){}}
-function classGuideScan(){
-  const s=classGuideState();s.scanClicked=true;s.sub=1;classGuideSave(s);
+function classGuideAddStaff(){
   try{currentStaffId=null;}catch(e){}
-  try{if(typeof closeStaffModal==='function')closeStaffModal();}catch(e){}
+  try{if(typeof openStaffModal==='function')openStaffModal(null);}catch(e){}
+}
+function classGuideScan(){
   try{switchTab('staff');}catch(e){}
+  // The scan fills an OPEN staff record (that is where its button lives).
+  // Step 1 normally opened one already; if the record was closed along the
+  // way, open a fresh one first so "Fill form" has somewhere to land. The
+  // first live walk (Nov 2) proved a cold scan files nothing.
+  if(classStaffModalOpen()){
+    try{demoSampleScan('cpr_card');}catch(e){}
+  }else{
+    try{currentStaffId=null;}catch(e){}
+    setTimeout(()=>{try{if(typeof openStaffModal==='function')openStaffModal(null);}catch(e){}},250);
+    setTimeout(()=>{try{demoSampleScan('cpr_card');}catch(e){}},750);
+  }
   renderTelloDock();
-  setTimeout(()=>{try{demoSampleScan('cpr_card');}catch(e){}},450);
-  classGuideSay('Check the two dates, then tap **Save**.');
 }
 function classGuideGo(i){
   if(i===1){try{switchTab('staff');}catch(e){}}
   if(i===2){try{switchTab('dashboard');}catch(e){}window.scrollTo(0,0);}
 }
-function classGuideConfirm(){classGuideAdvance();}
-function classGuideAdvance(){
+function classScanOpen(){
+  const sm=document.getElementById('scan-modal');
+  if(!sm)return false;
+  if(sm.classList&&sm.classList.contains('open'))return true;
+  return !!(sm.getClientRects().length&&sm.style.display!=='none');
+}
+function classGuideConfirm(){if(classGuideState().beat===4)classBeatAdvance();}
+// Button by button (Eli, Nov 2): one tap per beat, one short line per beat.
+// Beats: 0 Staff · 1 + Add staff · 2 Scan (beside CPR) · 3 Fill form ·
+// 4 Save · 5 the morning briefing. The card keeps the 3 headline steps;
+// each beat is proven by the room itself before the next line is spoken.
+const CLASS_BEAT_LINES=[
+  '',
+  'Good. Now tap **+ Add staff** \u2014 top of the list.',
+  'This is her record \u2014 every document lives in here.\n\n**Step 2 of 3.** Tap **Scan** beside CPR. My button above does the same.',
+  'Check the two dates. Then tap **Fill form**.',
+  'Now tap **Save** \u2014 at the bottom of her record.',
+  'Saved \u2014 see her row on the list? Her dates are on it, and anyone close to expiring is flagged.\n\n**Step 3 of 3.** The morning briefing \u2014 it names what you just filed. Tap the button above.'
+];
+function classBeatAdvance(){
+  const s=classGuideState();
+  if(s.beat>=5)return;
+  s.beat+=1;
+  s.beatSince=Date.now();
+  s.tabAtBeatStart=classActiveTab();
+  s.dwellTab=null;s.dwellSince=0;
+  if(s.beat===2){try{s.scanBase=demoPracticeLoad().scansUsed||0;}catch(e){s.scanBase=0;}}
+  s.step=s.beat<=1?0:(s.beat<=4?1:2);
+  classGuideSave(s);
+  try{track('classroom_guide_beat',{beat:s.beat});}catch(e){}
+  const line=CLASS_BEAT_LINES[s.beat];
+  if(line)classGuideSay(line);
+  renderTelloDock();
+}
+function classGuideFinish(){
   const s=classGuideState();
   if(s.step>=3)return;
-  s.step+=1;s.sub=0;s.scanClicked=false;s.dwellTab=null;s.dwellSince=0;
-  s.stepSince=Date.now();
-  s.tabAtStepStart=classActiveTab();
-  classGuideSave(s);
-  try{track('classroom_guide_step',{step:s.step});}catch(e){}
-  if(s.step===1){
-    classGuideSay('Saved \u2014 it\u2019s in her file now.\n\n**Step 2 of 3.** Look at the list: her new dates are on her row, and anyone close to expiring is flagged. Tap the button above.');
-  }else if(s.step===2){
-    classGuideSay('See the flags? No binder, no guessing.\n\n**Step 3 of 3.** The morning briefing \u2014 the screen a home opens every day. It names the certificate you just filed. Tap the button above.');
-  }else if(s.step>=3){
-    classGuideSay('That\u2019s the whole room. Your students get it for **90 days \u2014 free, no card**. Your link is in the card above.');
-  }
+  s.step=3;s.beat=6;classGuideSave(s);
+  try{track('classroom_guide_step',{step:3});}catch(e){}
+  classGuideSay('That\u2019s the whole room. Your students get it for **90 days \u2014 free, no card**. Your link is in the card above.');
   renderTelloDock();
 }
 function classGuideTick(){
@@ -8846,25 +8888,32 @@ function classGuideTick(){
   }
   if(s.step>=3)return;
   const tab=classActiveTab();
-  // Step completions read the room itself, never a promise. A step also gets
-  // a few seconds to be read before it can complete.
-  const stepAge=Date.now()-(s.stepSince||0);
-  if(s.step===0){
-    if(!s.sub){
-      if(tab==='staff'&&stepAge>1200){s.sub=1;classGuideSave(s);classGuideSay('Good. Now tap **Scan the sample CPR card** \u2014 the button at the top of our chat.');}
-    }else{
-      try{
-        const p=demoPracticeLoad();
-        if((p.staff||[]).some(x=>x&&(x.cpr_cert_date==='2025-03-14'||x.cpr_cert_expiry==='2027-03-14'))){classGuideAdvance();return;}
-      }catch(e){}
+  // Every beat is proven by the room itself before the next line is spoken:
+  // the tab they are on, the form that is open, the scan count, the filed
+  // record. Never a promise, never a timer alone.
+  const beatAge=Date.now()-(s.beatSince||0);
+  if(s.beat===0){
+    if(tab==='staff'&&beatAge>1000){classBeatAdvance();return;}
+  }else if(s.beat===1){
+    if(classStaffModalOpen()){classBeatAdvance();return;}
+  }else if(s.beat===2){
+    try{if((demoPracticeLoad().scansUsed||0)>s.scanBase){classBeatAdvance();return;}}catch(e){}
+  }else if(s.beat===3){
+    if((!classScanOpen()&&classStaffModalOpen())||beatAge>25000){classBeatAdvance();return;}
+  }else if(s.beat===4){
+    try{
+      const p=demoPracticeLoad();
+      if((p.staff||[]).some(x=>x&&(x.cpr_cert_date==='2025-03-14'||x.cpr_cert_expiry==='2027-03-14'))){classBeatAdvance();return;}
+    }catch(e){}
+  }else if(s.beat===5){
+    if(tab==='dashboard'&&beatAge>3000){
+      if(s.dwellTab!=='dashboard'){s.dwellTab='dashboard';s.dwellSince=Date.now();classGuideSave(s);}
+      else if(Date.now()-s.dwellSince>2500){classGuideFinish();return;}
     }
-  }else if(tab&&tab===CLASS_STEP_TABS[s.step]&&stepAge>4000){
-    if(s.dwellTab!==tab){s.dwellTab=tab;s.dwellSince=Date.now();classGuideSave(s);}
-    else if(Date.now()-s.dwellSince>(s.step===2?2500:1500)){classGuideAdvance();return;}
   }
   // Wrong turn: she says so once per step, then stays quiet.
-  const expected=CLASS_STEP_TABS[s.step];
-  if(tab&&tab!==expected&&tab!==s.tabAtStepStart&&!s.nudged[s.step]&&!classModalOpen()){
+  const expected=s.beat>=5?'dashboard':'staff';
+  if(tab&&tab!==expected&&tab!==s.tabAtBeatStart&&!s.nudged[s.step]&&!classModalOpen()){
     s.nudged[s.step]=true;classGuideSave(s);
     const seenName=CLASS_TAB_NAMES[tab];
     classGuideSay(seenName
@@ -8918,11 +8967,6 @@ async function classroomAsk(){
 function startClassroomGuide(){
   if(!classroomMode)return;
   document.body.classList.add('classroom');
-  const b=document.getElementById('demo-practice-banner');
-  if(b){
-    b.innerHTML='<strong>Sample Class \u2014 practice room.</strong> Everything here is made up. Nothing is saved. This is the room your students would practise in \u2014 Tello is guiding you from the chat beside you.';
-    b.style.display='';
-  }
   const db=document.getElementById('demo-banner');
   if(db&&!document.getElementById('classroom-banner-line')){
     const sp=document.createElement('div');
@@ -8935,8 +8979,8 @@ function startClassroomGuide(){
   if(panel&&!panel.classList.contains('open'))toggleTelloDock();
   const s=classGuideState();
   if(!s.started){
-    s.started=true;s.step=0;s.stepSince=Date.now();
-    s.tabAtStepStart=classActiveTab()||'dashboard';
+    s.started=true;s.step=0;s.beat=0;s.beatSince=Date.now();
+    s.tabAtBeatStart=classActiveTab()||'dashboard';
     classGuideSave(s);
     telloDockMessages=[];
     try{track('classroom_guide_start',{});}catch(e){}
