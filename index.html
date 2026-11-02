@@ -8786,17 +8786,18 @@ function classGuideHtml(){
   const beatBtn=[
     '<div class="go"><button type="button" onclick="classGuideGoStaff()">Open Staff</button></div>',
     '<div class="go"><button type="button" onclick="classGuideAddStaff()">Add staff</button></div>',
+    '<div style="margin-top:6px"><small>Her name goes in the top box of her record: <b>Maria Santos</b>.</small></div>',
     '<div class="go"><button type="button" onclick="classGuideScan()">Scan the sample CPR card</button></div>',
     '<div style="margin-top:6px"><small>The button is on the review sheet, in the middle of your screen.</small></div>',
-    '<div class="go"><button type="button" onclick="classGuideConfirm()">I saved it \u2014 next</button><button type="button" class="ghost" onclick="classGuideScan()">Scan again</button></div>',
+    '<div class="go"><button type="button" onclick="classGuideConfirm()">Check \u2014 I saved it</button><button type="button" class="ghost" onclick="classGuideScan()">Scan again</button></div>',
     '<div class="go"><button type="button" onclick="classGuideGo(2)">Read the morning briefing</button></div>'
   ][s.beat]||'';
-  const b1=s.beat<=1?beatBtn:'';
-  const b2=(s.beat>=2&&s.beat<=4)?beatBtn:'';
-  const b3=s.beat===5?beatBtn:'';
+  const b1=s.beat<=2?beatBtn:'';
+  const b2=(s.beat>=3&&s.beat<=5)?beatBtn:'';
+  const b3=s.beat===6?beatBtn:'';
   return '<div class="class-guide"><div class="cg-head">Your classroom tour \u2014 three steps, about a minute</div>'+
-    classStepRow(0,'Open a staff record','One button at a time: Staff, then + Add staff.',b1,s)+
-    classStepRow(1,'Scan her CPR card','One button at a time: Scan, Fill form, Save.',b2,s)+
+    classStepRow(0,'Open a staff record','One beat at a time: Staff, + Add staff, type her name.',b1,s)+
+    classStepRow(1,'Scan her CPR card','One beat at a time: Scan, Fill form, Save.',b2,s)+
     classStepRow(2,'The morning briefing','The daily screen \u2014 it names what you just filed.',b3,s)+
     '</div>';
 }
@@ -8839,28 +8840,43 @@ function classScanOpen(){
   if(sm.classList&&sm.classList.contains('open'))return true;
   return !!(sm.getClientRects().length&&sm.style.display!=='none');
 }
-function classGuideConfirm(){if(classGuideState().beat===4)classBeatAdvance();}
+function classSavedRecordExists(){
+  try{
+    const p=demoPracticeLoad();
+    return (p.staff||[]).some(x=>x&&(x.cpr_cert_date==='2025-03-14'||x.cpr_cert_expiry==='2027-03-14'));
+  }catch(e){return false;}
+}
+function classGuideConfirm(){
+  // Never assert a save: check the room. If her filed record is not there,
+  // say what is most likely missing instead of advancing on a promise. The
+  // first full walk (Nov 2) showed an asserted "Saved" line over a record
+  // that did not exist — the name box had never been filled.
+  if(classGuideState().beat!==5)return;
+  if(classSavedRecordExists()){classBeatAdvance();return;}
+  classGuideSay('I don\u2019t see her on the list yet. The usual reason: her name box at the top of the record is empty \u2014 type **Maria Santos**, then tap **Save**.');
+}
 // Button by button (Eli, Nov 2): one tap per beat, one short line per beat.
-// Beats: 0 Staff · 1 + Add staff · 2 Scan (beside CPR) · 3 Fill form ·
-// 4 Save · 5 the morning briefing. The card keeps the 3 headline steps;
-// each beat is proven by the room itself before the next line is spoken.
+// Beats: 0 Staff · 1 + Add staff · 2 type her name · 3 Scan (beside CPR) ·
+// 4 Fill form · 5 Save · 6 the morning briefing. The card keeps the 3
+// headline steps; each beat is proven by the room before the next line.
 const CLASS_BEAT_LINES=[
   '',
   'Good. Now tap **+ Add staff** \u2014 top of the list.',
-  'This is her record \u2014 every document lives in here.\n\n**Step 2 of 3.** Tap **Scan** beside CPR. My button above does the same.',
+  'This is her record \u2014 every document lives in here. First, type her name at the top: **Maria Santos**.',
+  '**Step 2 of 3.** Tap **Scan** beside CPR. My button above does the same.',
   'Check the two dates. Then tap **Fill form**.',
   'Now tap **Save** \u2014 at the bottom of her record.',
   'Saved \u2014 see her row on the list? Her dates are on it, and anyone close to expiring is flagged.\n\n**Step 3 of 3.** The morning briefing \u2014 it names what you just filed. Tap the button above.'
 ];
 function classBeatAdvance(){
   const s=classGuideState();
-  if(s.beat>=5)return;
+  if(s.beat>=6)return;
   s.beat+=1;
   s.beatSince=Date.now();
   s.tabAtBeatStart=classActiveTab();
   s.dwellTab=null;s.dwellSince=0;
-  if(s.beat===2){try{s.scanBase=demoPracticeLoad().scansUsed||0;}catch(e){s.scanBase=0;}}
-  s.step=s.beat<=1?0:(s.beat<=4?1:2);
+  if(s.beat===3){try{s.scanBase=demoPracticeLoad().scansUsed||0;}catch(e){s.scanBase=0;}}
+  s.step=s.beat<=2?0:(s.beat<=5?1:2);
   classGuideSave(s);
   try{track('classroom_guide_beat',{beat:s.beat});}catch(e){}
   const line=CLASS_BEAT_LINES[s.beat];
@@ -8870,9 +8886,9 @@ function classBeatAdvance(){
 function classGuideFinish(){
   const s=classGuideState();
   if(s.step>=3)return;
-  s.step=3;s.beat=6;classGuideSave(s);
+  s.step=3;s.beat=7;classGuideSave(s);
   try{track('classroom_guide_step',{step:3});}catch(e){}
-  classGuideSay('That\u2019s the whole room. Your students get it for **90 days \u2014 free, no card**. Your link is in the card above.');
+  classGuideSay('That\u2019s the whole room \u2014 your link is in the card above.');
   renderTelloDock();
 }
 function classGuideTick(){
@@ -8897,22 +8913,25 @@ function classGuideTick(){
   }else if(s.beat===1){
     if(classStaffModalOpen()){classBeatAdvance();return;}
   }else if(s.beat===2){
-    try{if((demoPracticeLoad().scansUsed||0)>s.scanBase){classBeatAdvance();return;}}catch(e){}
+    // The name beat: Fill form never fills a record's name (a card scan
+    // keeps the record's own name), so a person has to type it — the walk
+    // proved the save refuses without it ("Name is required").
+    const nm=document.getElementById('staff-name');
+    if(classStaffModalOpen()&&nm&&String(nm.value||'').trim().length>=2){classBeatAdvance();return;}
   }else if(s.beat===3){
-    if((!classScanOpen()&&classStaffModalOpen())||beatAge>25000){classBeatAdvance();return;}
+    try{if((demoPracticeLoad().scansUsed||0)>s.scanBase){classBeatAdvance();return;}}catch(e){}
   }else if(s.beat===4){
-    try{
-      const p=demoPracticeLoad();
-      if((p.staff||[]).some(x=>x&&(x.cpr_cert_date==='2025-03-14'||x.cpr_cert_expiry==='2027-03-14'))){classBeatAdvance();return;}
-    }catch(e){}
+    if((!classScanOpen()&&classStaffModalOpen())||beatAge>25000){classBeatAdvance();return;}
   }else if(s.beat===5){
+    if(classSavedRecordExists()){classBeatAdvance();return;}
+  }else if(s.beat===6){
     if(tab==='dashboard'&&beatAge>3000){
       if(s.dwellTab!=='dashboard'){s.dwellTab='dashboard';s.dwellSince=Date.now();classGuideSave(s);}
       else if(Date.now()-s.dwellSince>2500){classGuideFinish();return;}
     }
   }
   // Wrong turn: she says so once per step, then stays quiet.
-  const expected=s.beat>=5?'dashboard':'staff';
+  const expected=s.beat>=6?'dashboard':'staff';
   if(tab&&tab!==expected&&tab!==s.tabAtBeatStart&&!s.nudged[s.step]&&!classModalOpen()){
     s.nudged[s.step]=true;classGuideSave(s);
     const seenName=CLASS_TAB_NAMES[tab];
