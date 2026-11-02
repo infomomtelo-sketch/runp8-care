@@ -49,7 +49,7 @@ crons = ["*/10 * * * *"]
 SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8"
 # A model change is a one-line PR.
-PARTNER_TELLO_MODEL = "claude-opus-5-5"
+PARTNER_TELLO_MODEL = "claude-sonnet-5-5"
 # Where the tracker button sends the one allowed link. Not a secret.
 CTC_TRACKER_URL = "https://ctc-tracker.infomomtelo.workers.dev"
 
