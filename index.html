@@ -1933,6 +1933,54 @@ function fillPartnerStaffPick(){
   if(keep&&people.some(s=>s.id===keep))pick.value=keep;
 }
 
+
+// ===== PHASE 2: THE MAR CORNER (AWS) =====
+//
+// Phase 2 wires the MAR screens to the corner: the small BAA-covered house
+// in Eli's AWS account (Aurora + one Lambda door), instead of Supabase.
+// T22_MAR_PRODUCT stays false. Corner mode exists for ONE account — the
+// test account named below — and the door enforces the same rule again on
+// its side, so neither side alone can open it.
+//
+// T22_TEST_ACCOUNT_ID is Eli's Supabase user id (Supabase dashboard ->
+// Authentication -> Users). It ships EMPTY here on purpose: empty means
+// corner mode can never turn on (fails closed). Fill it in only in the
+// build that gets deployed for the Phase 2 walk — see
+// title22-outreach/corner-phase2/DEPLOY-GUIDE.md. Invented residents only.
+const T22_CORNER_URL = 'https://g6pup48grh.execute-api.us-east-2.amazonaws.com';
+const T22_TEST_ACCOUNT_ID = 'b65c3827-e5eb-4f19-b3c7-95cb386fa30a';   // Eli's test account (Phase 2 walk build only)
+
+function t22CornerAccount(){
+  // try/catch for the same reason as t22MarAllowed: currentUser and the
+  // entitlement flags are declared further down, and this is reachable
+  // before they resolve. Unresolved means NOT the test account.
+  try{
+    if(!T22_TEST_ACCOUNT_ID)return false;
+    if(!t22EntitlementVerified)return false;
+    return !!(currentUser&&currentUser.id===T22_TEST_ACCOUNT_ID);
+  }catch(e){return false;}
+}
+function t22CornerMode(){return t22CornerAccount();}
+
+async function t22CornerFetch(path,opts){
+  opts=opts||{};
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session||!session.access_token)throw new Error('Your session expired. Sign in again and retry.');
+  const res=await fetch(T22_CORNER_URL+path,{
+    method:opts.method||'GET',
+    headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
+    body:opts.body?JSON.stringify(opts.body):undefined,
+  });
+  let j=null;try{j=await res.json();}catch(e){}
+  if(!res.ok)throw new Error((j&&j.error)||('Corner error '+res.status));
+  return j||{};
+}
+function t22CornerQS(o){
+  const p=new URLSearchParams();
+  for(const k in o){const v=o[k];if(v!==undefined&&v!==null&&v!=='')p.set(k,v);}
+  return p.toString();
+}
+
 // ===== TITLE22 LITE =====
 // Lite is facility and staff compliance only. Resident records, medications,
 // the MAR and LIC 602A are out of the product — that is what takes the BAA
@@ -1976,6 +2024,10 @@ let t22SeedingSample = false;    // true only inside the sample seeder
 
 function t22MarAllowed(){
   if(T22_MAR_PRODUCT)return true;
+  // PHASE 2: the corner build admits the MAR for the test account alone,
+  // served from the AWS corner (see the corner section above). Every other
+  // account falls through to the classroom rule below, unchanged.
+  if(t22CornerAccount())return true;
   // try/catch because everything below is declared ~1200 lines further down.
   // Reading a `let` before its declaration runs is a ReferenceError, not
   // undefined, and this getter is reachable from t22Fetch the moment the
@@ -2004,7 +2056,7 @@ Object.defineProperty(window,'showMAR',{get:t22MarAllowed,configurable:true});
 //
 // True whenever the MAR is on WITHOUT the product being on, which is exactly
 // the classroom case. A real showMAR build admits residents normally.
-function t22RosterFixed(){return !T22_MAR_PRODUCT;}
+function t22RosterFixed(){return !T22_MAR_PRODUCT&&!t22CornerAccount();}
 const T22_ROSTER_FIXED_MSG='The practice roster is fixed — these eight residents are the lesson. Nobody real goes in here.';
 
 // PostgREST tables holding resident health information, blocked in the
@@ -5082,10 +5134,19 @@ async function loadDashboardMARStats(){
   const el=document.getElementById('dash-mar-stats');if(!el||!currentFacility)return;
   try{
     const today=new Date().toISOString().split('T')[0];
-    const[entriesRes,medsRes]=await Promise.all([
-      sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lte('administered_at',today+'T23:59:59'),
-      sb.from('medications').select('resident_id').eq('facility_id',currentFacility.id).eq('status','active'),
-    ]);
+    let entriesRes,medsRes;
+    if(t22CornerMode()){
+      const [ej,mj]=await Promise.all([
+        t22CornerFetch('/mar/entries?'+t22CornerQS({facility:currentFacility.id,from:today+'T00:00:00',to:today+'T23:59:59'})),
+        t22CornerFetch('/mar/medications?'+t22CornerQS({facility:currentFacility.id,status:'active'})),
+      ]);
+      entriesRes={data:ej.entries||[]};medsRes={data:mj.medications||[]};
+    }else{
+      [entriesRes,medsRes]=await Promise.all([
+        sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lte('administered_at',today+'T23:59:59'),
+        sb.from('medications').select('resident_id').eq('facility_id',currentFacility.id).eq('status','active'),
+      ]);
+    }
     // Naming voided_at in the select would 400 on a project that has not run
     // the migration yet, and take the dashboard down with it. Filtering here
     // costs nothing and degrades to "nothing is voided" on the old schema.
@@ -5120,7 +5181,20 @@ async function exportDSSAudit(){
   // In Lite the resident and MAR sections are not empty, they are absent —
   // and the incident rows are read without the resident embed, so no resident
   // name can reach the printout.
-  const[resR,stR,marR,incR]=await Promise.all([
+  let resR,stR,marR,incR;
+  if(t22CornerMode()){
+    // Corner: residents and the MAR come from Aurora; staff and incidents
+    // stay in Supabase, and incidents are read WITHOUT the resident embed
+    // (their resident names live in the corner now), same as Lite.
+    const [rj,mj]=await Promise.all([
+      t22CornerFetch('/mar/residents?'+t22CornerQS({facility:currentFacility.id})),
+      t22CornerFetch('/mar/entries?'+t22CornerQS({facility:currentFacility.id,from:sinceISO,limit:1000})),
+    ]);
+    resR={data:rj.residents||[]};marR={data:mj.entries||[]};
+    stR=await sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name');
+    incR=await sb.from('incidents').select('*').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at');
+  }else{
+  [resR,stR,marR,incR]=await Promise.all([
     showMAR?sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name'):Promise.resolve({data:[]}),
     sb.from('staff').select('*').eq('facility_id',currentFacility.id).order('full_name'),
     showMAR?sb.from('mar_entries').select('*, residents(name,full_name), medications(medication_name,dosage)').eq('facility_id',currentFacility.id).gte('administered_at',sinceISO).order('administered_at'):Promise.resolve({data:[]}),
@@ -5128,6 +5202,7 @@ async function exportDSSAudit(){
       ?sb.from('incidents').select('*, residents(name,full_name)').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at')
       :sb.from('incidents').select('*').eq('facility_id',currentFacility.id).gte('occurred_at',sinceISO).order('occurred_at'),
   ]);
+  }
   const residentsD=resR.data||[],staffD=stR.data||[],marD=marR.data||[],incD=incR.data||[];
   const f=currentFacility;
   const yn=v=>v==='yes'?'✓ On file':'✗ MISSING';
@@ -5414,6 +5489,11 @@ let currentResidentId=null;
 
 async function loadResidents(){
   if(!showMAR||!currentFacility)return;
+  if(t22CornerMode()){
+    try{const j=await t22CornerFetch('/mar/residents?'+t22CornerQS({facility:currentFacility.id}));residents=j.residents||[];}
+    catch(e){residents=[];t22Toast('Corner could not load residents: '+e.message);}
+    renderResidents();return;
+  }
   const{data}=await sb.from('residents').select('*').eq('facility_id',currentFacility.id).order('name');
   residents=data||[];renderResidents();
 }
@@ -5537,6 +5617,20 @@ async function saveResident(){
     isp_review_date:document.getElementById('res-isp-date').value||null,
     status:'active'
   };
+  if(t22CornerMode()){
+    // Corner: the record lives in Aurora now. Document-slot filing stays a
+    // Supabase feature in Phase 2, so the corner save finishes here.
+    try{
+      if(currentResidentId){
+        const j=await t22CornerFetch('/mar/residents/'+encodeURIComponent(currentResidentId),{method:'PUT',body:payload});
+        const idx=residents.findIndex(r=>r.id===currentResidentId);if(idx>-1)residents[idx]=j.resident||{...residents[idx],...payload};
+      }else{
+        const j=await t22CornerFetch('/mar/residents',{method:'POST',body:payload});
+        if(j.resident){residents.push(j.resident);track('record_created',{record_type:'resident',record_id:j.resident.id});}
+      }
+    }catch(e){err.textContent=e.message;err.classList.add('show');return;}
+    closeResidentModal();renderResidents();return;
+  }
   let error;
   let savedId=currentResidentId;
   if(currentResidentId){
@@ -5588,7 +5682,12 @@ async function deleteCurrentResident(){
   const r=residents.find(x=>x.id===currentResidentId);
   if(t22RosterFixed()){t22Toast(T22_ROSTER_FIXED_MSG);return;}
   if(!confirm(`Delete "${r?.name||'this resident'}"?`))return;
-  await sb.from('residents').delete().eq('id',currentResidentId);
+  if(t22CornerMode()){
+    try{await t22CornerFetch('/mar/residents/'+encodeURIComponent(currentResidentId),{method:'DELETE'});}
+    catch(e){alert('Could not delete this resident: '+e.message);return;}
+  }else{
+    await sb.from('residents').delete().eq('id',currentResidentId);
+  }
   residents=residents.filter(x=>x.id!==currentResidentId);
   closeResidentDetail();renderResidents();
 }
@@ -5911,6 +6010,14 @@ async function deleteStaff(id,name){
 let medicationsByResident={};
 async function loadMedications(){
   if(!showMAR||!currentFacility)return;
+  if(t22CornerMode()){
+    marMedCache={};medicationsByResident={};
+    try{
+      const j=await t22CornerFetch('/mar/medications?'+t22CornerQS({facility:currentFacility.id}));
+      (j.medications||[]).forEach(m=>{if(!medicationsByResident[m.resident_id])medicationsByResident[m.resident_id]=[];medicationsByResident[m.resident_id].push(m);});
+    }catch(e){t22Toast('Corner could not load medications: '+e.message);}
+    renderMedications();return;
+  }
   const{data}=await sb.from('medications').select('*').eq('facility_id',currentFacility.id).order('created_at');
   marMedCache={};
   const meds=data||[];
@@ -5982,6 +6089,13 @@ async function saveMedication(){
     status:document.getElementById('med-status').value
   };
   let error;
+  if(t22CornerMode()){
+    try{
+      if(currentMedId){await t22CornerFetch('/mar/medications/'+encodeURIComponent(currentMedId),{method:'PUT',body:payload});}
+      else{await t22CornerFetch('/mar/medications',{method:'POST',body:payload});track('record_created',{record_type:'medication'});}
+    }catch(e){err.textContent=e.message;err.classList.add('show');return;}
+    closeMedModal();await loadMedications();return;
+  }
   if(currentMedId){const{error:e}=await sb.from('medications').update(payload).eq('id',currentMedId);error=e;}
   else{const{error:e}=await sb.from('medications').insert(payload);error=e;if(!e)track('record_created',{record_type:'medication'});}
   if(error){err.textContent=error.message;err.classList.add('show');return;}
@@ -5989,7 +6103,12 @@ async function saveMedication(){
 }
 async function deleteMedication(){
   if(!currentMedId||!confirm('Delete this medication?'))return;
-  await sb.from('medications').delete().eq('id',currentMedId);
+  if(t22CornerMode()){
+    try{await t22CornerFetch('/mar/medications/'+encodeURIComponent(currentMedId),{method:'DELETE'});}
+    catch(e){alert('Could not delete this medication: '+e.message);return;}
+  }else{
+    await sb.from('medications').delete().eq('id',currentMedId);
+  }
   closeMedModal();await loadMedications();
 }
 
@@ -6004,7 +6123,7 @@ let currentIncidentResidentId=null;
 async function loadIncidents(){
   if(!currentFacility)return;
   const{data}=await sb.from('incidents')
-    .select(showMAR?'*, residents(name, full_name)':'*')
+    .select(showMAR&&!t22CornerMode()?'*, residents(name, full_name)':'*')
     .eq('facility_id',currentFacility.id)
     .order('occurred_at',{ascending:false});
   incidents=data||[];renderIncidents();
@@ -6857,13 +6976,26 @@ async function loadMAR(){
   }
   loadMARBriefing();
   const resFilter=document.getElementById('mar-resident-filter')?.value;
+  let data,error;
+  if(t22CornerMode()){
+    // The corner returns the entries with resident and medication names
+    // already joined, in the same shape the embed below produces.
+    try{
+      const j=await t22CornerFetch('/mar/entries?'+t22CornerQS({facility:currentFacility.id,resident:resFilter||undefined,limit:100}));
+      data=j.entries||[];error=null;
+    }catch(e){
+      document.getElementById('mar-entries-list').innerHTML=`<div class="empty">Error loading MAR: ${esc(e.message||'unknown error')}</div>`;
+      return;
+    }
+  }else{
   let query=sb.from('mar_entries')
     .select('*, residents(name, full_name), medications(medication_name, dosage, directions)')
     .eq('facility_id',currentFacility.id)
     .order('administered_at',{ascending:false})
     .limit(100);
   if(resFilter)query=query.eq('resident_id',resFilter);
-  let{data,error}=await query;
+  ({data,error}=await query);
+  }
   // The embedded select above is the only two-table embed in the app, and it is
   // the entire view: if PostgREST cannot resolve either relationship, every
   // dose renders as one error line and a caregiver halfway through a
@@ -6953,6 +7085,13 @@ async function voidMAREntry(id){
   const reason=prompt('Why is this entry being voided?\n\nIt stays on the record, ruled through, with this reason beside it — an inspector will read it. Then log the correct entry.');
   if(reason===null)return;
   if(!reason.trim()){alert('A reason is required. An unexplained void is no better than deleting the entry.');return;}
+  if(t22CornerMode()){
+    // The door stamps voided_at and voided_by (from the sign-in token)
+    // itself; the app sends only the reason.
+    try{await t22CornerFetch('/mar/entries/'+encodeURIComponent(id)+'/void',{method:'POST',body:{facility_id:currentFacility.id,void_reason:reason.trim()}});}
+    catch(e){alert('Could not void this entry: '+e.message);return;}
+    loadMAR();refreshDashboard();loadDashboardMARStats();return;
+  }
   const{error}=await sb.from('mar_entries').update({
     voided_at:new Date().toISOString(),voided_by:currentUser.id,void_reason:reason.trim(),
   }).eq('id',id);
@@ -6972,7 +7111,14 @@ async function loadMARBriefing(){
   const resList=window.residents||residents;
   if(!resList.length){el.style.display='none';return;}
   const today=new Date().toISOString().split('T')[0];
-  const{data:todayRaw}=await sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lt('administered_at',today+'T23:59:59');
+  let todayRaw;
+  if(t22CornerMode()){
+    try{const j=await t22CornerFetch('/mar/entries?'+t22CornerQS({facility:currentFacility.id,from:today+'T00:00:00',to:today+'T23:59:59'}));todayRaw=j.entries||[];}
+    catch(e){todayRaw=[];}
+  }else{
+    const{data}=await sb.from('mar_entries').select('*').eq('facility_id',currentFacility.id).gte('administered_at',today+'T00:00:00').lt('administered_at',today+'T23:59:59');
+    todayRaw=data;
+  }
   const todayEntries=(todayRaw||[]).filter(e=>!e.voided_at);
   const givenResIds=new Set(todayEntries.filter(e=>e.status==='given').map(e=>e.resident_id));
   const refusedCount=todayEntries.filter(e=>e.status==='refused').length;
@@ -7051,8 +7197,13 @@ async function onMARResidentChange(resId){
   medSel.innerHTML='<option value="">Select medication</option>';
   if(!resId)return;
   if(!marMedCache[resId]){
-    const{data}=await sb.from('medications').select('id,medication_name,dosage,directions,prescriber,rx_number').eq('resident_id',resId).eq('status','active');
-    marMedCache[resId]=data||[];
+    if(t22CornerMode()){
+      try{const j=await t22CornerFetch('/mar/medications?'+t22CornerQS({facility:currentFacility.id,resident:resId,status:'active'}));marMedCache[resId]=j.medications||[];}
+      catch(e){marMedCache[resId]=[];}
+    }else{
+      const{data}=await sb.from('medications').select('id,medication_name,dosage,directions,prescriber,rx_number').eq('resident_id',resId).eq('status','active');
+      marMedCache[resId]=data||[];
+    }
   }
   const meds=marMedCache[resId];
   if(!meds.length){medSel.innerHTML='<option value="">No active medications on file</option>';return;}
@@ -7120,12 +7271,18 @@ async function saveMAR(){
     if(!prnReason){alert('Please document the reason this PRN medication was given — required per Title 22.');return;}
     notes='PRN reason: '+prnReason+(notes?' — '+notes:'');
   }
-  const{error}=await sb.from('mar_entries').insert({
+  const marPayload={
     facility_id:currentFacility.id,resident_id:resId,medication_id:medId,
     staff_id:staffId,administered_at:new Date().toISOString(),
     scheduled_time:scheduledTime,status,notes:notes||null,
-  });
-  if(error){alert('Error: '+error.message);return;}
+  };
+  if(t22CornerMode()){
+    try{await t22CornerFetch('/mar/entries',{method:'POST',body:marPayload});}
+    catch(e){alert('Error: '+e.message);return;}
+  }else{
+    const{error}=await sb.from('mar_entries').insert(marPayload);
+    if(error){alert('Error: '+error.message);return;}
+  }
   const resSel=document.getElementById('mar-res-select');
   if(resSel?.value)delete marMedCache[resSel.value];
   closeMARModal();loadMAR();
