@@ -1,0 +1,33 @@
+name = "title22-alerts"
+main = "index.js"
+compatibility_date = "2026-11-05"
+
+# This IS the source of what is deployed. Redeploy with the
+# "Deploy title22-alerts Worker" GitHub Actions workflow after any
+# change — pasting into the dashboard is how source and deploy drift
+# apart (see the stripe-webhook history, 2026-09-13).
+#
+# Secrets (set via the Cloudflare dashboard or `wrangler secret put`
+# — never stored here; a deploy preserves them):
+#   SUPABASE_SERVICE_KEY — service_role key. Reads push_subscriptions
+#                          for a user who is not the caller.
+#   VAPID_PRIVATE_JWK    — the VAPID private key as a JWK JSON string.
+#   ALERTS_TEST_KEY      — shared key gating the /test and /send
+#                          endpoints.
+#
+# Plain-text vars live in [vars] at the BOTTOM of this file, on
+# purpose: `wrangler deploy` sends the complete set of vars from this
+# file and replaces whatever the Worker had. A var that exists only
+# in the dashboard is deleted by the next deploy — that is the
+# 2026-09-13 stripe-webhook outage. SUPABASE_URL is not a secret; it
+# is the project's public REST host, the same string index.html ships
+# to every browser. VAPID_PUBLIC is the public half of the VAPID
+# keypair and MUST equal T22_VAPID_PUBLIC in index.html.
+
+# Keep this table last. Everything above it is a comment or a
+# top-level key; anything written below it belongs to [vars] whether
+# that was meant or not.
+[vars]
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
+VAPID_PUBLIC = "BEHSBAKrjkcfuwbK13AbXipbpdH-ZGmxbgqvQrpvpzd-KYAriPObSP7fV9RS5UxiJFLJnYzjhnvu9FIU4NT7sn4"
+VAPID_SUBJECT = "mailto:hello@title-22.com"
