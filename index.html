@@ -10798,8 +10798,14 @@ async function loadDailyLogs(){
   if(!showMAR||!currentFacility)return;
   const dEl=document.getElementById('dl-date');
   if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);
-  const{data:res}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');
-  dailyResidents=res||[];
+  if(t22CornerMode()){
+    // Corner mode: the resident list lives behind the door, not in Supabase.
+    try{const j=await t22CornerFetch('/mar/residents?facility='+encodeURIComponent(currentFacility.id));dailyResidents=(j.residents||[]).map(r=>({id:r.id,name:r.name,full_name:r.full_name}));}
+    catch(e){dailyResidents=[];t22Toast('Corner could not load daily-log residents: '+(e.message||e));}
+  }else{
+    const{data:res}=await sb.from('residents').select('id,name,full_name').eq('facility_id',currentFacility.id).order('name');
+    dailyResidents=res||[];
+  }
   const sel=document.getElementById('dl-resident');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">Select resident...</option>'+dailyResidents.map(r=>`<option value="${r.id}">${(r.name||r.full_name||'Resident')}</option>`).join('');if(cur)sel.value=cur;}
   onDailyTypeChange();
