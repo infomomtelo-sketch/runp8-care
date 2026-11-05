@@ -10854,12 +10854,20 @@ async function saveDailyLog(){
   if(t==='food'){dataObj.meal=document.getElementById('dlf-meal').value;dataObj.intake=document.getElementById('dlf-intake').value;}
   if(t==='bowel'){dataObj.result=document.getElementById('dlf-result').value;}
   if(t==='hygiene'){dataObj.activity=document.getElementById('dlf-activity').value;dataObj.status=document.getElementById('dlf-status').value;}
-  const{error}=await sb.from('daily_logs').insert({
-    facility_id:currentFacility.id,resident_id:residentId,
-    log_date:document.getElementById('dl-date').value||new Date().toISOString().slice(0,10),
-    entry_type:t,note,data:dataObj,created_by:currentUser?.id||null
-  });
-  if(error){err.textContent=error.message;err.classList.add('show');return;}
+  if(t22CornerMode()){
+    try{
+      await t22CornerFetch('/mar/daily-logs',{method:'POST',body:{facility_id:currentFacility.id,resident_id:residentId,
+        log_date:document.getElementById('dl-date').value||new Date().toISOString().slice(0,10),
+        entry_type:t,note,data:dataObj,created_by:currentUser?.id||null}});
+    }catch(e){err.textContent='Could not save this entry. Please try again.';err.classList.add('show');return;}
+  }else{
+    const{error}=await sb.from('daily_logs').insert({
+      facility_id:currentFacility.id,resident_id:residentId,
+      log_date:document.getElementById('dl-date').value||new Date().toISOString().slice(0,10),
+      entry_type:t,note,data:dataObj,created_by:currentUser?.id||null
+    });
+    if(error){err.textContent=error.message;err.classList.add('show');return;}
+  }
   if(document.getElementById('dlf-note'))document.getElementById('dlf-note').value='';
   onDailyTypeChange();
   await refreshDailyList();
@@ -10868,8 +10876,14 @@ async function saveDailyLog(){
 async function refreshDailyList(){
   if(!currentFacility)return;
   const date=document.getElementById('dl-date')?.value||new Date().toISOString().slice(0,10);
-  const{data}=await sb.from('daily_logs').select('*, residents(name, full_name)').eq('facility_id',currentFacility.id).eq('log_date',date).order('created_at',{ascending:false});
-  dailyLogs=data||[];renderDailyLogs();
+  if(t22CornerMode()){
+    try{const j=await t22CornerFetch('/mar/daily-logs?'+t22CornerQS({facility:currentFacility.id,date}));dailyLogs=j.logs||[];}
+    catch(e){dailyLogs=[];t22Toast('Corner could not load daily logs. Please try again.');}
+  }else{
+    const{data}=await sb.from('daily_logs').select('*, residents(name, full_name)').eq('facility_id',currentFacility.id).eq('log_date',date).order('created_at',{ascending:false});
+    dailyLogs=data||[];
+  }
+  renderDailyLogs();
 }
 
 function dlSummary(e){
@@ -10906,7 +10920,12 @@ function renderDailyLogs(){
 
 async function deleteDailyLog(id){
   if(!confirm('Delete this entry?'))return;
-  await sb.from('daily_logs').delete().eq('id',id);
+  if(t22CornerMode()){
+    try{await t22CornerFetch('/mar/daily-logs/'+encodeURIComponent(id)+'?'+t22CornerQS({facility:currentFacility.id}),{method:'DELETE'});}
+    catch(e){t22Toast('Corner could not delete this entry. Please try again.');}
+  }else{
+    await sb.from('daily_logs').delete().eq('id',id);
+  }
   await refreshDailyList();
 }
 
