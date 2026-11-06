@@ -24,6 +24,16 @@ compatibility_date = "2026-11-05"
 # to every browser. VAPID_PUBLIC is the public half of the VAPID
 # keypair and MUST equal T22_VAPID_PUBLIC in index.html.
 
+# Cron trigger for the slice-2 expiry sweep: 15:00 UTC daily.
+# Pacific runs UTC-8 in standard time, so the sweep fires at
+# 7:00 AM Pacific in winter. During daylight time (UTC-7) the same
+# line lands at 8:00 AM Pacific. That hour-shift is known and
+# accepted — the sweep is a morning heads-up, not an appointment.
+# This table must sit ABOVE [vars]: anything written below [vars]
+# would be read as a var.
+[triggers]
+crons = ["0 15 * * *"]
+
 # Keep this table last. Everything above it is a comment or a
 # top-level key; anything written below it belongs to [vars] whether
 # that was meant or not.
