@@ -1215,6 +1215,13 @@
           <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">Buying ICTP, CEU, or other courses directly from CTC instead? Use code <b>T22SAVES10</b> for 10% off.</div>
           <a class="btn btn-primary" style="font-size:13px" href="https://title22-addon-pay.pages.dev/" target="_blank" rel="noopener">See courses and prices</a>
         </div>
+        <div style="margin-top:20px" class="card" id="dash-tello-staff-card">
+          <div class="card-title">Tello Staff</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">Schedule board &amp; Today's Board for your homes.</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">Free during your 30-day proof — then $10/mo per home, only if you choose it.</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">Opens the separate Tello Staff app — it has its own sign-in.</div>
+          <a class="btn btn-primary" style="font-size:13px" href="https://staff.tello.live" target="_blank" rel="noopener">Open Tello Staff</a>
+        </div>
         <div style="margin-top:20px" class="card">
           <div class="card-title">Quick actions</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
@@ -2474,9 +2481,19 @@ document.addEventListener('visibilitychange',()=>{
     try {
       const { data } = await sb.rpc('title22_check_trainer_code', { p_code: ref });
       const row = Array.isArray(data) ? data[0] : data;
-      if (row && row.trial_days) sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
+      if (row && row.trial_days) {
+        sessionStorage.setItem('title22_ref_trial_days', String(row.trial_days));
+        // 'days_resolved' means the code EXISTS and its real length is
+        // known — renderRefNote paints the personalised banner only then.
+        // It used to be set unconditionally, so a dead code was endorsed
+        // with a made-up attribution (trial audit F2, Nov 6 2026).
+        try{sessionStorage.setItem('title22_ref_days_resolved','1');}catch(e){}
+      }
     } catch (e) { /* default trial length applies */ }
-    try{sessionStorage.setItem('title22_ref_days_resolved','1');}catch(e){}
+    // 'checked' = the lookup finished, one way or the other. It lets
+    // renderRefNote fall back to the neutral trial line for a code that
+    // did not resolve, instead of painting the endorsement or nothing.
+    try{sessionStorage.setItem('title22_ref_checked','1');}catch(e){}
     renderRefNote();
   }
   // ?mode=sandbox — title-22.com's trial CTAs. Remembered, not acted on: the
@@ -13512,13 +13529,26 @@ function renderRefNote(){
   try{
     const code=sessionStorage.getItem('title22_ref');
     if(!code)return;
-    // Do not paint anything until the code's real trial length is known:
-    // painting the 30-day default first and correcting it after the lookup
-    // is exactly the flash that made partner landings read "30 days" for a
+    // Do not paint anything until the lookup has finished: painting the
+    // 30-day default first and correcting it after the lookup is exactly
+    // the flash that made partner landings read "30 days" for a
     // 90-day code.
-    if(!sessionStorage.getItem('title22_ref_days_resolved'))return;
-    const days=Math.max(parseInt(sessionStorage.getItem('title22_ref_trial_days'),10)||0,T22_TRIAL_DAYS);
-    const html='<svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg> You\u2019re joining through <strong>'+esc(code)+'</strong>\u2019s link \u2014 a '+days+'-day free trial.';
+    const refResolved=!!sessionStorage.getItem('title22_ref_days_resolved');
+    if(!refResolved && !sessionStorage.getItem('title22_ref_checked'))return;
+    let days, html;
+    if(refResolved){
+      // The code exists and its real length is known: name the trainer and
+      // show that length — the same number ensureProfile will stamp,
+      // floored at the standard trial exactly as the grant is.
+      days=Math.max(parseInt(sessionStorage.getItem('title22_ref_trial_days'),10)||0,T22_TRIAL_DAYS);
+      html='<svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg> You\u2019re joining through <strong>'+esc(code)+'</strong>\u2019s link \u2014 a '+days+'-day free trial.';
+    } else {
+      // The code did not resolve — dead, retired, or the lookup failed.
+      // Never endorse it: no name, no attribution, just the standard
+      // trial every visitor gets (trial audit F2, Nov 6 2026).
+      days=T22_TRIAL_DAYS;
+      html='<svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg> You\u2019re starting a '+days+'-day free trial \u2014 no card required.';
+    }
     ['ref-note-landing','ref-note-signup'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML=html;el.style.display='';}});
     const line=document.getElementById('signup-trial-line');
     if(line)line.textContent=days+' days free \u00b7 No credit card \u00b7 Nothing to cancel';
