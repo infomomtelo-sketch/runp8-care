@@ -2,6 +2,13 @@ name = "title22-email"
 main = "index.js"
 compatibility_date = "2026-08-12"
 
+# Nov 7, 2026 bring-up: SUPABASE_URL is a plain var, declared here on purpose
+# (the fix the warning at the bottom of this file prescribes), so CI deploys
+# are idempotent instead of destructive. It is the public Supabase REST host
+# the app ships to every browser — not a secret.
+[vars]
+SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
+
 # Secrets (set via `wrangler secret put <NAME>` — never stored here):
 #   SUPABASE_URL           — e.g. https://nwlhsshvqmbhemhxcran.supabase.co
 #   SUPABASE_SERVICE_KEY   — Supabase service_role key used to verify the
