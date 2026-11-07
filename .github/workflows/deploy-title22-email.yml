@@ -1,0 +1,126 @@
+# Deploy the title22-email Worker from a browser.
+#
+# Run it from GitHub: Actions -> "Deploy title22-email Worker" -> Run workflow.
+#
+# FIRST RUN CREATES THE WORKER. As of Nov 7, 2026 there is no title22-email
+# Worker in this Cloudflare account at all: the dashboard search finds none,
+# and https://title22-email.infomomtelo.workers.dev/ answers 404 (error 1042).
+# This workflow's first successful run brings it into existence. Until the
+# Worker's own secrets are set (see below), the GET / health route will
+# report missing bindings — that is expected after the first run, not a
+# failed deploy.
+#
+# One-time setup: a repository secret CLOUDFLARE_API_TOKEN
+# (Settings -> Secrets and variables -> Actions -> New repository secret),
+# created at https://dash.cloudflare.com/profile/api-tokens with the
+# "Edit Cloudflare Workers" template, scoped to this account. The token is
+# never printed here — wrangler-action reads it from the secret. (This is
+# the same repository secret the other Deploy workflows already use.)
+#
+# What this does NOT touch: the Worker's own SECRETS. The code reads six
+# environment names:
+#
+#   SUPABASE_URL            — NOT a secret. It is the public Supabase REST
+#                             host the app already ships to every browser,
+#                             so it lives in wrangler.toml's [vars] block.
+#   SUPABASE_SERVICE_KEY    — secret, set on the Worker.
+#   RESEND_API_KEY          — secret, set on the Worker.
+#   EMAIL_FROM              — secret, set on the Worker.
+#   SIGNUP_WEBHOOK_SECRET   — secret, set on the Worker.
+#   SIGNUP_NOTIFY_TO        — secret, set on the Worker.
+#
+# The five secrets are set on the Worker itself (Cloudflare dashboard:
+# Workers & Pages -> title22-email -> Settings -> Variables and Secrets).
+# A deploy leaves secrets alone. Never add any of them to this file.
+#
+# Why SUPABASE_URL sits in [vars] and not in the dashboard: `wrangler deploy`
+# sends the complete set of vars from wrangler.toml and REPLACES whatever
+# the Worker had. On stripe-webhook, SUPABASE_URL had been typed into the
+# dashboard as a plain-text var, runs #8 and #9 of its deploy workflow
+# deleted it, and the webhook returned 500 on every event for days while a
+# real purchase went unrecorded. Any non-secret binding this Worker needs
+# must be in wrangler.toml; if it only exists in the dashboard, this
+# workflow deletes it. wrangler.toml's own warning comment tells the story.
+#
+# THE SECRET NAMES THIS FILE READS, in full: exactly one.
+#
+#   secrets.CLOUDFLARE_API_TOKEN   — the ONLY repository secret read here.
+#                                    Read three times: the emptiness check,
+#                                    the dry-run step, and the deploy step.
+#
+# There is NO second secret. In particular there is no CLOUDFLARE_ACCOUNT_ID
+# secret and nothing here would read one: the account is the plain-text
+# CF_ACCOUNT_ID env var below. A name that is close but not exact —
+# CF_API_TOKEN, CLOUDFLARE_TOKEN, CLOUDFLARE_API_KEY — is the same as no
+# secret at all, and shows up as the "CLOUDFLARE_API_TOKEN is not set"
+# error below rather than as anything about the name that was used.
+name: Deploy title22-email Worker
+
+on:
+  # Manual only, on purpose. A deploy is a decision someone makes, not
+  # something that rides along with an unrelated merge.
+  workflow_dispatch:
+
+env:
+  # Not a credential, and not a secret in any useful sense: an account ID
+  # does nothing without a token, and the Cloudflare Pages bot already
+  # posts this one in plain sight on every PR in this public repo.
+  #
+  # It is here because without it wrangler does not know which account to
+  # deploy to, and asks Cloudflare by calling GET /memberships — a
+  # USER-scoped endpoint that an account-scoped token is refused on, with
+  # "Authentication error [code: 10000]". Given the account up front,
+  # wrangler never makes the call.
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  # Pinned to the same wrangler version the sibling Deploy workflows were
+  # validated against.
+  WRANGLER_VERSION: '4.130.0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Read through env, not interpolated into the script: a secret
+      # spliced straight into a shell line ends up in the command itself.
+      # Only its emptiness is ever tested.
+      - name: Check the token is set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions, then run this again."
+            exit 1
+          fi
+
+      # Catches a syntax error or a bad wrangler.toml before anything
+      # reaches Cloudflare. On the first run this is also the check that
+      # the Worker *can* be created from this repo.
+      - name: Build check (no deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-email
+          command: deploy --dry-run
+
+      - name: Deploy
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-email
+          command: deploy
+
+      - name: Report
+        run: |
+          echo "### title22-email deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.deploy.outputs.command-output }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Check: open https://title22-email.infomomtelo.workers.dev/ — the health route lists each binding. After the five secrets are set on the Worker it must report all bindings present; before that, missing bindings are expected." >> "$GITHUB_STEP_SUMMARY"
