@@ -49,6 +49,11 @@ function emailTemplate(template, payload) {
           <h2 style="margin:0 0 12px">Welcome to Title22, ${name}.</h2>
           <p>Your free trial is ready. Add your facility, invite your team, and start tracking the records an inspector will ask to see.</p>
           <p><a href="${payload.onboarding_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
+          <div style="border:1px solid #d8e2dc;border-radius:10px;padding:14px 16px;margin-top:20px">
+            <p style="margin:0 0 6px"><strong>One optional extra, only if it helps:</strong> training courses from our partner CTC are available inside Title22 as an add-on. Your staff train online, and each completion lands in their Title22 staff record.</p>
+            <p style="margin:0 0 6px">It is priced by the size of your home &mdash; $20 to $100 a month, depending on licensed beds. It is entirely your choice: nothing is added and nothing is charged unless you pick it.</p>
+            <p style="margin:0"><a href="https://title22-addon-pay.pages.dev/">See the training add-on</a></p>
+          </div>
           <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
         </div>
       `,
