@@ -469,6 +469,8 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
     <p class="sheet-note">Every message is read, and answered by text or email. A short summary of your chat with Tello goes with it.</p>
     <label for="l-name">Your name</label><input id="l-name" autocomplete="name" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"/>
     <label for="l-contact">Email or phone</label><input type="email" id="l-contact" autocomplete="email"/>
+    <label for="l-type">RCFE, ARF, or both? (optional)</label><select id="l-type" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"><option value="">—</option><option value="RCFE">RCFE</option><option value="ARF">ARF</option><option value="both">Both</option></select>
+    <label for="l-homes">How many homes? (optional)</label><input id="l-homes" type="number" min="1" max="100" inputmode="numeric" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"/>
     <label for="l-msg">What would you like from Title22? (optional)</label><textarea id="l-msg" style="width:100%;min-height:76px;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);resize:vertical"></textarea>
     <button class="btn" id="l-send" type="button" onclick="sendLead()" style="margin-top:12px">Send</button>
     <div class="msg" id="l-out"></div>
@@ -1509,7 +1511,19 @@ function guestStart(){
   $('say').placeholder='Ask Tello anything…';
   renderTools($('cab-tools'),false);
   $('thread').innerHTML='';
-  say("Hi, I'm Tello, Title22's AI assistant. Ask me anything, no sign-up needed. Tap Cabinet to send Title22 a message.",'her',true);
+  say("Hi, I'm Tello, Title22's AI assistant. I help care homes stay ready for DSS. What brings you in today?",'her',true);
+  // Sales-flow quick prompts (flow doc Part 2, Stage 0). Only on a fresh
+  // visit: a returning guest sees their own chat instead. Tapping one sends
+  // it as their message and the row goes away.
+  if(!guestChat.length){
+    const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px';
+    ['See how it works','Can I try it free?','Talk to a human'].forEach(label=>{
+      const b=document.createElement('button');b.type='button';b.className='pill';b.textContent=label;
+      b.onclick=()=>{row.remove();ask(label)};
+      row.appendChild(b);
+    });
+    $('thread').appendChild(row);
+  }
   guestChat.forEach(m=>say(m.content,m.role==='user'?'me':'her',m.role==='user'));
   scrollEnd();
 }
@@ -1527,14 +1541,17 @@ function openLead(){$('l-out').textContent='';$('l-out').className='msg';$('l-se
 function closeLead(){$('lead').classList.remove('open')}
 async function sendLead(){
   const out=$('l-out');
-  const body={assistant:'tello',kind:'follow-up',name:$('l-name').value.trim(),contact:$('l-contact').value.trim(),message:$('l-msg').value.trim(),lang:navigator.language||'',transcript:guestChat};
+  const body={assistant:'tello',kind:'follow-up',name:$('l-name').value.trim(),contact:$('l-contact').value.trim(),message:$('l-msg').value.trim(),lang:navigator.language||'',transcript:guestChat,
+    // Sales flow: what kind of home and how many, so the owner sees the fit
+    // without re-asking. Optional; the Worker drops anything invalid.
+    facility_type:$('l-type').value||null,home_count:$('l-homes').value?Number($('l-homes').value):null};
   if(!body.name||!body.contact){out.textContent='Please leave your name and an email or phone number.';out.className='msg show bad';return}
   $('l-send').disabled=true;$('l-send').textContent='Sending…';
   try{
     const r=await fetch(ASSIST_API+'/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){out.textContent=d.message||'That did not go through. Please try again.';out.className='msg show bad';$('l-send').disabled=false;$('l-send').textContent='Send';return}
-    $('l-send').textContent='Sent';out.textContent='Thank you. Title22 has your message and will get back to you.';out.className='msg show good';
+    $('l-send').textContent='Sent';out.textContent='Thank you — Title22 has your message. Someone from Title22 will call you tomorrow morning to walk you through setup.';out.className='msg show good';
     setTimeout(closeLead,1800);
   }catch(e){out.textContent='No connection. Please try again.';out.className='msg show bad';$('l-send').disabled=false;$('l-send').textContent='Send'}
 }
@@ -1558,7 +1575,7 @@ async function loadLeads(){
   (data||[]).forEach(l=>{
     const c=ptnEl('div','ptn-card'+(l.status==='done'?' off':''));
     const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,l.name),ptnEl('span','ptn-tag',(l.assistant==='tello'?'Tello · ':'Charrise · ')+(l.kind==='wants-own'?'Wants own assistant':'Follow-up')+(l.language?' · '+l.language:'')));c.appendChild(top);
-    c.appendChild(ptnEl('div','ptn-tag',new Date(l.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+(l.business?' · '+l.business:'')));
+    c.appendChild(ptnEl('div','ptn-tag',new Date(l.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+(l.business?' · '+l.business:'')+(l.facility_type?' · '+l.facility_type:'')+(l.home_count?' · '+l.home_count+(l.home_count===1?' home':' homes'):'')));
     if(l.message)c.appendChild(ptnEl('p','mkt-note',l.message));
     if(l.summary){const sm=ptnEl('p','mkt-note','Chat: '+l.summary);sm.style.color='var(--ink)';c.appendChild(sm)}
     const w=ptnEl('div','mkt-btns');const isMail=/@/.test(l.contact);

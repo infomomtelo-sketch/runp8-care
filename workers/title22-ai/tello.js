@@ -15,7 +15,7 @@
 // (table missing, read failed) answers as customer mode.
 
 import { callAI } from './ai.js';
-import { TELLO_CORE, CUSTOMER_PAGE, PARTNER_FALLBACK, PARTNER_TOOLS, PARTNER_LAST, SPOKEN, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
+import { TELLO_CORE, CUSTOMER_PAGE, CUSTOMER_SALES, CROSS_PROMOTE, PARTNER_FALLBACK, PARTNER_TOOLS, PARTNER_LAST, SPOKEN, BRIEF_TODAY, BRIEF_WEEKLY } from './tello/core.js';
 import { TITLE22_KNOWLEDGE } from './tello/title22-knowledge.js';
 import { TITLE22_HISTORY } from './tello/title22-history.js';
 
@@ -234,7 +234,7 @@ export function rememberFrom(message) {
 
 async function systemFor(env, founder, userId) {
   const now = `It is now ${laLong()} in California.`;
-  if (!founder) return [TELLO_CORE, CUSTOMER_PAGE, 'THE BUSINESS YOU WORK FOR: ' + CLIENT.name + '\n\n' + CLIENT.knowledge, now].join('\n\n');
+  if (!founder) return [TELLO_CORE, CUSTOMER_PAGE, CUSTOMER_SALES, CROSS_PROMOTE, 'THE BUSINESS YOU WORK FOR: ' + CLIENT.name + '\n\n' + CLIENT.knowledge, now].join('\n\n');
   const p = await partnerInstructions(env);
   const brief = await latestBrief(env, userId).catch(() => null);
   const notes = await loadNotes(env, userId).catch(() => []);
@@ -311,7 +311,14 @@ export async function handleTello(request, env, deps) {
     const rows = await restRows(env, `tello_founder_messages?user_id=eq.${user.id}&kind=eq.${kind}&select=content,created_at,data&order=created_at.desc&limit=2`) || [];
     const current = rows.find((r) => laDate(new Date(r.created_at)) >= since);
     const snap = await snapshot(env);
-    if (current && !body.fresh) return json({ kind, content: current.content, created_at: current.created_at, cached: true, snapshot: snap });
+    // Leads taken through "Send to Title22" today (LA): the brief must list
+    // them with name, contact, what they asked and when. A briefing with no
+    // leads when leads were taken is a failure, so a cached brief is not
+    // served when a lead arrived after it was written - a fresh one is.
+    const leadRows = await restRows(env, `assistant_leads?select=name,contact,business,message,summary,created_at&order=created_at.desc&limit=10`).catch(() => null);
+    const todaysLeads = (leadRows || []).filter((l) => l?.created_at && laDate(new Date(l.created_at)) === laDate());
+    const newLeadsSinceBrief = current && todaysLeads.some((l) => new Date(l.created_at) > new Date(current.created_at));
+    if (current && !body.fresh && !newLeadsSinceBrief) return json({ kind, content: current.content, created_at: current.created_at, cached: true, snapshot: snap });
 
     const credits = await checkAndDeductCredits(user.id, plan, env, { app: 'tello-partner', limit: PARTNER_MONTHLY_LIMIT });
     if (!credits.allowed) return json({ error: 'limit_reached', message: 'Partner mode has used its calls for this month.' }, 402);
@@ -321,7 +328,8 @@ export async function handleTello(request, env, deps) {
       kind === 'weekly' ? BRIEF_WEEKLY : BRIEF_TODAY,
       'NUMBERS NOW:\n' + JSON.stringify(snap),
       previous ? `PREVIOUS NUMBERS (${previous.created_at}):\n` + JSON.stringify(previous.data) : 'There are no previous numbers to compare with.',
-    ].join('\n\n');
+      todaysLeads.length ? 'LEADS TODAY (from "Send to Title22", Los Angeles time; name them in the brief with what they asked and when):\n' + todaysLeads.map((l) => `- ${new Date(l.created_at).toLocaleString('en-US', { timeZone: LA, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} - ${l.name} (${l.contact})${l.business ? ', ' + l.business : ''}: ${l.message || l.summary || 'no message'}`).join('\n') : '',
+    ].filter(Boolean).join('\n\n');
     const system = await systemFor(env, true, user.id);
     const model = env.TELLO_PARTNER_MODEL || PARTNER_MODEL;
     let text;
