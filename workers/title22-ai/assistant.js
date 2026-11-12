@@ -21,6 +21,7 @@
 // Adding another business is another ASSISTANTS entry with its own knowledge.
 
 import { TITLE22_KNOWLEDGE } from './tello/title22-knowledge.js';
+import { CUSTOMER_SALES, CROSS_PROMOTE } from './tello/core.js';
 import { rest, callModel } from './tello.js';
 
 // speaksFor: who she represents and who a lead goes to. For Title22 that is
@@ -64,7 +65,7 @@ WHAT YOU KNOW
 About ${a.business} itself: only the facts below. If something is not in them, say you are not sure and offer to pass the question on. Never invent a feature, a number, a customer, a review or a result.
 
 NO PROMISES
-Never agree to anything on ${to}'s behalf: no price other than the published plans, no discount, no custom feature, no date, no call time, no contract, no refund. Say ${to} will confirm, and invite them to tap "Send to ${to}" below the chat.
+Never agree to anything on ${to}'s behalf: no price other than the published plans, no discount, no custom feature, no date, no contract, no refund - except the tomorrow-morning callback in the sales flow below, which ${to} has agreed to. Say ${to} will confirm, and invite them to tap "Send to ${to}" below the chat.
 
 WHEN THEY WANT A REPLY
 When they want a demo, a price for many homes, a partnership, or anything you cannot answer, ask them to tap "Send to ${to}" and leave their name and how to reach them. Replies come by text or email. Do not ask for an email or phone number in the chat itself: the form is where it goes.
@@ -80,7 +81,14 @@ Warm, plain and short: two to four sentences, because your reply may be read alo
 
 THE FACTS ABOUT ${a.business.toUpperCase()}
 
-${a.knowledge}`;
+${a.knowledge}
+
+${CUSTOMER_SALES}
+
+${CROSS_PROMOTE}
+
+GUEST CLOSE - how the close works here, because this visitor has not signed in
+Do NOT ask for their email or phone number in the chat itself: the form is where it goes, as above. At the close, ask them to tap "Send to ${to}" below the chat and leave their name and how to reach them there - and tell them what happens next: "Someone from Title22 will call you tomorrow morning to walk you through setup." The form also asks for their home type and home count. When they say "just looking", offer to send them the link the same way: "Want me to send you the link so you have it when you're ready? Tap Send to ${to} below and leave your email."`;
 }
 
 async function sha(s) {
@@ -127,6 +135,66 @@ export function cleanTurns(messages) {
 
 const textOf = (data) => (data?.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
 const plainText = (s) => String(s || '').replace(/\*\*|__|^#+\s*/gm, '').trim();
+
+// Owner email for a new lead, in the shape of the morning-briefing email
+// that already works: "Good morning, Eli. Here's what needs you today."
+// One item per lead - name, contact, what they asked, when - with an
+// "Open my dashboard" button. Reuses the repo's existing email path: Resend
+// (the same RESEND_API_KEY the title22-email and partner_tello Workers use)
+// and the owner's address from partner_tello_config, the row partner_tello
+// already reads. Needs RESEND_API_KEY set on this Worker; without it, or
+// without the config row, the email is skipped and logged, never thrown.
+// Best effort only, and it runs AFTER the lead is saved: a missing config
+// or a refused send never fails the lead itself - the lead is still in the
+// Cabinet and in today's brief.
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+async function notifyLeadOwner(env, row) {
+  try {
+    if (!env.RESEND_API_KEY) { console.error('tello lead email: RESEND_API_KEY not set on title22-ai; lead saved without an email'); return { ok: false, error: 'not configured' }; }
+    const cfgRes = await rest(env, 'partner_tello_config?select=notify_to,email_from&limit=1');
+    const cfg = cfgRes.ok ? (await cfgRes.json().catch(() => null))?.[0] : null;
+    if (!cfg?.notify_to || !cfg?.email_from) { console.error('tello lead email: notify_to / email_from not set in partner_tello_config; lead saved without an email'); return { ok: false, error: 'not configured' }; }
+    const when = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const asked = row.message || row.summary || 'No message left.';
+    const detail = [row.facility_type, row.home_count ? `${row.home_count} home${row.home_count === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+    const subject = `Title22: new lead - ${row.name}`;
+    const html =
+      '<div style="font-family:-apple-system,Arial,sans-serif;line-height:1.55;color:#16312b">' +
+      '<h2 style="margin:0 0 4px;font-size:18px">Good morning, Eli. Here\'s what needs you today.</h2>' +
+      `<p style="margin:0 0 14px;color:#5b6b66;font-size:13px">${esc(when)} (Los Angeles)</p>` +
+      '<table style="border-collapse:collapse;font-size:14px">' +
+      `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">Name</td><td style="padding:4px 0"><strong>${esc(row.name)}</strong></td></tr>` +
+      `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">Contact</td><td style="padding:4px 0"><strong>${esc(row.contact)}</strong></td></tr>` +
+      (detail ? `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">Homes</td><td style="padding:4px 0"><strong>${esc(detail)}</strong></td></tr>` : '') +
+      `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">What they asked</td><td style="padding:4px 0">${esc(asked)}</td></tr>` +
+      `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">When</td><td style="padding:4px 0">${esc(when)}</td></tr>` +
+      '</table>' +
+      '<p style="margin:18px 0 0"><a href="https://title22.app/tello" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open my dashboard</a></p>' +
+      '<p style="font-size:13px;color:#5b6a63;margin-top:20px">Tello, your Title22 assistant. Tello can be wrong, so check anything that matters.</p></div>';
+    const text = `Good morning, Eli. Here's what needs you today.\n\n${row.name} (${row.contact})${detail ? ' - ' + detail : ''}\nWhat they asked: ${asked}\nWhen: ${when} (Los Angeles)\n\nOpen my dashboard: https://title22.app/tello`;
+    const minute = new Date().toISOString().slice(0, 16);
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + env.RESEND_API_KEY,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'tello-lead-' + (await sha([row.name, row.contact, asked, minute].join('|'))).slice(0, 24),
+      },
+      body: JSON.stringify({ from: cfg.email_from, to: [cfg.notify_to], subject, html, text }),
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      console.error('tello lead email: Resend refused', r.status, body?.message || body?.name || '');
+      return { ok: false, error: 'resend_' + r.status };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('tello lead email failed', e?.message || e);
+    return { ok: false, error: 'email_failed' };
+  }
+}
 
 export async function handleAssistant(request, env, deps) {
   const { json, inputIsBlocked, DOSAGE_REFUSAL, containsDosageAdvice, SAFE_DOSAGE_MESSAGE } = deps;
@@ -189,10 +257,18 @@ export async function handleAssistant(request, env, deps) {
       message: s(body.message, 2000) || null,
       summary,
       language: s(body.lang, 20) || null,
+      // Sales-flow fields (migration 2026-11-12_tello_sales_leads.sql):
+      // RCFE / ARF / both and how many homes, so the owner sees the fit
+      // without re-asking. Anything else is dropped, never stored.
+      facility_type: ['RCFE', 'ARF', 'both'].includes(body.facility_type) ? body.facility_type : null,
+      home_count: (() => { const n = Number(body.home_count); return Number.isInteger(n) && n >= 1 && n <= 100 ? n : null; })(),
     };
     const r = await rest(env, 'assistant_leads', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
     if (!r.ok) return json({ error: 'save_failed', message: 'Sorry, that did not go through. Please try again.' }, 502);
-    return json({ ok: true });
+    // The lead is saved. The owner email is best effort (see
+    // notifyLeadOwner): it never fails the lead.
+    const emailed = await notifyLeadOwner(env, row);
+    return json({ ok: true, emailed: emailed.ok });
   }
 
   return json({ error: 'Not found' }, 404);

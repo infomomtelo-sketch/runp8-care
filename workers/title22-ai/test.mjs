@@ -22,7 +22,9 @@ const db = {
   tello_founder_messages: [],
   ai_usage: [],
   assistant_leads: [],
+  partner_tello_config: [{ notify_to: 'owner@test.example', email_from: 'Title22 <noreply@test.example>' }],
 };
+const emails = []; // Resend sends seen by the stub below
 const usage = {}; let takeDown = false;
 const SNAP = { signups: { last_7_days: 3 }, paying_accounts_total: 2, mrr_usd_list_price: 108 };
 let failFounders = false, snapshotCalls = 0, notesOff = false;
@@ -42,6 +44,10 @@ function parseQuery(sp) {
 
 globalThis.fetch = async (url, init = {}) => {
   const u = new URL(url);
+  if (u.hostname === 'api.resend.com') {
+    emails.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ id: 're_test' }), { status: 200 });
+  }
   if (u.hostname === 'api.anthropic.com') {
     const body = JSON.parse(init.body);
     anthropic.push(body);
@@ -90,7 +96,7 @@ globalThis.fetch = async (url, init = {}) => {
   throw new Error('unexpected ' + method + ' ' + url);
 };
 
-const env = { SUPABASE_URL: 'https://sb.test', SUPABASE_SERVICE_KEY: 'service-key', ANTHROPIC_API_KEY: 'anthropic-key' };
+const env = { SUPABASE_URL: 'https://sb.test', SUPABASE_SERVICE_KEY: 'service-key', ANTHROPIC_API_KEY: 'anthropic-key', RESEND_API_KEY: 'resend-key' };
 const call = async (path, { token, method = 'GET', body } = {}) => {
   const h = { 'Content-Type': 'application/json' };
   if (token) h.Authorization = 'Bearer ' + token;
@@ -118,6 +124,12 @@ assert.ok(!req.system.includes('PRIVATE PARTNER'), 'customers never get partner 
 assert.ok(!req.system.includes('business_snapshot'));
 assert.ok(req.system.includes('You are Tello.') && req.system.includes('Title22 keeps a care home'));
 assert.ok(req.system.includes('WRITING HELP') && req.system.includes('Copy button'), 'writing help reaches her');
+assert.ok(req.system.includes('SALES - TITLE22'), 'customer mode gets the Title22 sales flow');
+assert.match(req.system, /What brings you in today\?/);
+assert.match(req.system, /tomorrow morning to walk you through setup/);
+assert.match(req.system, /6 or more homes: no forced plan/);
+assert.ok(req.system.includes('CROSS-PROMOTION'), 'customer mode gets the cross-promotion rule');
+assert.match(req.system, /unknown means do not promote/);
 assert.equal(req.tools, undefined);
 assert.equal(req.output_config, undefined, 'no effort sent to Haiku, which rejects it');
 assert.equal(r.body.mode, 'customer');
@@ -156,6 +168,8 @@ const [first, second] = anthropic.slice(-2);
 assert.equal(first.model, 'claude-sonnet-5');
 assert.equal(first.max_tokens, 8000); assert.deepEqual(first.output_config, { effort: 'medium' });
 assert.ok(first.system.includes('PRIVATE PARTNER INSTRUCTIONS'));
+assert.ok(!first.system.includes('SALES - TITLE22'), 'partner mode never gets the customer sales flow');
+assert.ok(!first.system.includes('CROSS-PROMOTION'), 'partner mode never gets the cross-promotion rule');
 assert.equal(first.tools[0].name, 'business_snapshot');
 assert.equal(second.messages.at(-1).content[0].type, 'tool_result');
 assert.deepEqual(JSON.parse(second.messages.at(-1).content[0].content), SNAP);
@@ -194,6 +208,21 @@ req = anthropic.at(-1);
 assert.ok(req.messages.every((m) => typeof m.content !== 'string' || !m.content.includes('Weekly review.')));
 assert.ok(req.system.includes('THE LAST BRIEF YOU GAVE THEM (weekly'));
 console.log('ok  partner: daily brief cached per day, fresh compares, weekly review, briefs kept out of chat turns');
+
+// A lead taken today invalidates the cached brief: the next brief names it.
+// (2026-11-12 sales flow: a briefing with no leads when leads were taken
+// is a failure.)
+db.assistant_leads.push({ id: 'lead-1', assistant: 'tello', kind: 'follow-up', name: 'Priya', contact: 'priya@example.com', business: 'Rosewood RCFE', message: 'Two RCFE homes, wants a trial', summary: null, language: null, facility_type: 'RCFE', home_count: 2, status: 'new',
+  // After the cached brief was written, same LA day: created_at is the
+  // latest today-brief's time plus a second, so it is unambiguously newer.
+  created_at: new Date(new Date(db.tello_founder_messages.filter((m) => m.kind === 'today').at(-1).created_at).getTime() + 1000).toISOString() });
+script = [text('1. New lead Priya, two RCFE homes, wants a trial.')];
+r = await call('/api/tello/brief', { token: 'founder-token', method: 'POST', body: { kind: 'today' } });
+assert.equal(r.body.cached, false, 'a lead after the cached brief forces a fresh one');
+assert.ok(anthropic.at(-1).messages[0].content.includes('LEADS TODAY'), 'the brief is written from today\'s leads');
+assert.ok(anthropic.at(-1).messages[0].content.includes('Priya'));
+assert.ok(anthropic.at(-1).messages[0].content.includes('priya@example.com'));
+console.log('ok  partner: a new lead today forces a fresh brief that names it');
 
 // -------------------------------------------------------- fail closed ----
 failFounders = true;
@@ -349,6 +378,18 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   assert.ok(!/\bEli\b/.test(req.system), 'she is never told the owner\'s name');
   assert.match(req.system, /NO PROMISES/);
   assert.match(req.system, /Title22 keeps a care home's staff records/, 'the Title22 knowledge is injected');
+  // 2026-11-12 sales flow + cross-promotion: the guest chat gets both, and
+  // the fleet-status rule (unknown means do not promote).
+  assert.match(req.system, /SALES - TITLE22/, 'guest Tello gets the Title22 sales flow');
+  assert.match(req.system, /What brings you in today\?/);
+  assert.match(req.system, /GUEST CLOSE/);
+  assert.match(req.system, /Do NOT ask for their email or phone number in the chat itself/);
+  assert.match(req.system, /CROSS-PROMOTION/, 'guest Tello gets the cross-promotion rule');
+  assert.match(req.system, /One product, one line/);
+  assert.match(req.system, /unknown means do not promote/);
+  assert.match(req.system, /Never suggest: PostPilots/);
+  assert.match(req.system, /SecondRail/);
+  assert.match(req.system, /never present it as paid production/);
   assert.equal(anthropic.length, before + 1);
   assert.equal(db.tello_messages.filter((m) => /How much is it/.test(m.content)).length, 0, 'the chat is not stored');
   assert.ok(Object.keys(usage).every((k) => !k.includes('203.0.113.7')), 'no IP is stored, only a hash');
@@ -392,6 +433,38 @@ console.log('ok  photos and PDFs: read for one answer, never stored, wrong type 
   assert.equal((await visit('/api/assistant/lead', { assistant: 'tello', name: 'Ana', contact: 'call me maybe' })).status, 400);
   r = await visit('/api/assistant/lead', { assistant: 'tello', kind: 'wants-own', name: 'Bo', contact: '559 555 0100', business: 'Bo Plumbing' });
   assert.equal(r.status, 200); assert.equal(db.assistant_leads.at(-1).kind, 'wants-own'); assert.equal(db.assistant_leads.at(-1).summary, null);
+  // sales-flow lead fields + owner email (2026-11-12): facility type and home
+  // count are saved, the owner is emailed immediately, and a missing Resend
+  // key never fails the lead.
+  const emailsBefore = emails.length;
+  script = [text('Wants the 30-day trial for three ARF homes.')];
+  r = await visit('/api/assistant/lead', { assistant: 'tello', name: 'Rosa', contact: 'rosa@example.com', business: 'Sunrise ARF', message: 'Three homes, wants a trial', facility_type: 'ARF', home_count: 3 }, '198.51.100.40');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.emailed, true, 'the owner email goes out with the lead');
+  const rosa = db.assistant_leads.at(-1);
+  assert.equal(rosa.facility_type, 'ARF');
+  assert.equal(rosa.home_count, 3);
+  assert.equal(emails.length, emailsBefore + 1, 'one owner email for the lead');
+  const mail = emails.at(-1);
+  assert.deepEqual(mail.to, ['owner@test.example']);
+  assert.match(mail.subject, /Rosa/);
+  assert.match(mail.text, /rosa@example.com/);
+  assert.match(mail.text, /ARF/);
+  assert.match(mail.text, /3 homes/);
+  // invalid sales fields are dropped, never stored
+  r = await visit('/api/assistant/lead', { assistant: 'tello', name: 'Bad', contact: 'bad@example.com', facility_type: 'XX', home_count: 0 }, '198.51.100.41');
+  assert.equal(r.status, 200);
+  assert.equal(db.assistant_leads.at(-1).facility_type, null);
+  assert.equal(db.assistant_leads.at(-1).home_count, null);
+  // no Resend key: the lead is still saved, only the email is skipped
+  delete env.RESEND_API_KEY;
+  const emailsBefore2 = emails.length;
+  r = await visit('/api/assistant/lead', { assistant: 'tello', name: 'NoKey', contact: 'nokey@example.com', facility_type: 'RCFE', home_count: 1 }, '198.51.100.42');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.emailed, false, 'no Resend key means no email, lead still saved');
+  assert.equal(db.assistant_leads.at(-1).name, 'NoKey');
+  assert.equal(emails.length, emailsBefore2, 'no email sent without the key');
+  env.RESEND_API_KEY = 'resend-key';
   for (let i = 0; i <= AL.visitorLead; i++) r = await visit('/api/assistant/lead', { assistant: 'tello', name: 'Spam', contact: 'spam@x.com' }, '192.0.2.5');
   assert.equal(r.status, 429);
   script = [text('Hi, I am Tello.')];
