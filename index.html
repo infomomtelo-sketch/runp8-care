@@ -8965,8 +8965,10 @@ async function sendTelloDock(){
 // uses — capped per tab, so a public link stays a tour, not an open meter.
 //
 // The only ask in the room is the closing card, after the third step: the
-// students' 90 days and the trainer's 20%, stated plainly, with the code the
-// visitor arrived on.
+// referral offer for the visitor's own home - the trainer's referral link
+// (90 days free through it, 30 days without a code), with a copy button.
+// Student-facing only: no commission, no trainer kit. The link is the code
+// the visitor arrived on (?trainer=).
 const CLASS_GUIDE_KEY='title22_classroom_guide_v1';
 const CLASS_TABS=['dashboard','staff','checklist','documents','training','forms','incidents','residents','medications','mar','daily','team','facility','launch','ai'];
 const CLASS_TAB_NAMES={dashboard:'Dashboard',staff:'Staff',checklist:'Checklist',documents:'Documents',forms:'Forms',incidents:'Incidents',launch:'Start Your Home',facility:'Facility',training:'In-service'};
@@ -9017,11 +9019,18 @@ function classGuideHtml(){
     let code='';
     try{code=classroomCode||sessionStorage.getItem('title22_ref')||'';}catch(e){}
     const codeDisp=String(code).replace(/[^A-Za-z0-9\-_]/g,'');
+    // Referral offer (2026-11-13): the visitor is a guest student, not the
+    // trainer. The card offers the trainer's referral link for the care home
+    // they work at, so they can share it with their administrator or owner.
+    // Student-facing only: no commission, no trainer kit, no partner link.
+    const refLink=codeDisp?('https://title-22.com/r/'+codeDisp):'https://title-22.com/';
+    const trialDays=codeDisp?'90 days':'30 days';
     return '<div class="class-done"><b>That\u2019s the whole room.</b>'+
-      '<p style="margin:6px 0 0">Your students get this exact room for <b>90 days \u2014 free, no card</b>. They practise in it during class; you keep teaching the way you already teach.</p>'+
-      (codeDisp?'<div class="class-code">'+codeDisp+'</div><p style="margin:0">That\u2019s your code. It is already attached to your classroom link.</p>':'<p style="margin:6px 0 0">Your trainer code attaches to this link \u2014 it is on your kit page.</p>')+
-      '<p style="margin:6px 0 0">When a home subscribes through you, you earn <b>20% of every paid month</b> \u2014 $5.80/mo on the $29 one-home plan, $15.80/mo on the $79 plan \u2014 for as long as they stay subscribed.</p>'+
-      '<div class="go"><button type="button" onclick="classGuideLink()">Open my classroom link</button></div>'+
+      '<p style="margin:6px 0 0">Your home can keep it this way \u2014 staff files, training hours, and clearances in one place, so what\u2019s asked for is already there when DSS visits.</p>'+
+      '<p style="margin:6px 0 0">Share this link with your administrator \u2014 your home gets <b>'+trialDays+' free, no card</b>:</p>'+
+      '<div class="class-code" style="font-size:14px;word-break:break-all">'+refLink+'</div>'+
+      '<div class="go"><button type="button" data-link="'+refLink+'" onclick="classReferralCopy(this)">Copy the link</button></div>'+
+      '<p style="margin:6px 0 0;font-size:12.5px;opacity:.85">Title22 is a private tool, not affiliated with the California Department of Social Services or any government agency.</p>'+
       '<button type="button" class="class-hide" onclick="classGuideClose()">Hide this \u2014 keep looking around</button></div>';
   }
   const beatBtn=[
@@ -9042,11 +9051,19 @@ function classGuideHtml(){
     classStepRow(2,'The morning briefing','The daily screen \u2014 it names what you just filed.',b3,s)+
     '</div>';
 }
-function classGuideLink(){
-  let code='';
-  try{code=classroomCode||sessionStorage.getItem('title22_ref')||'';}catch(e){}
-  try{track('classroom_guide_link',{has_code:!!code});}catch(e){}
-  window.open(code?('https://title-22.com/partner-kit/?code='+encodeURIComponent(code)):'https://title-22.com/affiliates','_blank','noopener');
+function classReferralCopy(btn){
+  // Copy the referral link from the closing card. Same feedback pattern as
+  // the share-link copy elsewhere in this file: 'Copied' on success, and a
+  // press-and-hold hint when the clipboard is unavailable.
+  const link=btn?btn.getAttribute('data-link'):'';
+  if(!link)return;
+  try{track('classroom_referral_copy',{has_code:!!classroomCode});}catch(e){}
+  const done=()=>{try{btn.textContent='Copied';setTimeout(()=>{btn.textContent='Copy the link';},1600);}catch(e){}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(done,()=>{try{btn.textContent='Press and hold the link to copy';}catch(e){}});
+  }else{
+    try{btn.textContent='Press and hold the link to copy';}catch(e){}
+  }
 }
 function classGuideClose(){
   const s=classGuideState();s.closed=true;classGuideSave(s);renderTelloDock();
@@ -9132,7 +9149,7 @@ function classGuideFinish(){
   classGuideSay('That\u2019s the whole room \u2014 your link is in the card above.');
   renderTelloDock();
   // The closing card renders above the messages; bring it into view so the
-  // trainer's code is the first thing they see, not a scroll away (walk 3).
+  // referral link is the first thing they see, not a scroll away (walk 3).
   setTimeout(()=>{const ms=document.getElementById('td-msgs');if(ms)ms.scrollTop=0;},80);
 }
 function classGuideTick(){
