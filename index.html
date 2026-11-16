@@ -845,7 +845,7 @@
   <p class="hero-note" style="font-size:16px;line-height:1.65;max-width:720px;margin:40px auto 0;text-align:center">Title22 was built by people who lived this work. They watched the same scramble again and again: staff files, training hours, clearances — all of it scattered until DSS asks for it. So they built one place to keep it together. Not a government site. A private tool, built from real homes and real inspections, so what's asked for is already there.</p>
   <div class="features" style="margin-top:40px">
     <div style="text-align:center;margin-bottom:36px">
-      <div class="section-title">Staff and facility records for California RCFEs &amp; CBRCs</div>
+      <div class="section-title">Staff and facility records for California RCFEs and ARFs</div>
       <div class="section-sub">Built from real facility operations, with requirements guided by a certified California RCFE administrator.</div>
     </div>
     <div class="features-grid">
@@ -923,6 +923,15 @@
   <div class="auth-wrap" style="flex-direction:column;gap:14px">
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-card">
+      <!-- 30-Day Proof context. Shown ONLY when the visitor arrived on a
+           ?src=pilot link (title-22.com's Proof CTAs) — the capture below
+           unhides it. The promise the site made gets named on the door
+           itself; the form under it is the ordinary signup form, unchanged,
+           and every other src renders this card exactly as before. -->
+      <div id="proof-note-signup" style="display:none;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;text-align:left">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px">The 30-Day Proof</div>
+        <p style="margin:0;font-size:13.5px;line-height:1.5">Thirty days to see your homes on one screen — staff, training and the checklist together. It is built for a two-home pilot, so both of your homes run side by side while you decide.</p>
+      </div>
       <h2>Start your free trial</h2>
       <p id="signup-trial-line">30 days free · No credit card · Nothing to cancel</p>
       <p class="ref-note" id="ref-note-signup" style="display:none"></p>
@@ -1154,12 +1163,28 @@
         <button onclick="window.location.href='https://title22.app/?plan=lite&utm_source=sandbox&mode=sandbox'" class="btn" style="background:#fff;color:#BA7517;font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">Start 30-day free trial →</button>
       </div>
 
+      <!-- Practice-home label for SIGNED-IN accounts (Nov 15 first-run fix).
+           The demo sandbox has #demo-banner; a signed-in owner standing in
+           the sample facility had nothing, and had to ask "is this a demo?"
+           This bar sits outside every tab so it is always on screen while
+           the practice home is open. Shown/hidden by updatePracticeBanner(). -->
+      <div id="practice-home-banner" style="display:none;background:#fdf3e2;border:1.5px solid #e8a23d;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:13.5px;font-weight:500"><strong>Practice home</strong> — everyone here is invented, so you can look around safely. This is not your real home's data.</div>
+        <button id="practice-home-goto" class="btn" style="background:#fff;color:#92580a;font-size:12px;font-weight:600;padding:6px 14px;border:1.5px solid #e8a23d;flex-shrink:0" onclick="goToMyRealHome()">Go to my home →</button>
+      </div>
+
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
         <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">Your trial has ended — this is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Lite $29/mo</button></div>
         <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
+          <!-- Step 0 of the first run (Nov 15): Tello says what is real, in
+               large type, before anything asks the owner to do a task. This
+               card only renders for a brand-new real home (no staff, no
+               residents — see maybeShowOnboarding), so the line is never
+               shown to a working home. -->
+          <div style="font-family:Fraunces,serif;font-size:22px;font-weight:700;line-height:1.35;margin-bottom:12px">Welcome. This is your home — it's real, and right now it's empty. That's normal. We'll fill it one step at a time, and I'll walk with you.</div>
           <div style="font-weight:700;color:var(--teal);font-size:16px;margin-bottom:6px"><svg class="ic"><use href="#i-spark"/></svg> New here? Let's get you started.</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your facility is empty right now. The quickest way to see what Title22 does is to load a sample facility, then ask Tello to check it for DSS gaps.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1746,11 +1771,11 @@
           <button id="trial-expired-buy" class="btn btn-primary" style="font-size:13px" onclick="openStripe('lite')">Subscribe — Lite $29/mo</button>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email hello@title-22.com.</div></div>
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="93fbf6fffffcd3e7fae7fff6bea1a1bdf0fcfe">[email&#160;protected]</a>.</div></div>
           <button class="btn btn-primary" style="font-size:13px" onclick="initFacility()">Try again</button>
         </div>
         <div id="entitlement-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't check your account just now</div><div style="font-size:13px;color:var(--text2);margin-top:4px">This is on our side, not yours — your trial has not expired. The rest of Title22 is hidden until we can confirm your plan. Try again, and if it keeps happening email hello@title-22.com.</div></div>
+          <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't check your account just now</div><div style="font-size:13px;color:var(--text2);margin-top:4px">This is on our side, not yours — your trial has not expired. The rest of Title22 is hidden until we can confirm your plan. Try again, and if it keeps happening email <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="afc7cac3c3c0efdbc6dbc3ca829d9d81ccc0c2">[email&#160;protected]</a>.</div></div>
           <button class="btn btn-primary" style="font-size:13px" onclick="retryEntitlement()">Try again</button>
         </div>
         <div id="tier-upsell-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
@@ -1812,7 +1837,7 @@
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
 const STRIPE_STARTER    = 'https://buy.stripe.com/00w6oGdmy28K2bpes6g360f';
@@ -2542,6 +2567,23 @@ document.addEventListener('visibilitychange',()=>{
   if (src) sessionStorage.setItem('title22_utm_source', src.slice(0,100));
   const camp = params.get('utm_campaign');
   if (camp) sessionStorage.setItem('title22_utm_campaign', camp.slice(0,100));
+  // ?src=pilot — title-22.com's 30-Day Proof CTAs. Until now the door read
+  // src for nothing at all: a visitor promised a Proof landed on the plain
+  // signup card, which never mentioned it. Remembered like the referral
+  // code (sessionStorage, so it survives the confirmation email and the
+  // OAuth round trip), and it changes exactly one thing: for src=pilot the
+  // signup card names the Proof above the unchanged form. Every other src
+  // (home-hero, tello-web, app-landing, classroom links) stores the tag for
+  // attribution and renders the door exactly as before.
+  const srcTag = (params.get('src') || '').toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+  if (srcTag) { try { sessionStorage.setItem('title22_src', srcTag.slice(0, 100)); } catch (e) {} }
+  try {
+    const effectiveSrc = srcTag || sessionStorage.getItem('title22_src') || '';
+    if (effectiveSrc === 'pilot') {
+      const proofNote = document.getElementById('proof-note-signup');
+      if (proofNote) proofNote.style.display = '';
+    }
+  } catch (e) { /* the note is context; signup works without it */ }
 })();
 
 let currentUser = null;
@@ -4035,6 +4077,30 @@ const SAMPLE_FACILITY_NAME='Sunrise Demo Home (Sample)';
 const SAMPLE_ARF_NAME='Sample ARF (Demo)';
 function isSampleFacility(f){return !!f&&(f.name===SAMPLE_FACILITY_NAME||f.name===SAMPLE_ARF_NAME);}
 
+// Practice-home label (Nov 15 first-run fix). A signed-in owner can stand in
+// the sample facility next to their real one, and until now nothing on screen
+// said which was which — the Nov 15 sit-down produced the question "is this
+// in demo?" from inside it. The anonymous sandbox already has #demo-banner,
+// so this bar is only for signed-in accounts in a sample facility; it sits
+// outside the tabs, so it stays on screen whichever tab is open. Called from
+// initFacility, which runs on every facility load and switch.
+function updatePracticeBanner(){
+  const b=document.getElementById('practice-home-banner');if(!b)return;
+  const show=!demoMode&&!!currentFacility&&isSampleFacility(currentFacility);
+  b.style.display=show?'flex':'none';
+  if(show){
+    // No real home yet (a brand-new account that only loaded the sample):
+    // the way out does not exist, so the button hides rather than dead-ends.
+    const real=(allFacilities||[]).find(f=>f&&!isSampleFacility(f));
+    const btn=document.getElementById('practice-home-goto');
+    if(btn)btn.style.display=real?'':'none';
+  }
+}
+function goToMyRealHome(){
+  const real=(allFacilities||[]).find(f=>f&&!isSampleFacility(f));
+  if(real)switchFacility(real.id);
+}
+
 // Facility type as the rules read it. Anything that is not ARF or CBRC is an
 // RCFE, which is what onboarding defaults to.
 function t22FacType(f){const t=((f===undefined?currentFacility:f)||{}).facility_type;return t==='arf'?'arf':(t==='cbrc'?'cbrc':'rcfe');}
@@ -4560,7 +4626,9 @@ async function initFacility(){
   setTimeout(telloPartnerNews,2500);
   if(demoMode){
     const db=document.getElementById('demo-banner');if(db)db.style.display='flex';
-  }else if(t22Plan==='trial'&&!t22CoveredByFacility){
+  }
+  updatePracticeBanner();
+  if(!demoMode&&t22Plan==='trial'&&!t22CoveredByFacility){
     // Not shown on an inherited plan: the countdown belongs to the facility
     // owner's account, this function has no access to it, and "0 days left"
     // in front of someone whose access is fine is worse than saying nothing.
@@ -7912,6 +7980,23 @@ function telloVoiceOffer(el,opts){
   telloVoiceListen();
 }
 
+// True only when the current facility provably has no staff and no
+// residents. Same direct count query maybeShowOnboarding uses, so it never
+// false-fires on unloaded globals; any read error answers false, which
+// leaves the normal briefing path exactly as it was.
+async function briefingHomeIsEmpty(){
+  try{
+    const fid=currentFacility&&currentFacility.id;
+    if(!fid)return false;
+    const[r,s]=await Promise.all([
+      sb.from('residents').select('id',{count:'exact',head:true}).eq('facility_id',fid),
+      sb.from('staff').select('id',{count:'exact',head:true}).eq('facility_id',fid)
+    ]);
+    if(r.error||s.error)return false;
+    return (r.count||0)===0&&(s.count||0)===0;
+  }catch(e){return false;}
+}
+
 async function loadDashboardAIBriefing(force){
   // In the demo the briefing is computed locally (no AI call to save), and it
   // must reflect the visitor's practice work the moment they come back to
@@ -7921,6 +8006,19 @@ async function loadDashboardAIBriefing(force){
   // A new briefing (refresh, other facility) must not keep reading the old one.
   telloVoiceReset();delete el.dataset.voice;
   if(demoMode){el.innerHTML=await demoBriefingHTML();dashBriefingLoaded=true;return;}
+  // Empty home (Nov 15 first-run fix): a facility with no staff and no
+  // residents has nothing to warn about, and a briefing computed against
+  // nothing — every count zero, every list missing — reads as broken to a
+  // first-time owner. Greet and guide instead: no AI call, no voice offer,
+  // nothing cached, and dashBriefingLoaded stays false so the first real
+  // briefing arrives as soon as the home has data. Checked before the cache
+  // read, so a briefing cached by an earlier state can never outrank it.
+  if(await briefingHomeIsEmpty()){
+    el.innerHTML='<div style="font-size:13px;line-height:1.8;color:var(--text)">'
+      +renderTelloText('[ok] **Good morning.** Your home is set up — and right now it\'s empty, so there is nothing to warn you about yet.\n- [ok] Your first step: **add your first staff member**. Once they\'re in, I\'ll watch their certificates, dates and training from here.')
+      +'</div>';
+    return;
+  }
   telloVoicePrefetchGreeting();          // voiced while the briefing is written
   if(!force){
     const cached=readCachedBriefing();
@@ -12390,6 +12488,41 @@ function demoSampleScan(docType){
   },1100);
 }
 
+// Desktop scan guidance (Nov 15 first-run fix). The scan inputs lean on
+// capture="environment", which desktop browsers ignore: on a laptop the Scan
+// tap opened a bare file picker with no word about what to pick, and it read
+// as broken. On a desktop Tello explains the step first, in the scan modal,
+// and the picker opens only when the owner taps "Choose the file". Phones
+// (primary pointer coarse) keep the direct camera, untouched.
+function scanOnDesktop(){
+  try{return window.matchMedia('(pointer:fine)').matches&&!window.matchMedia('(pointer:coarse)').matches;}
+  catch(e){return !('ontouchstart' in window);}
+}
+let scanGuidanceInput=null;
+function showScanDesktopGuidance(){
+  // The library input, not the camera one: it takes PDFs as well as photos,
+  // and on a computer the certificate usually arrives as a PDF by email.
+  const input=document.getElementById('scan-file-library');
+  if(!input){return false;}
+  scanGuidanceInput=input;
+  input.value='';
+  document.getElementById('scan-modal-title').textContent='Scan a certificate';
+  document.getElementById('scan-modal-footer').style.display='none';
+  document.getElementById('scan-modal-body').innerHTML=
+    '<div style="padding:20px 16px;font-size:14.5px;line-height:1.65;color:var(--text)">'
+    +'<p style="margin:0 0 14px">You\'re on a computer, so pick the certificate file — a PDF or a clear photo of it works. Don\'t have the file here? Open Title22 on your phone and tap Scan there — your camera does it in one tap, and it lands in this same file.</p>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<button class="btn btn-primary" onclick="scanDesktopContinue()">Choose the file</button>'
+    +'<button class="btn btn-outline" onclick="closeScanModal()">Not now</button>'
+    +'</div></div>';
+  openScanModal();
+  return true;
+}
+function scanDesktopContinue(){
+  const inp=scanGuidanceInput;scanGuidanceInput=null;
+  if(inp)inp.click();
+}
+
 function startScan(formType,source,docType){
   if(!SCAN_FIELD_MAP[formType])return;
   // Only a staff certificate slot can scan. No slot, TB, a resident or a
@@ -12406,6 +12539,10 @@ function startScan(formType,source,docType){
   const input=document.getElementById(source==='library'?'scan-file-library':'scan-file-camera');
   input.value='';
   track('ocr_scan_started',{form_type:formType,source:source||'camera'});
+  // Desktop only, camera path only: guidance first, picker second (see
+  // showScanDesktopGuidance). The library path is already a file choice, and
+  // if the guidance cannot be shown the picker opens exactly as before.
+  if(source!=='library'&&scanOnDesktop()&&showScanDesktopGuidance())return;
   input.click();
 }
 
@@ -13721,7 +13858,7 @@ function renderRefNote(){
   <div class="form-row"><div class="form-group"><label>New password</label><div class="pw-field"><input type="password" id="acct-pw1" autocomplete="new-password" placeholder="At least 8 characters"/><button type="button" class="pw-toggle" onclick="togglePasswordField('acct-pw1',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div><div class="form-group"><label>Repeat it</label><div class="pw-field"><input type="password" id="acct-pw2" autocomplete="new-password"/><button type="button" class="pw-toggle" onclick="togglePasswordField('acct-pw2',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div></div>
   <div class="error-msg" id="acct-msg"></div>
   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" style="font-size:13px" id="acct-pw-btn" onclick="changeAccountPassword()">Change password</button><button class="btn btn-outline" style="font-size:13px" onclick="signOutEverywhere()">Sign out everywhere</button></div>
-  <div style="font-size:12px;color:var(--text2);margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">To close your account entirely, email <a href="mailto:hello@title-22.com?subject=Close%20my%20Title22%20account" style="color:var(--teal)">hello@title-22.com</a>. Cancelling a subscription and deleting facility records are separate steps — deleting a facility from its own page removes its records, and does not cancel billing.</div>
+  <div style="font-size:12px;color:var(--text2);margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">To close your account entirely, email <a href="/cdn-cgi/l/email-protection#365e535a5a5976425f425a531b04041855595b094543545c5355420b755a5945531304065b4f130406625f425a53040413040657555559435842" style="color:var(--teal)"><span class="__cf_email__" data-cfemail="157d7079797a55617c6179703827273b767a78">[email&#160;protected]</span></a>. Cancelling a subscription and deleting facility records are separate steps — deleting a facility from its own page removes its records, and does not cancel billing.</div>
   </div>
 </div>
 
@@ -13902,5 +14039,5 @@ function renderRefNote(){
   </div>
 </div>
 
-</body>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
 </html>
