@@ -977,10 +977,10 @@
            facility detail, this line is false. -->
       <p class="signup-nodetails"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Just an email to start. No facility name, license number or address — a practice home with invented staff is ready inside.</p>
       <!-- Zero obligation, and literally true: no card is ever taken at signup,
-           so there is nothing to charge, and an expired trial turns read-only
-           (t22ReadOnly) with every record kept. If either stops being true,
-           this line has to change with it. -->
-      <p class="signup-noobligation" id="signup-noobligation">Take your time. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account simply turns read-only — everything you entered stays.</p>
+           so there is nothing to charge, and an ended trial drops to the free
+           1-home plan, still usable, with every record kept. If either stops
+           being true, this line has to change with it. -->
+      <p class="signup-noobligation" id="signup-noobligation">Take your time. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account drops to the free plan — one home, still usable, and everything you entered stays.</p>
       <p class="signup-noobligation" style="margin-top:8px">After your free trial: $29/mo for one home · $79/mo for up to five homes. Nothing is charged unless you choose a plan — no card is taken at signup.</p>
       <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
@@ -1207,7 +1207,7 @@
 
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
-        <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">Your trial has ended — this is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Lite $29/mo</button></div>
+        <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">This account is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Lite $29/mo</button></div>
         <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
@@ -1799,7 +1799,7 @@
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px;color:var(--text2)"><svg class="ic ic-lg"><use href="#i-lock"/></svg></div>
-          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your trial expired — subscribe to continue</div><div style="font-size:13px;color:var(--red);margin-top:4px">Pick up where you left off. Your facility, staff and documents are all still here.</div></div>
+          <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your plan has ended — subscribe to continue</div><div style="font-size:13px;color:var(--red);margin-top:4px">Pick up where you left off. Your facility, staff and documents are all still here.</div></div>
           <button id="trial-expired-buy" class="btn btn-primary" style="font-size:13px" onclick="openStripe('lite')">Subscribe — Lite $29/mo</button>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
@@ -1920,6 +1920,15 @@ const LEARNUPON_SSO_WORKER = 'https://title22-learnupon.infomomtelo.workers.dev/
 async function openPartnerTraining(){
   const msg=document.getElementById('partner-sso-msg');
   const show=(t,bad)=>{if(msg){msg.style.display='block';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t;}};
+  // The Free plan does not include the online courses. Adding them is $29 a
+  // month (the Title22 subscription, which buys the training records and the
+  // auto-filing) plus the Training Add-On by licensed beds — $49 Small (1–6
+  // beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+). The trial
+  // still includes the courses, so this only ever fires on Free.
+  if(t22Plan==='free'){
+    show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $49 Small (1–6 beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);
+    return;
+  }
   const win=window.open('about:blank','_blank');
   show('Opening…');
   try{
@@ -1946,13 +1955,18 @@ const LEARNUPON_STAFF_LINK_WORKER = 'https://title22-learnupon.infomomtelo.worke
 // (STAFF_LINKS_OPEN in its wrangler.toml); flip both together.
 const T22_STAFF_TRAINING_LINKS_OPEN = false;
 function canSendTrainingLink(){
-  return !demoMode && canEdit() && currentUserRole==='administrator' && (T22_STAFF_TRAINING_LINKS_OPEN || isPartnerAdmin);
+  // The Free plan does not include the online courses, so there is no link
+  // to send. The trial still includes them.
+  return t22Plan!=='free' && !demoMode && canEdit() && currentUserRole==='administrator' && (T22_STAFF_TRAINING_LINKS_OPEN || isPartnerAdmin);
 }
 // A link sent to one staff member, who opens it on their own phone, wherever
 // they are, and lands on the course portal as their own learner. The Worker
 // makes and stores it (only a hash); finished courses land on their training.
 // Renders into `out`; returns false with a message in `show` on failure.
 async function requestStaffTrainingLink(staffId,who,out,show){
+  // Same gate as openPartnerTraining: the Free plan does not include the
+  // online courses — adding them is $29/mo plus the Training Add-On by beds.
+  if(t22Plan==='free'){show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $49 Small (1–6 beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);return false;}
   show('Making the link…');
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -2244,16 +2258,17 @@ function t22PhiBlock(fields){
 // this account's own history: sign up again with a different address and start
 // over, free, forever.
 //
-// So expiry is read-only now, not a wall. They keep every tab their role
-// allows and every row they entered; nothing writes. That turns the thing they
-// already built into the argument for the $29, which is the only argument
-// there is.
+// Read-only is what is left for a subscription that ended, not for a trial:
+// an ended trial drops to the Free plan (one home, still usable) instead.
+// A lapsed paid account still keeps every tab their role allows and every
+// row they entered; nothing writes. That turns the thing they already built
+// into the argument for the $29, which is the only argument there is.
 //
 // Set ONLY when the entitlement read actually succeeded. "Trial ended" and "we
 // could not check" are different facts, and the second one stays fail-closed:
 // an outage must not hand out read access to accounts nobody verified.
 let t22ReadOnly = false;
-const T22_READONLY_MSG = 'Your trial has ended — this is read-only. Subscribe to make changes.';
+const T22_READONLY_MSG = 'This account is read-only. Subscribe to make changes.';
 // Analytics still writes: knowing an expired trial came back and looked around
 // is worth more than the purity of blocking it, and track() ignores failures
 // anyway. Nothing else gets through.
@@ -3542,7 +3557,7 @@ async function handleOnboard(){
   err.classList.remove('show');
   if(!name){err.textContent='Facility name is required.';err.classList.add('show');return;}
   const ownedCount=ownedFacilityCount();
-  if(ownedCount>=t22Limits.facilities){err.textContent=`Your ${T22_LABEL[t22Plan]||t22Plan} plan allows ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;err.classList.add('show');return;}
+  if(ownedCount>=t22Limits.facilities){err.textContent=t22FacilityCapMsg();err.classList.add('show');return;}
   const adminCertExpiry=document.getElementById('ob-cert-expiry').value||null;
   const addrStreet=document.getElementById('ob-address-street').value.trim();
   const addrCity=document.getElementById('ob-address-city').value.trim();
@@ -4081,11 +4096,16 @@ function t22NormalisePlan(plan){
 }
 // Display labels only — the underlying plan keys and Stripe price IDs are
 // unchanged (renaming Stripe products would orphan live subscriptions).
-const T22_LABEL={trial:'Free Trial',edu:'Classroom',lite:'Lite',multi:'Multi-Home',starter:'Starter',pro:'Pro',specialist:'Multi-Facility',agency:'Agency'};
+const T22_LABEL={trial:'Free Trial',edu:'Classroom',free:'Free',lite:'Lite',multi:'Multi-Home',starter:'Starter',pro:'Pro',specialist:'Multi-Facility',agency:'Agency'};
 // Per-tier limits. facilities = max OWNED facilities; ai = AI assistant access.
 const TIER_LIMITS={
   trial:      {facilities:2,        ai:true},
   edu:        {facilities:1,        ai:true},
+  // Free (2026-11-17): where an ended trial lands. One home, still usable,
+  // no online courses — the courses are the paid Staff Training Add-On.
+  // Nothing ever buys this: readEntitlement derives it from an expired
+  // trial, and no checkout or webhook writes it.
+  free:       {facilities:1,        ai:true},
   // Lite plan keys. Without these a subscriber whose Stripe metadata says
   // plan=lite falls through to the {facilities:1, ai:false} default and loses
   // Tello — and AI is on every tier.
@@ -4257,6 +4277,10 @@ async function readEntitlement(){
     const plan=t22NormalisePlan(data.title22_plan)||'trial';
 // edu = permanent teaching tier: always entitled, never expires
 if(plan==='edu') return {plan:'edu',entitled:true,daysLeft:null,trialExpired:false,ok:true};
+// Free = where an ended trial lands: one home, usable, never expires. No
+// checkout ever writes this — readEntitlement derives it from the expired
+// trial below — but a profile that already carries it reads the same way.
+if(plan==='free') return {plan:'free',entitled:true,daysLeft:null,trialExpired:false,ok:true};
 if(T22_PAID.includes(plan)){
       // Paid plans expire too: a cancelled sub keeps access until the period
       // end stamped in title22_plan_expires_at. Past that date => locked.
@@ -4275,8 +4299,18 @@ if(T22_PAID.includes(plan)){
     if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
     if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
+    if(Date.now()>=ends){
+      // Free 1-home gate (2026-11-17): an ended trial drops to the Free plan
+      // — one home, still usable — instead of read-only. Nothing is written
+      // back: the profile still says 'trial' with a past end date, and this
+      // is the only place that reads it as Free. The null-end-date case above
+      // stays read-only on purpose: it is the unstamped-trial bug, and
+      // stampTrialIfMissing is what repairs it — silently handing it Free
+      // would hide the account that never got its trial.
+      return{plan:'free',entitled:true,daysLeft:null,trialExpired:false,ok:true};
+    }
     const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
-    return{plan:'trial',entitled:Date.now()<ends,daysLeft,trialExpired:Date.now()>=ends,ok:true};
+    return{plan:'trial',entitled:true,daysLeft,trialExpired:false,ok:true};
   }catch(e){
     return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:false};
   }
@@ -4365,7 +4399,7 @@ async function enforcePaidGate(){
   if(isPublic)return;
   // Still in trial, or working inside a facility somebody else pays for.
   if(t22Entitled||t22CoveredByFacility)return;
-  // Expired, and we know it. They browse their own facility read-only; the
+  // Lapsed, and we know it. They browse their own facility read-only; the
   // banner and every refused write already say why, and forcing them onto a
   // pricing page instead is how a returning customer decides to sign up again
   // under a new address rather than pay.
@@ -5014,9 +5048,18 @@ async function retryEntitlement(){
   }
 }
 
+// The one sentence that says what the current plan allows, so the two places
+// that refuse a second home (onboarding and the facility switcher) say the
+// same thing. Free names the way up: a second home needs Multi-Home, $79 a
+// month for up to 5 homes.
+function t22FacilityCapMsg(){
+  if(t22Plan==='free')return 'Your Free plan includes 1 home. A second home needs the Multi-Home plan — $79/mo for up to 5 homes.';
+  return `Your ${T22_LABEL[t22Plan]||t22Plan} plan allows ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
+}
+
 // Show an upgrade prompt for a tier-locked feature and route to billing.
 function showTierUpsell(feature){
-  const msg=`Your ${T22_LABEL[t22Plan]||t22Plan} plan includes ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
+  const msg=t22FacilityCapMsg();
   const banner=document.getElementById('tier-upsell-banner');
   const m=document.getElementById('tier-upsell-msg');
   if(m)m.textContent=msg;
@@ -11011,7 +11054,7 @@ async function loadBilling(){
     // (Lite, Multi-Home, Agency as Contact Sales). $49 and $149 stay because
     // legacy starter and specialist subscribers still pay them, and blanking
     // the figure would show a paying customer a plan with no price on it.
-    const planPrices={trial:'$0',edu:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
+    const planPrices={trial:'$0',edu:'$0',free:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
     let trialHtml='';
     if(plan==='trial'){
       const daysLeft=ent.daysLeft;

@@ -908,10 +908,12 @@ and never less — `Math.max` with the default, so a student is never handed a
 shorter trial than a stranger.
 
 "Zero obligation" is a claim about the code, and it is true only while both
-halves hold: signup takes no card (so nothing can be charged), and an expired
-trial is read-only with every record kept (`t22ReadOnly`). If either changes,
-the signup card, the trial banner, tello.html and title-22.com all say
-something false.
+halves hold: signup takes no card (so nothing can be charged), and an ended
+trial drops to the free 1-home plan, still usable, with every record kept.
+(2026-11-17: it used to turn read-only — `t22ReadOnly` — and read-only is
+now only what a lapsed paid subscription falls into.) If either changes, the
+signup card, the trial banner, tello.html and title-22.com all say something
+false.
 
 Trials already running keep the end date they were stamped with.
 `migrations/2026-09-23_title22_trial_30_days.sql` moves them out to 30 —
@@ -929,8 +931,8 @@ running it again would reopen whatever has expired by then. Do not re-run it
 without a decision.
 
 The `trial_warning` email template in `workers/title22-email/` no longer says
-"upgrade to keep access to your facility records" — false since expiry became
-read-only. Nothing calls that template today, and the Worker deploys by hand,
+"upgrade to keep access to your facility records" — false since an ended trial
+keeps working on the free plan. Nothing calls that template today, and the Worker deploys by hand,
 so the source change is not live until someone deploys it.
 
 ## Partner links: title-22.com/r/<code> (2026-09-23)
@@ -1268,10 +1270,16 @@ Verified in four states: vendor bundle aborted (hidden), normal Lite load
 (hidden), edu in the sample facility (restored), edu on their own real
 facility (hidden again).
 
-## An expired trial is read-only, not locked out
+## Read-only is for a lapsed subscription, not an ended trial (2026-11-17)
+
+An ended trial used to turn read-only. It now drops to the Free plan — one
+home, still usable — and `t22ReadOnly` is what is left for a subscription
+that ended: a paid plan past `title22_plan_expires_at`, or a trial whose end
+date was never stamped (the unstamped case stays read-only on purpose, so
+`stampTrialIfMissing` still has a visible failure to repair).
 
 `t22ReadOnly` (index.html). Set only when the entitlement read SUCCEEDED and
-came back expired — "trial ended" and "we could not check" are different
+came back expired — "plan ended" and "we could not check" are different
 facts, and the second one still fails closed to `['billing']`. Four layers:
 
 - `allowedTabs()` returns the role's own tabs, minus Tello (every question is
@@ -1283,7 +1291,7 @@ facts, and the second one still fails closed to `['billing']`. Four layers:
   entitlement) — and `events` still writes, so you can see who came back.
 - `enforcePaidGate` no longer redirects them to #pricing.
 
-The reason, so nobody "simplifies" it back: an expired trial used to see a
+The reason, so nobody "simplifies" it back: a lapsed account used to see a
 billing page and nothing else — not the readiness score they earned, not the
 checklist they filled in, though all of it was still in the database. The
 rational move for that person is to sign up again with a different address

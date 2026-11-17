@@ -54,7 +54,8 @@ If someone asks whether they can use it: say it is being tested and not open yet
 - **Lite:** $29/month, one home.
 - **Multi-Home:** $79/month, up to five homes.
 - **Agency (more than five homes):** contact hello@title-22.com.
-- **Free trial:** 30 days on both plans. No credit card, nothing to cancel. When it ends, the account turns read-only and keeps everything.
+- **Free:** $0, one home, without the online courses. Adding the courses is $29/mo plus the Training Add-On by beds: $49 Small (1–6 beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+).
+- **Free trial:** 30 days on both plans. No credit card, nothing to cancel. When it ends, the account drops to the free plan — one home, still usable — and keeps everything.
 - **Tello:** included on every plan.
 
 ## Approved wording (use exactly)
