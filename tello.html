@@ -373,6 +373,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <input type="file" id="file" accept="image/*,application/pdf" hidden onchange="onFile(this)"/>
       <textarea id="say" rows="1" placeholder="Ask Tello anything…" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
       <button class="talk-btn" id="talk-btn" hidden onclick="talkToggle()" title="Talk with Tello" aria-label="Talk with Tello"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button class="talk-btn" id="chat-voice-btn" hidden onclick="chatVoiceToggle()" title="Read answers aloud" aria-label="Read answers aloud" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
       <button id="send" onclick="ask()">Ask</button>
     </div>
     <div class="foot" id="foot">Tello is an AI and can be wrong. No medical advice.</div>
@@ -593,6 +594,11 @@ async function boot(){
   $('mem').hidden=partner;
   if(partner)renderMarketing();
   $('talk-btn').hidden=!partner||!SpeechRec;
+  // Chat voice: signed-in customers and partners only (guests have no
+  // session for the voice Worker, so the button stays hidden for them).
+  // OFF by default; the choice is remembered on this device.
+  $('chat-voice-btn').hidden=false;
+  chatVoiceInit();
   $('bar-kicker').textContent=partner?'Your business partner · '+who.client:'AI assistant · '+who.client;
   $('say').placeholder='Ask Tello anything…';
   showCredits(who);
@@ -1055,6 +1061,13 @@ async function ask(text,opts){
     thinking.remove();
     const turn=say(d.reply,'her');
     reply=d.reply;
+    // Chat voice: when the toggle is on, read this answer aloud as it
+    // arrives — same text, same voice as the Play button. Long answers
+    // are never spoken, and Talk mode speaks for itself.
+    if(reply&&reply.length<=SPEAK_MAX&&chatVoiceOn()&&!opts.spoken){
+      const btn=turn.querySelector('.play');
+      if(btn)playReply(reply,btn);
+    }
     if(reply.length>SPEAK_MAX)longTurn=turn;
     if(d.noted){const n=document.createElement('div');n.className='divider';n.textContent=d.noted.ok?'Tello will remember that':'Not saved: '+(d.noted.message||'try again');$('thread').appendChild(n)}
     if(d.memory)held+=2;
@@ -1505,7 +1518,7 @@ function guestSave(){try{sessionStorage.setItem('tello_guest',JSON.stringify(gue
 function guestStart(){
   mode='guest';document.body.classList.remove('is-partner');
   $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;$('new-btn').hidden=false;
-  ['fresh','mem','out','attach-btn','talk-btn'].forEach(id=>$(id).hidden=true);
+  ['fresh','mem','out','attach-btn','talk-btn','chat-voice-btn'].forEach(id=>$(id).hidden=true);
   ['guest-in','guest-send'].forEach(id=>$(id).hidden=false);
   $('cab-partner').hidden=true;$('drawer-tools').hidden=false;
   $('say').placeholder='Ask Tello anything…';
@@ -1608,6 +1621,31 @@ async function playReply(text,btn){
     playReset();btn.textContent=e.name==='NotAllowedError'?'Tap again':'No voice';
     setTimeout(()=>{if(playBtn!==btn)btn.textContent='Play'},3000);
   }
+}
+
+/* ----------------------------------------------- chat voice toggle -- */
+// Voice for chat answers (signed-in customers and partners). OFF by
+// default: nothing is spoken unless the speaker button in the composer is
+// on. When on, each new answer is read aloud with the same voice and the
+// same text as the Play button — nothing extra is spoken, and long answers
+// (over SPEAK_MAX) are never spoken, exactly like Play. This is separate
+// from the brief's Listen button and its once-a-day autoplay, which this
+// toggle does not touch.
+const CHAT_VOICE_KEY='tello_chat_voice';
+function chatVoiceOn(){try{return localStorage.getItem(CHAT_VOICE_KEY)==='1'}catch(e){return false}}
+function chatVoiceInit(){
+  const on=chatVoiceOn();
+  $('chat-voice-btn').classList.toggle('on',on);
+  $('chat-voice-btn').setAttribute('aria-pressed',on?'true':'false');
+}
+function chatVoiceToggle(){
+  const on=!chatVoiceOn();
+  try{localStorage.setItem(CHAT_VOICE_KEY,on?'1':'0')}catch(e){}
+  chatVoiceInit();
+  if(on){unlock();return}
+  // Off: stop a chat answer that is playing. The brief reader and Talk
+  // mode have their own controls and are left alone.
+  if(playBtn){try{au.pause()}catch(e){}playReset()}
 }
 
 /* ------------------------------------------------------------ talk -- */
