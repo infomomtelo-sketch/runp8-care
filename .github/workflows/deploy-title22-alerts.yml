@@ -1,0 +1,65 @@
+# Deploy the title22-alerts Worker from a browser.
+#
+# Run it from GitHub: Actions -> "Deploy title22-alerts Worker" ->
+# Run workflow. It uses the same repository secret as the other
+# Worker deploys: CLOUDFLARE_API_TOKEN (Settings -> Secrets and
+# variables -> Actions). The account is the plain-text CF_ACCOUNT_ID
+# below — see deploy-stripe-webhook.yml for why it is here and why
+# there is no second secret.
+#
+# What this does NOT touch: the Worker's own SECRETS
+# (SUPABASE_SERVICE_KEY, VAPID_PRIVATE_JWK, ALERTS_TEST_KEY). Those
+# are set on the Worker and a deploy leaves them alone. Plain-text
+# vars come from workers/title22-alerts/wrangler.toml [vars] — a var
+# that exists only in the dashboard is deleted by a deploy.
+name: Deploy title22-alerts Worker
+
+on:
+  workflow_dispatch:
+
+env:
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  WRANGLER_VERSION: '4.130.0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the token is set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions, then run this again."
+            exit 1
+          fi
+
+      - name: Build check (no deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-alerts
+          command: deploy --dry-run
+
+      - name: Deploy
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-alerts
+          command: deploy
+
+      - name: Report the deployed version
+        run: |
+          echo "### title22-alerts deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.deploy.outputs.command-output }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Confirm: open the Worker's /health URL and check it answers {\"ok\":true}, then run the /test alert to a subscribed phone." >> "$GITHUB_STEP_SUMMARY"

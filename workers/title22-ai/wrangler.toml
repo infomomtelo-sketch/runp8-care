@@ -20,6 +20,13 @@ enabled = true
 #                            title22_* profile columns, and for /api/tello the
 #                            partner tables and Tello's memory)
 #   ANTHROPIC_API_KEY      — Anthropic API key for the Messages API call
+#   RESEND_API_KEY         — Resend API key (2026-11-12, Tello sales flow):
+#                            the owner email when a visitor leaves a lead
+#                            through POST /api/assistant/lead. Same key as
+#                            title22-email and partner_tello. Without it the
+#                            lead is still saved; only the email is skipped.
+#                            The address it goes to comes from the existing
+#                            partner_tello_config row, not from here.
 #
 # Plain-text vars. `wrangler deploy` REPLACES the Worker's vars with exactly
 # this block, so every var this Worker has must be here.

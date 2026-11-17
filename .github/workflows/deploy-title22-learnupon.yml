@@ -1,0 +1,76 @@
+# Deploy the LearnUpon webhook Worker (title22-learnupon) from a browser.
+# Actions -> "Deploy title22-learnupon Worker" -> Run workflow.
+#
+# Manual only. Same token and account as deploy-stripe-webhook.yml, which
+# explains both: the ONLY repository secret read here is CLOUDFLARE_API_TOKEN,
+# and the account id is a plain env var on purpose.
+#
+# The Worker's secrets (LEARNUPON_WEBHOOK_SECRET, SUPABASE_SERVICE_KEY) are set
+# on the Worker with `wrangler secret put` or in the dashboard, and a deploy
+# leaves them alone. Never add them here. SUPABASE_URL is in wrangler.toml's
+# [vars]. The last step reads /health, which answers yes/no per secret.
+name: Deploy title22-learnupon Worker
+
+on:
+  workflow_dispatch:
+
+env:
+  CF_ACCOUNT_ID: 701117dde6af00d42bac3c4058b660be
+  WRANGLER_VERSION: '4.130.0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the token is set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions, then run this again."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No dependencies. Stubbed Supabase: no network, no secret.
+      - name: Test
+        working-directory: workers/title22-learnupon
+        run: node test.mjs
+
+      - name: Build check (no deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-learnupon
+          command: deploy --dry-run
+
+      - name: Deploy
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          workingDirectory: workers/title22-learnupon
+          command: deploy
+
+      # Waits for the address to go live (a brand-new workers.dev answers
+      # "error code: 1042" for a while), then checks /health and that an
+      # unsigned post is refused. "missing_config" in health is expected until
+      # both secrets are set.
+      - name: Live check
+        run: |
+          {
+            echo "### title22-learnupon deployed"
+            echo '```'
+            echo "${{ steps.deploy.outputs.command-output }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          bash workers/title22-learnupon/check-live.sh

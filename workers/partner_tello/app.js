@@ -9,6 +9,7 @@
 //   POST /api/partner_tello/open    {k}                              -> {ok}
 //   POST /api/partner_tello/chat    {k, conversation_id, message}    -> {reply, stored}
 //   POST /api/partner_tello/direct  {k, conversation_id, message}    -> {ok, message}
+//   POST /api/partner_tello/tracker {k}                              -> {ok, url}   (only a link listed in CTC_TRACKER_LINK_KEYS)
 //   GET  /api/partner_tello/health                                   -> which bindings are set (names only)
 //   scheduled (cron)                                                 -> retries emails that failed
 //
@@ -20,7 +21,7 @@
 // exchange is emailed to the team (the whole conversation so far). A failed
 // email is retried a few times at once, then by the cron run, and logged.
 
-import Anthropic from '@anthropic-ai/sdk';
+import { createMessage } from './ai.js';
 
 // ------------------------------------------------------------ fixed text --
 // Written out, not generated. The first three are the disclosure the owner
@@ -39,8 +40,7 @@ export const HEALTH_WARNING = "Please don't share health information or identify
 export const NO_DOSAGE = "I can't advise on medication or dosage. That is a question for a prescriber or pharmacist.";
 
 export const LIMITS = { perHour: 30, maxChars: 2000, historyTurns: 20 };
-const MODEL = 'claude-opus-5-5';
-const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
+const MODEL = 'claude-sonnet-5-5';
 
 // --------------------------------------------------- health information --
 // The app's own identifier check (index.html, T22_PHI_RULES), copied
@@ -272,12 +272,6 @@ ${link.brief || '(no note)'}`;
 }
 
 export async function askModel(env, { system, link, turns, client }) {
-  const anthropic = client || new Anthropic({
-    apiKey: env.ANTHROPIC_API_KEY,
-    maxRetries: 2,
-    timeout: 45_000,
-    fetch: (...a) => globalThis.fetch(...a),
-  });
   const params = {
     model: env.PARTNER_TELLO_MODEL || MODEL,
     max_tokens: 2000,
@@ -289,19 +283,39 @@ export async function askModel(env, { system, link, turns, client }) {
     ],
     messages: turns,
   };
-  let msg;
-  try {
-    msg = await anthropic.beta.messages.create({ ...params, betas: [FALLBACK_BETA], fallbacks: 'default' });
-  } catch (e) {
-    // If the fallback option itself is ever refused, answer without it rather
-    // than not at all.
-    if (e?.status === 400 && /fallback/i.test(e?.message || '')) msg = await anthropic.messages.create(params);
-    else throw e;
-  }
+  // Two rails since 2026-10-26 — see ai.js. An injected client (the
+  // tests) still goes straight to Anthropic, exactly as before.
+  const msg = await createMessage(env, params, { client });
   if (msg.stop_reason === 'refusal') return null;
   const text = (msg.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
   return text || null;
 }
+
+
+// ------------------------------------------------- CTC agreement tracker --
+// One person (CTC's contact) opens the shared agreement tracker from her own
+// link, with no second key. Her link key must be listed in the secret
+// CTC_TRACKER_LINK_KEYS (comma-separated); nobody else is offered the button
+// and nobody else gets a pass. The pass is a 2-minute, signed, "shared"-role
+// handoff the tracker swaps for its own 8-hour cookie. SSO_SECRET is a Worker
+// secret shared with the tracker; it is never in git or in any response.
+const b64u = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const sameKey = (a, b) => {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+};
+export const trackerAllowed = (env, k) =>
+  !!env.SSO_SECRET && String(env.CTC_TRACKER_LINK_KEYS || '').split(',').map((x) => x.trim()).filter(Boolean).some((x) => sameKey(x, k));
+export async function mintSharedHandoff(secret, nowSeconds = Math.floor(Date.now() / 1000)) {
+  const enc = new TextEncoder();
+  const body = b64u(enc.encode(JSON.stringify({ t: 'h', r: 'shared', e: nowSeconds + 120 })));
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return body + '.' + b64u(await crypto.subtle.sign('HMAC', key, enc.encode(body)));
+}
+const trackerUrl = async (env) =>
+  String(env.CTC_TRACKER_URL || 'https://ctc-tracker.infomomtelo.workers.dev').replace(/\/+$/, '') + '/sso?t=' + (await mintSharedHandoff(env.SSO_SECRET));
 
 // -------------------------------------------------------------- handler --
 export function createHandler({ system }) {
@@ -330,7 +344,13 @@ export function createHandler({ system }) {
         if (path === '/api/partner_tello/open') {
           const link = await openLink(env, k);
           if (!link) return json({ error: 'inactive', message: INACTIVE }, 404);
-          return json({ ok: true, greeting: GREETING, footer: FOOTER });
+          return json({ ok: true, greeting: GREETING, footer: FOOTER, ...(trackerAllowed(env, k) ? { tracker: true } : {}) });
+        }
+
+        if (path === '/api/partner_tello/tracker') {
+          const link = await openLink(env, k);
+          if (!link || !trackerAllowed(env, k)) return json({ error: 'inactive', message: INACTIVE }, 404);
+          return json({ ok: true, url: await trackerUrl(env) });
         }
 
         if (path !== '/api/partner_tello/chat' && path !== '/api/partner_tello/direct') return json({ error: 'not_found' }, 404);

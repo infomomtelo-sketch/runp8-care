@@ -11,3 +11,7 @@
 /meet/                  /partner_tello                       200
 # Short links: title22.app/meet/charise-k7q2xm (made on /meet/admin).
 /meet/*                 /partner_tello                       200
+# A staff member's training link (made on the Partners tab, texted to them).
+# Sends them to the title22-learnupon Worker, which signs them on to the
+# training partner's course portal as their own learner.
+/train/*                https://title22-learnupon.infomomtelo.workers.dev/t/:splat  302

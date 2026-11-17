@@ -374,3 +374,19 @@ directory; nothing about it was ever pasted into the dashboard.
   `SUPABASE_ANON_KEY` (public; no service key), `PARTNER_TELLO_MODEL`.
 - Cron every 10 minutes resends emails that failed.
 - See CLAUDE.md, "Partner Tello".
+
+## title22-learnupon (2026-10-05) — TEST endpoint for partner course completions
+
+Receives LearnUpon webhooks from a training partner's **sandbox**
+portal and logs each event to `public.learnupon_events`
+(`migrations/2026-10-05_learnupon_events.sql`). It writes nothing to
+`staff_trainings`; mapping a completion to hours comes after we have seen real
+payloads. Test learners only, no resident data.
+
+- Address for the partner: `https://title22-learnupon.infomomtelo.workers.dev/api/learnupon/webhook`
+- Verifies LearnUpon v2 (HMAC-SHA256 of the raw body, `X-Webhook-Signature`)
+  and v1 (MD5 `header.signature`, best effort) before anything is written.
+  Bad signature 401; missing secret 503 so LearnUpon retries.
+- Secrets: `LEARNUPON_WEBHOOK_SECRET` (generated in the sandbox portal,
+  revoked after testing, never sent by email), `SUPABASE_SERVICE_KEY`.
+- Deploy: Actions → "Deploy title22-learnupon Worker". Test: `node test.mjs`.

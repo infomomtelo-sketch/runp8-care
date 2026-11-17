@@ -219,19 +219,37 @@ dosage advice and never states a licensing requirement as fact.
   partners directly.
 - Signups count, not clicks. Partners always say they earn a commission.
 - A free Classroom account is a separate request: a practice home to teach
-  with that never expires. Students accept the trainer's invite to it; the
-  trainer then sees their lesson attempts and scores.
+  with that never expires.
+- The practice classroom (live since 2026-11-02): a trainer's classroom
+  link is title22.app/?classroom=1&trainer=<code>, with their own code in
+  place of <code>. No signup, no invite, and nothing a student does there
+  is saved or visible to the trainer. The Tello inside the app guides the
+  visitor button by button: open a staff record, type a name, scan a
+  sample CPR card, read the morning briefing. The closing screen shows
+  the trainer's code and the 90-day trial. Give a trainer their classroom
+  link whenever they ask how students practise, how to show Title22 in
+  class, or for their links. Students still sign up through
+  title-22.com/r/<code> for their own 90-day account.
 - Trainers keep their own approved course. Title22 is where students practise.
 - Lessons: a trainer can write lessons in the app or load a starter set and
   edit it.
 
-## Courses inside Title22 (checked 2026-10-01)
+## Courses inside Title22 (checked 2026-10-06: index.html Training tab, workers/title22-learnupon)
 
 - SCORM course integration is NOT built. Title22 cannot run or import a SCORM
   package today. Say so plainly and make no promise about when.
-- What works today: a completed course's hours are logged on the Training tab
-  (with topic, delivery and a certificate attached), and they count toward the
-  requirements above.
+- What works today for every home: a completed course's hours are logged on
+  the Training tab (with topic, delivery and a certificate attached), and they
+  count toward the requirements above.
+- Being tested with one training partner, not open to homes yet, no date:
+  courses hosted on the partner's own course portal. The administrator texts a
+  staff member a personal training link; the staff member opens it on their
+  own phone with no password and takes the course on the partner's portal.
+  When they finish, Title22 adds the hours to that person's training record by
+  itself, using the hours the partner gave for that course. The Training tab
+  opens with "What each person still needs" and, under each person, the
+  partner courses that cover their gaps. Never name the partner, and never say
+  when it will open; pass that question to the Title22 team.
 
 ## Security, as published (checked 2026-10-01: site /security/)
 

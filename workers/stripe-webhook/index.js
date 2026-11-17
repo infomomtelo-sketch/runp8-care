@@ -520,6 +520,12 @@ export default {
           const active = obj.status === 'active' || obj.status === 'trialing';
           await patchProfile(env, userId, {
             title22_plan: active ? plan : undefined,
+            // A paid plan is being written, so the trial is over: clear its
+            // end stamp in the same patch. readEntitlement checks paid
+            // plans first, but other readers of this column (the email
+            // worker's owner notice prints a "Trial ends" row from it)
+            // would otherwise keep calling a payer a trialist (F7).
+            title22_trial_ends_at: active ? null : undefined,
             title22_subscription_id: obj.id,
             // Stamped only when Stripe says the sub is ending, so
             // resolveEntitlement locks access at period end rather than

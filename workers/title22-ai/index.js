@@ -13,6 +13,7 @@
 
 import { handleTello } from './tello.js';
 import { handleAssistant } from './assistant.js';
+import { callAI } from './ai.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -320,7 +321,8 @@ export default {
         supabase_service_key: !!env.SUPABASE_SERVICE_KEY,
       };
       const ok = Object.values(bindings).every(Boolean);
-      return json({ status: ok ? 'ok' : 'misconfigured', bindings }, ok ? 200 : 500);
+      const rails = { anthropic: !!env.ANTHROPIC_API_KEY, openrouter: !!env.OPENROUTER_API_KEY };
+      return json({ status: ok ? 'ok' : 'misconfigured', bindings, rails }, ok ? 200 : 500);
     }
 
     if (request.method !== 'POST') {
@@ -412,18 +414,29 @@ export default {
       };
       if (Array.isArray(tools) && tools.length) anthropicBody.tools = tools;
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(anthropicBody)
-      });
-
-      const data = await response.json();
-      if (!response.ok) return json({ error: data }, 500);
+      const { ok, data, category } = await callAI(env, anthropicBody);
+      if (!ok) {
+        // A bad request stays a visible 500, as before — a second rail
+        // cannot fix it, and hiding it would hide bugs. Everything else
+        // is a provider-side failure (billing, auth, rate, outage) on
+        // every rail: answer in the shape the page renders as a chat
+        // reply, so the person sees a calm line in the conversation
+        // instead of 'Tello could not be reached. (HTTP 500)'.
+        if (category === 'request') return json({ error: data }, 500);
+        return json({
+          id: 'ai-unavailable',
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'text', text: "I'm having trouble reaching my AI service just now. Your staff files, training records and checklist are all here as normal — please ask me again in a few minutes." }],
+          model: 'unavailable',
+          stop_reason: 'ai_unavailable',
+          plan,
+          limit: credits.limit,
+          remaining: credits.remaining,
+          isPaid,
+          isPro,
+        });
+      }
 
       const replyText = extractTextContent(data);
       if (containsDosageAdvice(replyText)) {

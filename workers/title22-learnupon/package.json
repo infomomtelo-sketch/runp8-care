@@ -1,0 +1,9 @@
+{
+  "name": "title22-learnupon",
+  "private": true,
+  "type": "module",
+  "description": "Test endpoint for LearnUpon webhooks from a training partner's sandbox portal. Logs course completions; writes no training hours.",
+  "scripts": {
+    "test": "node test.mjs"
+  }
+}
