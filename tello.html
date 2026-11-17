@@ -208,6 +208,50 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .cab-list .pri{font-weight:700}
 @media(prefers-reduced-motion:reduce){.cab,.cab-in,.drawer summary::after{transition:none}}
 
+/* ---- the owner's Cabinet: sections, tags, shortcuts (partner only) ---- */
+.opins{margin:0 0 12px}
+.opins .kicker{margin:0 0 6px}
+.opins-empty{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5}
+.opins-empty.full{color:var(--bad);margin-top:6px}
+.opins-g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.opin-chip{display:flex;align-items:center;gap:7px;min-height:44px;padding:7px 10px;border-radius:12px;border:1px solid var(--line);border-left:4px solid var(--acc);background:var(--white);color:var(--green);font-weight:600;font-size:13.5px;line-height:1.25;text-align:left}
+.opin-chip svg{flex:none;color:var(--acc-ink)}
+.osec{background:var(--white);border:1px solid var(--line);border-left:5px solid var(--acc);border-radius:14px;margin-bottom:8px}
+.osec-h{width:100%;display:flex;align-items:center;gap:11px;min-height:54px;padding:8px 14px 8px 10px;background:none;border:none;text-align:left;color:var(--green);position:relative}
+.osec-ic{flex:none;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:var(--acc-bg);color:var(--acc-ink)}
+.osec-n{flex:1;font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:18px}
+.osec-c{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--green);background:var(--cream2);border-radius:10px;padding:2px 8px;margin-right:22px}
+.osec-h::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--green);border-bottom:2px solid var(--green);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.osec.open .osec-h::after{transform:translateY(-30%) rotate(-135deg)}
+.osec.open .osec-h{border-bottom:1px solid var(--line)}
+.osec-b{padding:4px 8px 10px}
+.oi{border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;background:var(--cream);margin:6px 0 0}
+.oi-row{display:flex;align-items:stretch}
+.oi-h{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:46px;padding:6px 4px 6px 11px;background:none;border:none;text-align:left;color:var(--green)}
+.oi-t{flex:1;min-width:0;font-weight:600;font-size:15px;line-height:1.3}
+.opin{flex:none;width:42px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--muted)}
+.opin.on{color:var(--acc-ink,#7a4f0e)}
+.oi-b{padding:0 11px 11px}
+.oi-hint{font-size:13px;color:var(--muted);line-height:1.45;margin:0 0 8px}
+.oi-go{display:flex;flex-wrap:wrap;gap:6px}
+.oi.open{background:#fffaf0}
+.otag{flex:none;min-width:60px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:7px;border:1px solid transparent;line-height:1.2}
+.otag-ask{background:var(--green);color:var(--cream)}
+.otag-write{background:var(--white);color:var(--green);border-color:var(--green)}
+.otag-open{background:#fbefd9;color:#6b4510;border-color:#ecd3a6}
+.otag-watch{background:#e3eaf0;color:#2f4a60;border-color:#c8d5e0}
+.otag-link{background:#f6e6df;color:#7d3b24;border-color:#e8cbbd}
+/* A drawer that is an item: same row, its own body below. */
+.osec .drawer.oi{margin:6px 0 0;background:var(--cream)}
+.osec .drawer.oi>summary{flex-direction:row;align-items:center;gap:8px;min-height:46px;padding:6px 0 6px 11px}
+.osec .drawer.oi>summary::after{display:none}
+.osec .drawer.oi>summary .kicker{display:none}
+.osec .drawer.oi>summary .slab{flex:1;min-width:0;font-family:'Public Sans',system-ui,sans-serif;font-weight:600;font-size:15px;line-height:1.3;color:var(--green)}
+.osec .drawer.oi>summary .opin{align-self:stretch;margin-left:-4px}
+.osec .drawer.oi[open]{background:#fffaf0}
+.osec .drawer.oi>.drawer-body{padding:0 11px 11px}
+@media(prefers-reduced-motion:reduce){.osec-h::after{transition:none}}
+
 /* ---- voice bar: the only sign on the main screen that she is talking ---- */
 .voice-bar{flex:none;display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 10px 8px 8px;border-radius:14px;background:var(--green);color:var(--cream)}
 .voice-bar .t-mark{box-shadow:0 0 0 3px rgba(232,162,61,.45);animation:vbPulse 1.6s ease-in-out infinite}
@@ -258,6 +302,22 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
 .ptn-list div{display:flex;justify-content:space-between;gap:6px;border-top:1px dashed var(--line);padding:4px 0}
 .ptn-list button{border:none;background:none;color:var(--bad);font-size:12px;padding:0 2px}
 .ptn-err{font-size:12.5px;color:var(--bad);margin-top:6px}
+
+/* ---- share kit, under the code maker ---- */
+.kit-row{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px;background:var(--white)}
+.kit-t{flex:1;min-width:0}
+.kit-t b{display:block;font-size:14px;color:var(--green)}
+.kit-t small{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.kit-row .mkt-btns{margin-top:0;flex:none;flex-wrap:nowrap}
+.kit-vids{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.kit-vid{position:relative;border:1px solid var(--line);border-radius:12px;background:var(--green);overflow:hidden}
+.kit-vid.on{grid-column:1/-1}
+.kit-play{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:92px;padding:10px;background:none;border:none;text-align:left;color:var(--cream)}
+.kit-play b{font-size:13.5px;line-height:1.25}
+.kit-play small{font-size:11.5px;color:rgba(249,245,237,.8);line-height:1.3}
+.kit-tri{width:0;height:0;border-left:12px solid var(--gold);border-top:8px solid transparent;border-bottom:8px solid transparent;margin-bottom:6px}
+.kit-vid video{display:block;width:100%;max-height:70vh;background:#000}
+.kit-x{position:absolute;top:6px;right:6px;font-size:12.5px;padding:5px 11px;border-radius:14px;border:none;background:var(--cream);color:var(--green);font-weight:600}
 
 /* ---- memory sheet ---- */
 .sheet{display:none;position:fixed;inset:0;background:rgba(18,32,27,.5);z-index:20;align-items:flex-end;justify-content:center}
@@ -335,6 +395,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <input type="file" id="file" accept="image/*,application/pdf" hidden onchange="onFile(this)"/>
       <textarea id="say" rows="1" placeholder="Ask Tello anything…" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
       <button class="talk-btn" id="talk-btn" hidden onclick="talkToggle()" title="Talk with Tello" aria-label="Talk with Tello"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button class="talk-btn" id="chat-voice-btn" hidden onclick="chatVoiceToggle()" title="Read answers aloud" aria-label="Read answers aloud" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
       <button id="send" onclick="ask()">Ask</button>
     </div>
     <div class="foot" id="foot">Tello is an AI and can be wrong. No medical advice.</div>
@@ -351,13 +412,18 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <span class="spacer"></span>
       <button class="linkbtn dark" onclick="closeCabinet()">Close</button>
     </div>
-    <details class="drawer">
+    <details class="drawer" id="drawer-tools">
       <summary><span class="kicker">Tap one</span><span class="slab">What Tello can do</span></summary>
       <div class="drawer-body tools" id="cab-tools"></div>
     </details>
+    <!-- The owner's Cabinet (partner mode only). buildOwnerCabinet() sorts
+         the drawers below and the tools into folding sections; nothing here
+         is shown to a guest or a customer. -->
     <div id="cab-partner" hidden>
       <div class="setup" id="setup-note" hidden></div>
-      <details class="drawer" id="drawer-brief">
+      <div class="opins" id="opins"></div>
+      <div id="osecs"></div>
+      <details class="drawer" id="drawer-brief" data-tag="open" data-title="Today's brief">
         <summary><span class="kicker" id="brief-kicker">Tello · today</span><span class="slab" id="brief-title">Three things for today</span></summary>
         <div class="drawer-body">
           <div id="brief-text" class="loading">Reading the numbers…</div>
@@ -369,28 +435,45 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
           </div>
         </div>
       </details>
-      <details class="drawer">
+      <details class="drawer" id="drawer-nums" data-tag="open">
         <summary><span class="kicker">Counts only</span><span class="slab">Live numbers</span></summary>
         <div class="drawer-body">
+          <div class="small oi-keep">Counts only. No names.</div>
           <div class="tiles" id="tiles"></div>
           <div class="small" id="funnel"></div>
           <div class="small" id="codes"></div>
           <div class="small">MRR is list price times active subscriptions in our own records. Stripe is the source of truth for money.</div>
         </div>
       </details>
+      <details class="drawer" id="drawer-leads" data-tag="open">
+        <summary><span class="kicker">Send to Title22</span><span class="slab">Leads</span></summary>
+        <div class="drawer-body" id="leads"></div>
+      </details>
+      <details class="drawer" id="drawer-ptn" data-tag="open">
+        <summary><span class="kicker">Trainers, affiliates, graduates</span><span class="slab">Codes and payouts</span></summary>
+        <div class="drawer-body" id="ptn"></div>
+      </details>
+      <details class="drawer" id="drawer-class" data-tag="open">
+        <summary><span class="kicker">For a trainer who teaches with the app</span><span class="slab">Classroom account</span></summary>
+        <div class="drawer-body" id="ptn-class"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-msg" data-tag="link">
+        <summary><span class="kicker">Share, copy, text or email</span><span class="slab">Ready messages</span></summary>
+        <div class="drawer-body" id="mkt-msg"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-links" data-tag="link">
+        <summary><span class="kicker">Share, copy or open</span><span class="slab">Links to send</span></summary>
+        <div class="drawer-body" id="mkt-links"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-vid" data-tag="watch">
+        <summary><span class="kicker">To post or send</span><span class="slab">Videos</span></summary>
+        <div class="drawer-body" id="mkt-vid"></div>
+      </details>
+      <details class="drawer" id="drawer-mkt-acct" data-tag="link">
+        <summary><span class="kicker">Signed in as you</span><span class="slab">Your accounts</span></summary>
+        <div class="drawer-body" id="mkt-acct"></div>
+      </details>
     </div>
-    <details class="drawer" id="drawer-leads" hidden>
-      <summary><span class="kicker">Send to Title22</span><span class="slab">Leads</span></summary>
-      <div class="drawer-body" id="leads"></div>
-    </details>
-    <details class="drawer" id="drawer-ptn" hidden>
-      <summary><span class="kicker">Trainers, affiliates, graduates</span><span class="slab">Partners and payouts</span></summary>
-      <div class="drawer-body" id="ptn"></div>
-    </details>
-    <details class="drawer" id="drawer-mkt" hidden>
-      <summary><span class="kicker">Post, send, share</span><span class="slab">Marketing</span></summary>
-      <div class="drawer-body" id="mkt"></div>
-    </details>
     <div class="cab-list">
       <a id="guest-up" class="pri" hidden href="/?utm_source=tello-guest#signup">Create an account</a>
       <button type="button" id="guest-in" hidden onclick="closeCabinet();showGate()">Sign in</button>
@@ -398,6 +481,7 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
       <a id="guest-back" hidden href="/">Back to Title22</a>
       <button type="button" id="fresh" onclick="closeCabinet();newConversation()">New conversation</button>
       <button type="button" id="mem" onclick="closeCabinet();openMemory()">What Tello remembers</button>
+      <button type="button" id="to-app" onclick="location.href='/'">Open the Title22 app</button>
       <button type="button" id="out" onclick="signOut()">Sign out</button>
     </div>
     <p class="cab-fine">Tello is an AI assistant and can be wrong, so check anything that matters. No medical or dosage advice about a specific person. Title22 holds no resident health information.</p>
@@ -410,6 +494,8 @@ input:focus,#say:focus{border-color:var(--green2);box-shadow:0 0 0 3px var(--gol
     <p class="sheet-note">Every message is read, and answered by text or email. A short summary of your chat with Tello goes with it.</p>
     <label for="l-name">Your name</label><input id="l-name" autocomplete="name" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"/>
     <label for="l-contact">Email or phone</label><input type="email" id="l-contact" autocomplete="email"/>
+    <label for="l-type">RCFE, ARF, or both? (optional)</label><select id="l-type" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"><option value="">—</option><option value="RCFE">RCFE</option><option value="ARF">ARF</option><option value="both">Both</option></select>
+    <label for="l-homes">How many homes? (optional)</label><input id="l-homes" type="number" min="1" max="100" inputmode="numeric" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);margin-bottom:10px"/>
     <label for="l-msg">What would you like from Title22? (optional)</label><textarea id="l-msg" style="width:100%;min-height:76px;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--white);resize:vertical"></textarea>
     <button class="btn" id="l-send" type="button" onclick="sendLead()" style="margin-top:12px">Send</button>
     <div class="msg" id="l-out"></div>
@@ -523,10 +609,15 @@ async function boot(){
   const partner=mode==='partner';
   document.body.classList.toggle('is-partner',partner);
   $('cab-partner').hidden=!partner;
-  $('drawer-mkt').hidden=!partner;if(partner)renderMarketing();
-  $('drawer-ptn').hidden=!partner;
-  $('drawer-leads').hidden=!partner;
+  $('drawer-tools').hidden=partner;
+  $('mem').hidden=partner;
+  if(partner)renderMarketing();
   $('talk-btn').hidden=!partner||!SpeechRec;
+  // Chat voice: signed-in customers and partners only (guests have no
+  // session for the voice Worker, so the button stays hidden for them).
+  // OFF by default; the choice is remembered on this device.
+  $('chat-voice-btn').hidden=false;
+  chatVoiceInit();
   $('bar-kicker').textContent=partner?'Your business partner · '+who.client:'AI assistant · '+who.client;
   $('say').placeholder='Ask Tello anything…';
   showCredits(who);
@@ -539,6 +630,7 @@ async function boot(){
     loadBrief(monday?'weekly':'today');
   }
   renderTools($('cab-tools'),false);
+  if(partner)buildOwnerCabinet();
   await loadMemory(partner);
 }
 
@@ -782,8 +874,153 @@ function closeCabinet(){const c=$('cabinet');if(!c.classList.contains('open'))re
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCabinet()});
 document.addEventListener('toggle',e=>{if(e.target&&e.target.id==='drawer-ptn'&&e.target.open&&!ptnData)loadPartners()},true);
 document.addEventListener('toggle',e=>{if(e.target&&e.target.id==='drawer-leads'&&e.target.open)loadLeads()},true);
+document.addEventListener('toggle',e=>{const c=$('ptn-class');if(e.target&&e.target.id==='drawer-class'&&e.target.open&&c&&!c.firstChild)c.appendChild(ptnClassroom())},true);
 function openIdeas(){renderTools($('ideas-list'),false);$('ideas').classList.add('open')}
 function closeIdeas(){$('ideas').classList.remove('open')}
+
+/* ------------------------------------------------- owner's cabinet -- */
+// Partner mode only (2026-10-05, the owner: "every item looks identical").
+// The same tools and drawers as before, sorted into folding sections, each
+// with its own icon and accent, and every item marked with what a tap does.
+// Nothing here changes what an item sends: a tool still goes through
+// runTool(), and a drawer is the same <details> element, moved.
+// Guests and customers never reach this; their Cabinet is #drawer-tools.
+const OTAGS={ask:'Ask',write:'Write',open:'Open',watch:'Watch',link:'Link'};
+const OICON={
+  today:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  write:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  post:'<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+  decide:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>',
+  partners:'<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5 5.5"/>',
+  share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
+  memory:'<path d="M6 3h12v18l-6-4-6 4Z"/>',
+  more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+};
+// Accents: the page's green, gold and its darker gold, plus two calm extra
+// tones (clay, slate). The name and the icon carry the section too.
+const OSECS=[
+  {id:'today',name:'Today',acc:'#e8a23d',ink:'#7a4f0e',bg:'#fbefd9',drawers:['drawer-brief','drawer-nums','drawer-leads']},
+  {id:'write',name:'Write',acc:'#123a30',ink:'#123a30',bg:'#e3ebe7',tools:['Fix my grammar','Rewrite it','Translate','Reply to a message','Write an email','Read a photo or PDF','Message to my staff','Caregiver job post','Trial follow-up message']},
+  {id:'post',name:'Post',acc:'#a4553a',ink:'#8a4329',bg:'#f6e6df',tools:['Post caption','Post ideas for this week','Turn my notes into a post','Check a post before I publish']},
+  {id:'decide',name:'Decide',acc:'#3e5c76',ink:'#34506a',bg:'#e3eaf0',tools:['Should I…?','One next step today','Where are signups stuck?','Check this claim','Explain a business word','Explain a word or form']},
+  {id:'partners',name:'Partners',acc:'#8a5a12',ink:'#7a4f0e',bg:'#f3e8d6',drawers:['drawer-ptn','drawer-class']},
+  {id:'share',name:'Share',acc:'#1d5c4d',ink:'#1d5c4d',bg:'#e0eee9',drawers:['drawer-mkt-msg','drawer-mkt-links','drawer-mkt-vid','drawer-mkt-acct']},
+  {id:'memory',name:'Memory',acc:'#5f7169',ink:'#4b5c55',bg:'#e9ece9',tools:['Remember something'],extra:'mem'},
+];
+const OPIN_MAX=4,OSEC_KEY='tello_cab_section',OPIN_KEY='tello_cab_pins';
+const OITEMS={};
+function oGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function oSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function oSvg(id){return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+OICON[id]+'</svg>'}
+function oTagOf(t){return t.ask||t.send?'ask':'write'}
+function oTag(k){const e=document.createElement('span');e.className='otag otag-'+k;e.textContent=OTAGS[k];return e}
+function oPinBtn(id){
+  const b=document.createElement('button');b.type='button';b.className='opin';b.dataset.pin=id;
+  b.onclick=e=>{e.preventDefault();e.stopPropagation();oTogglePin(id)};
+  return b;
+}
+function oToolItem(t,sec){
+  const id='t:'+t.label,w=document.createElement('div');w.className='oi';w.dataset.id=id;
+  const h=document.createElement('button');h.type='button';h.className='oi-h';h.setAttribute('aria-expanded','false');
+  const n=document.createElement('span');n.className='oi-t';n.textContent=t.label;
+  h.append(n,oTag(oTagOf(t)));
+  const row=document.createElement('div');row.className='oi-row';row.append(h,oPinBtn(id));
+  const body=document.createElement('div');body.className='oi-b';body.hidden=true;
+  const hint=(mode!=='partner'&&t.hintCustomer)||t.hint;
+  if(hint){const p=document.createElement('p');p.className='oi-hint';p.textContent=hint;body.appendChild(p)}
+  const go=document.createElement('div');go.className='oi-go';
+  if(t.options)t.options.forEach(o=>{const c=document.createElement('button');c.type='button';c.className='pill';c.textContent=o;c.onclick=()=>runTool(t,o);go.appendChild(c)});
+  else{const c=document.createElement('button');c.type='button';c.className='pill primary';c.textContent=t.pick?'Choose a photo or PDF':t.ask?'Ask now':'Start writing';c.onclick=()=>runTool(t);go.appendChild(c)}
+  body.appendChild(go);
+  h.onclick=()=>{const open=body.hidden;body.hidden=!open;h.setAttribute('aria-expanded',String(open));w.classList.toggle('open',open)};
+  w.append(row,body);
+  OITEMS[id]={sec,title:t.label,tool:t,el:w,open:()=>{body.hidden=false;h.setAttribute('aria-expanded','true');w.classList.add('open')}};
+  return w;
+}
+function oDrawerItem(d,sec){
+  const id='d:'+d.id;d.classList.add('oi','od');d.dataset.id=id;
+  const sum=d.querySelector('summary');
+  if(!sum.querySelector('.otag')){sum.append(oTag(d.dataset.tag||'open'),oPinBtn(id))}
+  OITEMS[id]={sec,title:d.dataset.title||sum.querySelector('.slab').textContent,el:d,open:()=>{d.open=true}};
+  return d;
+}
+function oMemItem(sec){
+  const id='d:mem',w=document.createElement('div');w.className='oi';w.dataset.id=id;
+  const h=document.createElement('button');h.type='button';h.className='oi-h';
+  const n=document.createElement('span');n.className='oi-t';n.textContent='What Tello remembers';
+  h.append(n,oTag('open'));h.onclick=()=>{closeCabinet();openMemory()};
+  const row=document.createElement('div');row.className='oi-row';row.append(h,oPinBtn(id));w.appendChild(row);
+  OITEMS[id]={sec,title:'What Tello remembers',el:w,run:()=>{closeCabinet();openMemory()}};
+  return w;
+}
+function buildOwnerCabinet(){
+  const box=$('osecs');if(box.dataset.done){oRenderPins();return}box.dataset.done='1';
+  const tools={};toolsFor().forEach(g=>g.items.forEach(t=>{tools[t.label]=t}));
+  const placed=new Set();
+  const secs=OSECS.slice();
+  // Anything Tello can do that no section names still shows, under More,
+  // so a tool added later is never silently dropped from the Cabinet.
+  const rest=Object.keys(tools).filter(l=>!OSECS.some(s=>(s.tools||[]).includes(l)));
+  if(rest.length)secs.push({id:'more',name:'More',acc:'#5f7169',ink:'#4b5c55',bg:'#e9ece9',tools:rest});
+  secs.forEach(s=>{
+    const sec=document.createElement('section');sec.className='osec';sec.dataset.sec=s.id;
+    sec.style.setProperty('--acc',s.acc);sec.style.setProperty('--acc-ink',s.ink);sec.style.setProperty('--acc-bg',s.bg);
+    const h=document.createElement('button');h.type='button';h.className='osec-h';h.id='osec-h-'+s.id;h.setAttribute('aria-expanded','false');h.setAttribute('aria-controls','osec-b-'+s.id);
+    const ic=document.createElement('span');ic.className='osec-ic';ic.innerHTML=oSvg(s.id);
+    const nm=document.createElement('span');nm.className='osec-n';nm.textContent=s.name;
+    const ct=document.createElement('span');ct.className='osec-c';
+    h.append(ic,nm,ct);h.onclick=()=>oOpenSec(s.id,true);
+    const body=document.createElement('div');body.className='osec-b';body.id='osec-b-'+s.id;body.hidden=true;body.setAttribute('role','region');body.setAttribute('aria-labelledby',h.id);
+    (s.drawers||[]).forEach(id=>{const d=$(id);if(d)body.appendChild(oDrawerItem(d,s.id))});
+    (s.tools||[]).forEach(l=>{if(tools[l]&&!placed.has(l)){placed.add(l);body.appendChild(oToolItem(tools[l],s.id))}});
+    if(s.extra==='mem')body.appendChild(oMemItem(s.id));
+    const count=body.querySelectorAll(':scope>.oi').length;ct.textContent=count;ct.setAttribute('aria-label',count+' items');
+    sec.append(h,body);box.appendChild(sec);
+  });
+  oRenderPins();
+  const last=oGet(OSEC_KEY,null);if(last&&box.querySelector('[data-sec="'+last+'"]'))oOpenSec(last,false);
+}
+// One section open at a time; a second tap on the open one folds it.
+function oOpenSec(id,fromTap){
+  let opened=null;
+  $('osecs').querySelectorAll('.osec').forEach(sec=>{
+    const on=sec.dataset.sec===id&&(!fromTap||!sec.classList.contains('open'));
+    sec.classList.toggle('open',on);sec.querySelector('.osec-b').hidden=!on;sec.querySelector('.osec-h').setAttribute('aria-expanded',String(on));
+    if(on)opened=sec;
+  });
+  oSet(OSEC_KEY,opened?id:null);
+  if(opened&&fromTap)opened.scrollIntoView({block:'nearest',behavior:'smooth'});
+  return opened;
+}
+function oTogglePin(id){
+  let pins=oGet(OPIN_KEY,[]).filter(p=>OITEMS[p]);
+  if(pins.includes(id))pins=pins.filter(p=>p!==id);
+  else if(pins.length>=OPIN_MAX){oRenderPins();const m=document.createElement('p');m.className='opins-empty full';m.setAttribute('role','status');m.textContent='You have 4 shortcuts. Unpin one first (tap its star).';$('opins').appendChild(m);$('opins').scrollIntoView({block:'nearest'});return}
+  else pins.push(id);
+  oSet(OPIN_KEY,pins);oRenderPins();
+}
+function oRenderPins(){
+  const pins=oGet(OPIN_KEY,[]).filter(p=>OITEMS[p]),box=$('opins');box.innerHTML='';
+  document.querySelectorAll('#osecs .opin').forEach(b=>{const on=pins.includes(b.dataset.pin);b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));
+    b.setAttribute('aria-label',(on?'Unpin ':'Pin to My shortcuts: ')+OITEMS[b.dataset.pin].title);b.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="'+(on?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9Z"/></svg>'});
+  const k=document.createElement('div');k.className='kicker';k.textContent='My shortcuts';box.appendChild(k);
+  if(!pins.length){const p=document.createElement('p');p.className='opins-empty';p.textContent='Tap the star on any item to keep it here. Up to 4, on this phone only.';box.appendChild(p);return}
+  const g=document.createElement('div');g.className='opins-g';
+  pins.forEach(id=>{const it=OITEMS[id],s=OSECS.find(x=>x.id===it.sec)||{acc:'#5f7169',ink:'#4b5c55',bg:'#e9ece9'};
+    const b=document.createElement('button');b.type='button';b.className='opin-chip';b.style.setProperty('--acc',s.acc);b.style.setProperty('--acc-ink',s.ink);b.style.setProperty('--acc-bg',s.bg);
+    b.innerHTML=oSvg(it.sec);const t=document.createElement('span');t.textContent=it.title;b.appendChild(t);
+    b.onclick=()=>oRunPin(id);g.appendChild(b)});
+  box.appendChild(g);
+}
+// A shortcut does in one tap what the item does. A tool with choices, or a
+// drawer, opens in its section so the choice is still yours.
+function oRunPin(id){
+  const it=OITEMS[id];if(!it)return;
+  if(it.run){it.run();return}
+  if(it.tool&&!it.tool.options){runTool(it.tool);return}
+  oOpenSec(it.sec,false);it.open();
+  setTimeout(()=>it.el.scrollIntoView({block:'start',behavior:'smooth'}),30);
+}
 
 // The box shows what she can do while it is empty, one example at a time.
 const EXAMPLES={
@@ -843,8 +1080,16 @@ async function ask(text,opts){
     thinking.remove();
     const turn=say(d.reply,'her');
     reply=d.reply;
-    if(mode==='guest')guestCounted();
+    // Chat voice: when the toggle is on, read this answer aloud as it
+    // arrives — same text, same voice as the Play button. Long answers
+    // are never spoken, and Talk mode speaks for itself.
+    if(reply&&reply.length<=SPEAK_MAX&&chatVoiceOn()&&!opts.spoken){
+      const btn=turn.querySelector('.play');
+      if(btn)playReply(reply,btn);
+    }
     if(reply.length>SPEAK_MAX)longTurn=turn;
+    // #173: count the guest question for the create-account nudge card (after the 5th, again after the 15th). Placed here so the refresh merges cleanly with main.
+    if(mode==='guest')guestCounted();
     if(d.noted){const n=document.createElement('div');n.className='divider';n.textContent=d.noted.ok?'Tello will remember that':'Not saved: '+(d.noted.message||'try again');$('thread').appendChild(n)}
     if(d.memory)held+=2;
     showCredits(d);
@@ -1017,17 +1262,21 @@ const MKT={
     {name:'Website',note:'Everything, in one place',url:'https://title-22.com/'},
     {name:'Free trial',note:'30 days, no card',url:'https://title22.app/'},
     {name:'See it first',note:'The practice home, no sign-up',url:'https://title22.app/?demo=1'},
+    {name:'Practice classroom',note:'Tello guides it, no sign-up',url:'https://title22.app/?classroom=1'},
     {name:'Pricing',note:'$29 one home, $79 up to five',url:'https://title-22.com/pricing/'},
     {name:'Readiness check',note:'10 quick questions',url:'https://title-22.com/score/'},
     {name:'30-Day Proof',note:'For owners with two or more homes',url:'https://title-22.com/pilot/'},
     {name:'For trainers',note:'Course instructors',url:'https://title-22.com/for-trainers/'},
     {name:'Partner media kit',note:'Images, QR codes and posts with their code',url:'https://title-22.com/partner-kit/'},
+    {name:'Affiliate page',note:'How the affiliate program works',url:'https://title-22.com/affiliates/'},
+    {name:'All videos',note:'Every video on one page',url:'https://title-22.com/videos/'},
     {name:'Follow Title22',note:'All the accounts on one page',url:'https://title-22.com/follow/'},
     {name:'Tello',note:'Her own page',url:'https://title22.app/tello'},
   ],
   videos:[
     {name:'Meet Tello',note:'37 s, vertical: Reels, Shorts, Stories',url:'https://title-22.com/videos/title22-tello-intro.mp4'},
     {name:'For trainers',note:'34 s, vertical',url:'https://title-22.com/videos/title22-trainer-pitch.mp4'},
+    {name:'Classroom setup guide',note:'1:41, for a trainer: set up Classroom and invite students',url:'https://title-22.com/videos/title22-classroom-guide.mp4'},
     {name:'Your readiness checklist',note:'19 s how-to',url:'https://title-22.com/videos/howto/checklist.mp4'},
     {name:'3-minute overview',note:'Title22, plus a tour of the app',url:'https://title-22.com/videos/title22-overview.mp4'},
   ],
@@ -1046,9 +1295,13 @@ function mktShare(o){
 }
 function mktBtn(label,fn,pri){const b=document.createElement('button');b.type='button';b.textContent=label;if(pri)b.className='pri';b.onclick=()=>fn(b);return b}
 function mktLink(label,href){const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener';a.textContent=label;return a}
+let mktDone=false;
 function renderMarketing(){
-  const el=$('mkt');if(!el||el.dataset.done)return;el.dataset.done='1';
-  const h=t=>{const d=document.createElement('div');d.className='mkt-h';d.textContent=t;el.appendChild(d)};
+  // One drawer each for the four kinds of thing, in the owner's Share
+  // section. Same rows and buttons as before; only where they sit changed.
+  if(mktDone)return;mktDone=true;
+  let el=$('mkt-acct');
+  const h=t=>{el=$({'Your accounts':'mkt-acct','Messages, ready to send':'mkt-msg','Links to send':'mkt-links','Videos':'mkt-vid'}[t])};
   const note=t=>{const p=document.createElement('p');p.className='mkt-note';p.textContent=t;el.appendChild(p)};
   const row=(o,btns)=>{const r=document.createElement('div');r.className='mkt-row';
     const b=document.createElement('b');b.textContent=o.name;r.appendChild(b);
@@ -1110,14 +1363,14 @@ function renderPartners(){
   d.partners.forEach(p=>el.appendChild(ptnCard(p)));
   el.appendChild(ptnEl('div','mkt-h','Give out a new code'));
   el.appendChild(ptnNewForm());
+  el.appendChild(ptnEl('div','mkt-h','Share kit'));
+  el.appendChild(ptnShareKit());
   if(d.unregistered_codes&&d.unregistered_codes.length){
     el.appendChild(ptnEl('div','mkt-h','Codes people used, not registered yet'));
     el.appendChild(ptnEl('p','mkt-note','Their signups count as soon as you register the code.'));
     d.unregistered_codes.forEach(u=>{const r=ptnEl('div','mkt-row');r.appendChild(ptnEl('b',null,u.code));r.appendChild(ptnEl('small',null,u.signups+' signup'+(u.signups>1?'s':'')));
       const w=ptnEl('div','mkt-btns');w.appendChild(mktBtn('Register',()=>{const f=$('ptn-code');f.value=u.code;f.scrollIntoView({block:'center'});$('ptn-name').focus()},true));r.appendChild(w);el.appendChild(r)});
   }
-  el.appendChild(ptnEl('div','mkt-h','Classroom account for a trainer'));
-  el.appendChild(ptnClassroom());
 }
 function ptnInput(id,label,attrs){const w=document.createElement('div');const l=ptnEl('label',null,label);l.htmlFor=id;const i=document.createElement(attrs&&attrs.tag||'input');i.id=id;
   Object.entries(attrs||{}).forEach(([k,v])=>{if(k==='tag'||k==='options')return;i.setAttribute(k,v)});
@@ -1144,15 +1397,51 @@ async function ptnCreate(btn){
   if(error){btn.disabled=false;btn.textContent='Create code';err.textContent=/duplicate|unique/i.test(error.message)?'That code is taken. Try another.':error.message;return}
   const row=Array.isArray(data)?data[0]:data;
   if(kind!=='trainer')await sb.rpc('title22_update_partner',{p_id:row.id,p_kind:kind});
-  const first=(row.name||'').trim().split(/\s+/)[0]||row.name;
-  const msg=`Hi ${first}, here is your Title22 link: https://title-22.com/r/${row.code}\n\nAnyone who signs up through it gets a ${row.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(row.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nImages, QR codes and posts with your link built in: https://title-22.com/partner-kit/?code=${encodeURIComponent(row.code)}`;
   await loadPartners();
+  // The message is built from the row as saved, the same way as the Copy
+  // message button on every code card.
+  const saved=(ptnData&&ptnData.partners.find(p=>p.code===row.code))||row;
+  const first=ptnFirst(saved),msg=ptnMessage(saved);
   const out=$('ptn-new-out');out.innerHTML='';
   const r=ptnEl('div','mkt-row');r.appendChild(ptnEl('b',null,'Created. Send this to '+first+':'));r.appendChild(ptnEl('p',null,msg));
   const w=ptnEl('div','mkt-btns');w.append(mktBtn('Share',()=>mktShare({name:'Your Title22 link',text:msg}),true),mktBtn('Copy',b=>copyText(msg,b)));
   if(row.email){w.appendChild(mktLink('Email','mailto:'+encodeURIComponent(row.email)+'?subject='+encodeURIComponent('Your Title22 partner link')+'&body='+encodeURIComponent(msg)))}
   r.appendChild(w);out.appendChild(r);out.scrollIntoView({block:'center'});
 }
+// The message for a partner, from what is saved for their code NOW: the
+// commission and trial they have today, not the ones they started on.
+function ptnFirst(p){return(p.name||'').trim().split(/\s+/)[0]||p.name}
+function ptnKitUrl(code){return 'https://title-22.com/partner-kit/?code='+encodeURIComponent(code)}
+function ptnMessage(p){
+  return `Hi ${ptnFirst(p)}, here is your Title22 link: https://title-22.com/r/${p.code}\n\nAnyone who signs up through it gets a ${p.trial_days}-day free trial, no card. When a home from your link starts paying, you earn ${Math.round(p.commission_rate*100)}% of their plan every month they stay. When you share it, say that you earn a commission.\n\nYour classroom — students practise with Tello guiding them, no signup: https://title22.app/?classroom=1&trainer=${p.code}\n\nImages, QR codes and posts with your link built in: ${ptnKitUrl(p.code)}`;
+}
+// Share kit: what to send a partner, under the code maker. Reads MKT.links
+// and MKT.videos, so a link or video changes in one place.
+const KIT_LINKS=['Partner media kit','Affiliate page','For trainers','All videos'];
+function ptnShareKit(){
+  const box=ptnEl('div','kit');
+  KIT_LINKS.map(n=>MKT.links.find(l=>l.name===n)).filter(Boolean).forEach(l=>{
+    const r=ptnEl('div','kit-row');const t=ptnEl('div','kit-t');t.append(ptnEl('b',null,l.name),ptnEl('small',null,l.url.replace('https://','')));
+    const w=ptnEl('div','mkt-btns');w.append(mktLink('Open',l.url),mktBtn('Copy link',b=>copyText(l.url,b)));
+    r.append(t,w);box.appendChild(r)});
+  const g=ptnEl('div','kit-vids');
+  MKT.videos.forEach(v=>{
+    const tile=ptnEl('div','kit-vid');
+    const play=document.createElement('button');play.type='button';play.className='kit-play';
+    play.setAttribute('aria-label','Play '+v.name);
+    play.append(ptnEl('span','kit-tri'),ptnEl('b',null,v.name),ptnEl('small',null,v.note));
+    play.onclick=()=>{
+      g.querySelectorAll('.kit-vid.on').forEach(x=>x!==tile&&kitClose(x));
+      tile.classList.add('on');play.hidden=true;
+      const vid=document.createElement('video');vid.src=v.url;vid.controls=true;vid.playsInline=true;vid.setAttribute('playsinline','');vid.preload='metadata';
+      const x=mktBtn('Close',()=>kitClose(tile));x.className='kit-x';
+      tile.append(vid,x);vid.play().catch(()=>{});
+    };
+    tile.appendChild(play);g.appendChild(tile)});
+  box.appendChild(g);return box;
+}
+function kitClose(tile){const v=tile.querySelector('video');if(v){v.pause();v.removeAttribute('src');v.load();v.remove()}
+  const x=tile.querySelector('.kit-x');if(x)x.remove();tile.querySelector('.kit-play').hidden=false;tile.classList.remove('on')}
 function ptnCard(p){
   const c=ptnEl('div','ptn-card'+(p.active?'':' off'));
   const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,p.name),ptnEl('span','ptn-tag',(PTN_KINDS[p.kind]||p.kind)+' · '+p.code+(p.active?'':' · paused')));c.appendChild(top);
@@ -1163,6 +1452,7 @@ function ptnCard(p){
   const w=ptnEl('div','mkt-btns');const link='https://title-22.com/r/'+p.code;
   w.append(mktBtn('Share link',()=>mktShare({name:'Title22',url:link}),true),mktBtn('Copy link',b=>copyText(link,b)));
   if(!p.paid_this_month&&owe>0)w.appendChild(mktBtn('Record payout',()=>ptnToggle(c,'pay',p)));
+  w.append(mktLink('Kit',ptnKitUrl(p.code)),mktBtn('Copy message',b=>copyText(ptnMessage(p),b)));
   w.append(mktBtn('Edit',()=>ptnToggle(c,'edit',p)),mktBtn('Students ('+p.signups+')',()=>ptnToggle(c,'stu',p)));
   if(p.payouts.length)w.appendChild(mktBtn('Payouts ('+p.payouts.length+')',()=>ptnToggle(c,'hist',p)));
   c.appendChild(w);const box=ptnEl('div');box.className='ptn-box';c.appendChild(box);
@@ -1250,13 +1540,28 @@ function guestSave(){try{sessionStorage.setItem('tello_guest',JSON.stringify(gue
 function guestStart(){
   mode='guest';document.body.classList.remove('is-partner');document.body.classList.add('is-guest');
   $('gate').hidden=true;$('chat').hidden=false;$('cab-btn').hidden=false;$('new-btn').hidden=false;
-  ['fresh','mem','out','attach-btn','talk-btn'].forEach(id=>$(id).hidden=true);
-  ['guest-in','guest-send','guest-up','guest-back','bar-back','guest-strip'].forEach(id=>$(id).hidden=false);
-  ['drawer-mkt','drawer-ptn','drawer-leads'].forEach(id=>$(id).hidden=true);
+  ['fresh','mem','out','attach-btn','talk-btn','chat-voice-btn'].forEach(id=>$(id).hidden=true);
+  ['guest-in','guest-send'].forEach(id=>$(id).hidden=false);
+  $('cab-partner').hidden=true;$('drawer-tools').hidden=false;
   $('say').placeholder='Ask Tello anything…';
+  // #173 guest extras (separate lines so this refresh merges cleanly with main): show the back link, upload button and create-account strip; keep the marketing drawers hidden for guests.
+  ['guest-up','guest-back','bar-back','guest-strip'].forEach(id=>$(id).hidden=false);
+  ['drawer-mkt','drawer-ptn','drawer-leads'].forEach(id=>$(id).hidden=true);
   renderTools($('cab-tools'),false);
   $('thread').innerHTML='';
-  say("Hi, I'm Tello, Title22's AI assistant. Ask me anything, no sign-up needed. Tap Cabinet to send Title22 a message.",'her',true);
+  say("Hi, I'm Tello, Title22's AI assistant. I help care homes stay ready for DSS. What brings you in today?",'her',true);
+  // Sales-flow quick prompts (flow doc Part 2, Stage 0). Only on a fresh
+  // visit: a returning guest sees their own chat instead. Tapping one sends
+  // it as their message and the row goes away.
+  if(!guestChat.length){
+    const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px';
+    ['See how it works','Can I try it free?','Talk to a human'].forEach(label=>{
+      const b=document.createElement('button');b.type='button';b.className='pill';b.textContent=label;
+      b.onclick=()=>{row.remove();ask(label)};
+      row.appendChild(b);
+    });
+    $('thread').appendChild(row);
+  }
   guestChat.forEach(m=>say(m.content,m.role==='user'?'me':'her',m.role==='user'));
   scrollEnd();
 }
@@ -1311,14 +1616,17 @@ function openLead(){$('l-out').textContent='';$('l-out').className='msg';$('l-se
 function closeLead(){$('lead').classList.remove('open')}
 async function sendLead(){
   const out=$('l-out');
-  const body={assistant:'tello',kind:'follow-up',name:$('l-name').value.trim(),contact:$('l-contact').value.trim(),message:$('l-msg').value.trim(),lang:navigator.language||'',transcript:guestChat};
+  const body={assistant:'tello',kind:'follow-up',name:$('l-name').value.trim(),contact:$('l-contact').value.trim(),message:$('l-msg').value.trim(),lang:navigator.language||'',transcript:guestChat,
+    // Sales flow: what kind of home and how many, so the owner sees the fit
+    // without re-asking. Optional; the Worker drops anything invalid.
+    facility_type:$('l-type').value||null,home_count:$('l-homes').value?Number($('l-homes').value):null};
   if(!body.name||!body.contact){out.textContent='Please leave your name and an email or phone number.';out.className='msg show bad';return}
   $('l-send').disabled=true;$('l-send').textContent='Sending…';
   try{
     const r=await fetch(ASSIST_API+'/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){out.textContent=d.message||'That did not go through. Please try again.';out.className='msg show bad';$('l-send').disabled=false;$('l-send').textContent='Send';return}
-    $('l-send').textContent='Sent';out.textContent='Thank you. Title22 has your message and will get back to you.';out.className='msg show good';
+    $('l-send').textContent='Sent';out.textContent='Thank you — Title22 has your message. Someone from Title22 will call you tomorrow morning to walk you through setup.';out.className='msg show good';
     setTimeout(closeLead,1800);
   }catch(e){out.textContent='No connection. Please try again.';out.className='msg show bad';$('l-send').disabled=false;$('l-send').textContent='Send'}
 }
@@ -1342,7 +1650,7 @@ async function loadLeads(){
   (data||[]).forEach(l=>{
     const c=ptnEl('div','ptn-card'+(l.status==='done'?' off':''));
     const top=ptnEl('div','ptn-top');top.append(ptnEl('b',null,l.name),ptnEl('span','ptn-tag',(l.assistant==='tello'?'Tello · ':'Charrise · ')+(l.kind==='wants-own'?'Wants own assistant':'Follow-up')+(l.language?' · '+l.language:'')));c.appendChild(top);
-    c.appendChild(ptnEl('div','ptn-tag',new Date(l.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+(l.business?' · '+l.business:'')));
+    c.appendChild(ptnEl('div','ptn-tag',new Date(l.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+(l.business?' · '+l.business:'')+(l.facility_type?' · '+l.facility_type:'')+(l.home_count?' · '+l.home_count+(l.home_count===1?' home':' homes'):'')));
     if(l.message)c.appendChild(ptnEl('p','mkt-note',l.message));
     if(l.summary){const sm=ptnEl('p','mkt-note','Chat: '+l.summary);sm.style.color='var(--ink)';c.appendChild(sm)}
     const w=ptnEl('div','mkt-btns');const isMail=/@/.test(l.contact);
@@ -1375,6 +1683,31 @@ async function playReply(text,btn){
     playReset();btn.textContent=e.name==='NotAllowedError'?'Tap again':'No voice';
     setTimeout(()=>{if(playBtn!==btn)btn.textContent='Play'},3000);
   }
+}
+
+/* ----------------------------------------------- chat voice toggle -- */
+// Voice for chat answers (signed-in customers and partners). OFF by
+// default: nothing is spoken unless the speaker button in the composer is
+// on. When on, each new answer is read aloud with the same voice and the
+// same text as the Play button — nothing extra is spoken, and long answers
+// (over SPEAK_MAX) are never spoken, exactly like Play. This is separate
+// from the brief's Listen button and its once-a-day autoplay, which this
+// toggle does not touch.
+const CHAT_VOICE_KEY='tello_chat_voice';
+function chatVoiceOn(){try{return localStorage.getItem(CHAT_VOICE_KEY)==='1'}catch(e){return false}}
+function chatVoiceInit(){
+  const on=chatVoiceOn();
+  $('chat-voice-btn').classList.toggle('on',on);
+  $('chat-voice-btn').setAttribute('aria-pressed',on?'true':'false');
+}
+function chatVoiceToggle(){
+  const on=!chatVoiceOn();
+  try{localStorage.setItem(CHAT_VOICE_KEY,on?'1':'0')}catch(e){}
+  chatVoiceInit();
+  if(on){unlock();return}
+  // Off: stop a chat answer that is playing. The brief reader and Talk
+  // mode have their own controls and are left alone.
+  if(playBtn){try{au.pause()}catch(e){}playReset()}
 }
 
 /* ------------------------------------------------------------ talk -- */

@@ -508,6 +508,35 @@ business plugged into her (`TELLO_CLIENTS`). Rules:
   is reading the brief aloud, paused, or waiting for the tap an iPhone needs
   ("Tello has your brief ready · Listen"), with Pause/Resume and a stop.
   She reads the brief once per day per brief kind (`maybeAutoplay`).
+- **The owner's Cabinet is sorted (partner only, 2026-10-05; the owner:
+  "every item looks identical").** `buildOwnerCabinet` / `OSECS` in
+  `tello.html` fold the tools and drawers into seven sections (Today, Write,
+  Post, Decide, Partners, Share, Memory), one open at a time, each with its
+  own icon and accent. Every item carries a tag (Ask / Write / Open / Watch /
+  Link), shows its hint only when tapped, and has a star that pins it to My
+  shortcuts (up to 4). The open section and the pins are in localStorage
+  (`tello_cab_section`, `tello_cab_pins`), this phone only. A tool still
+  goes through `runTool()` unchanged, and a drawer is the same `<details>`
+  moved, so what each item sends did not change. A tool no section names
+  shows under "More" rather than vanishing. Guests and customers keep
+  `#drawer-tools`, unchanged.
+- **Share kit and partner messages (2026-10-05).** Under "Give out a new
+  code" in Codes and payouts: four links (from `MKT.links`) and the videos
+  (from `MKT.videos`) as tiles that play in place. Every code card has Kit
+  (`partner-kit/?code=`) and Copy message. `ptnMessage(p)` is the ONE
+  partner message, built from the code's saved commission and trial, and
+  used after Create code too, so an edited rate shows. Keep "When you share
+  it, say that you earn a commission" in it. The app's Partners tab
+  (index.html `createTrainerCode`) has its own, different message.
+- **Classroom setup guide (2026-10-10).** `MKT.videos` has a fifth clip,
+  `title22-classroom-guide.mp4` on title-22.com (1:41, recorded from this app
+  by `title-22-site/videos/classroom-guide/record/`), so it shows as a tile
+  under the code maker and in the Marketing drawer. The app's Partners tab
+  links the same file under Create code and under Grant classroom access.
+  It films a Classroom account in the sample facility, so the menu's MAR,
+  Medications and Residents labels are on screen; the owner confirmed that is
+  fine for the practice account. Re-record it if the onboarding chooser, the
+  Lessons tab or the invite sheet changes.
 - **Talk mode (partner only, 2026-09-28).** The mic button (`#talk-btn`,
   `talkStart`/`talkListen`/`talkSpeak`) listens with the browser's speech
   recognition (Apple's dictation on an iPhone, Google's in Chrome), sends the
@@ -661,6 +690,12 @@ uses the app's own sign-in storage, so being signed in to title22.app is
 enough, and it never signs anyone out. Keys may now be 8 to 128 characters
 (table check, Worker `KEY_RE`, page); the first 64-character links still work,
 as `/meet?k=` or `/meet/<key>`. Nothing on that page returns message text.
+
+**Agreement tracker button (2026-10-19).** One person's link (CTC's contact) can open the shared
+CTC agreement tracker from the Cabinet, with no second key: `POST /api/partner_tello/tracker`
+returns a 2-minute signed `shared` pass. Only a link key listed in the Worker secret
+`CTC_TRACKER_LINK_KEYS` (with `SSO_SECRET` set) is offered it; `open` adds `tracker:true` for that
+link only. Not in `knowledge.md` on purpose: Tello never mentions it.
 
 **RULE: when a feature, a price, a plan, the trial or the partner program
 changes, update `workers/partner_tello/knowledge.md` in the same PR**, with
@@ -1002,12 +1037,14 @@ Three rules it is built on, and none is decoration:
   heading; a picker (`LAUNCH_LANGS`, `setLaunchLang`, `launchTr`) chooses which
   translation sits under it — Tagalog, Español, ਪੰਜਾਬੀ, or English only for
   none. Stored per browser in `title22_launch_lang`, defaulted from
-  `navigator.language`, falling back to **Tagalog** so a user who never touches
-  the picker sees exactly what shipped before. Every card, every step and the
-  progress counter follow it. Stacking all three under twelve steps would
+  `navigator.language`, falling back to **Spanish** (the owner's call,
+  2026-10-06; it was Tagalog before). Every card, every step, the
+  progress counter, the header badge, the guide line and the button labels
+  follow it (`LAUNCH_UI`; until 2026-10-06 those last three were fixed
+  Tagalog in the markup and ignored the picker). Stacking all three under twelve steps would
   triple the reading on a screen whose whole design is one decision per
-  screenful — hence one line, never three. `launchTr` falls back to Tagalog if
-  a translation is ever missing, so a gap shows in one language rather than
+  screenful — hence one line, never three. `launchTr` falls back to Spanish, then
+  Tagalog, if a translation is ever missing, so a gap shows in one language rather than
   blanking the line.
 
   **The Spanish and Punjabi are machine-produced and have not been read by a
@@ -1697,3 +1734,108 @@ webhook section above. Do NOT create that table to "fix" this: it would be a
 third store of who has paid, alongside profiles.title22_* and
 public.subscriptions, and those two already disagree with each other often
 enough.
+
+## Partner course completions become training hours (2026-10-06)
+
+`workers/title22-learnupon` turns a LearnUpon `course_completion` into
+`staff_trainings` rows, on `migrations/2026-10-06_learnupon_training_hours.sql`.
+Owner-only while it is tested (the Partners tab card).
+
+- **Who:** the owner picks a staff member on the card before "Open partner
+  courses"; the Worker writes `learnupon_learner_links` (learner email ->
+  staff, facility) after checking the staff member is in a home the owner
+  owns. The latest link made before the completion wins.
+- **How many hours:** ONLY from `title22_course_catalog`, matched on
+  `external_ref` = LearnUpon course id, split by `courseToEntries` (the Worker's
+  copy is tested against `training-rules.js`). Never from the payload's credits.
+  A course with no catalog row logs no hours. Real courses get their hours from
+  the partner; do not invent them. The one catalog row the migration adds is
+  the sandbox test course, 1 h, inactive, labelled as a test.
+- Every completion's log row says what happened: `training_status` recorded /
+  no_staff_link / no_course_hours / not_completed. A failed training write is
+  500 so LearnUpon retries; `source_ref = learnupon:<enrollment id>` keeps a
+  retry from doubling the hours.
+- **Tello says who finished (2026-10-06, the owner's ask).** `telloPartnerNews`
+  in index.html reads this home's `staff_trainings` rows with a `learnupon:`
+  source_ref from the last 14 days and, for each completion not yet announced
+  in this browser (`title22_tello_partner_seen_<facility>`), adds a dock line:
+  who, which course, how many hours, under Training. It opens the dock unless a
+  form or the tour is open. Runs 2.5 s after the home opens (staff loaded) and
+  whenever the tab comes back into view. Written in the page, no AI call.
+- **Staff train from their own phone (2026-10-06, the owner: "I cannot hand
+  them the computer").** "Send training link" on the same Partners card makes
+  `title22.app/train/<token>` for the picked staff member (`_redirects` sends
+  it to the Worker's `/t/<token>`). Opening it shows a Title22 welcome page
+  (first name, what happens next, one "Start my training" button) and signs
+  nobody on; only the button's POST signs them on by SQSSO, so a text
+  message's link preview cannot create a learner. The page names no partner:
+  the optional `TRAINING_PARTNER_NAME` secret fills it in, else "our training
+  partner", so it works for any training center (2026-10-07). The learner
+  is `staff-<staff id>@learners.title22.app`, a made-up address naming the
+  record and no person; the learner link is written when the link is made.
+  Only the token's SHA-256 is stored (`learnupon_staff_invites`,
+  `migrations/2026-10-06b_learnupon_staff_links.sql`); 30 days; a new link
+  switches the old one off. Also a "Training link" button on each active
+  staff card, so no customer waits on us (the owner: "they will not contact
+  me and wait for my reply"). Who: the home's owner or an `administrator` in
+  `facility_members`. ONE SWITCH, two places, still OFF: `STAFF_LINKS_OPEN`
+  in the Worker's wrangler.toml and `T22_STAFF_TRAINING_LINKS_OPEN` in
+  index.html. Off = only the app owner. Turn both on only once the partner
+  agrees, because every link opened creates a learner on THEIR portal. A new
+  learner sees only courses the portal enrols them in.
+- **The Training tab leads with what each person still needs (2026-10-06,
+  the owner: the menu's Training should open the courses they need to
+  finish).** "What each person still needs" now sits above Log training. Each
+  person gets a "Courses to finish" box: the partner courses
+  (`title22_course_catalog`, active, `external_ref` set) that cover the gaps
+  the requirement checks already report, and "Send <name> a training link".
+  Same switch as the links: owner-only until the partner agrees. Empty until
+  the partner's real courses and hours are in the catalog. This is the HOME
+  flow; trainers and their students are a separate flow, not designed yet.
+- **Staff land in their courses (2026-10-07).** LearnUpon's sign-on link
+  cannot put anyone in a course or a group (SQSSO has no such parameter); only
+  the portal API can. So "Start my training" (`POST /t/<token>`,
+  `joinStaffGroup`) first finds or makes the staff learner through the API
+  (with their Title22 name), enrolls them in every course in
+  `LEARNUPON_STAFF_COURSE_IDS` and, if set, adds them to the group
+  `LEARNUPON_STAFF_GROUP_ID` (both vars in wrangler.toml), and only then signs
+  on. The course list is the four practice-site numbers the partner emailed on
+  2026-10-07; the real site's numbers differ. Needs the Worker secrets
+  `LEARNUPON_API_USERNAME` / `LEARNUPON_API_PASSWORD` (the portal's API key
+  pair; generating a new pair replaces the old one). Any failure still signs
+  the person on; `/health` says `staff_group.ready`. The welcome page (GET)
+  never calls the portal.
+- **Tello knows where things are (2026-10-07, the owner: first-time users ask
+  "where do I find...").** Rule 5 of `TELLO_CHARACTER` lists the account menu
+  top to bottom, in its own labels, with the main button on each screen. Used
+  by both the Tello tab and the dock. Change a menu label or move a tab, and
+  change rule 5 in the same PR, or Tello sends people to a screen that is not
+  there.
+- **All three Tellos know this (2026-10-06).** App Tello (tab and dock) gets
+  `online_courses` in `buildFacilityContext` — `training_links` from
+  `canSendTrainingLink()`, plus the active catalog courses — and rule 4 of
+  `TELLO_CHARACTER` describes the buttons only when that is true. Tello's page
+  (`title22-knowledge.js`) and Partner Tello (`knowledge.md`) say it is being
+  tested with one partner and not open yet. Never name the partner in any of
+  them. When the switch is flipped, update both knowledge files in the same PR.
+- **Enrollment is by email + course_id (2026-10-07, PR #191).** `POST
+  enrollments` with `{"Enrollment":{"email","course_id"}}`, as LearnUpon's own
+  API docs say; `user_id` is not a parameter. Proven twice that day: an
+  existing learner (4 x 200) and a brand-new one (user created, 4 x 200). A new
+  learner then meets LearnUpon's own "complete your profile" page (a portal
+  setting, not ours); the name is already filled in and Save moves on.
+- **The welcome page shows a how-to video (2026-10-08).**
+  `videos/staff-training-howto.mp4` (+ `.jpg` poster), served by title22.app,
+  linked from `welcomePage`. 47 s, Tello's voice plus captions, an invented
+  staff member, no partner name or logo. It draws the course site's screens,
+  so if the real portal looks different, remake the video. Never autoplay.
+- **The four practice courses have catalog rows (2026-10-08).**
+  `migrations/2026-10-08_learnupon_sandbox_courses.sql`: hours from the
+  partner's 2026-10-08 email (2, 3, 1, 1), ADL -> personal_care, Dementia ->
+  dementia, inactive. Before it, a completion of any of the four logged
+  `no_course_hours` and no hours reached the record. The Worker also logs an
+  unreadable `dateCompleted` as `not_completed` instead of throwing a 500.
+- Made-up learner addresses: the partner said on 2026-10-07 they are "100%
+  fine" (they do the same by hand). Opening the links past the owner
+  (`STAFF_LINKS_OPEN` + `T22_STAFF_TRAINING_LINKS_OPEN`) is still the owner's
+  call, and the real portal's course ids are still unknown.
