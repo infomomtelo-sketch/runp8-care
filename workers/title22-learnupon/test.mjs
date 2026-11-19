@@ -546,7 +546,7 @@ const v2Headers = (body, secret = SECRET) => ({
   // Real course IDs since Oct 28, 2026 (the practice-site IDs 3768123,3768117,
   // 3768111,3768109 were replaced when the switch to the real portal was made
   // permanent in this file); this check keeps a deploy from restoring them.
-  ok(m && m[1] === '5321476,5320040,5321455,5321607', 'wrangler.toml lists the four real-portal courses');
+  ok(m && m[1] === '5321842,5321840,5321836,5321832', 'wrangler.toml lists the four designated sample courses');
 }
 
 insertStatus = 201;

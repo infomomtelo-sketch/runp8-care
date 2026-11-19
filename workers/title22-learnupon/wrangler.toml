@@ -48,13 +48,17 @@ compatibility_flags = ["nodejs_compat"]
 SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
 STAFF_LINKS_OPEN = "false"
 # Courses every staff learner is enrolled in before signing on, by the
-# portal's course numbers (comma-separated). PRODUCTION numbers, from CTC's
-# course list for the real portal (Hannah's spreadsheet, 2026-10-23): the
-# same four courses as the practice set — Diabetes (5321476), Activities of
-# Daily Living - The Essentials (5320040), Dementia: This is Your Brain on
-# Music (5321455), Sexual Harassment (Non-Supervisory) (5321607). Switched
-# 2026-10-28, the day SQSSO was confirmed enabled on the real portal.
-LEARNUPON_STAFF_COURSE_IDS = "5321476,5320040,5321455,5321607"
+# portal's course numbers (comma-separated). These are the agreement's
+# designated FREE SAMPLE courses (Exhibit B, Sections 5.1-5.2; Hannah's
+# spreadsheet, 2026-10-23), confirmed by Hannah Wright on 2026-11-16:
+# Caregiving 101 (5321842), Infection Control - 1 Hour (5321840),
+# Recognizing and Reporting Abuse - 1 Hour (5321836), Residents' Rights
+# for RCFE (5321832). The shared list carries the RCFE Rights course;
+# for an ARF home, swap 5321832 for 5321834 (Residents' Rights for ARF).
+# Replaced 2026-11-16: the previous four (Diabetes, ADL Essentials,
+# Dementia: This is Your Brain on Music, Sexual Harassment) are paid
+# catalog courses, not the designated samples.
+LEARNUPON_STAFF_COURSE_IDS = "5321842,5321840,5321836,5321832"
 # Optionally also a portal group whose courses they get (its number). Empty =
 # no group step.
 LEARNUPON_STAFF_GROUP_ID = ""
