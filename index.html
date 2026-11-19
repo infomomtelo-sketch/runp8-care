@@ -810,9 +810,9 @@
 <!-- LANDING -->
 <div id="page-landing" class="page active">
    <div class="hero" style="padding-bottom:0">
-    <div class="hero-badge">Checklists for California RCFEs and ARFs</div>
-    <h1>Run a facility <span>DSS is proud to inspect</span></h1>
-    <p>Genuine compliance every day — not just inspection day. Title22 warns you before a staff certification lapses, keeps your training hours documented and your checklist current, so when DSS arrives, the work speaks for itself. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
+    <div class="hero-badge">Staff training for California RCFEs and ARFs</div>
+    <h1>Your staff train here. <span>Their records file themselves.</span></h1>
+    <p>Caregivers take their required courses inside Title22 — one sign-in, on their phone — and every completion files itself into their staff record, tracked automatically. Staff files, clearances and the DSS checklist live in the same place, and Title22 warns you before a certification lapses. <strong>No PHI by design</strong> — no resident records, no MAR, nothing to breach.</p>
     <div class="hero-actions">
       <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Create your account</button>
       <!-- The third door. Until 2026-09-19 this page offered exactly two
@@ -874,6 +874,7 @@
       <div class="feature-card" style="padding:1rem 1.25rem"><div style="font-weight:600;font-size:14px">Residents&rsquo; Rights for RCFE - 1 Hour</div></div>
     </div>
     <div style="text-align:center"><a class="btn btn-primary btn-lg" style="text-decoration:none" href="https://title22-addon-pay.pages.dev/" target="_blank" rel="noopener">See courses and prices</a></div>
+    <div style="text-align:center;margin-top:12px"><a class="btn btn-ghost btn-lg" style="text-decoration:none" href="/?src=sample" onclick="try{sessionStorage.setItem('title22_src','sample')}catch(e){};var sn=document.getElementById('sample-note-signup');if(sn)sn.style.display='';showPage('signup');return false;">Try a free sample course — open your account</a></div>
   </div>
   <div class="features" style="margin-top:40px">
     <div style="text-align:center;margin-bottom:36px">
@@ -963,6 +964,13 @@
       <div id="proof-note-signup" style="display:none;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;text-align:left">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px">The 30-Day Proof</div>
         <p style="margin:0;font-size:13.5px;line-height:1.5">Thirty days to see your homes on one screen — staff, training and the checklist together. It is built for a two-home pilot, so both of your homes run side by side while you decide.</p>
+      </div>
+      <!-- Free sample context. Shown ONLY when the visitor arrived on a
+           ?src=sample link (the homepage's free-sample buttons) — the
+           capture below unhides it, same mechanism as the Proof note. -->
+      <div id="sample-note-signup" style="display:none;background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;text-align:left">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px">Your free sample courses</div>
+        <p style="margin:0;font-size:13.5px;line-height:1.5">You came for a free sample course. Create your account and your staff can take the free samples inside Title22 — Caregiving 101, Infection Control, Recognizing and Reporting Abuse, and Residents' Rights for your license type. Samples carry no certificate, and every completion is tracked in their staff record automatically.</p>
       </div>
       <h2>Start your free trial</h2>
       <p id="signup-trial-line">30 days free · No credit card · Nothing to cancel</p>
@@ -1922,11 +1930,11 @@ async function openPartnerTraining(){
   const show=(t,bad)=>{if(msg){msg.style.display='block';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t;}};
   // The Free plan does not include the online courses. Adding them is $29 a
   // month (the Title22 subscription, which buys the training records and the
-  // auto-filing) plus the Training Add-On by licensed beds — $49 Small (1–6
-  // beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+). The trial
+  // auto-filing) plus the Training Add-On by licensed beds — $20 Small (1–6
+  // beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). The trial
   // still includes the courses, so this only ever fires on Free.
   if(t22Plan==='free'){
-    show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $49 Small (1–6 beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);
+    show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);
     return;
   }
   const win=window.open('about:blank','_blank');
@@ -1966,7 +1974,7 @@ function canSendTrainingLink(){
 async function requestStaffTrainingLink(staffId,who,out,show){
   // Same gate as openPartnerTraining: the Free plan does not include the
   // online courses — adding them is $29/mo plus the Training Add-On by beds.
-  if(t22Plan==='free'){show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $49 Small (1–6 beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);return false;}
+  if(t22Plan==='free'){show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);return false;}
   show('Making the link…');
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -2629,6 +2637,10 @@ document.addEventListener('visibilitychange',()=>{
     if (effectiveSrc === 'pilot') {
       const proofNote = document.getElementById('proof-note-signup');
       if (proofNote) proofNote.style.display = '';
+    }
+    if (effectiveSrc === 'sample') {
+      const sampleNote = document.getElementById('sample-note-signup');
+      if (sampleNote) sampleNote.style.display = '';
     }
   } catch (e) { /* the note is context; signup works without it */ }
 })();
