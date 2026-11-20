@@ -1808,7 +1808,7 @@
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="font-size:24px;color:var(--text2)"><svg class="ic ic-lg"><use href="#i-lock"/></svg></div>
           <div style="flex:1"><div style="font-weight:700;color:var(--red);font-size:15px">Your plan has ended — subscribe to continue</div><div style="font-size:13px;color:var(--red);margin-top:4px">Pick up where you left off. Your facility, staff and documents are all still here.</div></div>
-          <button id="trial-expired-buy" class="btn btn-primary" style="font-size:13px" onclick="openStripe('lite')">Subscribe — Lite $29/mo</button>
+          <button id="trial-expired-buy" class="btn btn-primary" style="font-size:13px" onclick="openStripe('pkg1')">Subscribe — Package $29/mo</button>
         </div>
         <div id="role-unknown-banner" style="display:none;background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
           <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:15px">We couldn't load your permissions</div><div style="font-size:13px;color:var(--text2);margin-top:4px">You're seeing view-only access because your role couldn't be read — not because that's what you were given. Buttons that save or edit will refuse until this clears. Try again, or email <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="93fbf6fffffcd3e7fae7fff6bea1a1bdf0fcfe">[email&#160;protected]</a>.</div></div>
@@ -1837,12 +1837,16 @@
           <div class="card-title">Upgrade your plan</div>
           <div style="display:grid;gap:12px">
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Lite</div><div style="font-size:13px;color:var(--text2)">1 facility · facility &amp; staff compliance · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$29<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button id="buy-lite" onclick="openStripe('lite')" class="btn btn-outline" style="font-size:13px">Subscribe — Lite $29/mo</button></div>
+              <div><div style="font-weight:700;font-size:15px">Package — 1 Home (Tracking + Training)</div><div style="font-size:13px;color:var(--text2)">1 facility · facility &amp; staff compliance · Tello AI assistant · staff training courses included</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$29<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button id="buy-pkg1" onclick="openStripe('pkg1')" class="btn btn-outline" style="font-size:13px">Subscribe — $29/mo</button></div>
             </div>
             <div style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--teal-light)">
-              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Multi-Home <svg class="ic"><use href="#i-star"/></svg></div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · facility &amp; staff compliance · Tello AI assistant</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button id="buy-multi" onclick="openStripe('multi')" class="btn btn-primary" style="font-size:13px">Subscribe — Multi-Home $79/mo</button></div>
+              <div><div style="font-weight:700;font-size:15px;color:var(--teal)">Package — 2–5 Homes (Tracking + Training) <svg class="ic"><use href="#i-star"/></svg></div><div style="font-size:13px;color:var(--teal)">Up to 5 facilities · facility &amp; staff compliance · Tello AI assistant · staff training courses included</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700;color:var(--teal)">$79<span style="font-size:13px;font-weight:400">/mo</span></div><button id="buy-pkg2" onclick="openStripe('pkg2')" class="btn btn-primary" style="font-size:13px">Subscribe — $79/mo</button></div>
+            </div>
+            <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div><div style="font-weight:700;font-size:15px">Package — 6+ Homes (Tracking + Training)</div><div style="font-size:13px;color:var(--text2)">6 or more facilities · facility &amp; staff compliance · Tello AI assistant · staff training courses included</div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$139<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo</span></div><button id="buy-pkg3" onclick="openStripe('pkg3')" class="btn btn-outline" style="font-size:13px">Subscribe — $139/mo</button></div>
             </div>
             <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Agency</div><div style="font-size:13px;color:var(--text2)">Unlimited facilities · facility &amp; staff compliance · Tello AI assistant</div></div>
@@ -1857,7 +1861,7 @@
               <div><div style="font-weight:700;font-size:15px">Tello Staff</div><div style="font-size:13px;color:var(--text2)">Schedule board &middot; Today&rsquo;s Board &middot; staff directory &middot; Ask Tello copilot. Free during your 30-day proof.</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:1.4rem;font-weight:700">$10<span style="font-size:13px;font-weight:400;color:var(--text2)">/mo per Home</span></div><button onclick="window.open('https://buy.stripe.com/5kQ00ieqC6p0g2fbfUg360v','_blank')" class="btn btn-outline" style="font-size:13px">Add Tello Staff</button></div>
             </div>
-            <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div id="billing-training-addon-row" style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Staff Training</div><div style="font-size:13px;color:var(--text2)">Online staff courses from Community Training Connection. Completions land in your staff files.</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">$20&ndash;$100/mo by licensed beds</div><button onclick="window.open('https://title22-addon-pay.pages.dev/','_blank')" class="btn btn-outline" style="font-size:13px">See courses &amp; prices</button></div>
             </div>
@@ -1901,6 +1905,15 @@ const STRIPE_LITE       = 'https://buy.stripe.com/4gMcN41DQfZA5nBgAeg360l';
 // STRIPE_PRO stays defined below for the legacy subscribers still on it. It is
 // no longer what this button opens.
 const STRIPE_MULTI      = 'https://buy.stripe.com/9B6fZg5U64gS17lfwag360m';
+// Bundle packages (2026-11-19): tracking + training in one payment. The
+// webhook maps these prices onto the same lite/multi plans as the links
+// above AND stamps profiles.title22_training_included, which is what opens
+// the courses for a package account (see t22TrainingIncluded). The Lite and
+// Multi links above stay exactly as they are for existing subscribers and
+// renewals — a package is a new offer, not a change to anyone's plan.
+const STRIPE_PKG1       = 'https://buy.stripe.com/3cIdR85U64gS3ft83Ig360w';
+const STRIPE_PKG2       = 'https://buy.stripe.com/dRmdR84Q24gS03hbfUg360x';
+const STRIPE_PKG3       = 'https://buy.stripe.com/28E4gyfuG6p003habQg360y';
 // Paste this into each Payment Link's "After payment" setting in the Stripe
 // dashboard (Don't show confirmation page -> Redirect to):
 //     https://title22.app#welcome
@@ -1933,7 +1946,7 @@ async function openPartnerTraining(){
   // auto-filing) plus the Training Add-On by licensed beds — $20 Small (1–6
   // beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). The trial
   // still includes the courses, so this only ever fires on Free.
-  if(t22Plan==='free'){
+  if(t22Plan==='free'&&!t22TrainingIncluded){
     show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);
     return;
   }
@@ -1964,8 +1977,9 @@ const LEARNUPON_STAFF_LINK_WORKER = 'https://title22-learnupon.infomomtelo.worke
 const T22_STAFF_TRAINING_LINKS_OPEN = false;
 function canSendTrainingLink(){
   // The Free plan does not include the online courses, so there is no link
-  // to send. The trial still includes them.
-  return t22Plan!=='free' && !demoMode && canEdit() && currentUserRole==='administrator' && (T22_STAFF_TRAINING_LINKS_OPEN || isPartnerAdmin);
+  // to send. The trial still includes them, and so does a bundle package
+  // (t22TrainingIncluded), whatever plan the account otherwise reads as.
+  return (t22Plan!=='free'||t22TrainingIncluded) && !demoMode && canEdit() && currentUserRole==='administrator' && (T22_STAFF_TRAINING_LINKS_OPEN || isPartnerAdmin);
 }
 // A link sent to one staff member, who opens it on their own phone, wherever
 // they are, and lands on the course portal as their own learner. The Worker
@@ -1974,7 +1988,7 @@ function canSendTrainingLink(){
 async function requestStaffTrainingLink(staffId,who,out,show){
   // Same gate as openPartnerTraining: the Free plan does not include the
   // online courses — adding them is $29/mo plus the Training Add-On by beds.
-  if(t22Plan==='free'){show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);return false;}
+  if(t22Plan==='free'&&!t22TrainingIncluded){show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);return false;}
   show('Making the link…');
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -2289,6 +2303,9 @@ const STRIPE_PLANS = {
   // STRIPE_PRO these two were the same key, so one silently overwrote the
   // other and a Multi-Home checkout recorded itself as 'pro'.
   [STRIPE_MULTI]:'multi',
+  [STRIPE_PKG1]:'pkg1',
+  [STRIPE_PKG2]:'pkg2',
+  [STRIPE_PKG3]:'pkg3',
   [STRIPE_STARTER]:'starter',
   [STRIPE_PRO]:'pro',
   [STRIPE_SPECIALIST]:'specialist',
@@ -2301,7 +2318,10 @@ const STRIPE_PLANS = {
 // string, and this app has no server to create Checkout Sessions).
 const T22_PLAN_LINKS = {
   lite:STRIPE_LITE,
-  multi:STRIPE_MULTI
+  multi:STRIPE_MULTI,
+  pkg1:STRIPE_PKG1,
+  pkg2:STRIPE_PKG2,
+  pkg3:STRIPE_PKG3
   // starter, pro and agency are all deliberately absent, for one reason.
   //
   // The tier rule is that starter/pro/specialist/agency stay as LABELS for
@@ -4185,6 +4205,7 @@ let t22Entitled=false;                    // fail closed: locked until verified 
 let t22Plan='trial';
 let t22Limits={facilities:0,ai:false};    // fail closed
 let t22TrialDaysLeft=0;
+let t22TrainingIncluded=false;    // profiles.title22_training_included, stamped by the webhook when a bundle package (tracking + training in one payment) is bought. Opens the courses on any plan and hides the Training Add-On prompts for that account.
 let t22EntitlementVerified=true;  // false => we could not read the account, not that it lapsed
 let t22TrialActivationError=null; // set when the trial could not be stamped on the profile
 let t22RoleLookupFailed=false;    // true => 'readonly' is a fallback, not a granted role
@@ -4197,6 +4218,19 @@ async function resolveEntitlement(){
   if(first.ok)return first;
   await new Promise(r=>setTimeout(r,700));
   return await readEntitlement();
+}
+
+// Whether this account bought a bundle package, whose price includes the
+// training courses. Read on its own because readEntitlement can answer from
+// the subscriptions table without ever touching profiles — the flag would
+// be missed exactly for the accounts that have it. Fail-safe FALSE: an
+// unread flag leaves the Training Add-On prompts visible, it never takes
+// access away.
+async function readTrainingIncluded(){
+  try{
+    const{data,error}=await sb.from('profiles').select('title22_training_included').eq('id',currentUser.id).maybeSingle();
+    return !error&&!!data&&data.title22_training_included===true;
+  }catch(e){return false;}
 }
 
 // A paid subscription lives in public.subscriptions, written by Stripe —
@@ -4375,6 +4409,7 @@ async function resolveTierLimits(){
     }
   }
   t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+  t22TrainingIncluded=demoMode?false:await readTrainingIncluded();
   // Read-only is for an account we positively read and that has run out — not
   // for one we failed to read. The sandbox is excluded: it is already
   // view-only by construction, and a second banner would just be noise.
@@ -5040,6 +5075,13 @@ function applyTierUI(){
       'Each role sees only what it needs — a caregiver never sees billing, and a read-only invite is what an inspector would get.';
     if(c)c.textContent='Invite your students';
   }
+  // Bundle package accounts already have the training courses in their
+  // plan — offering them the Training Add-On would sell them what they
+  // already have. The rows stay for everyone else, exactly as before.
+  const dtc=document.getElementById('dash-training-addon-card');
+  if(dtc)dtc.style.display=t22TrainingIncluded?'none':'';
+  const btr=document.getElementById('billing-training-addon-row');
+  if(btr)btr.style.display=t22TrainingIncluded?'none':'';
 }
 
 // Re-check the account after a failed read, without making anyone reload.
@@ -5103,6 +5145,7 @@ async function refreshAccess(manual){
     return;
   }
   t22Entitled=true;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
+  t22TrainingIncluded=await readTrainingIncluded();
   t22Limits=TIER_LIMITS[ent.plan]||{facilities:1,ai:false};
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
@@ -11063,9 +11106,15 @@ async function loadBilling(){
     const ent=await resolveEntitlement();
     const plan=ent.plan;
     const planLabels=T22_LABEL;
+    // A bundle package shows its package name, not the underlying plan:
+    // the webhook maps packages onto lite/multi, and the training flag is
+    // the only thing that tells a package account from a legacy one. The
+    // multi label names no home count — multi carries both the 2–5 and
+    // the 6+ packages, and this screen must not claim the wrong one.
+    const planName=t22TrainingIncluded&&plan==='lite'?'Package — 1 Home (Tracking + Training)':t22TrainingIncluded&&plan==='multi'?'Package — Multi-Home (Tracking + Training)':(planLabels[plan]||plan);
     // Display only, keyed on the plan the account is ALREADY on — never an
     // offer. The only tiers offered are the three cards in the billing tab
-    // (Lite, Multi-Home, Agency as Contact Sales). $49 and $149 stay because
+    // (the three Packages, Agency as Contact Sales). $49 and $149 stay because
     // legacy starter and specialist subscribers still pay them, and blanking
     // the figure would show a paying customer a plan with no price on it.
     const planPrices={trial:'$0',edu:'$0',free:'$0',lite:'$29/mo',multi:'$79/mo',starter:'$49/mo',pro:'$79/mo',specialist:'$149/mo',agency:'Contact Sales'};
@@ -11074,7 +11123,7 @@ async function loadBilling(){
       const daysLeft=ent.daysLeft;
       trialHtml=`<div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--amber)">${daysLeft>0?`<svg class="ic"><use href="#i-clock"/></svg> <strong>${daysLeft} days remaining</strong> on your trial.`:'<svg class="ic"><use href="#i-alert"/></svg> <strong>Trial expired.</strong> Subscribe to continue.'}</div>`;
     }
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planLabels[plan]||plan}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planName}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
 }
 
