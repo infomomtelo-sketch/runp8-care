@@ -37,6 +37,26 @@
 const PRICE_PLANS = {
   'price_1UClAiAH9qPFLg89ln6eHAVa': { plan: 'lite',       facilities: 1,        name: 'Title22 Lite' },        // $29, prod_VDBXSXDdmtFrmh
   'price_1UDWroAH9qPFLg89kAs9h49C': { plan: 'multi-home', facilities: 5,        name: 'Title22 Multi-Home' },  // $79, prod_VDypF9WL2wmjGO
+
+  // The training+tracking PACKAGES, added 2026-11-19 (bundle build). Same
+  // plans as Lite / Multi-Home — a package subscriber's entitlement is the
+  // tier they would have had — plus two package-only fields:
+  //   training: true  — the subscription handler also stamps
+  //                     profiles.title22_training_included, which is what
+  //                     opens the CTC courses in the app with no separate
+  //                     add-on checkout (build sheet Step 3).
+  //   pkg / portionCap — which package this is, and the ceiling on the CTC
+  //                     training portion inside it ($29 pkg <= $20,
+  //                     $79 pkg <= $60, $139 pkg <= $100). Read only by the
+  //                     invoice handler that writes the CTC split ledger.
+  // `facilities` stays documentation-only, as everywhere above: pkg3 reads
+  // Infinity because the app gate treats 6+ homes as uncapped in v1.
+  'price_1UdhR6AH9qPFLg896m0ZBAaL': { plan: 'lite',       facilities: 1,        name: 'Title22 Package — 1 Home (Tracking + Training)',     training: true, pkg: 'pkg1', portionCap: 20 },   // $29, prod_Vf1… (Pkg 1)
+  // Pkg2 price ID VERIFIED char-for-char 2026-11-19 from a zoomed Stripe
+  // Events screenshot: price_1UdhZgAH9qPFLg89txlNvXye (24 chars after
+  // "price_"). An earlier photo read dropped the "l" in "txlNvXye".
+  'price_1UdhZgAH9qPFLg89txlNvXye':  { plan: 'multi-home', facilities: 5,        name: 'Title22 Package — 2–5 Homes (Tracking + Training)', training: true, pkg: 'pkg2', portionCap: 60 },   // $79, prod_Vf1cvvKRK5hdZ7
+  'price_1UdhdFAH9qPFLg89Td1Fs556': { plan: 'multi-home', facilities: Infinity, name: 'Title22 Package — 6+ Homes (Tracking + Training)',  training: true, pkg: 'pkg3', portionCap: 100 },  // $139, prod_Vf1gRkzjojGwSm
   'price_1TkIKtAH9qPFLg89SEmENr5J': { plan: 'starter',    facilities: 1,        name: 'Title22 Starter' },     // legacy subs only
   'price_1TkILaAH9qPFLg8923rgvHHb': { plan: 'pro',        facilities: 5,        name: 'Title22 Pro' },         // $79, the old link Multi-Home was sold on
   'price_1TkIMaAH9qPFLg89SPFZH0aG': { plan: 'specialist', facilities: 5,        name: 'Title22 Specialist' },  // archived, legacy subs only
@@ -325,6 +345,158 @@ function periodEndOf(sub) {
   return isoOrNull(latest);
 }
 
+// --- CTC auto-split ledger (packages only, added 2026-11-19) ---
+//
+// When a package invoice is paid, CTC's share of the training portion inside
+// it is owed: 100% of the portion in the account's first paid month on that
+// package, 50% after (the signed agreement's split). Rather than computing
+// that by hand at statement time, the invoice handler below writes one row
+// to public.ctc_split_ledger per paid package invoice, and the monthly
+// statement is generated from those rows. The payout itself is unchanged —
+// quarterly by ACH, per the agreement.
+
+// The training portion is priced by licensed beds, on the tiers the CTC
+// add-on has always used: $20 = 1-6 beds, $35 = 7-15, $60 = 16-49,
+// $100 = 50+. Inside a package, the beds of all the account's homes are
+// POOLED before the tier is read.
+function portionForBeds(pooledBeds) {
+  if (pooledBeds <= 6) return 20;
+  if (pooledBeds <= 15) return 35;
+  if (pooledBeds <= 49) return 60;
+  return 100;
+}
+
+// The tier, with the package's ceiling applied on top: a $79 package never
+// carries more than a $60 portion no matter how many beds pool into it,
+// because the $100 XL portion lives only in the $139 package.
+function cappedPortion(tier, pooledBeds) {
+  return Math.min(portionForBeds(pooledBeds), tier.portionCap);
+}
+
+// Money in the ledger is DOLLARS, not Stripe cents: the rows feed a
+// statement humans read, and the spec's math is in dollars ($20 portion,
+// $9 kept). The split is computed on the GROSS amounts, the way the
+// agreement's examples compute it — Stripe's processing fee is Title22's
+// cost of taking the payment, not CTC's, so it is never deducted here.
+// title22_keeps is what remains of the invoice after CTC's due.
+function splitAmounts({ portion, firstPaidMonth, invoiceAmount }) {
+  const round2 = n => Math.round(n * 100) / 100;
+  const ctcDue = firstPaidMonth ? portion : round2(portion / 2);
+  return { ctcDue, title22Keeps: round2(invoiceAmount - ctcDue) };
+}
+
+// The account's homes at invoice time. facilities.capacity is the licensed
+// bed count the app's facility form collects; a home with no capacity
+// recorded still counts as a home but contributes 0 beds. Demo/practice
+// rows (is_demo) are not real homes and never count — counting the practice
+// home's invented beds would inflate the portion CTC is owed on.
+async function accountFacilities(env, userId) {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/facilities?user_id=eq.${encodeURIComponent(userId)}&select=id,capacity,is_demo`,
+    { headers: sbHeaders(env) }
+  );
+  if (!res.ok) throw new Error('facilities read failed: HTTP ' + res.status);
+  const rows = await res.json().catch(() => []);
+  return (rows || []).filter(f => !f.is_demo);
+}
+
+async function ledgerSelect(env, query) {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/ctc_split_ledger?${query}`, { headers: sbHeaders(env) });
+  if (!res.ok) throw new Error('ctc_split_ledger read failed: HTTP ' + res.status);
+  const rows = await res.json().catch(() => []);
+  return rows || [];
+}
+
+// Idempotent by construction: invoice_id is UNIQUE in the table and the
+// insert ignores a conflict, so a redelivered (or double-named) invoice
+// event can never create a second row or double-count a split.
+async function insertLedgerRow(env, row) {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/ctc_split_ledger?on_conflict=invoice_id`,
+    {
+      method: 'POST',
+      headers: { ...sbHeaders(env), 'Prefer': 'resolution=ignore-duplicates,return=minimal' },
+      body: JSON.stringify(row),
+    }
+  );
+  if (!res.ok) throw new Error('ctc_split_ledger insert failed: HTTP ' + res.status);
+}
+
+// Write the ledger row for one invoice, if it is a paid package invoice.
+// Returns a warning string when something a human must see went wrong, and
+// null when the row was written or there was legitimately nothing to write.
+// NEVER throws: this is reporting, not entitlement. The plan itself is
+// written by the subscription events, so a ledger failure must not fail the
+// delivery and must not touch activation — the caller surfaces the warning
+// in the 200 body instead, where the delivery log will show it.
+async function writeLedgerForInvoice(env, invoice) {
+  try {
+    const lines = (invoice.lines && invoice.lines.data) || [];
+    let tier = null, priceId = null;
+    for (const line of lines) {
+      const pid = line.price && line.price.id;
+      if (pid && PRICE_PLANS[pid] && PRICE_PLANS[pid].pkg) { tier = PRICE_PLANS[pid]; priceId = pid; break; }
+    }
+    if (!tier) return null;                    // not a package invoice — nothing to split
+    const amountPaid = typeof invoice.amount_paid === 'number' ? invoice.amount_paid : 0;
+    if (amountPaid <= 0) return null;          // a $0 invoice (e.g. trial start) pays nobody
+
+    const subscriptionId = typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : (invoice.subscription && invoice.subscription.id) || null;
+    const email = invoice.customer_email || await stripeCustomerEmail(env, invoice.customer);
+    const userId = await resolveUserId(env, { subscriptionId, email });
+    if (!userId) {
+      const note =
+        `CTC LEDGER SKIPPED — paid package invoice ${invoice.id} could not be attributed ` +
+        `to an account (subscription ${subscriptionId || '(none)'}, email ${email || '(none)'}). ` +
+        `Write the row by hand from the Stripe invoice.`;
+      console.error(note);
+      return note;
+    }
+
+    // Idempotency, first layer: a redelivery of an invoice already in the
+    // ledger is a no-op before any math happens.
+    const dupe = await ledgerSelect(env, `invoice_id=eq.${encodeURIComponent(invoice.id)}&select=invoice_id&limit=1`);
+    if (dupe.length) return null;
+
+    const facilities = await accountFacilities(env, userId);
+    const homesCount = facilities.length;
+    const pooledBeds = facilities.reduce((sum, f) => sum + (typeof f.capacity === 'number' ? f.capacity : 0), 0);
+    const portion = cappedPortion(tier, pooledBeds);
+
+    // First paid month is per account AND package (build sheet Step 2): the
+    // first ledger row this account has on this package is the month CTC
+    // takes 100% of the portion.
+    const prior = await ledgerSelect(env, `profile_id=eq.${encodeURIComponent(userId)}&package=eq.${encodeURIComponent(tier.pkg)}&select=invoice_id&limit=1`);
+    const firstPaidMonth = prior.length === 0;
+
+    const invoiceAmount = amountPaid / 100;
+    const { ctcDue, title22Keeps } = splitAmounts({ portion, firstPaidMonth, invoiceAmount });
+
+    await insertLedgerRow(env, {
+      invoice_id: invoice.id,
+      profile_id: userId,
+      package: tier.pkg,
+      package_price_id: priceId,
+      homes_count: homesCount,
+      pooled_beds: pooledBeds,
+      portion,
+      first_paid_month: firstPaidMonth,
+      ctc_due: ctcDue,
+      title22_keeps: title22Keeps,
+      invoice_amount: invoiceAmount,
+    });
+    return null;
+  } catch (e) {
+    const note =
+      `CTC LEDGER FAILED for invoice ${invoice && invoice.id}: ${(e && e.message) || String(e)} ` +
+      `— plan activation is unaffected; write the row by hand or replay the event.`;
+    console.error(note);
+    return note;
+  }
+}
+
 // Everything this Worker needs from its environment, checked before any of it
 // is used. This exists because of the 2026-09-13 outage, and the shape of that
 // outage is the argument for it:
@@ -450,7 +622,7 @@ export default {
         // renewal and payment failure alike.
         case 'customer.subscription.created':
         case 'customer.subscription.updated': {
-          let { plan, priceId, metaPlan } = planFromSubscription(obj);
+          let { plan, priceId, metaPlan, tier } = planFromSubscription(obj);
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           if (!userId) {
@@ -520,6 +692,14 @@ export default {
           const active = obj.status === 'active' || obj.status === 'trialing';
           await patchProfile(env, userId, {
             title22_plan: active ? plan : undefined,
+            // Package prices only: training is inside the price, so stamp
+            // the flag the app's training gate reads. `tier` is set only
+            // when the price matched PRICE_PLANS directly — an event rescued
+            // via product or metadata does not stamp it, which is one more
+            // reason the loud rescue warnings above have to be acted on.
+            // undefined on every non-package price, so JSON.stringify drops
+            // the key and nothing changes for Lite/Multi-Home/legacy.
+            title22_training_included: (active && tier && tier.training) ? true : undefined,
             // A paid plan is being written, so the trial is over: clear its
             // end stamp in the same patch. readEntitlement checks paid
             // plans first, but other readers of this column (the email
@@ -566,6 +746,28 @@ export default {
           break;
         }
 
+        // A package invoice was paid. The plan itself is decided by the
+        // subscription events above; this event ONLY writes the CTC split
+        // ledger row (the auto-split, added 2026-11-19). Both spellings are
+        // handled because Stripe has used both across API versions —
+        // invoice.payment_succeeded is the name the build sheet uses, and
+        // invoice.paid is its current twin; the ledger insert is idempotent
+        // per invoice_id, so an invoice arriving under both names still
+        // produces exactly one row. writeLedgerForInvoice never throws, so
+        // a ledger problem can never fail this delivery or touch plan
+        // activation — it comes back as a warning in the 200 body.
+        //
+        // NOTE: the `memorable-wonder` destination must be subscribed to
+        // these event types in the Stripe dashboard, or this case never
+        // runs. Today it subscribes only to checkout.session.completed and
+        // the customer.subscription.* events (see wrangler.toml).
+        case 'invoice.payment_succeeded':
+        case 'invoice.paid': {
+          const note = await writeLedgerForInvoice(env, obj);
+          if (note && !warning) warning = note;
+          break;
+        }
+
         default:
           // Everything else is acknowledged and ignored. Returning anything
           // other than 2xx makes Stripe retry an event we do not want.
@@ -592,3 +794,8 @@ export default {
     });
   },
 };
+
+// Named exports for the test suite (test.mjs), following the convention of
+// the other Workers in this repo: the default export above is the Worker
+// itself; these are the pure pieces a test can check without a network.
+export { PRICE_PLANS, portionForBeds, cappedPortion, splitAmounts };
