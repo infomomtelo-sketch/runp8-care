@@ -6,6 +6,12 @@
 // verified char-for-char on 2026-11-19 from a zoomed Stripe Events
 // screenshot. These tests prove the map and the ledger math are consistent
 // for the key as written.
+//
+// Cap-fix (2026-11-19): the suite also covers profiles.title22_package —
+// written for package prices, null for directly matched legacy prices,
+// cleared on a package -> legacy switch, and untouched by cancellation
+// (mirroring the deployed deletion handler). 29 original checks + 6
+// cap-fix checks = 35.
 import { createHmac } from 'node:crypto';
 import worker, { PRICE_PLANS, portionForBeds, cappedPortion, splitAmounts } from './index.js';
 
@@ -24,6 +30,7 @@ const PKG1 = 'price_1UdhR6AH9qPFLg896m0ZBAaL';
 const PKG2 = 'price_1UdhZgAH9qPFLg89txlNvXye'; // verified 2026-11-19 — see header note
 const PKG3 = 'price_1UdhdFAH9qPFLg89Td1Fs556';
 const LITE = 'price_1UClAiAH9qPFLg89ln6eHAVa';
+const MULTI = 'price_1UDWroAH9qPFLg89kAs9h49C';
 
 const U = {
   A: 'aaaaaaaa-0000-0000-0000-000000000001',
@@ -209,6 +216,59 @@ ok(PRICE_PLANS[PKG1].training && PRICE_PLANS[PKG2].training && PRICE_PLANS[PKG3]
   const p = lastPatchFor(U.D);
   ok(res.status === 200 && p && p.body.title22_plan === 'lite' && !('title22_training_included' in p.body),
     'legacy Lite subscription: plan lite, NO training flag key written');
+}
+
+// ---------- cap-fix: title22_package (statement 5) ----------
+{
+  const res = await send(subEvent('sub_a2', PKG1, 'A'));
+  const p = lastPatchFor(U.A);
+  ok(res.status === 200 && p && p.body.title22_package === 'pkg1',
+    'cap-fix: pkg1 subscription writes title22_package = pkg1');
+}
+{
+  const res = await send(subEvent('sub_b2', PKG2, 'B'));
+  const p = lastPatchFor(U.B);
+  ok(res.status === 200 && p && p.body.title22_package === 'pkg2',
+    'cap-fix: pkg2 subscription writes title22_package = pkg2');
+}
+{
+  const res = await send(subEvent('sub_c2', PKG3, 'C'));
+  const p = lastPatchFor(U.C);
+  ok(res.status === 200 && p && p.body.title22_package === 'pkg3',
+    'cap-fix: pkg3 subscription writes title22_package = pkg3');
+}
+{
+  const res = await send(subEvent('sub_d2', LITE, 'D'));
+  const p = lastPatchFor(U.D);
+  ok(res.status === 200 && p && 'title22_package' in p.body && p.body.title22_package === null,
+    'cap-fix: legacy Lite subscription writes title22_package = null (key present, no package)');
+}
+{
+  // The downgrade the null exists for: pkg3 first, then a move back to a
+  // legacy price. The second event must clear the package, or the app
+  // would keep a downgraded account uncapped on the stale 'pkg3'.
+  await send(subEvent('sub_g2', PKG3, 'G'));
+  const before = lastPatchFor(U.G);
+  const res = await send({ ...subEvent('sub_g3', MULTI, 'G'), type: 'customer.subscription.updated' });
+  const p = lastPatchFor(U.G);
+  ok(before && before.body.title22_package === 'pkg3' && res.status === 200
+    && p && p.body.title22_plan === 'multi' && p.body.title22_package === null,
+    'cap-fix: package -> legacy switch clears title22_package to null');
+}
+{
+  // Cancellation mirrors the deployed handler exactly: it stamps only the
+  // period end. title22_plan, the training flag and the package are all
+  // left in place — access is locked by title22_plan_expires_at, and the
+  // app lifts the pkg3 cap only for an entitled account, so the stale
+  // package column cannot uncap a cancelled account. See cap-fix notes.
+  const res = await send({ type: 'customer.subscription.deleted', data: { object: {
+    id: 'sub_a1', customer: CUS.A, status: 'canceled',
+    items: { data: [{ price: { id: PKG1 }, current_period_end: 1799999999 }] },
+  } } });
+  const p = lastPatchFor(U.A);
+  ok(res.status === 200 && p && !!p.body.title22_plan_expires_at
+    && !('title22_package' in p.body) && !('title22_training_included' in p.body) && !('title22_plan' in p.body),
+    'cap-fix: cancellation stamps only the period end — package and flag left in place, as deployed');
 }
 
 // ---------- invoice events: the ledger ----------

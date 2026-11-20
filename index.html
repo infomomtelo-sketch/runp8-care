@@ -4206,6 +4206,7 @@ let t22Plan='trial';
 let t22Limits={facilities:0,ai:false};    // fail closed
 let t22TrialDaysLeft=0;
 let t22TrainingIncluded=false;    // profiles.title22_training_included, stamped by the webhook when a bundle package (tracking + training in one payment) is bought. Opens the courses on any plan and hides the Training Add-On prompts for that account.
+let t22Package=null;    // profiles.title22_package ('pkg1'|'pkg2'|'pkg3'), stamped by the same webhook events. null = no package (legacy, trial, free). Only pkg3 changes anything: it lifts the facility cap, which the plan key cannot express — pkg3 rides on 'multi', whose cap of 5 is Pkg2's and legacy Multi-Home's.
 let t22EntitlementVerified=true;  // false => we could not read the account, not that it lapsed
 let t22TrialActivationError=null; // set when the trial could not be stamped on the profile
 let t22RoleLookupFailed=false;    // true => 'readonly' is a fallback, not a granted role
@@ -4231,6 +4232,22 @@ async function readTrainingIncluded(){
     const{data,error}=await sb.from('profiles').select('title22_training_included').eq('id',currentUser.id).maybeSingle();
     return !error&&!!data&&data.title22_training_included===true;
   }catch(e){return false;}
+}
+
+// Which bundle package this account bought, if any. Read on its own for
+// the same reason as the flag above: readEntitlement can answer from the
+// subscriptions table without ever touching profiles, so a package read
+// threaded through it would be missed exactly for the accounts that have
+// one. Fail-safe NULL: an unread package leaves the plan's own facility
+// cap in force — a pkg3 account reads as capped at 5 until a read
+// succeeds, never uncapped by accident. Anything that is not one of the
+// three known package keys is treated as no package.
+async function readPackage(){
+  try{
+    const{data,error}=await sb.from('profiles').select('title22_package').eq('id',currentUser.id).maybeSingle();
+    if(error||!data)return null;
+    return ['pkg1','pkg2','pkg3'].includes(data.title22_package)?data.title22_package:null;
+  }catch(e){return null;}
 }
 
 // A paid subscription lives in public.subscriptions, written by Stripe —
@@ -4410,6 +4427,7 @@ async function resolveTierLimits(){
   }
   t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
   t22TrainingIncluded=demoMode?false:await readTrainingIncluded();
+  t22Package=demoMode?null:await readPackage();
   // Read-only is for an account we positively read and that has run out — not
   // for one we failed to read. The sandbox is excluded: it is already
   // view-only by construction, and a second banner would just be noise.
@@ -4423,6 +4441,17 @@ async function resolveTierLimits(){
   // facilities of your own — inheriting 'agency' from a team you were invited
   // to must not hand you five facilities on somebody else's subscription.
   if(t22CoveredByFacility)t22Limits={...t22Limits,facilities:0};
+  // The 6+ Homes package (pkg3) rides on plan 'multi', whose 5-facility
+  // cap belongs to Pkg2 and to legacy Multi-Home — the package column is
+  // the only record that can tell a pkg3 account apart, so it, alone,
+  // lifts the cap. Infinity is how 'agency' already spells uncapped in
+  // TIER_LIMITS, and t22FacilityCapMsg already renders it as "unlimited".
+  // Own entitlement only: the inherited-plan override above still funds
+  // no facilities of your own, and an account that is not entitled lifts
+  // nothing — so a stale 'pkg3' left behind by a cancelled package (the
+  // webhook's deletion handler clears neither it nor the training flag)
+  // cannot uncap anyone.
+  if(!t22CoveredByFacility&&ent.entitled&&t22Package==='pkg3')t22Limits={...t22Limits,facilities:Infinity};
   return ent;
 }
 
@@ -5146,7 +5175,13 @@ async function refreshAccess(manual){
   }
   t22Entitled=true;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
   t22TrainingIncluded=await readTrainingIncluded();
+  t22Package=await readPackage();
   t22Limits=TIER_LIMITS[ent.plan]||{facilities:1,ai:false};
+  // Same pkg3 lift as resolveTierLimits: 'multi' caps at 5, the 6+ Homes
+  // package does not. refreshAccess only reaches this line for an
+  // entitled account on its own subscription (it returned early
+  // otherwise), so no covered/lapsed guard is needed here.
+  if(t22Package==='pkg3')t22Limits={...t22Limits,facilities:Infinity};
   applyRoleUI();applyTierUI();
   const eb=document.getElementById('trial-expired-banner');if(eb)eb.style.display='none';
   const ub=document.getElementById('tier-upsell-banner');if(ub)ub.style.display='none';

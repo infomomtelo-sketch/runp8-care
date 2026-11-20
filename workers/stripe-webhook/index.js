@@ -47,8 +47,11 @@ const PRICE_PLANS = {
   //                     add-on checkout (build sheet Step 3).
   //   pkg / portionCap — which package this is, and the ceiling on the CTC
   //                     training portion inside it ($29 pkg <= $20,
-  //                     $79 pkg <= $60, $139 pkg <= $100). Read only by the
-  //                     invoice handler that writes the CTC split ledger.
+  //                     $79 pkg <= $60, $139 pkg <= $100). portionCap is
+  //                     read only by the invoice handler that writes the
+  //                     CTC split ledger; pkg is ALSO written to
+  //                     profiles.title22_package by the subscription
+  //                     handler below (cap-fix, 2026-11-19).
   // `facilities` stays documentation-only, as everywhere above: pkg3 reads
   // Infinity because the app gate treats 6+ homes as uncapped in v1.
   'price_1UdhR6AH9qPFLg896m0ZBAaL': { plan: 'lite',       facilities: 1,        name: 'Title22 Package — 1 Home (Tracking + Training)',     training: true, pkg: 'pkg1', portionCap: 20 },   // $29, prod_Vf1… (Pkg 1)
@@ -700,6 +703,17 @@ export default {
             // undefined on every non-package price, so JSON.stringify drops
             // the key and nothing changes for Lite/Multi-Home/legacy.
             title22_training_included: (active && tier && tier.training) ? true : undefined,
+            // Which package, on the same terms as the flag above — plus one
+            // difference. A directly matched package price writes its pkg
+            // key ('pkg1'|'pkg2'|'pkg3'); a directly matched LEGACY price
+            // writes null, clearing a stale package when a subscriber moves
+            // from a package back to a legacy price. The clear matters: the
+            // app lifts the facility cap on 'pkg3' alone, so a stale 'pkg3'
+            // would leave a downgraded account uncapped. Rescued events
+            // (tier unset) and non-active events drop the key, exactly like
+            // the flag. (Cap-fix, 2026-11-19; the column is statement 5 in
+            // capfix-build/statement-5.sql — it must exist before deploy.)
+            title22_package: (active && tier) ? (tier.pkg || null) : undefined,
             // A paid plan is being written, so the trial is over: clear its
             // end stamp in the same patch. readEntitlement checks paid
             // plans first, but other readers of this column (the email
