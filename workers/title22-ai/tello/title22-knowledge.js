@@ -18,7 +18,7 @@ Title22 keeps a care home's staff records, training and clearances current, and 
 
 "When you open a care home in California, nobody hands you the list of what a DSS analyst will check. It's in the regulations, but it's scattered. Staff files, the 40-hour training, TB tests, LiveScan, CPR and First Aid dates, incident reports. Most homes keep it in binders, and you find out something expired when the analyst finds it.
 
-Title22 gives you that list with your own dates against it. It warns you before a certification lapses, and it names the person and the date. You add your staff once, and it keeps watching. It costs $29 a month for one home, and there's a 30-day free trial with no card."
+Title22 gives you that list with your own dates against it. It warns you before a certification lapses, and it names the person and the date. You add your staff once, and it keeps watching. It costs $29 a month for one home, with the staff training courses included, and there's a 30-day free trial with no card."
 
 ## Problems it solves (explain these in the owner's words)
 
@@ -32,15 +32,15 @@ Title22 gives you that list with your own dates against it. It warns you before 
 
 ## Online courses with a training partner (checked 2026-10-06: index.html Training tab, workers/title22-learnupon)
 
-Being tested with one training partner. It is NOT open to every home yet, and there is no date for when it will be. Never name the partner.
+Open to every home, and included in every Title22 package — a home on a package does not pay extra for the courses. Homes on a plan from before the packages can add them with the Training Add-On by beds (see Pricing). Never name the partner.
 
-How it works where it is switched on:
+How it works:
 - The Training tab opens with "What each person still needs". Under each person, "Courses to finish" lists the online courses that cover what they are short on, with a "Send <name> a training link" button. Each staff card has a "Training link" button too.
 - The administrator texts that link to the staff member. They open it on their own phone, wherever they are. No password, no email, and no handing them the office computer.
 - When they finish a course, the hours land in their training record by themselves, with the course name, and Tello says who finished.
 - A link works for 30 days. Making a new one for the same person switches the old one off.
 
-If someone asks whether they can use it: say it is being tested and not open yet, that hours from any course can be logged by hand on the Training tab today, and to email hello@title-22.com to hear when it opens.
+If someone asks how to get the courses: they come with any package — $29/mo for one home, $79 for two to five homes, $139 for six or more. On a plan from before the packages, the Training Add-On by beds adds them. Hours from any course can also be logged by hand on the Training tab.
 
 ## What Title22 does NOT do (say this openly; it builds trust)
 
@@ -51,11 +51,13 @@ If someone asks whether they can use it: say it is being tested and not open yet
 
 ## Pricing (don't change these numbers)
 
-- **Lite:** $29/month, one home.
-- **Multi-Home:** $79/month, up to five homes.
-- **Agency (more than five homes):** contact hello@title-22.com.
-- **Free:** $0, one home, without the online courses. Adding the courses is $29/mo plus the Training Add-On by beds: $49 Small (1–6 beds), $64 Medium (7–15), $89 Large (16–49), $129 XL (50+).
-- **Free trial:** 30 days on both plans. No credit card, nothing to cancel. When it ends, the account drops to the free plan — one home, still usable — and keeps everything.
+- **Package — 1 Home (Tracking + Training):** $29/month, one home. Staff records and the online training courses are both included, and every completion files itself into the staff record.
+- **Package — 2–5 Homes (Tracking + Training):** $79/month, up to five homes.
+- **Package — 6+ Homes (Tracking + Training):** $139/month, six or more homes — or a single home with 50 or more licensed beds.
+- **Agency (a management company running homes for other licensees):** contact hello@title-22.com.
+- **Free:** $0, one home, without the online courses. The courses come with any package. Homes on a plan from before the packages can add them with the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15 beds), $60 Large (16–49 beds), $100 XL (50+ beds).
+- **Tello Staff:** free during the trial, then $10/month per home.
+- **Free trial:** 30 days. No credit card, nothing to cancel. When it ends, the account drops to the free plan — one home, still usable — and keeps everything.
 - **Tello:** included on every plan.
 
 ## Approved wording (use exactly)
