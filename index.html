@@ -989,7 +989,7 @@
            1-home plan, still usable, with every record kept. If either stops
            being true, this line has to change with it. -->
       <p class="signup-noobligation" id="signup-noobligation">Take your time. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account drops to the free plan — one home, still usable, and everything you entered stays.</p>
-      <p class="signup-noobligation" style="margin-top:8px">After your free trial: $29/mo for one home · $79/mo for up to five homes. Nothing is charged unless you choose a plan — no card is taken at signup.</p>
+      <p class="signup-noobligation" style="margin-top:8px">After your free trial: $29/mo for one home · $79/mo for two to five homes · $139/mo for six or more — every package includes the staff training courses, and completions file themselves into staff records. Nothing is charged unless you choose a plan — no card is taken at signup.</p>
       <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
@@ -1215,7 +1215,7 @@
 
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
-        <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">This account is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Lite $29/mo</button></div>
+        <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">This account is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Package $29/mo</button></div>
         <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
@@ -1941,13 +1941,13 @@ const LEARNUPON_SSO_WORKER = 'https://title22-learnupon.infomomtelo.workers.dev/
 async function openPartnerTraining(){
   const msg=document.getElementById('partner-sso-msg');
   const show=(t,bad)=>{if(msg){msg.style.display='block';msg.style.color=bad?'var(--red)':'var(--text2)';msg.textContent=t;}};
-  // The Free plan does not include the online courses. Adding them is $29 a
-  // month (the Title22 subscription, which buys the training records and the
-  // auto-filing) plus the Training Add-On by licensed beds — $20 Small (1–6
-  // beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). The trial
-  // still includes the courses, so this only ever fires on Free.
+  // The Free plan does not include the online courses. They come with every
+  // package (Tracking + Training); the Training Add-On by licensed beds —
+  // $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL
+  // (50+) — is the path for plans from before the packages. The trial still
+  // includes the courses, so this only ever fires on Free.
   if(t22Plan==='free'&&!t22TrainingIncluded){
-    show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);
+    show('The Free plan does not include online courses. Training is included in every package — $29/mo for 1 home, $79/mo for 2–5 homes, $139/mo for 6+ homes — and every completion files itself into the staff record. Choose a package in Billing.',true);
     return;
   }
   const win=window.open('about:blank','_blank');
@@ -1987,8 +1987,8 @@ function canSendTrainingLink(){
 // Renders into `out`; returns false with a message in `show` on failure.
 async function requestStaffTrainingLink(staffId,who,out,show){
   // Same gate as openPartnerTraining: the Free plan does not include the
-  // online courses — adding them is $29/mo plus the Training Add-On by beds.
-  if(t22Plan==='free'&&!t22TrainingIncluded){show('The Free plan does not include online courses. Adding them is $29/mo plus the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15), $60 Large (16–49), $100 XL (50+). See courses and prices at title22-addon-pay.pages.dev.',true);return false;}
+  // online courses — they come with a package (Tracking + Training).
+  if(t22Plan==='free'&&!t22TrainingIncluded){show('The Free plan does not include online courses. Training is included in every package — $29/mo for 1 home, $79/mo for 2–5 homes, $139/mo for 6+ homes — and every completion files itself into the staff record. Choose a package in Billing.',true);return false;}
   show('Making the link…');
   try{
     const{data:{session}}=await sb.auth.getSession();
@@ -5135,10 +5135,10 @@ async function retryEntitlement(){
 
 // The one sentence that says what the current plan allows, so the two places
 // that refuse a second home (onboarding and the facility switcher) say the
-// same thing. Free names the way up: a second home needs Multi-Home, $79 a
-// month for up to 5 homes.
+// same thing. Free names the way up: a second home needs the 2–5 Homes
+// package, $79 a month for up to 5 homes.
 function t22FacilityCapMsg(){
-  if(t22Plan==='free')return 'Your Free plan includes 1 home. A second home needs the Multi-Home plan — $79/mo for up to 5 homes.';
+  if(t22Plan==='free')return 'Your Free plan includes 1 home. A second home needs the Package — 2–5 Homes (Tracking + Training) — $79/mo for up to 5 homes.';
   return `Your ${T22_LABEL[t22Plan]||t22Plan} plan allows ${t22Limits.facilities===Infinity?'unlimited':t22Limits.facilities} facilit${t22Limits.facilities===1?'y':'ies'}. Upgrade to add more.`;
 }
 

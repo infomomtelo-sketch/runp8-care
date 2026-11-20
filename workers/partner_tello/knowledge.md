@@ -38,12 +38,21 @@ the Health and Safety Code); it carries no other state's rules.
 ## Plans and trial (checked 2026-10-01: site /pricing/, index.html T22_TRIAL_DAYS)
 
 Published prices, which may be quoted as written:
-- Lite: $29 a month, one home.
-- Multi-Home: $79 a month, up to five homes.
-- Agency (more than five homes, or a management company): contact
+- Package — 1 Home (Tracking + Training): $29 a month, one home.
+- Package — 2–5 Homes (Tracking + Training): $79 a month, up to five homes.
+- Package — 6+ Homes (Tracking + Training): $139 a month, six or more
+  homes — or a single home with 50 or more licensed beds.
+- Every package includes the online staff training courses, and each
+  completion files itself into the staff record.
+- Agency (a management company running homes for other licensees): contact
   hello@title-22.com. No published price.
+- Homes on a plan from before the packages can add the courses with the
+  Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15),
+  $60 Large (16–49), $100 XL (50+).
+- Tello Staff: free during the trial, then $10 a month per home.
 - Free trial: 30 days, no card, nothing to cancel. When it ends the account
-  turns read-only and keeps everything.
+  drops to the Free plan — one home, still usable, without the online
+  courses — and keeps everything.
 - Tello, the AI assistant, is included on every plan.
 
 Anything else about money (partner pricing, discounts, revenue share,
@@ -241,15 +250,16 @@ dosage advice and never states a licensing requirement as fact.
 - What works today for every home: a completed course's hours are logged on
   the Training tab (with topic, delivery and a certificate attached), and they
   count toward the requirements above.
-- Being tested with one training partner, not open to homes yet, no date:
-  courses hosted on the partner's own course portal. The administrator texts a
-  staff member a personal training link; the staff member opens it on their
-  own phone with no password and takes the course on the partner's portal.
-  When they finish, Title22 adds the hours to that person's training record by
+- Open to every home, and included in every package: courses hosted on the
+  training partner's own course portal. The administrator texts a staff
+  member a personal training link; the staff member opens it on their own
+  phone with no password and takes the course on the partner's portal. When
+  they finish, Title22 adds the hours to that person's training record by
   itself, using the hours the partner gave for that course. The Training tab
   opens with "What each person still needs" and, under each person, the
-  partner courses that cover their gaps. Never name the partner, and never say
-  when it will open; pass that question to the Title22 team.
+  partner courses that cover their gaps. Homes on a plan from before the
+  packages can add the same courses with the Training Add-On by beds. Never
+  name the partner.
 
 ## Security, as published (checked 2026-10-01: site /security/)
 
