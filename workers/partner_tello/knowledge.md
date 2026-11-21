@@ -50,6 +50,12 @@ Published prices, which may be quoted as written:
   Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15),
   $60 Large (16–49), $100 XL (50+).
 - Tello Staff: free during the trial, then $10 a month per home.
+- Free plan: one home, free — no clock, no gate, and it stays free, with
+  the staff records and without the online courses. Owners pay only when
+  they need the staff training, which comes with a package. Offer the free
+  home on its own: never put a price in the same breath as the free home.
+  Quote the prices above when someone asks, or when they are choosing
+  training or a package.
 - Free trial: 30 days, no card, nothing to cancel. When it ends the account
   drops to the Free plan — one home, still usable, without the online
   courses — and keeps everything.

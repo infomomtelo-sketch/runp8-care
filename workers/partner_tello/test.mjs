@@ -176,7 +176,7 @@ ok('replies: owner\'s name replaced, emojis and markdown stripped, dosage refuse
 assert.doesNotMatch(prompt + knowledge, /\bEli\b|infomomtelo|EC RENTAL/i, 'no owner name or address in what the model is given');
 assert.doesNotMatch(prompt + knowledge, /\p{Extended_Pictographic}/u, 'no emojis');
 for (const fact of [/SCORM course integration is NOT built/, /25 items/, /tested with 300 staff/, /No resident records, no medications, no MAR/,
-  /15 or fewer: 10 hours, 6 hands-on/, /16 or more: 24 hours, 16 hands-on/, /Tick "Hands-on training"/, /Lite: \$29 a month/, /Multi-Home: \$79 a month/,
+  /15 or fewer: 10 hours, 6 hands-on/, /16 or more: 24 hours, 16 hands-on/, /Tick "Hands-on training"/, /Package — 1 Home \(Tracking \+ Training\): \$29 a month/, /Package — 2–5 Homes \(Tracking \+ Training\): \$79 a month/,
   /Unverified, not included/, /Checked on 2026-10-01/]) assert.match(knowledge, fact);
 assert.match(prompt, /I don't want to guess on that\. I've passed your question to the Title22 team\./);
 ok('prompt and knowledge: the required facts are present, dated, no names, no emojis');

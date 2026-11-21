@@ -127,7 +127,7 @@ assert.ok(req.system.includes('WRITING HELP') && req.system.includes('Copy butto
 assert.ok(req.system.includes('SALES - TITLE22'), 'customer mode gets the Title22 sales flow');
 assert.match(req.system, /What brings you in today\?/);
 assert.match(req.system, /tomorrow morning to walk you through setup/);
-assert.match(req.system, /6 or more homes: no forced plan/);
+assert.match(req.system, /6 or more homes: \$139 a month/);
 assert.ok(req.system.includes('CROSS-PROMOTION'), 'customer mode gets the cross-promotion rule');
 assert.match(req.system, /unknown means do not promote/);
 assert.equal(req.tools, undefined);
