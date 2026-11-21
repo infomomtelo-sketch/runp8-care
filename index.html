@@ -1265,7 +1265,6 @@
 
       <!-- DASHBOARD -->
       <div id="tab-dashboard">
-        <div id="readonly-banner" style="display:none;background:var(--teal-light);border:1.5px solid var(--teal);padding:12px 14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;color:var(--teal);margin-bottom:3px">This account is read-only</div><div style="font-size:13px;color:var(--text2);margin-bottom:10px">Everything you entered is still here and still yours. Nothing saves until you subscribe.</div><button class="btn btn-primary" style="font-size:13px" onclick="switchTab('billing')">Subscribe — Package $29/mo</button></div>
         <div id="lite-banner" style="background:#fef3c7;padding:12px;border-radius:8px;margin-bottom:16px">Title22 — Facility &amp; staff compliance only (Title 22 Div 6 Ch 8). No MAR / 602A / PHI. No BAA required.</div>
         <div class="page-header"><h1>Compliance dashboard</h1><button class="btn btn-outline" style="font-size:13px" onclick="switchTab('checklist')">View full checklist →</button></div>
         <div id="onboard-empty" style="display:none;margin-bottom:20px;background:var(--teal-light);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1.25rem 1.5rem">
@@ -2323,28 +2322,21 @@ function t22PhiBlock(fields){
     '"the resident in room 4", "the person on the evening shift".';
 }
 
-// An expired trial used to see one thing: a billing page. Not their dashboard,
-// not the readiness score they earned, not the checklist they filled in — the
-// work was still in the database, and the only way back to it was to pay for
-// something they could no longer see. The predictable result is the one in
-// this account's own history: sign up again with a different address and start
-// over, free, forever.
+// There is no read-only state (removed 2026-11-20, Eli's decision). An
+// expired trial used to see one thing: a billing page — not the readiness
+// score they earned, not the checklist they filled in. After that came a
+// softer version: a lapsed account kept its tabs but nothing saved, and the
+// work sat in the database behind a banner until they paid. The predictable
+// result is the one in this account's own history: sign up again with a
+// different address and start over, free, forever.
 //
-// Read-only is what is left for a subscription that ended, not for a trial:
-// an ended trial drops to the Free plan (one home, still usable) instead.
-// A lapsed paid account still keeps every tab their role allows and every
-// row they entered; nothing writes. That turns the thing they already built
-// into the argument for the $29, which is the only argument there is.
-//
-// Set ONLY when the entitlement read actually succeeded. "Trial ended" and "we
-// could not check" are different facts, and the second one stays fail-closed:
-// an outage must not hand out read access to accounts nobody verified.
-let t22ReadOnly = false;
-const T22_READONLY_MSG = 'This account is read-only. Subscribe to make changes.';
-// Analytics still writes: knowing an expired trial came back and looked around
-// is worth more than the purity of blocking it, and track() ignores failures
-// anyway. Nothing else gets through.
-const T22_READONLY_WRITE_OK = ['events'];
+// Now every verified account that runs out — trial or paid — derives to the
+// Free plan in readEntitlement: one home, full read and write. The records
+// were never the thing to lock; cost control lives where the cost is, in
+// the AI workers, which meter their own calls per account (ai_usage).
+// "It ended" and "we could not check" are still different facts: an
+// UNVERIFIED account stays fail-closed in allowedTabs. That is an access
+// question, not a save lock, and it is the only lock left.
 
 // Checkout link -> plan name, so checkout_started events record which tier.
 const STRIPE_PLANS = {
@@ -2553,24 +2545,6 @@ function t22Fetch(input,init){
         return Promise.resolve(new Response(
           JSON.stringify({message:T22_LITE_BLOCKED_MSG,code:'T22_LITE',details:null,hint:null}),
           {status:403,headers:{'Content-Type':'application/json'}}));
-      }
-    }
-    // Expired, and verified expired. canEdit() greys out the buttons; this is
-    // the layer under it, catching every write path that never thought to ask.
-    // RPCs are POSTs and several are the way OUT of this state — accepting an
-    // invite, re-checking entitlement — so they are never blocked here. They
-    // are SECURITY DEFINER functions carrying their own authorisation.
-    if(t22ReadOnly){
-      const url=typeof input==='string'?input:(input&&input.url)||'';
-      const m=new URL(url,window.location.origin).pathname.match(/\/rest\/v1\/([^/?]+)/);
-      if(m&&m[1]!=='rpc'&&!T22_READONLY_WRITE_OK.includes(m[1])){
-        const method=String((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
-        if(method!=='GET'&&method!=='HEAD'){
-          t22Toast(T22_READONLY_MSG);
-          return Promise.resolve(new Response(
-            JSON.stringify({message:T22_READONLY_MSG,code:'T22_READONLY',details:null,hint:null}),
-            {status:403,headers:{'Content-Type':'application/json'}}));
-        }
       }
     }
   }catch(e){/* a guard that throws must not take the request with it */}
@@ -2791,9 +2765,9 @@ function roleBrief(role){
 function getAccess(){ return ROLE_ACCESS[currentUserRole]||ROLE_ACCESS['readonly']; }
 // An expired trial can look at everything and change nothing. Answered here
 // rather than at each call site, so a screen added later inherits it.
-function canEdit(){ return !t22ReadOnly && getAccess().canEdit; }
-function canDelete(){ return !t22ReadOnly && getAccess().canDelete; }
-function canTeam(){ return !t22ReadOnly && getAccess().canTeam; }
+function canEdit(){ return getAccess().canEdit; }
+function canDelete(){ return getAccess().canDelete; }
+function canTeam(){ return getAccess().canTeam; }
 // Voiding is a correction to a legal record, not an edit. Kept to the people
 // who answer for that record: the administrator, a supervisor, and the
 // in-house caregiver who runs the medication pass. A regular caregiver who
@@ -2807,18 +2781,10 @@ function canVoidMAR(){ return ['administrator','supervisor','in_house_caregiver'
 const DEMO_TABS=['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','ai','documents'];
 function allowedTabs(){
   const lite=t=>showMAR||!T22_PHI_TABS.includes(t);
-  // Verified expired: they keep every tab their role allows, so the work they
-  // already did is still in front of them, and billing is one click from it.
-  // Tello is the exception — every question is a paid model call, so she is
-  // the one thing the subscription actually buys back.
-  if(t22ReadOnly){
-    const t=getAccess().tabs.filter(lite).filter(x=>x!=='ai');
-    // Most roles already carry billing; a caregiver does not, and they are the
-    // one who most needs to see the price of getting their work back.
-    return t.includes('billing')?t:t.concat('billing');
-  }
-  // Not entitled and NOT verified — an unreadable profile, an outage, an
-  // account we cannot vouch for. Still fail closed.
+  // Not entitled means NOT verified — an unreadable profile, an outage, an
+  // account we cannot vouch for. Still fail closed. A verified account that
+  // ran out never reaches this line: readEntitlement derives it to the Free
+  // plan (entitled, one home), so its tabs are its role's tabs below.
   if(!t22Entitled) return ['billing'];
   // Lite subtracts from every role at once, so no role list has to be edited
   // and none of them drifts out of step with the others.
@@ -3614,7 +3580,7 @@ async function maybeAutoExplore(){
   try{at=+localStorage.getItem('title22_explore')||0;localStorage.removeItem('title22_explore');}catch(e){return;}
   if(!at||Date.now()-at>86400000)return;
   if(demoMode||!currentUser||(allFacilities||[]).length)return;
-  if(t22PendingInvite||t22ReadOnly||!t22Entitled||!t22EntitlementVerified)return;
+  if(t22PendingInvite||!t22Entitled||!t22EntitlementVerified)return;
   if(t22Plan!=='trial')return;
   await startJustLooking(null,'link');
 }
@@ -4398,11 +4364,16 @@ if(plan==='edu') return {plan:'edu',entitled:true,daysLeft:null,trialExpired:fal
 if(plan==='free') return {plan:'free',entitled:true,daysLeft:null,trialExpired:false,ok:true};
 if(T22_PAID.includes(plan)){
       // Paid plans expire too: a cancelled sub keeps access until the period
-      // end stamped in title22_plan_expires_at. Past that date => locked.
-      // No expiry stamped (active recurring sub) => entitled.
+      // end stamped in title22_plan_expires_at. Past that date the account
+      // drops to the Free plan — one home, still usable — exactly like an
+      // ended trial below (2026-11-20: no read-only state; the records were
+      // never the thing to lock). Nothing is written back: the profile still
+      // names the paid plan with a past expiry, and this is the only place
+      // that reads it as Free. No expiry stamped (active recurring sub) =>
+      // entitled.
       const paidEnds=data.title22_plan_expires_at?new Date(data.title22_plan_expires_at).getTime():null;
       if(paidEnds!==null&&(!Number.isFinite(paidEnds)||Date.now()>=paidEnds))
-        return{plan,entitled:false,daysLeft:0,trialExpired:false,ok:true};
+        return{plan:'free',entitled:true,daysLeft:null,trialExpired:false,ok:true};
       return{plan,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     }
     // Everything below this line is about a trial, so this is where an
@@ -4413,15 +4384,22 @@ if(T22_PAID.includes(plan)){
     // because both halves are written to permanently.
     if(paidUndated)return{plan:paidUndated,entitled:true,daysLeft:null,trialExpired:false,ok:true};
     const ends=data.title22_trial_ends_at?new Date(data.title22_trial_ends_at).getTime():NaN;
-    if(!Number.isFinite(ends))return{plan:'trial',entitled:false,daysLeft:0,trialExpired:true,ok:true};
+    if(!Number.isFinite(ends)){
+      // The unstamped-trial bug: the profile never got its end date, and
+      // stampTrialIfMissing is what repairs it at signup. This used to read
+      // as read-only on purpose, so the bug stayed visible — but the person
+      // holding the account just saw a home they could not save to, and
+      // since 2026-11-20 no verified account sits in a no-save state. It
+      // derives to Free like every other ended trial (trialExpired stays
+      // true in the return, and the missing stamp is still on the profile
+      // for anyone who goes looking).
+      return{plan:'free',entitled:true,daysLeft:null,trialExpired:true,ok:true};
+    }
     if(Date.now()>=ends){
       // Free 1-home gate (2026-11-17): an ended trial drops to the Free plan
       // — one home, still usable — instead of read-only. Nothing is written
       // back: the profile still says 'trial' with a past end date, and this
-      // is the only place that reads it as Free. The null-end-date case above
-      // stays read-only on purpose: it is the unstamped-trial bug, and
-      // stampTrialIfMissing is what repairs it — silently handing it Free
-      // would hide the account that never got its trial.
+      // is the only place that reads it as Free.
       return{plan:'free',entitled:true,daysLeft:null,trialExpired:false,ok:true};
     }
     const daysLeft=Math.max(0,Math.ceil((ends-Date.now())/86400000));
@@ -4478,10 +4456,6 @@ async function resolveTierLimits(){
   t22Entitled=ent.entitled;t22Plan=ent.plan;t22TrialDaysLeft=ent.daysLeft||0;
   t22TrainingIncluded=demoMode?false:await readTrainingIncluded();
   t22Package=demoMode?null:await readPackage();
-  // Read-only is for an account we positively read and that has run out — not
-  // for one we failed to read. The sandbox is excluded: it is already
-  // view-only by construction, and a second banner would just be noise.
-  t22ReadOnly=!demoMode&&!ent.entitled&&ent.ok!==false&&!t22TrialActivationError;
   // ent.ok was already computed and then thrown away. It is the difference
   // between "your trial ran out" and "we could not check", and those need
   // very different words in front of a customer.
@@ -4500,8 +4474,11 @@ async function resolveTierLimits(){
   // no facilities of your own, and an account that is not entitled lifts
   // nothing — so a stale 'pkg3' left behind by a cancelled package (the
   // webhook's deletion handler clears neither it nor the training flag)
-  // cannot uncap anyone.
-  if(!t22CoveredByFacility&&ent.entitled&&t22Package==='pkg3')t22Limits={...t22Limits,facilities:Infinity};
+  // cannot uncap anyone. Since 2026-11-20 a lapsed package IS entitled —
+  // as 'free', derived above — so the lift also asks that the derived plan
+  // not be 'free'. An active pkg3 rides on plan 'multi', so the extra
+  // condition changes nothing for anyone actually paying for 6+ homes.
+  if(!t22CoveredByFacility&&ent.entitled&&ent.plan!=='free'&&t22Package==='pkg3')t22Limits={...t22Limits,facilities:Infinity};
   return ent;
 }
 
@@ -4525,13 +4502,9 @@ async function enforcePaidGate(){
   if(!currentUser||demoMode)return;
   const isPublic=location.hash.includes('pricing')||location.hash.includes('welcome')||location.pathname.includes('welcome');
   if(isPublic)return;
-  // Still in trial, or working inside a facility somebody else pays for.
+  // Still in trial, entitled on a package, on the Free plan a lapsed
+  // account derived to, or working inside a facility somebody else pays for.
   if(t22Entitled||t22CoveredByFacility)return;
-  // Lapsed, and we know it. They browse their own facility read-only; the
-  // banner and every refused write already say why, and forcing them onto a
-  // pricing page instead is how a returning customer decides to sign up again
-  // under a new address rather than pay.
-  if(t22ReadOnly)return;
   // Everything past here is "not entitled, and we could not verify why" — an
   // unreadable profile, an outage, a brand-new account mid-signup.
   //
@@ -4775,7 +4748,7 @@ async function initFacility(){
   //
   // "Zero" means zero for this facility type: an ARF home holding only RCFE
   // tasks has no checklist of its own, and is given the ARF list once.
-  if(!complianceTasks.length&&checklistItems.some(i=>t22ItemApplies(i,facType))&&!demoMode&&!t22ReadOnly&&canEdit()){
+  if(!complianceTasks.length&&checklistItems.some(i=>t22ItemApplies(i,facType))&&!demoMode&&canEdit()){
     try{
       await seedComplianceTasks(currentFacility.id,currentFacility.administrator_cert_expiry||null,currentFacility.facility_type);
       const{data:again}=await sb.from('compliance_tasks').select('*').eq('facility_id',currentFacility.id);
@@ -4988,8 +4961,6 @@ function applyRoleUI(){
 function applyLiteMode(){
   const banner=document.getElementById('lite-banner');
   if(banner)banner.style.display=showMAR?'none':'block';
-  const ro=document.getElementById('readonly-banner');
-  if(ro)ro.style.display=t22ReadOnly?'block':'none';
   // The Team Access cards describe each role in one line, and three of them
   // named residents, medications or the MAR — tabs the invited person will
   // never be shown. The markup now carries the Lite wording, so the page is
