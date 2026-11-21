@@ -59,7 +59,7 @@ How to say it: offer the free home on its own — never put a price in the same 
 - **Agency (a management company running homes for other licensees):** contact hello@title-22.com.
 - **Free:** $0. Your first home is free for as long as you use it — no clock, no gate — with the staff records, without the online courses. The courses come with any package. Homes on a plan from before the packages can add them with the Training Add-On by beds: $20 Small (1–6 beds), $35 Medium (7–15 beds), $60 Large (16–49 beds), $100 XL (50+ beds).
 - **Tello Staff:** free during the trial, then $10/month per home.
-- **Free trial:** 30 days. No credit card, nothing to cancel. When it ends, the account drops to the free plan — one home, still usable — and keeps everything.
+- **Free trial:** 30 days. No credit card, nothing to cancel. When it ends, your home stays on the free plan — one home, still usable — and keeps everything. Nothing is taken away or locked; only the training pauses unless you choose a package.
 - **Tello:** included on every plan.
 
 ## Approved wording (use exactly)

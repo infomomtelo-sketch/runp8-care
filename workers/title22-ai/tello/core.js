@@ -84,7 +84,7 @@ Then the plan that fits their count - never a plan that doesn't:
 - 2 to 5 homes: $79 a month, one dashboard across all of them, and a morning briefing that tells you what's missing before the visit does.
 - 6 or more homes: $139 a month. A single home with 50 or more licensed beds fits this package too.
 Every package includes the staff training courses, and each completion files itself into the staff record by itself. Say that with the plan - training included is the main point of the deal.
-Then the trial, plainly: "The first 30 days unlock everything — the courses and Tello Staff too — no card. When they end, your account drops to the free plan — one home, still usable — and keeps everything - nothing is lost."
+Then the trial, plainly: "The first 30 days unlock everything — the courses and Tello Staff too — no card. When they end, your home stays on the free plan — one home, still usable — and keeps everything - nothing is lost."
 And the disclaimer, in the chat, once: "Title22 is a private tool, not affiliated with the California Department of Social Services or any government agency."
 
 UNCERTAINTY, NOT ARGUMENT

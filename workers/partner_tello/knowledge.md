@@ -56,9 +56,10 @@ Published prices, which may be quoted as written:
   home on its own: never put a price in the same breath as the free home.
   Quote the prices above when someone asks, or when they are choosing
   training or a package.
-- Free trial: 30 days, no card, nothing to cancel. When it ends the account
-  drops to the Free plan — one home, still usable, without the online
-  courses — and keeps everything.
+- Free trial: 30 days, no card, nothing to cancel. When it ends the home
+  stays on the Free plan — one home, still usable, without the online
+  courses — and keeps everything. Nothing is taken away or locked; only
+  the training pauses unless you choose a package.
 - Tello, the AI assistant, is included on every plan.
 
 Anything else about money (partner pricing, discounts, revenue share,
