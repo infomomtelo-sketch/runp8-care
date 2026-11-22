@@ -455,6 +455,26 @@
      class, never inline styles — inline styles stuck and turned the *next*
      error message green. See authMsg(). */
   .error-msg.is-ok{background:var(--green-light);color:var(--green)}
+  /* Split auth layout (Nov 21): form left, readiness preview right. On
+     narrow screens it stacks with the form first. */
+  .auth-split{display:grid;grid-template-columns:minmax(0,420px) minmax(0,420px);gap:20px;width:100%;max-width:880px;justify-content:center;align-items:stretch}
+  .auth-split .auth-card{max-width:none}
+  .auth-visual{background:#123a30;color:#f9f5ed;border:2px solid #123a30;border-radius:var(--radius-lg);padding:2rem;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .auth-visual-kicker{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#e8a23d;margin-bottom:18px}
+  .auth-dial-wrap{position:relative;width:168px;height:168px;margin-bottom:20px}
+  .auth-dial{width:168px;height:168px;display:block}
+  .auth-dial-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .auth-dial-num-val{font-family:'Fraunces',Georgia,serif;font-size:44px;font-weight:700;line-height:1}
+  .auth-dial-pct{font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:700;color:#e8a23d}
+  .auth-dial-label{font-size:12px;text-transform:uppercase;letter-spacing:.8px;opacity:.8;margin-top:4px}
+  .auth-checks{width:100%;display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+  .auth-check{display:flex;align-items:center;gap:10px;text-align:left;font-size:14px;background:rgba(249,245,237,.06);border:2px solid rgba(232,162,61,.45);border-radius:var(--radius);padding:10px 12px;opacity:0;transform:translateY(6px);transition:opacity .5s ease,transform .5s ease}
+  .auth-visual.play .auth-check{opacity:1;transform:none}
+  .auth-check-mark{width:20px;height:20px;flex:none;border-radius:50%;background:#e8a23d;color:#123a30;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .auth-visual-caption{font-size:12px;line-height:1.5;opacity:.75;margin-top:auto}
+  .field-hint{font-size:12px;color:var(--text2);margin-top:6px}
+  @media(max-width:900px){.auth-split{grid-template-columns:1fr;max-width:420px}.auth-visual{padding:1.5rem}}
+  @media (prefers-reduced-motion:reduce){.auth-check{transition:none}}
   .app-shell{display:flex;min-height:calc(100vh - 65px);background:var(--gray-bg)}
   .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
   .sidebar-facility{font-size:12px;color:var(--text2);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
@@ -982,6 +1002,7 @@
 <div id="page-login" class="page">
   <div class="auth-wrap" style="flex-direction:column;gap:14px">
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
+    <div class="auth-split">
     <div class="auth-card">
       <h2>Welcome back</h2>
       <p>Log in to your Title22 account</p>
@@ -998,6 +1019,23 @@
       <div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Create one</a></div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="showPage('reset')">Forgot your password?</a></div>
     </div>
+    <aside class="auth-visual" aria-label="A look inside Title22">
+      <div class="auth-visual-kicker">A look inside</div>
+      <div class="auth-dial-wrap" aria-hidden="true">
+        <svg class="auth-dial" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(249,245,237,.18)" stroke-width="10"/>
+          <circle class="auth-dial-prog" cx="60" cy="60" r="52" fill="none" stroke="#e8a23d" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div class="auth-dial-center"><div><span class="auth-dial-num-val">0</span><span class="auth-dial-pct">%</span></div><div class="auth-dial-label">Readiness</div></div>
+      </div>
+      <div class="auth-checks">
+        <div class="auth-check" style="transition-delay:.45s"><span class="auth-check-mark">✓</span>Staff files current</div>
+        <div class="auth-check" style="transition-delay:.9s"><span class="auth-check-mark">✓</span>Training &amp; clearances tracked</div>
+        <div class="auth-check" style="transition-delay:1.35s"><span class="auth-check-mark">✓</span>Ready for the licensing visit</div>
+      </div>
+      <p class="auth-visual-caption">A look inside — sample home. This preview shows sample information, not a real facility score.</p>
+    </aside>
+    </div>
   </div>
 </div>
 
@@ -1005,6 +1043,7 @@
 <div id="page-signup" class="page">
   <div class="auth-wrap" style="flex-direction:column;gap:14px">
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
+    <div class="auth-split">
     <div class="auth-card">
       <!-- 30-Day Proof context. Shown ONLY when the visitor arrived on a
            ?src=pilot link (title-22.com's Proof CTAs) — the capture below
@@ -1046,17 +1085,36 @@
       <div class="auth-divider"><span>or</span></div>
       <form onsubmit="return false;">
         <div class="form-group"><label>Email address</label><input type="email" id="signup-email" autocomplete="username" placeholder="you@example.com"/></div>
-        <div class="form-group"><label>Password</label><div class="pw-field"><input type="password" id="signup-password" autocomplete="new-password" placeholder="Create a password"/><button type="button" class="pw-toggle" onclick="togglePasswordField('signup-password',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
+        <div class="form-group"><label>Password</label><div class="pw-field"><input type="password" id="signup-password" autocomplete="new-password" placeholder="Create a password"/><button type="button" class="pw-toggle" onclick="togglePasswordField('signup-password',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div><div class="field-hint">At least 8 characters</div></div>
+        <div class="form-group"><label>Confirm password</label><div class="pw-field"><input type="password" id="signup-password-confirm" autocomplete="new-password" placeholder="Type it again"/><button type="button" class="pw-toggle" onclick="togglePasswordField('signup-password-confirm',this)" aria-label="Show password"><svg class="ic"><use href="#i-eye"/></svg></button></div></div>
         <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSignup()">Create account</button>
       </form>
       <div class="auth-switch" id="signup-resend" style="display:none">Didn't get the confirmation email? <a onclick="handleResendConfirmation('signup')">Send it again</a></div>
       <div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></div>    </div>
+    <aside class="auth-visual" aria-label="A look inside Title22">
+      <div class="auth-visual-kicker">A look inside</div>
+      <div class="auth-dial-wrap" aria-hidden="true">
+        <svg class="auth-dial" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(249,245,237,.18)" stroke-width="10"/>
+          <circle class="auth-dial-prog" cx="60" cy="60" r="52" fill="none" stroke="#e8a23d" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div class="auth-dial-center"><div><span class="auth-dial-num-val">0</span><span class="auth-dial-pct">%</span></div><div class="auth-dial-label">Readiness</div></div>
+      </div>
+      <div class="auth-checks">
+        <div class="auth-check" style="transition-delay:.45s"><span class="auth-check-mark">✓</span>Staff files current</div>
+        <div class="auth-check" style="transition-delay:.9s"><span class="auth-check-mark">✓</span>Training &amp; clearances tracked</div>
+        <div class="auth-check" style="transition-delay:1.35s"><span class="auth-check-mark">✓</span>Ready for the licensing visit</div>
+      </div>
+      <p class="auth-visual-caption">A look inside — sample home. This preview shows sample information, not a real facility score.</p>
+    </aside>
+    </div>
   </div>
 </div>
 
 <!-- PASSWORD RESET -->
 <div id="page-reset" class="page">
   <div class="auth-wrap">
+    <div class="auth-split">
     <div class="auth-card">
       <!-- State 1: Request reset -->
       <div id="reset-request">
@@ -1080,6 +1138,23 @@
           <button class="btn btn-primary" style="width:100%;padding:11px" onclick="handleSetNewPassword()">Update password</button>
         </form>
       </div>
+    </div>
+    <aside class="auth-visual" aria-label="A look inside Title22">
+      <div class="auth-visual-kicker">A look inside</div>
+      <div class="auth-dial-wrap" aria-hidden="true">
+        <svg class="auth-dial" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(249,245,237,.18)" stroke-width="10"/>
+          <circle class="auth-dial-prog" cx="60" cy="60" r="52" fill="none" stroke="#e8a23d" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div class="auth-dial-center"><div><span class="auth-dial-num-val">0</span><span class="auth-dial-pct">%</span></div><div class="auth-dial-label">Readiness</div></div>
+      </div>
+      <div class="auth-checks">
+        <div class="auth-check" style="transition-delay:.45s"><span class="auth-check-mark">✓</span>Staff files current</div>
+        <div class="auth-check" style="transition-delay:.9s"><span class="auth-check-mark">✓</span>Training &amp; clearances tracked</div>
+        <div class="auth-check" style="transition-delay:1.35s"><span class="auth-check-mark">✓</span>Ready for the licensing visit</div>
+      </div>
+      <p class="auth-visual-caption">A look inside — sample home. This preview shows sample information, not a real facility score.</p>
+    </aside>
     </div>
   </div>
 </div>
@@ -1244,6 +1319,14 @@
       <button class="nav-item" id="nav-follow" onclick="openFollowSheet()" title="Short how-to videos and DSS tips"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Follow Title22</button>
     </div>
     <div class="main-content">
+      <div id="email-verify-banner" style="display:none;background:#fdf3e2;border:1.5px solid #e8a23d;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:500">Confirm your email to secure your account.</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+          <button class="btn" style="background:#fff;color:#92580a;font-size:12px;font-weight:600;padding:6px 14px;border:1.5px solid #e8a23d" onclick="resendEmailConfirmation(this)">Resend confirmation</button>
+          <button class="btn btn-ghost" style="font-size:12px;padding:6px 8px" onclick="dismissEmailVerifyBanner()" aria-label="Dismiss">✕</button>
+        </div>
+        <div id="email-verify-msg" style="display:none;width:100%;font-size:12px"></div>
+      </div>
       <div id="trial-banner" style="display:none;background:linear-gradient(90deg,#0F6E56,#1D9E75);color:#fff;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500"><svg class="ic"><use href="#i-star"/></svg> Free trial — <span id="trial-days-left">30</span> days left. No card on file, so nothing is charged when it ends.</div>
         <button onclick="switchTab('billing')" class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0">View plans →</button>
@@ -2871,6 +2954,47 @@ function showPage(name){
   document.getElementById('page-'+name).classList.add('active');
   document.body.style.visibility='visible';
   if(name==='onboard')maybeShowFollowHint();
+  if(name==='login'||name==='signup'||name==='reset')startAuthVisual();
+}
+
+// Auth readiness preview: a calm one-shot dial (0 to 92) on the split
+// auth pages. Pure illustration — the panel itself is captioned as a
+// sample home. Reduced motion gets the final state with no animation.
+function startAuthVisual(){
+  const page=document.querySelector('.page.active');
+  if(!page)return;
+  const vis=page.querySelector('.auth-visual');
+  if(!vis||vis.dataset.played==='1')return;
+  vis.dataset.played='1';
+  const num=vis.querySelector('.auth-dial-num-val');
+  const prog=vis.querySelector('.auth-dial-prog');
+  const target=92,CIRC=326.73;
+  const set=function(v){if(num)num.textContent=Math.round(v);if(prog)prog.style.strokeDashoffset=(CIRC*(1-v/100)).toFixed(1);};
+  vis.classList.add('play');
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){set(target);return;}
+  const t0=performance.now(),dur=1800;
+  const tick=function(t){const p=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-p,3);set(target*e);if(p<1)requestAnimationFrame(tick);};
+  requestAnimationFrame(tick);
+}
+
+// Email-confirmation banner: a nudge, never a gate. Shows only while the
+// signed-in user's email is unconfirmed; dismiss is per page session.
+let emailVerifyDismissed=false;
+function updateEmailVerifyBanner(){
+  const b=document.getElementById('email-verify-banner');
+  if(!b)return;
+  const u=currentUser;
+  const show=!!(u&&!demoMode&&!emailVerifyDismissed&&!(u.email_confirmed_at||u.confirmed_at));
+  b.style.display=show?'flex':'none';
+}
+function dismissEmailVerifyBanner(){emailVerifyDismissed=true;updateEmailVerifyBanner();}
+async function resendEmailConfirmation(btn){
+  if(!currentUser||!currentUser.email)return;
+  const msg=document.getElementById('email-verify-msg');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  const{error}=await sb.auth.resend({type:'signup',email:currentUser.email,options:{emailRedirectTo:'https://title22.app'}});
+  if(btn){btn.disabled=false;btn.textContent='Resend confirmation';}
+  if(msg){msg.style.display='block';msg.textContent=error?authErrorText(error,'Could not send the email — please try again or email hello@title-22.com'):'Confirmation email sent to '+currentUser.email+'. It can take a minute — check spam too.';}
 }
 
 function switchTab(name){
@@ -3301,9 +3425,11 @@ async function stampSignupAttribution(user){
 async function handleSignup(){
   const email=document.getElementById('signup-email').value.trim();
   const pass=document.getElementById('signup-password').value;
+  const passConfirm=document.getElementById('signup-password-confirm').value;
   authMsgClear('signup-error');showResend('signup',false);
   if(!email||!pass){authMsg('signup-error','Please fill in all fields.');return;}
-  if(pass.length<6){authMsg('signup-error','Password must be at least 6 characters.');return;}
+  if(pass.length<8){authMsg('signup-error','Password must be at least 8 characters.');return;}
+  if(pass!==passConfirm){authMsg('signup-error','The two passwords do not match.');return;}
   const btn=document.querySelector('#page-signup .btn-primary');
   if(btn){btn.textContent='Creating account…';btn.disabled=true;}
   const referredBy=sessionStorage.getItem('title22_ref')||null;
@@ -3406,6 +3532,7 @@ function clearSession(){
   telloVoiceReset();
   clearPortfolioCard();
   currentUser=null;currentFacility=null;
+  emailVerifyDismissed=false;
   document.getElementById('nav-app').style.display='none';
   document.getElementById('nav-public').style.display='flex';
   showPage('landing');
@@ -4488,6 +4615,7 @@ async function resolveTierLimits(){
 async function loadApp(){
   await loadAppInner();
   await enforcePaidGate();
+  updateEmailVerifyBanner();
 }
 
 // ===== PAID GATE =====
