@@ -456,10 +456,22 @@
      error message green. See authMsg(). */
   .error-msg.is-ok{background:var(--green-light);color:var(--green)}
   /* Split auth layout (Nov 21): form left, readiness preview right. On
-     narrow screens it stacks with the form first. */
-  .auth-split{display:grid;grid-template-columns:minmax(0,420px) minmax(0,420px);gap:20px;width:100%;max-width:880px;justify-content:center;align-items:stretch}
-  .auth-split .auth-card{max-width:none}
-  .auth-visual{background:#123a30;color:#f9f5ed;border:2px solid #123a30;border-radius:var(--radius-lg);padding:2rem;display:flex;flex-direction:column;align-items:center;text-align:center}
+     narrow screens it stacks with the form first. Fix round (Nov 21):
+     the split now fills the whole viewport — two halves, edge to edge,
+     no width cap — the way Caring Data's sign-in uses the screen. The
+     form half centers its card; the visual fills its half completely. */
+  .auth-split{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .auth-split .auth-card{width:100%;max-width:440px;justify-self:center;align-self:center;padding:1.75rem 2rem}
+  .auth-split .auth-card p{margin-bottom:16px}
+  .auth-split .form-group{margin-bottom:14px}
+  .auth-split .auth-divider{margin:12px 0}
+  .auth-split .auth-switch{margin-top:14px}
+  /* Split pages break out of the padded .auth-wrap so the halves reach
+     the edges and the full height instead of floating in a centered box. */
+  .auth-wrap-split{padding:0;min-height:100dvh;align-items:stretch;justify-content:flex-start}
+  .auth-wrap-split .auth-split{flex:1;min-height:0}
+  .auth-wrap-split>a{padding:14px 18px 0}
+  .auth-visual{background:#123a30;color:#f9f5ed;padding:2rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
   .auth-visual-kicker{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#e8a23d;margin-bottom:18px}
   .auth-dial-wrap{position:relative;width:168px;height:168px;margin-bottom:20px}
   .auth-dial{width:168px;height:168px;display:block}
@@ -471,9 +483,9 @@
   .auth-check{display:flex;align-items:center;gap:10px;text-align:left;font-size:14px;background:rgba(249,245,237,.06);border:2px solid rgba(232,162,61,.45);border-radius:var(--radius);padding:10px 12px;opacity:0;transform:translateY(6px);transition:opacity .5s ease,transform .5s ease}
   .auth-visual.play .auth-check{opacity:1;transform:none}
   .auth-check-mark{width:20px;height:20px;flex:none;border-radius:50%;background:#e8a23d;color:#123a30;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
-  .auth-visual-caption{font-size:12px;line-height:1.5;opacity:.75;margin-top:auto}
+  .auth-visual-caption{font-size:12px;line-height:1.5;opacity:.75;margin-top:22px}
   .field-hint{font-size:12px;color:var(--text2);margin-top:6px}
-  @media(max-width:900px){.auth-split{grid-template-columns:1fr;max-width:420px}.auth-visual{padding:1.5rem}}
+  @media(max-width:900px){.auth-split{grid-template-columns:1fr}.auth-split .auth-card{justify-self:stretch;width:auto;margin:20px 16px;align-self:start}.auth-visual{padding:1.5rem}}
   @media (prefers-reduced-motion:reduce){.auth-check{transition:none}}
   .app-shell{display:flex;min-height:calc(100vh - 65px);background:var(--gray-bg)}
   .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
@@ -1000,7 +1012,7 @@
 
 <!-- LOGIN -->
 <div id="page-login" class="page">
-  <div class="auth-wrap" style="flex-direction:column;gap:14px">
+  <div class="auth-wrap auth-wrap-split" style="flex-direction:column;gap:14px">
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-split">
     <div class="auth-card">
@@ -1041,7 +1053,7 @@
 
 <!-- SIGNUP -->
 <div id="page-signup" class="page">
-  <div class="auth-wrap" style="flex-direction:column;gap:14px">
+  <div class="auth-wrap auth-wrap-split" style="flex-direction:column;gap:14px">
     <a href="https://title-22.com" style="align-self:flex-start;font-size:13px;color:var(--text2);text-decoration:none;position:sticky;top:75px">← Back to title-22.com</a>
     <div class="auth-split">
     <div class="auth-card">
@@ -1068,17 +1080,14 @@
            never seeing the landing page's Tello button, so it is here too, at
            the top where the not-sure visitor is deciding (the owner, 2026-09-29). -->
       <a href="/tello?src=app-signup" style="display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 16px;padding:10px 14px;background:#fdf3e2;color:#123a30;border:1.5px solid #e8a23d;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600"><span class="t-mark" style="width:24px;height:24px" aria-hidden="true"></span>Not sure yet? Ask Tello first — no signup</a>
-      <!-- The promise title-22.com makes on every trial CTA. True because
-           signup asks for nothing else, and the practice home (startJustLooking)
-           needs nothing else. Keep them in step: if signup ever asks for a
-           facility detail, this line is false. -->
-      <p class="signup-nodetails"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Just an email to start. No facility name, license number or address — a practice home with invented staff is ready inside.</p>
-      <!-- Zero obligation, and literally true: no card is ever taken at signup,
-           so there is nothing to charge, and an ended trial drops to the free
-           1-home plan, still usable, with every record kept. If either stops
-           being true, this line has to change with it. -->
-      <p class="signup-noobligation" id="signup-noobligation">Take your time. Your first home is free — no clock, no gate — and it stays free. We never ask for a card, so nothing can be charged and there is nothing to cancel. When the 30 days end, your account drops to the free plan — one home, still usable, and everything you entered stays.</p>
-      <p class="signup-noobligation" style="margin-top:8px">Your home stays free after the 30 days — nothing is charged unless you choose a plan, and no card is taken at signup. When your team needs the staff training courses, they come with a package, and every completion files itself into the staff record.</p>
+      <!-- One line only (Nov 21 fix round): this spot used to carry the
+           green box plus two full obligation paragraphs — a wall of text
+           that pushed the form below the fold on a 768px screen. The one
+           line keeps the promise title-22.com makes on every trial CTA:
+           signup asks for nothing else, and the practice home
+           (startJustLooking) needs nothing else. Keep them in step: if
+           signup ever asks for a facility detail, this line is false. -->
+      <p class="signup-nodetails"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Just an email to start. A practice home with invented staff is ready the moment you're in.</p>
       <div id="signup-invite-note" style="display:none;background:var(--teal-light);color:var(--teal);font-size:13px;line-height:1.5;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;text-align:left"><svg class="ic"><use href="#i-users"/></svg> <strong>You have been invited to a facility on Title22.</strong><br/>Create your account with the email address the invitation was sent to — that is how it is matched. You will go straight into that facility, not a new one.</div>
       <div class="error-msg" id="signup-error"></div>
       <button class="btn-google" onclick="handleGoogleAuth('signup-error')"><svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
@@ -1113,7 +1122,7 @@
 
 <!-- PASSWORD RESET -->
 <div id="page-reset" class="page">
-  <div class="auth-wrap">
+  <div class="auth-wrap auth-wrap-split">
     <div class="auth-split">
     <div class="auth-card">
       <!-- State 1: Request reset -->
