@@ -96,7 +96,8 @@
   body.t22-no-phi #nav-medications,  body.t22-no-phi #menu-medications,
   body.t22-no-phi #nav-residents,    body.t22-no-phi #menu-residents,
   body.t22-no-phi #nav-daily,        body.t22-no-phi #menu-daily,
-  body.t22-no-phi #dash-mar-card,    body.t22-no-phi #qa-add-resident{display:none!important}
+  body.t22-no-phi #dash-mar-card,    body.t22-no-phi #qa-add-resident,
+  body.t22-no-phi #cl-filter-residents, body.t22-no-phi #cl-filter-medication{display:none!important}
 
   /* Launch Hub — the "Start Your Home" tab.
      Built for someone who has never held a licence and may not be reading in
@@ -487,7 +488,15 @@
   .auth-check-mark{width:20px;height:20px;flex:none;border-radius:50%;background:#e8a23d;color:#123a30;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
   .auth-visual-caption{font-size:12px;line-height:1.5;opacity:.75;margin-top:22px}
   .field-hint{font-size:12px;color:var(--text2);margin-top:6px}
-  @media(max-width:900px){.auth-split{grid-template-columns:1fr}.auth-split .auth-card{justify-self:stretch;width:auto;margin:20px 16px;align-self:start}.auth-visual{padding:1.5rem}}
+  /* Phone widths the split stacks, form first — and the preview panel under
+     it at full size (168px dial, three checklist rows, caption) doubled the
+     length of the signup and login pages: a second screenful of furniture
+     between the form and the links under it. Slim strip instead: the
+     kicker, a small dial with the score (the count-up script writes the
+     same elements, only smaller), and the caption. The checklist rows are
+     desktop furniture and are simply not rendered here. Desktop split
+     above is untouched. */
+  @media(max-width:900px){.auth-split{grid-template-columns:1fr}.auth-split .auth-card{justify-self:stretch;width:auto;margin:20px 16px;align-self:start}.auth-visual{padding:1.1rem 1.25rem}.auth-visual-kicker{margin-bottom:10px}.auth-dial-wrap{width:84px;height:84px;margin-bottom:10px}.auth-dial{width:84px;height:84px}.auth-dial-num-val{font-size:26px}.auth-dial-pct{font-size:14px}.auth-dial-label{font-size:10px}.auth-checks{display:none}.auth-visual-caption{margin-top:4px}}
   @media (prefers-reduced-motion:reduce){.auth-check{transition:none}}
   .app-shell{display:flex;min-height:calc(100vh - 65px);background:var(--gray-bg)}
   .sidebar{width:220px;background:var(--gray-bg);border-right:1px solid var(--border);padding:1.5rem 1rem;flex-shrink:0}
@@ -1438,8 +1447,8 @@
           <button class="filter-btn active" onclick="filterChecklist('all',this)">All</button>
           <button class="filter-btn" onclick="filterChecklist('administrator',this)">Administrator</button>
           <button class="filter-btn" onclick="filterChecklist('staff',this)">Staff</button>
-          <button class="filter-btn" onclick="filterChecklist('residents',this)">Residents</button>
-          <button class="filter-btn" onclick="filterChecklist('medication',this)">Medications</button>
+          <button class="filter-btn" id="cl-filter-residents" onclick="filterChecklist('residents',this)">Residents</button>
+          <button class="filter-btn" id="cl-filter-medication" onclick="filterChecklist('medication',this)">Medications</button>
           <button class="filter-btn" onclick="filterChecklist('facility',this)">Facility</button>
         </div>
         <div id="checklist-body"></div>
@@ -2718,6 +2727,11 @@ let classroomMode = false; // trainer classroom (?classroom=1): the demo sandbox
 let classroomCode = '';    // the trainer's code when the classroom link carries one (?trainer=)
 let checklistItems = [];
 let complianceTasks = [];
+// True once initFacility's staff/resident loads for the open facility have
+// landed. refreshDashboard's empty-home gate reads the in-memory lists, and
+// its first call runs before those loads — the flag is what keeps that first
+// paint behaving exactly as it always has. Reset wherever the lists are.
+let t22DashLoaded = false;
 let activeFilter = 'all';
 let currentIncidentId = null;
 // Fail closed. This is only assigned inside initFacility, so any path that
@@ -4276,7 +4290,20 @@ function t22FacType(f){const t=((f===undefined?currentFacility:f)||{}).facility_
 // with none applies to every type. A task whose item is unknown (added by
 // hand, or the list could not be read) is always shown.
 function t22ItemApplies(item,type){return !item||!Array.isArray(item.facility_types)||!item.facility_types.length||item.facility_types.includes(type||'rcfe');}
-function t22TaskApplies(t,type){return t22ItemApplies((checklistItems||[]).find(i=>i.id===t.checklist_item_id),type);}
+function t22TaskApplies(t,type){
+  // The residents and medication categories are dormant in Lite — the
+  // checklist migration's own words for them (2026-09-29b). They belong to
+  // the resident/MAR side of the product, which is off for every Lite
+  // account, so where showMAR is false for the open facility their tasks do
+  // not surface: not in the checklist, the dashboard, the score, the
+  // portfolio briefing or Tello's context — every one of which reads
+  // through this filter. The rows are NOT deleted, exactly as cross-type
+  // rows are hidden rather than deleted by the facility-type test below:
+  // they stay in the database and return the moment showMAR does, which
+  // today is the Classroom sample and the corner test account.
+  if(!showMAR&&(t.category==='residents'||t.category==='medication'))return false;
+  return t22ItemApplies((checklistItems||[]).find(i=>i.id===t.checklist_item_id),type);
+}
 
 // Facilities that count against the tier cap: owned, and not the sample.
 function ownedFacilityCount(){
@@ -4829,6 +4856,7 @@ async function initFacility(){
   }
   residents=[];
   staffList=[];
+  t22DashLoaded=false;
   incidents=[];
   marMedCache={};
   dashBriefingLoaded=false;
@@ -4871,6 +4899,7 @@ async function initFacility(){
   }
   refreshDashboard();
   await Promise.all([loadResidents(),loadStaff(),loadIncidents(),loadComplianceDocs()]);
+  t22DashLoaded=true;
   refreshDashboard();
   loadDashboardMARStats();
   setTimeout(()=>loadDashboardAIBriefing(false),1000);
@@ -5094,7 +5123,10 @@ function applyLiteMode(){
   if(hidePhi)T22_PHI_TABS.forEach(t=>{
     const tab=document.getElementById('tab-'+t);if(tab)tab.style.display='none';
   });
-  document.querySelectorAll('#doc-upload-row [data-phi]').forEach(el=>{
+  // The add-task category select carries the same two dormant categories
+  // (see t22TaskApplies): offered in Lite, a task filed under one would be
+  // filtered straight back out of the checklist it was just added to.
+  document.querySelectorAll('#doc-upload-row [data-phi], #modal-task-cat [data-phi]').forEach(el=>{
     if(el.tagName==='OPTION'){el.hidden=hidePhi;el.disabled=hidePhi;}
     else el.style.display=hidePhi?'none':'';
   });
@@ -5470,21 +5502,41 @@ function refreshDashboard(){
   // the checklist. It was the checklist alone, which is how a facility with
   // every certification date blank could read 100%.
   const comp=evaluateCompliance();
-  const total=complianceTasks.length+comp.total;
-  const done=complianceTasks.filter(t=>t.completed).length+comp.met;
+  // The EMPTY-HOME RULE (Nov 15) reaches the dashboard's own numbers. The
+  // guidance card (maybeShowOnboarding) already tells a home with no staff
+  // and no residents that it is empty and that that is normal — but this
+  // function went on scoring the seeded checklist template against it, so
+  // the same screen read readiness 1%, "Tasks overdue 45" and an urgent
+  // list of template items whose default due dates (seedComplianceTasks
+  // stamps daily items due tomorrow, monthly items due in a month) had
+  // simply ticked past, some of them dated before the home was ever used.
+  // A template default is not a finding. Until the home has a person in
+  // it, the dashboard counts only what the records say — evaluateCompliance
+  // over nobody is empty — and the score reads as not started. The
+  // checklist tab is untouched: every task is still there to be worked,
+  // and the moment a first staff member or resident exists this gate opens
+  // and every number below is computed exactly as it was. t22DashLoaded
+  // keeps the first paint (which runs before the loads land) as it was.
+  const homeEmpty=t22DashLoaded&&!demoMode&&!!currentFacility&&!isSampleFacility(currentFacility)
+    &&!(window.staffList||[]).some(s=>s&&s.active!==false&&s.status!=='inactive')
+    &&!(window.residents||[]).some(r=>r&&r.status!=='discharged');
+  const dashTasks=homeEmpty?[]:complianceTasks;
+  const total=dashTasks.length+comp.total;
+  const done=dashTasks.filter(t=>t.completed).length+comp.met;
   const today=new Date().toISOString().split('T')[0];
   const nextMonth=new Date();nextMonth.setMonth(nextMonth.getMonth()+1);
-  const overdue=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length
+  const overdue=dashTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length
     +comp.items.filter(i=>i.level==='expired').length;
-  const dueMonth=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length
+  const dueMonth=dashTasks.filter(t=>!t.completed&&t.due_date&&t.due_date>=today&&t.due_date<=nextMonth.toISOString().split('T')[0]).length
     +comp.items.filter(i=>i.level==='soon').length;
   const score=total>0?Math.round((done/total)*100):0;
-  document.getElementById('dash-score').textContent=score+'%';
+  document.getElementById('dash-score').textContent=homeEmpty?'—':score+'%';
   // A green number still has to say what is behind it. Requirements met counts
   // a typed value; how many are backed by a filed document is the separate
   // question an inspector actually asks, so it is stated rather than implied.
-  document.getElementById('dash-score-sub').textContent=
-    `${done} of ${total} requirements met`
+  document.getElementById('dash-score-sub').textContent=homeEmpty
+    ?'Not started yet — this fills in as you add your staff and their records.'
+    :`${done} of ${total} requirements met`
     +(comp.total?` · ${comp.verified} of ${comp.total} backed by a document`:'')
     +(comp.claimedOnly?` · ${comp.claimedOnly} recorded but unverified`:'')
     +(complianceDocsShort?` · Incomplete: only ${t22Num(complianceDocsShort.read)} of ${t22Num(complianceDocsShort.total)} documents could be read. Refresh to count the rest.`:'');
@@ -5497,7 +5549,7 @@ function refreshDashboard(){
   document.getElementById('prog-overdue').style.width=total>0?Math.round((overdue/total)*100)+'%':'0%';
   document.getElementById('prog-month').style.width=total>0?Math.round((dueMonth/total)*100)+'%':'0%';
   document.getElementById('prog-done').style.width=total>0?Math.round((done/total)*100)+'%':'0%';
-  const overdueTasks=complianceTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today);
+  const overdueTasks=dashTasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today);
   const gaps=comp.items;
   const dot={expired:'red',missing:'red',unverified:'amber',soon:'amber'};
   const rows=overdueTasks.map(t=>({dot:'red',title:t.title,sub:'Overdue since '+t.due_date}))
@@ -5508,11 +5560,16 @@ function refreshDashboard(){
     ?'<div class="empty">No urgent alerts</div>'
     :shown.map(r=>`<div class="alert-item"><div class="alert-dot ${r.dot}"></div><div class="alert-text"><strong>${esc(r.title)}</strong><span>${esc(r.sub)}</span></div></div>`).join('')
       +(rows.length>shown.length?`<div class="empty" style="margin-top:8px;font-size:12px">and ${rows.length-shown.length} more across staff and residents</div>`:'');
-  const todayTasks=complianceTasks.filter(t=>t.due_date===today).slice(0,5);
+  const todayTasks=dashTasks.filter(t=>t.due_date===today).slice(0,5);
   document.getElementById('today-tasks').innerHTML=todayTasks.length===0
     ?'<div class="empty">No tasks due today</div>'
     :todayTasks.map(t=>`<div class="task-item"><div class="task-check ${t.completed?'done':''}" onclick="toggleTask('${esc(t.id)}',this)"></div><div class="task-text ${t.completed?'done':''}">${esc(t.title)}</div></div>`).join('');
-  const cats=['administrator','staff','residents','medication','facility'];
+  // The dormant categories (see t22TaskApplies) hold no tasks in Lite, and
+  // a "Residents 0/0 · Medications 0/0" pair of rows would still put them
+  // on a Lite dashboard as if they were this home's to answer for. They are
+  // listed only where the MAR is on for the open facility.
+  const cats=['administrator','staff','residents','medication','facility']
+    .filter(cat=>showMAR||(cat!=='residents'&&cat!=='medication'));
   document.getElementById('category-breakdown').innerHTML=cats.map(cat=>{
     const ct=complianceTasks.filter(t=>t.category===cat);
     const cd=ct.filter(t=>t.completed).length;
@@ -6883,6 +6940,39 @@ const dISO=days=>new Date(Date.now()+days*86400000).toISOString().split('T')[0];
 // alongside the first.
 let seedDemoRunning=false;
 
+// "Do I already have this sample?" — asked of the database, by the sample's
+// exact name, at seed time. The seeders used to answer it from allFacilities
+// alone: this tab's list, loaded once at sign-in and updated only at the end
+// of a successful seed (seedDemoRunning above exists because of exactly
+// that lag, within one tab). A second tab, a second device, or any session
+// whose list predates the seed answers "no" about a facility that exists,
+// and the seeder builds another one beside it — accounts have been found
+// holding four rows all named "Sunrise Demo Home (Sample)", and the
+// switcher, which dedupes by id when the list is built, faithfully lists
+// every one. A database hit is adopted into allFacilities and returned; a
+// database answer of "none" is believed over a stale in-memory hit; a
+// failed read falls back to the in-memory answer rather than blocking a
+// first sample on a dropped connection. What this cannot close is two
+// seeds racing in the same instant on two devices — that takes a unique
+// index server-side, which is a migration, not this file. Each seeder asks
+// for its OWN sample's name: the RCFE button used to accept the ARF sample
+// as "the" sample (isSampleFacility matches both names), switching the
+// person into the wrong home — or, if that home's seed had failed,
+// reseeding RCFE content into the ARF-named row.
+async function t22FindOwnedSample(name){
+  const mem=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&f.name===name)||null;
+  try{
+    const{data,error}=await sb.from('facilities').select('*').eq('user_id',currentUser.id).eq('name',name);
+    if(error)return mem;
+    if(data&&data.length){
+      const fac=data[0];
+      if(!allFacilities.some(f=>f&&f.id===fac.id))allFacilities.push(fac);
+      return fac;
+    }
+    return null;
+  }catch(e){return mem;}
+}
+
 async function seedDemoData(opts){
   // The layer under the hidden button, same shape as every other control here:
   // hiding is the product decision, this is what makes it true. A subscriber
@@ -6919,8 +7009,9 @@ async function seedDemoData(opts){
   if(allFacilities.length&&currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
   // Deliberately not gated on t22Limits.facilities — see SAMPLE_FACILITY_NAME.
   // One sample per account is still the rule: a second click switches to the
-  // one already there rather than seeding a duplicate.
-  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
+  // one already there rather than seeding a duplicate. Asked of the
+  // database, by this sample's own name — see t22FindOwnedSample.
+  const existing=await t22FindOwnedSample(SAMPLE_FACILITY_NAME);
   // The facility row is written before any of its contents, so a run that
   // failed part-way leaves the row behind with nothing in it. That row then
   // matched here on every later attempt, and the button switched to an empty
@@ -7100,7 +7191,8 @@ async function seedLiteDemoData(opts){
   // Whoever creates the first facility owns it, which is exactly what
   // initFacility concludes one line later from facilities.user_id.
   if(allFacilities.length&&currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
-  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&isSampleFacility(f));
+  // Asked of the database, by this sample's own name — see t22FindOwnedSample.
+  const existing=await t22FindOwnedSample(SAMPLE_FACILITY_NAME);
   // Completeness is judged on the compliance checklist — the last bulk insert
   // — not on the facility row, so a run that died half way can be retried
   // instead of switching someone into an empty sample.
@@ -7261,7 +7353,8 @@ async function seedArfDemoData(){
     return;
   }
   if(allFacilities.length&&currentUserRole!=='administrator'){alert('Only administrators can load demo data.');return;}
-  const existing=(allFacilities||[]).find(f=>f&&f.user_id===currentUser?.id&&f.name===SAMPLE_ARF_NAME);
+  // Asked of the database, by this sample's own name — see t22FindOwnedSample.
+  const existing=await t22FindOwnedSample(SAMPLE_ARF_NAME);
   let reuse=null;
   if(existing){
     const{data:seeded}=await sb.from('compliance_tasks').select('id').eq('facility_id',existing.id).limit(1);
@@ -8741,7 +8834,7 @@ async function readPortfolioRow(f){
   const d=v=>v?String(v).slice(0,10):null;
   const row={id:f.id,name:f.name||'Unnamed facility',failed:[]};
   const[tk,st,inc]=await Promise.all([
-    sb.from('compliance_tasks').select('completed,due_date,checklist_item_id').eq('facility_id',f.id),
+    sb.from('compliance_tasks').select('completed,due_date,checklist_item_id,category').eq('facility_id',f.id),
     sb.from('staff').select('active,cpr_cert_expiry,first_aid_cert_expiry,tb_test_due,tb_test_expiry,livescan_cleared,mandated_reporter_completed').eq('facility_id',f.id),
     sb.from('incidents').select('occurred_at').eq('facility_id',f.id).gte('occurred_at',since30),
   ]).catch(e=>[{error:e},{error:e},{error:e}]);
@@ -14011,7 +14104,7 @@ function renderRefNote(){
 <div class="modal-overlay" id="add-task-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal"><div class="modal-header"><h3>Add compliance task</h3><button class="modal-close" onclick="closeModal()">×</button></div>
   <div class="form-group searchable-select"><label>Task title</label><input type="text" id="modal-task-title" placeholder="Search Title 22 requirements or enter custom task..." oninput="filterTaskOptions(this.value)" autocomplete="off"/><div class="searchable-dropdown" id="task-options-dropdown"></div></div>
-  <div class="form-group"><label>Category</label><select id="modal-task-cat"><option value="administrator">Administrator</option><option value="staff">Staff</option><option value="residents">Residents</option><option value="medication">Medications</option><option value="facility" selected>Facility</option></select></div>
+  <div class="form-group"><label>Category</label><select id="modal-task-cat"><option value="administrator">Administrator</option><option value="staff">Staff</option><option value="residents" data-phi="1">Residents</option><option value="medication" data-phi="1">Medications</option><option value="facility" selected>Facility</option></select></div>
   <div class="form-group"><label>Due date</label><input type="date" id="modal-task-due"/></div>
   <div class="form-group"><label>Notes (optional)</label><textarea id="modal-task-notes" rows="2" placeholder="Any additional context..."></textarea></div>
   <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCustomTask()">Add task</button></div></div>
