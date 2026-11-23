@@ -200,6 +200,14 @@ function emailTemplate(template, payload) {
       `,
     };
   }
+  if (template === 'addon_owner_alert') {
+    // Not a customer template: the OWNER's task notice for a training
+    // add-on activation, built by addonOwnerAlertEmail() below and sent
+    // only by /notify-addon-owner to SIGNUP_NOTIFY_TO. It lives here so
+    // it rides sendOnce — the one claim-before-send path — like every
+    // other phase-2 email.
+    return addonOwnerAlertEmail(payload);
+  }
   return null;
 }
 
@@ -259,6 +267,45 @@ function esc(v) {
   ));
 }
 
+// The add-on owner alert (2026-11-22, the owner-alert addition to the
+// add-on fix): when a Staff Training Add-On activates, the buyer's
+// confirmation promises them a by-hand order check before their staff
+// are enrolled on CTC's platform. That promise is a job for the OWNER,
+// and until this existed nothing told him the job was due — no admin
+// screen, no email; he would have had to notice a Stripe subscription.
+// This is that notice, in the signup alert's shape (owner mail, not
+// customer mail): who bought, which tier, which subscription, and the
+// job stated plainly. It renders through emailTemplate like every other
+// send so it rides the same claim-before-send path (sendOnce) — its
+// dedupe key is its own (addon_owner_alert:<subscription id>), so it
+// can neither block nor be blocked by the buyer's confirmation.
+function addonOwnerAlertEmail(payload) {
+  const info = ADDON_INFO[String(payload.addon || '').toLowerCase()] ||
+    { label: 'Staff Training Add-On', price: null };
+  const buyer = payload.buyer_email || '(buyer email not supplied)';
+  const subject = `Training add-on active: ${buyer} — enrollment check due`;
+  const rows = [
+    ['Buyer account', buyer],
+    ['Add-on', info.label],
+    ['Price', info.price || '—'],
+    ['Stripe subscription', payload.subscription_id || '—'],
+  ];
+  return {
+    subject,
+    html:
+      '<div style="font-family:-apple-system,Arial,sans-serif;line-height:1.55;color:#16312b">' +
+      `<h2 style="margin:0 0 4px;font-size:18px">${esc(subject)}</h2>` +
+      `<p style="margin:0 0 14px;color:#5b6b66;font-size:13px">${esc(new Date().toISOString())}</p>` +
+      '<table style="border-collapse:collapse;font-size:14px">' +
+      rows.map(([k, v]) =>
+        `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">${esc(k)}</td>` +
+        `<td style="padding:4px 0"><strong>${esc(v)}</strong></td></tr>`).join('') +
+      '</table>' +
+      `<p style="margin:14px 0 0;font-size:14px">The job: check this order by hand, enroll the home's staff on CTC's LearnUpon platform, then email the buyer at <strong>${esc(buyer)}</strong> when their staff can start. That by-hand check is what the buyer's confirmation email promised them.</p>` +
+      '</div>',
+  };
+}
+
 function signupEmail(event, record) {
   const ref = record.referred_by;
   const subject =
@@ -303,6 +350,12 @@ function signupEmail(event, record) {
 //                              payment context but no user session. It
 //                              authenticates on a shared secret of its own
 //                              (EMAIL_SERVICE_SECRET, set on BOTH Workers).
+//   addon_owner_alert       <- POST /notify-addon-owner, called by the
+//                              same stripe-webhook on the same secret,
+//                              at the moment a training add-on activates:
+//                              the OWNER's notice (to SIGNUP_NOTIFY_TO)
+//                              that the by-hand CTC enrollment check the
+//                              buyer's confirmation promised is now due.
 //   trial_warning           <- this Worker's own cron (see [triggers] in
 //                              wrangler.toml): a daily scan of profiles for
 //                              trials ending within 3 days.
@@ -467,6 +520,9 @@ export default {
     }
     if (new URL(request.url).pathname.endsWith('/notify-payment')) {
       return notifyPayment(request, env);
+    }
+    if (new URL(request.url).pathname.endsWith('/notify-addon-owner')) {
+      return notifyAddonOwner(request, env);
     }
 
     try {
@@ -682,6 +738,75 @@ async function notifyPayment(request, env) {
         amount_due: body.amount_due != null ? body.amount_due : null,
         retry_url: body.retry_url || null,
         access_url: body.access_url || null,
+      },
+    });
+    if (!outcome.sent) return json({ ok: true, skipped: outcome.skipped });
+    return json({ ok: true, id: outcome.id });
+  } catch (err) {
+    return json({ error: err.message, detail: err.detail || undefined }, 502);
+  }
+}
+
+// ─── Add-on owner alert, called by stripe-webhook ──────────────────────────
+//
+// The sibling of /notify-payment above: same caller, same shared secret
+// (EMAIL_SERVICE_SECRET), same claim-before-send path — but the recipient
+// is the OWNER (SIGNUP_NOTIFY_TO, the signup alert's address; no new
+// configuration), and what is sent is a task, not a receipt. stripe-webhook
+// calls this only when its add-on branch grants training, and names the
+// dedupe key (addon_owner_alert:<subscription id>) — its OWN key, separate
+// from the buyer confirmation's subscription_confirmed:<subscription id>,
+// so neither send can block the other, and a Stripe redelivery of the
+// activation event re-enters here and is stopped by the claim, not by
+// luck. If the send itself fails, sendOnce has already released the
+// claim, so a later redelivery can still deliver the alert.
+async function notifyAddonOwner(request, env) {
+  const missing = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_SERVICE_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SIGNUP_NOTIFY_TO']
+    .filter(name => !env[name]);
+  if (missing.length) {
+    return json({ error: 'Worker misconfigured — missing binding(s): ' + missing.join(', ') }, 500);
+  }
+
+  const given = request.headers.get('X-Title22-Service-Secret') || '';
+  if (!secretMatches(given, env.EMAIL_SERVICE_SECRET)) {
+    return json({ error: 'Bad or missing X-Title22-Service-Secret' }, 401);
+  }
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Body is not JSON' }, 400); }
+
+  const dedupeKey = String((body && body.dedupe_key) || '');
+  if (!dedupeKey || dedupeKey.length > 200) {
+    return json({ error: 'dedupe_key is required (max 200 chars)' }, 400);
+  }
+  const addon = String((body && body.addon) || '').toLowerCase();
+  if (!ADDON_INFO[addon]) {
+    return json({ error: 'addon must be one of: ' + Object.keys(ADDON_INFO).join(', ') }, 400);
+  }
+
+  try {
+    // The buyer ACCOUNT email is the address the enrollment job ends
+    // with ("email the buyer when their staff can start"), so the auth
+    // record — the account itself — outranks the address the caller
+    // passes, which is the Stripe customer's (the payer's) email and is
+    // routinely a different inbox. The caller's address is the fallback
+    // for when the lookup cannot be made.
+    const user = body.user_id ? await lookupAuthUser(env, body.user_id) : null;
+    const buyerEmail = String((user && user.email) || body.buyer_email || '').trim().toLowerCase();
+    if (!buyerEmail) {
+      return json({ error: 'No buyer email (auth lookup and body.buyer_email both empty)' }, 422);
+    }
+
+    const outcome = await sendOnce(env, {
+      dedupeKey,
+      userId: body.user_id || null,
+      template: 'addon_owner_alert',
+      to: env.SIGNUP_NOTIFY_TO,
+      payload: {
+        buyer_email: buyerEmail,
+        addon,
+        subscription_id: body.subscription_id || null,
       },
     });
     if (!outcome.sent) return json({ ok: true, skipped: outcome.skipped });

@@ -87,12 +87,31 @@ compatibility_date = "2026-09-07"
 # storing the unfolded string would read as unpaid AND drop the subscriber to
 # one facility with no Tello.
 
+# SERVICE BINDING (2026-11-22): how stripe-webhook reaches title22-email.
+# A Worker fetching another Worker's workers.dev URL gets a bare platform
+# 404 — no body, and the callee's code never runs — so the EMAIL_WORKER_URL
+# fetch failed every payment email while the email Worker itself was
+# healthy (proven live 2026-11-22: the route answered 401 to an outside
+# caller with a wrong secret, and /health read ok). The binding is
+# Cloudflare's supported Worker-to-Worker channel. It is declared HERE,
+# on the caller; title22-email needs no matching change. Redeploy
+# stripe-webhook after adding this or the binding does not exist at
+# runtime — and keep this block ABOVE [vars], or it would be read as a
+# var instead of a binding.
+[[services]]
+binding = "EMAIL_WORKER"
+service = "title22-email"
+
 # Keep this table last. Everything above it is a comment or a top-level key;
 # anything written below it belongs to [vars] whether that was meant or not.
 [vars]
 SUPABASE_URL = "https://nwlhsshvqmbhemhxcran.supabase.co"
-# Phase 2 (Nov 20, 2026): where the customer payment emails are sent from.
+# Phase 2 (Nov 20, 2026): the customer payment emails' destination.
 # A public workers.dev address, not a secret — same reasoning as
 # SUPABASE_URL above, and in [vars] for the same reason: the file is the
 # authority, so a deploy re-sets it instead of erasing it.
+# Since 2026-11-22 this is the FALLBACK path only, plus documentation of
+# the callee's public address: the live path is the EMAIL_WORKER service
+# binding above, because a Worker-to-Worker fetch to this URL is answered
+# by the platform with a 404 before the callee ever runs.
 EMAIL_WORKER_URL = "https://title22-email.infomomtelo.workers.dev"

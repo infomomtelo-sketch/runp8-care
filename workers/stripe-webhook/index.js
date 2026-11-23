@@ -597,7 +597,19 @@ async function writeLedgerForInvoice(env, invoice) {
 // secret — EMAIL_SERVICE_SECRET, a dashboard secret on BOTH Workers —
 // because this Worker has no user session and the email Worker's templated
 // route requires one (the JWT wall the Nov 7 bring-up flagged).
-// EMAIL_WORKER_URL is a plain var beside SUPABASE_URL in wrangler.toml.
+//
+// The call travels over the EMAIL_WORKER service binding ([[services]] in
+// wrangler.toml), NOT a fetch to the email Worker's workers.dev URL:
+// Cloudflare answers a Worker-to-Worker fetch to a workers.dev address
+// with a bare platform 404 — no body, and the callee's code never runs —
+// so the URL fetch failed every payment email while looking like an
+// application error (diagnosed live 2026-11-22 from the warning in a
+// Stripe delivery body; the same route answered 401 to an outside caller
+// with a wrong secret, proving the route and the Worker were healthy all
+// along). External callers are unaffected, which is why /health and the
+// outside probes never showed it. EMAIL_WORKER_URL stays in [vars] as
+// the fallback for an environment with no binding declared, and as
+// documentation of the callee's public address.
 //
 // The dedupe key is named HERE, by the caller, because only the caller
 // knows what makes a notification unique: the subscription id for a
@@ -605,27 +617,48 @@ async function writeLedgerForInvoice(env, invoice) {
 // count for a failure (once per failed attempt — a redelivery of the same
 // event cannot re-send, a genuinely new failed retry can).
 //
+// The add-on owner alert (2026-11-22) rides the same rail through its
+// own route on the email Worker, /notify-addon-owner — see
+// notifyOwnerAlert below.
+//
 // Same contract as writeLedgerForInvoice: NEVER throws, returns a warning
 // string for the 200 body or null. An email problem must never fail a
 // delivery or touch plan activation — the money path outranks the mail
 // path. EMAIL_SERVICE_SECRET is deliberately NOT in REQUIRED_BINDINGS
 // below: a missing email secret degrades to these warnings, never to a
 // 500 that would stall subscription events.
+// How the two helpers below reach title22-email. The service binding
+// (env.EMAIL_WORKER) is the live path; the EMAIL_WORKER_URL fetch is the
+// fallback for an environment with no binding declared. The host in the
+// binding URL is a placeholder — the binding routes the request to the
+// title22-email Worker, whose router matches on the pathname, so the
+// path must stay exactly the route's path.
+function emailWorkerBinding(env) {
+  return env.EMAIL_WORKER && typeof env.EMAIL_WORKER.fetch === 'function' ? env.EMAIL_WORKER : null;
+}
+
+async function postToEmailWorker(env, path, payload) {
+  const init = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Title22-Service-Secret': env.EMAIL_SERVICE_SECRET,
+    },
+    body: JSON.stringify(payload),
+  };
+  const binding = emailWorkerBinding(env);
+  if (binding) return binding.fetch('https://title22-email' + path, init);
+  return fetch(env.EMAIL_WORKER_URL.replace(/\/$/, '') + path, init);
+}
+
 async function notifyCustomerEmail(env, payload) {
   try {
-    if (!env.EMAIL_WORKER_URL || !env.EMAIL_SERVICE_SECRET) {
-      return 'CUSTOMER EMAIL SKIPPED — EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET not configured ' +
+    if ((!emailWorkerBinding(env) && !env.EMAIL_WORKER_URL) || !env.EMAIL_SERVICE_SECRET) {
+      return 'CUSTOMER EMAIL SKIPPED — EMAIL_WORKER / EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET not configured ' +
         'on stripe-webhook, so no ' + payload.template + ' email was requested for ' +
         (payload.email || payload.user_id || '(unknown customer)') + '. The payment itself is unaffected.';
     }
-    const res = await fetch(env.EMAIL_WORKER_URL.replace(/\/$/, '') + '/notify-payment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Title22-Service-Secret': env.EMAIL_SERVICE_SECRET,
-      },
-      body: JSON.stringify(payload),
-    });
+    const res = await postToEmailWorker(env, '/notify-payment', payload);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return 'CUSTOMER EMAIL FAILED — title22-email answered HTTP ' + res.status + ' for ' +
@@ -638,6 +671,47 @@ async function notifyCustomerEmail(env, payload) {
   } catch (e) {
     return 'CUSTOMER EMAIL FAILED — could not reach title22-email for ' + payload.template + ': ' +
       ((e && e.message) || String(e)) + '. The payment itself is unaffected.';
+  }
+}
+
+// The OWNER alert for a training add-on activation (2026-11-22), decided
+// here and sent by title22-email through its /notify-addon-owner route —
+// same secret, same never-throws contract as notifyCustomerEmail above.
+// The buyer's confirmation promises a by-hand order check before their
+// staff are enrolled on CTC's platform; this call is what tells the
+// owner the check is due. Its dedupe key is its own
+// (addon_owner_alert:<subscription id>), so it can neither block nor be
+// blocked by the buyer's confirmation. Failures are console.error'd here
+// as well as returned: this alert has no customer watching for it, so it
+// gets both of the file's loud surfaces, not one.
+async function notifyOwnerAlert(env, payload) {
+  try {
+    if ((!emailWorkerBinding(env) && !env.EMAIL_WORKER_URL) || !env.EMAIL_SERVICE_SECRET) {
+      const note = 'ADDON OWNER ALERT SKIPPED — EMAIL_WORKER / EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET not configured ' +
+        'on stripe-webhook, so no enrollment-check alert was requested for subscription ' +
+        (payload.subscription_id || '(unknown)') + '. Activation and the buyer confirmation are unaffected.';
+      console.error(note);
+      return note;
+    }
+    const res = await postToEmailWorker(env, '/notify-addon-owner', payload);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const note = 'ADDON OWNER ALERT FAILED — title22-email answered HTTP ' + res.status + ' for subscription ' +
+        (payload.subscription_id || '(unknown)') + ' (' + (data.error || 'no detail') + '). ' +
+        'Activation and the buyer confirmation are unaffected; the enrollment check is still due by hand.';
+      console.error(note);
+      return note;
+    }
+    // data.skipped means the dedupe log already holds this key — the
+    // alert went out on an earlier delivery. The design working, not a
+    // warning.
+    return null;
+  } catch (e) {
+    const note = 'ADDON OWNER ALERT FAILED — could not reach title22-email for subscription ' +
+      (payload.subscription_id || '(unknown)') + ': ' + ((e && e.message) || String(e)) +
+      '. Activation and the buyer confirmation are unaffected; the enrollment check is still due by hand.';
+    console.error(note);
+    return note;
   }
 }
 
@@ -850,6 +924,20 @@ export default {
                 addon: addon.tier,
               });
               if (note && !warning) warning = note;
+              // And the owner's half of the same moment (2026-11-22):
+              // the confirmation just promised the buyer a by-hand
+              // order check before enrollment, so the owner is told the
+              // check is due — his alert, his dedupe key, and a failure
+              // here changes nothing above: not the flag, not the
+              // confirmation, not the 200.
+              const alertNote = await notifyOwnerAlert(env, {
+                dedupe_key: 'addon_owner_alert:' + obj.id,
+                user_id: userId,
+                buyer_email: email,
+                addon: addon.tier,
+                subscription_id: obj.id,
+              });
+              if (alertNote && !warning) warning = alertNote;
             }
             break;
           }
