@@ -107,6 +107,37 @@ const PRODUCT_PLANS = {
   'prod_VDypF9WL2wmjGO': 'multi-home',  // $79 Title22 Multi-Home
 };
 
+// The Staff Training Add-On tiers (CTC agreement, Exhibit A), added
+// 2026-11-22. These are NOT plans, and that is why they live in their own
+// maps instead of PRICE_PLANS: planFromSubscription() reads PRICE_PLANS,
+// and anything in there is one careless edit away from being granted as
+// a plan. An add-on purchase stamps profiles.title22_training_included
+// and NOTHING else — never title22_plan, never title22_package.
+//
+// Four separate PRODUCTS, one per tier — Eli built them that way in the
+// Stripe dashboard on 2026-10-26, rather than one product with four
+// prices. All eight IDs below were verified by a Stripe API read that
+// same day and recorded in title22-outreach/tello-staff-addon.md — they
+// were NOT transcribed from a dashboard screenshot (see the note above
+// PRICE_PLANS for what that cost in Sept 2026). The product IDs are kept
+// beside the prices for the same reason PRODUCT_PLANS exists: a second,
+// independent identifier, so a re-priced tier can still be recognised.
+const ADDON_TIERS = {
+  small:  { beds: '1-6',   price: '$20/month',  product: 'prod_VW2LAPNkGSyH8B' },  // Staff Training Add-On - Small
+  medium: { beds: '7-15',  price: '$35/month',  product: 'prod_VW2PY0Em88j6mF' },  // Staff Training Add-On - Medium
+  large:  { beds: '16-49', price: '$60/month',  product: 'prod_VW2Pgm2KXmyZUe' },  // Staff Training Add-On - Large
+  xl:     { beds: '50+',   price: '$100/month', product: 'prod_VW2QvONT7rp39Y' },  // Staff Training Add-On - Extra Large
+};
+const ADDON_PRICES = {
+  'price_1UV0GvAH9qPFLg89xaIcDW3j': 'small',   // $20/mo, prod_VW2LAPNkGSyH8B
+  'price_1UV0KKAH9qPFLg89zmjAtjfa': 'medium',  // $35/mo, prod_VW2PY0Em88j6mF
+  'price_1UV0KzAH9qPFLg89c8oG81U7': 'large',   // $60/mo, prod_VW2Pgm2KXmyZUe
+  'price_1UV0LXAH9qPFLg89talQ2iGg': 'xl',      // $100/mo, prod_VW2QvONT7rp39Y
+};
+const ADDON_PRODUCTS = Object.fromEntries(
+  Object.entries(ADDON_TIERS).map(([tier, info]) => [info.product, tier])
+);
+
 // The plan keys the app actually understands. index.html's TIER_LIMITS and
 // T22_PAID are keyed on exactly these, so a plan written here that is not in
 // this list is worse than writing nothing: T22_PAID would not match it, so the
@@ -322,6 +353,63 @@ function planFromSubscription(sub) {
   };
 }
 
+// Is this subscription a Staff Training Add-On purchase (2026-11-22)?
+// Three signals, in falling order of how far we trust the source — the
+// same discipline as planFromSubscription():
+//   1. an item price in ADDON_PRICES. The map is the authority.
+//   2. an item price whose PRODUCT is one of the four add-on products —
+//      a tier that was re-priced in the dashboard. The purchase still
+//      counts; the price map needs the new price added.
+//   3. subscription metadata product_kind=ctc_addon (+ a known tier),
+//      which the Payment Links stamp through subscription_data. It is
+//      set by Stripe from the link's configuration, not typed per buyer
+//      — the links were built from tools/setup-stripe-test.mjs's
+//      paymentLinkParams, which sets exactly this metadata.
+// Signals 2 and 3 come back with viaFallback set, and the caller is loud
+// about them, exactly like the plan rescues: the purchase is granted, so
+// nothing visibly breaks, and a silent success is how a wrong price map
+// survives to the next customer. Returns null when this is not an
+// add-on subscription at all.
+function addonFromSubscription(sub) {
+  const items = (sub.items && sub.items.data) || [];
+  for (const it of items) {
+    const priceId = it.price && it.price.id;
+    const tier = priceId && ADDON_PRICES[priceId];
+    if (tier) return { tier, priceId, viaFallback: null };
+  }
+  for (const it of items) {
+    const p = it.price || {};
+    const productId = typeof p.product === 'string' ? p.product : (p.product && p.product.id);
+    const tier = productId && ADDON_PRODUCTS[productId];
+    if (tier) return { tier, priceId: p.id || null, viaFallback: 'product' };
+  }
+  const md = sub.metadata || {};
+  if (md.product_kind === 'ctc_addon' && ADDON_TIERS[md.tier]) {
+    const first = items[0] && items[0].price;
+    return { tier: md.tier, priceId: (first && first.id) || null, viaFallback: 'metadata' };
+  }
+  return null;
+}
+
+// The "Title22 account email" a buyer typed at checkout. Payment Link
+// custom fields live on the checkout SESSION only — subscription and
+// invoice events never see them — shaped by Stripe as
+// { key: 'title22_account_email', type: 'text', text: { value } }.
+// The key is the one the add-on repo's tools/setup-stripe-test.mjs
+// defines in CUSTOM_FIELDS, and the live links carry it as a required
+// field. It exists because the address a buyer pays with is not
+// necessarily the address their Title22 account is under.
+function checkoutAccountEmail(session) {
+  const fields = (session && session.custom_fields) || [];
+  for (const f of fields) {
+    if (f && f.key === 'title22_account_email') {
+      const v = f.text && f.text.value;
+      return typeof v === 'string' && v.trim() ? v.trim() : null;
+    }
+  }
+  return null;
+}
+
 function isoOrNull(unixSeconds) {
   return unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
 }
@@ -500,6 +588,59 @@ async function writeLedgerForInvoice(env, invoice) {
   }
 }
 
+// --- Customer email notifications (phase 2, added 2026-11-20) ---
+//
+// subscription_confirmed and payment_failed are DECIDED here, where the
+// payment context lives, but SENT by workers/title22-email: it owns the
+// templates, the Resend key and the dedupe log (public.title22_email_log).
+// This Worker POSTs to its /notify-payment route, authenticated by a shared
+// secret — EMAIL_SERVICE_SECRET, a dashboard secret on BOTH Workers —
+// because this Worker has no user session and the email Worker's templated
+// route requires one (the JWT wall the Nov 7 bring-up flagged).
+// EMAIL_WORKER_URL is a plain var beside SUPABASE_URL in wrangler.toml.
+//
+// The dedupe key is named HERE, by the caller, because only the caller
+// knows what makes a notification unique: the subscription id for a
+// confirmation (once per subscription, ever), the invoice id + attempt
+// count for a failure (once per failed attempt — a redelivery of the same
+// event cannot re-send, a genuinely new failed retry can).
+//
+// Same contract as writeLedgerForInvoice: NEVER throws, returns a warning
+// string for the 200 body or null. An email problem must never fail a
+// delivery or touch plan activation — the money path outranks the mail
+// path. EMAIL_SERVICE_SECRET is deliberately NOT in REQUIRED_BINDINGS
+// below: a missing email secret degrades to these warnings, never to a
+// 500 that would stall subscription events.
+async function notifyCustomerEmail(env, payload) {
+  try {
+    if (!env.EMAIL_WORKER_URL || !env.EMAIL_SERVICE_SECRET) {
+      return 'CUSTOMER EMAIL SKIPPED — EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET not configured ' +
+        'on stripe-webhook, so no ' + payload.template + ' email was requested for ' +
+        (payload.email || payload.user_id || '(unknown customer)') + '. The payment itself is unaffected.';
+    }
+    const res = await fetch(env.EMAIL_WORKER_URL.replace(/\/$/, '') + '/notify-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Title22-Service-Secret': env.EMAIL_SERVICE_SECRET,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return 'CUSTOMER EMAIL FAILED — title22-email answered HTTP ' + res.status + ' for ' +
+        payload.template + ' (' + (data.error || 'no detail') + '). The payment itself is unaffected.';
+    }
+    // data.skipped means the dedupe log already holds this key — the email
+    // went out on an earlier delivery. That is the design working, not a
+    // warning.
+    return null;
+  } catch (e) {
+    return 'CUSTOMER EMAIL FAILED — could not reach title22-email for ' + payload.template + ': ' +
+      ((e && e.message) || String(e)) + '. The payment itself is unaffected.';
+  }
+}
+
 // Everything this Worker needs from its environment, checked before any of it
 // is used. This exists because of the 2026-09-13 outage, and the shape of that
 // outage is the argument for it:
@@ -571,6 +712,11 @@ export default {
     let event;
     try { event = JSON.parse(raw); } catch (e) { return new Response('Bad JSON', { status: 400 }); }
     const obj = (event.data && event.data.object) || {};
+    // Present on *.updated events: the fields as they were BEFORE this
+    // change. Phase 2 (2026-11-20) reads the previous status to catch the
+    // trialing -> active conversion — the moment a trial becomes a paid
+    // subscription — exactly once.
+    const prevAttrs = (event.data && event.data.previous_attributes) || {};
 
     // Set when the event succeeded but something is wrong that a human must
     // fix. It rides out in the 200 body, because Stripe records the response
@@ -590,11 +736,30 @@ export default {
         case 'checkout.session.completed': {
           const subscriptionId = obj.subscription;
           const email = (obj.customer_details && obj.customer_details.email) || obj.customer_email || null;
-          const userId = await resolveUserId(env, {
+          // The add-on Payment Links (and the Tello Staff link, cloned
+          // from the Small training link) collect a required "Title22
+          // account email" custom field — the address the buyer says
+          // their account is under, which is NOT necessarily the email
+          // they pay with. On 2026-11-21 the account was
+          // admin@runp8.com and the Stripe customer was
+          // infomomtelo@gmail.com, so the payment email matched nothing
+          // and the purchase attributed to nobody. Custom fields exist
+          // only on this event, so the account email is tried FIRST
+          // here; the payment email remains the fallback, unchanged for
+          // every checkout that carries no custom field.
+          const accountEmail = checkoutAccountEmail(obj);
+          let userId = await resolveUserId(env, {
             subscriptionId,
             clientReferenceId: obj.client_reference_id,
-            email,
+            email: accountEmail || email,
           });
+          if (!userId && accountEmail && email && accountEmail.toLowerCase() !== email.toLowerCase()) {
+            userId = await resolveUserId(env, {
+              subscriptionId,
+              clientReferenceId: obj.client_reference_id,
+              email,
+            });
+          }
           if (!userId) {
             // 409, not 202. A paid checkout we cannot attribute is not a
             // success to be acknowledged and forgotten — 2xx tells Stripe the
@@ -635,6 +800,58 @@ export default {
             // "Free Trial" after being charged.
             console.error('Unattributed subscription', obj.id, 'email', email || '(none)');
             return new Response('No matching user for subscription — will retry', { status: 409 });
+          }
+          // Staff Training Add-On (2026-11-22). A training-only purchase:
+          // it stamps the training flag and NOTHING else — never
+          // title22_plan, never title22_package, and no plan row in the
+          // subscriptions table (a row there with no plan name would read
+          // as a plan nobody can identify). Before this branch existed,
+          // the four add-on prices were unmapped and this case refused
+          // them with the 422 below: the buyer paid, Stripe showed an
+          // active subscription, and Title22 did nothing at all — the
+          // activation was a by-hand step that nobody was alerted to
+          // take, and on 2026-11-21 a real $20 purchase sat unconfirmed
+          // for exactly that reason.
+          const addon = addonFromSubscription(obj);
+          if (addon) {
+            if (addon.viaFallback) {
+              // Loud even though it worked — same rule as the plan
+              // rescues below. The map is incomplete and somebody has
+              // to complete it.
+              const note =
+                `PRICE MAP IS WRONG — this add-on event was recognised via its ${addon.viaFallback}, ` +
+                `not its price. Stripe sent price ${addon.priceId || '(none)'} for the ${addon.tier} tier. ` +
+                `Add that price to ADDON_PRICES in workers/stripe-webhook/index.js.`;
+              console.error(note);
+              if (!warning) warning = note;
+            }
+            if (obj.status === 'active' || obj.status === 'trialing') {
+              await patchProfile(env, userId, { title22_training_included: true });
+            }
+            // The confirmation email, on the same two moments as a
+            // plan's: created already active (paid on the spot), and
+            // trialing -> active. The add-on links carry no trial, so in
+            // practice the created event is the one — the second moment
+            // is here so the rule is the same rule everywhere. The
+            // dedupe key is the subscription id, so a redelivery of
+            // either moment cannot re-send.
+            const firstActivation =
+              obj.status === 'active' &&
+              (event.type === 'customer.subscription.created' || prevAttrs.status === 'trialing');
+            if (firstActivation) {
+              const note = await notifyCustomerEmail(env, {
+                template: 'subscription_confirmed',
+                dedupe_key: 'subscription_confirmed:' + obj.id,
+                user_id: userId,
+                email,
+                plan: null,
+                package: null,
+                training_included: true,
+                addon: addon.tier,
+              });
+              if (note && !warning) warning = note;
+            }
+            break;
           }
           if (!plan) {
             // The price did not match. Before refusing a payment, ask Stripe
@@ -733,11 +950,46 @@ export default {
             stripe_subscription_id: obj.id,
             current_period_end: periodEnd,
           });
+          // Phase 2 (2026-11-20): the subscription_confirmed email, once
+          // per subscription. Two moments count as the start: created
+          // already active (paid on the spot), and trialing -> active (the
+          // trial converted — seen via previous_attributes). A plain
+          // 'created' in trialing sends nothing: no money has moved, and
+          // the confirmation belongs with the first charge. The email
+          // Worker dedupes on the subscription id, so even if both
+          // moments somehow fired, the customer gets exactly one email.
+          const firstActivation =
+            obj.status === 'active' &&
+            (event.type === 'customer.subscription.created' || prevAttrs.status === 'trialing');
+          if (firstActivation && plan) {
+            const note = await notifyCustomerEmail(env, {
+              template: 'subscription_confirmed',
+              dedupe_key: 'subscription_confirmed:' + obj.id,
+              user_id: userId,
+              email,
+              plan,
+              package: (tier && tier.pkg) || null,
+              training_included: !!(tier && tier.training),
+            });
+            if (note && !warning) warning = note;
+          }
           break;
         }
 
         // The downgrade path. Access runs to the end of the paid period.
         case 'customer.subscription.deleted': {
+          // A cancelled ADD-ON ends only the add-on (2026-11-22), so it
+          // never reaches the generic path below: that path stamps
+          // title22_plan_expires_at, which the app reads as the PLAN
+          // ending — running it here would lock a package subscriber's
+          // access at period end for cancelling a $20 extra. The
+          // training flag is NOT cleared either, deliberately: the
+          // package path never un-stamps title22_training_included
+          // anywhere in this file, so the add-on mirrors it rather than
+          // inventing a second semantics. Switching training off when an
+          // add-on or package ends is a product decision that has not
+          // been taken; until it is, both paths behave the same way.
+          if (addonFromSubscription(obj)) break;
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           // Deliberately still 202, and the only one. A cancellation we cannot
@@ -782,6 +1034,69 @@ export default {
           break;
         }
 
+        // A payment attempt failed (phase 2, 2026-11-20). The plan is NOT
+        // touched here: Stripe retries on its own schedule, and if the
+        // subscription is finally cancelled, the subscription events above
+        // are what end access. This case only asks title22-email to tell
+        // the customer — once per failed attempt, via the dedupe key's
+        // attempt count.
+        //
+        // NOTE: the `memorable-wonder` destination must be subscribed to
+        // invoice.payment_failed in the Stripe dashboard, or this case
+        // never runs. It is NOT in the list the Nov 19 bundle build added
+        // (invoice.payment_succeeded / invoice.paid) — see wrangler.toml.
+        case 'invoice.payment_failed': {
+          const subId = typeof obj.subscription === 'string'
+            ? obj.subscription
+            : (obj.subscription && obj.subscription.id) || null;
+          const invEmail = obj.customer_email || await stripeCustomerEmail(env, obj.customer);
+          const invUserId = await resolveUserId(env, { subscriptionId: subId, email: invEmail });
+          if (!invUserId && !invEmail) {
+            const note = 'PAYMENT-FAILED EMAIL SKIPPED — invoice ' + obj.id +
+              ' could not be attributed to an account; no email was sent.';
+            console.error(note);
+            if (!warning) warning = note;
+            break;
+          }
+          // Name the plan from the invoice's own lines when a line carries
+          // a mapped price; otherwise the email template falls back to
+          // generic wording. The ledger reads lines the same way.
+          let invPlan = null, invPkg = null, invTraining = false;
+          for (const line of (obj.lines && obj.lines.data) || []) {
+            const t = line.price && PRICE_PLANS[line.price.id];
+            if (t) {
+              invPlan = normalisePlan(t.plan);
+              invPkg = t.pkg || null;
+              invTraining = !!t.training;
+              break;
+            }
+          }
+          // An add-on invoice names no plan. Name the add-on instead
+          // (2026-11-22), so the failure email talks about the training
+          // extra that failed — and never tells an add-on buyer their
+          // package ended when they may not have one.
+          let invAddon = null;
+          if (!invPlan) {
+            for (const line of (obj.lines && obj.lines.data) || []) {
+              const at = line.price && ADDON_PRICES[line.price.id];
+              if (at) { invAddon = at; invTraining = true; break; }
+            }
+          }
+          const note = await notifyCustomerEmail(env, {
+            template: 'payment_failed',
+            dedupe_key: 'payment_failed:' + obj.id + ':' + (obj.attempt_count || 1),
+            user_id: invUserId,
+            email: invEmail,
+            plan: invPlan,
+            package: invPkg,
+            training_included: invTraining,
+            addon: invAddon,
+            amount_due: typeof obj.amount_due === 'number' ? obj.amount_due / 100 : null,
+          });
+          if (note && !warning) warning = note;
+          break;
+        }
+
         default:
           // Everything else is acknowledged and ignored. Returning anything
           // other than 2xx makes Stripe retry an event we do not want.
@@ -812,4 +1127,4 @@ export default {
 // Named exports for the test suite (test.mjs), following the convention of
 // the other Workers in this repo: the default export above is the Worker
 // itself; these are the pure pieces a test can check without a network.
-export { PRICE_PLANS, portionForBeds, cappedPortion, splitAmounts };
+export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };
