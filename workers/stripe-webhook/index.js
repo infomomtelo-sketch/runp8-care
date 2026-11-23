@@ -276,6 +276,41 @@ async function resolveUserId(env, { subscriptionId, clientReferenceId, email }) 
   return null;
 }
 
+// The plan a subscriptions row already carries for this subscription,
+// if a row exists. The refund handler's fallback redelivery route reads
+// it (2026-11-23): after a swap, the subscription's items in Stripe
+// name only the $9 records price, so the package it USED to be is
+// recorded nowhere in Stripe — but the refund handler's own first pass
+// upserted this row with the package's plan, and the plan is the one
+// piece the idempotent tail still needs.
+async function subscriptionRowPlan(env, subscriptionId) {
+  if (!subscriptionId) return null;
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}&select=plan&limit=1`,
+    { headers: sbHeaders(env) }
+  );
+  if (!res.ok) return null;
+  const rows = await res.json().catch(() => []);
+  return (rows && rows.length && rows[0].plan) || null;
+}
+
+// The PRICE_PLANS entry (and its price id) for a package plan key — the
+// inverse of the map, used only to rebuild a refunded package's tier
+// from the plan its subscriptions row kept. Two packages share the
+// 'multi' plan (pkg2, pkg3) and the row cannot tell them apart; the
+// first in map order wins, which can misname the package in a re-asked
+// email's payload. A re-ask happens only on redelivery, where the email
+// Worker's claim has almost always already stopped the send — and the
+// plan itself, the field the tail writes, is always right.
+function packageTierForPlan(plan) {
+  const want = normalisePlan(plan);
+  if (!want) return null;
+  for (const [priceId, t] of Object.entries(PRICE_PLANS)) {
+    if (t.pkg && normalisePlan(t.plan) === want) return { tier: t, priceId };
+  }
+  return null;
+}
+
 // Retrieve a customer's email when the event does not carry one.
 async function stripeCustomerEmail(env, customerId) {
   if (!customerId || !env.STRIPE_SECRET_KEY) return null;
@@ -327,6 +362,64 @@ async function stripeSubscription(env, subscriptionId) {
   });
   if (!res.ok) return null;
   return await res.json().catch(() => null);
+}
+
+// List a customer's subscriptions, every status. The charge.refunded
+// handler's fallback route (2026-11-23) starts here: current-API charge
+// objects carry no invoice id, so the refunded subscription has to be
+// found from the customer outwards and recognised by its items — the
+// same reading the subscription handler does. Returns the subscription
+// array (possibly empty — that is a real answer: the customer has
+// none), or null when the list could not be read at all.
+async function stripeCustomerSubscriptions(env, customerId) {
+  if (!customerId || !env.STRIPE_SECRET_KEY) return null;
+  const res = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100`, {
+    headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY },
+  });
+  if (!res.ok) return null;
+  const body = await res.json().catch(() => null);
+  return (body && Array.isArray(body.data)) ? body.data : null;
+}
+
+// The price id an invoice line was billed at, in any of the shapes the
+// line has carried: classic lines name it at price.id (the shape every
+// fixture in this repo was originally built on); current lines nest it
+// at pricing.price_details.price; plan-era lines name the plan, whose
+// id serves as the price id for the plans this file maps. First hit
+// wins. The refund handler reads lines through this (2026-11-23)
+// because the destination's pinned API version drifted the shape the
+// same way it removed charge.invoice — a line read that knows only the
+// classic shape recognises nothing, and says so nowhere.
+function linePriceId(line) {
+  if (!line) return null;
+  if (line.price && line.price.id) return line.price.id;
+  const pd = line.pricing && line.pricing.price_details;
+  if (pd && pd.price) return typeof pd.price === 'string' ? pd.price : (pd.price.id || null);
+  if (line.plan && line.plan.id) return line.plan.id;
+  return null;
+}
+
+// Does this invoice name the given charge as one of its payments? The
+// link lives in different places per API generation: classic invoices
+// carry `charge` (and `payment_intent`) at the root; current invoices
+// carry a payments list whose entries name a payment intent (and,
+// expanded, its charge). Either naming counts. The refund handler's
+// fallback route uses this to decide WHICH of a customer's
+// subscriptions a refunded charge belongs to, when more than one
+// candidate is involved.
+function invoiceNamesCharge(inv, charge) {
+  if (!inv || !charge || !charge.id) return false;
+  if (inv.charge === charge.id) return true;
+  const piOf = v => (typeof v === 'string' ? v : (v && v.id) || null);
+  const chargePi = piOf(charge.payment_intent);
+  if (chargePi && piOf(inv.payment_intent) === chargePi) return true;
+  for (const p of (inv.payments && inv.payments.data) || []) {
+    const pay = p && p.payment;
+    if (!pay) continue;
+    if (pay.charge === charge.id) return true;
+    if (chargePi && piOf(pay.payment_intent) === chargePi) return true;
+  }
+  return false;
 }
 
 // Swap one item of a subscription to a different price (the refund rule,
@@ -1379,59 +1472,180 @@ export default {
               ') — no action; full refunds only');
             break;
           }
+          // Resolution has TWO routes, because the charge's shape
+          // depends on the API version the destination is pinned to.
+          // PRIMARY: the charge names its invoice (obj.invoice) — the
+          // route this handler was built on. FALLBACK: it does not —
+          // the 2026-03-25.dahlia shape, which removed the field —
+          // and the subscription is found from the customer outwards.
+          // Both routes land in the same tail: attribution, the
+          // un-stamp, the swap, the emails. Only the reaching differs.
+          let invoice = null, refundSubId = null, refundSub = null;
+          let tier = null, pkgPriceId = null, addonTier = null;
+          let refundEmail = null;
+          // Set only by the fallback route: the refunded subscription
+          // already sits on the $9 records-only price — a state only
+          // the swap below ever creates — so this delivery is a
+          // redelivery of a refund already processed, whose original
+          // package tier could not be rebuilt (see there).
+          let alreadyProcessedRecords = false;
+
           const invoiceRef = typeof obj.invoice === 'string' ? obj.invoice
             : (obj.invoice && obj.invoice.id) || null;
-          if (!invoiceRef) {
-            // A charge with no invoice is not a subscription payment —
-            // on this shared Stripe account it is usually another
-            // business's one-off charge. Not ours; acknowledge quietly.
-            console.log('charge.refunded: charge', obj.id, 'has no invoice — not a subscription charge, nothing to do');
-            break;
-          }
-          const invoice = (obj.invoice && typeof obj.invoice === 'object')
-            ? obj.invoice
-            : await stripeInvoice(env, invoiceRef);
-          if (!invoice) {
-            // The invoice EXISTS (the charge names it) but could not be
-            // read — transient until proven otherwise, so fail the
-            // delivery and let Stripe retry, rather than acknowledge a
-            // refund we never processed.
-            throw new Error('charge.refunded: invoice ' + invoiceRef + ' could not be read from Stripe');
-          }
-          const refundSubId = typeof invoice.subscription === 'string' ? invoice.subscription
-            : (invoice.subscription && invoice.subscription.id) || null;
-
-          // What was refunded? The invoice's own lines are the record of
-          // what was PAID FOR — they still name the package or add-on
-          // price after the subscription's price has been swapped, which
-          // is what makes a redelivery of this event recognisable. The
-          // subscription's current items are the fallback, read the same
-          // way the subscription handler reads them.
-          let tier = null, pkgPriceId = null, addonTier = null;
-          const lines = (invoice.lines && invoice.lines.data) || [];
-          for (const line of lines) {
-            const t = line.price && PRICE_PLANS[line.price.id];
-            if (t && t.pkg) { tier = t; pkgPriceId = line.price.id; break; }
-          }
-          if (!tier) {
-            for (const line of lines) {
-              const at = line.price && ADDON_PRICES[line.price.id];
-              if (at) { addonTier = at; break; }
+          if (invoiceRef) {
+            invoice = (obj.invoice && typeof obj.invoice === 'object')
+              ? obj.invoice
+              : await stripeInvoice(env, invoiceRef);
+            if (!invoice) {
+              // The invoice EXISTS (the charge names it) but could not be
+              // read — transient until proven otherwise, so fail the
+              // delivery and let Stripe retry, rather than acknowledge a
+              // refund we never processed.
+              throw new Error('charge.refunded: invoice ' + invoiceRef + ' could not be read from Stripe');
             }
-          }
-          let refundSub = null;
-          if (!tier && !addonTier && refundSubId) {
-            refundSub = await stripeSubscription(env, refundSubId);
-            if (refundSub) {
-              const a = addonFromSubscription(refundSub);
-              if (a) addonTier = a.tier;
-              else {
-                const p = planFromSubscription(refundSub);
-                if (p.tier && p.tier.pkg) { tier = p.tier; pkgPriceId = p.priceId; }
+            refundSubId = typeof invoice.subscription === 'string' ? invoice.subscription
+              : (invoice.subscription && invoice.subscription.id) || null;
+
+            // What was refunded? The invoice's own lines are the record of
+            // what was PAID FOR — they still name the package or add-on
+            // price after the subscription's price has been swapped, which
+            // is what makes a redelivery recognisable. The subscription's
+            // current items are the fallback, read the same way the
+            // subscription handler reads them. Line price ids are read
+            // through linePriceId(): current lines nest the price at
+            // pricing.price_details.price instead of price.id — the same
+            // API drift as the missing charge.invoice, one level down.
+            const lines = (invoice.lines && invoice.lines.data) || [];
+            for (const line of lines) {
+              const pid = linePriceId(line);
+              const t = pid && PRICE_PLANS[pid];
+              if (t && t.pkg) { tier = t; pkgPriceId = pid; break; }
+            }
+            if (!tier) {
+              for (const line of lines) {
+                const pid = linePriceId(line);
+                const at = pid && ADDON_PRICES[pid];
+                if (at) { addonTier = at; break; }
               }
             }
+            if (!tier && !addonTier && refundSubId) {
+              refundSub = await stripeSubscription(env, refundSubId);
+              if (refundSub) {
+                const a = addonFromSubscription(refundSub);
+                if (a) addonTier = a.tier;
+                else {
+                  const p = planFromSubscription(refundSub);
+                  if (p.tier && p.tier.pkg) { tier = p.tier; pkgPriceId = p.priceId; }
+                }
+              }
+            }
+            refundEmail = invoice.customer_email || await stripeCustomerEmail(env, invoice.customer || obj.customer);
+          } else {
+            // FALLBACK route (2026-11-23 — the live fix). The
+            // memorable-wonder destination is pinned to Stripe API
+            // 2026-03-25.dahlia, whose charge objects carry NO invoice
+            // field at all, so the primary route's first step named
+            // nothing and every real refund exited at the old "has no
+            // invoice" break with a bare {"received": true}. Proven
+            // live that day: Eli's $29 package purchase
+            // (sub_1Uf48SAH9qPFLg893UfeXn6R, charge
+            // ch_3Uf48QAH9qPFLg893Man0D70) was refunded in full; the
+            // charge.refunded delivery and a manual resend both
+            // answered the bare ack and nothing happened — no flag
+            // off, no swap, no emails. The build's fixtures had
+            // modelled the OLD charge shape (with invoice), which is
+            // why the suite passed while live failed.
+            //
+            // Resolve from the customer outwards instead: list the
+            // customer's subscriptions and run the SAME recognizers
+            // the subscription handler runs over their items. That
+            // reading is proven in the current shape — the
+            // subscription handler stamped plan lite from this very
+            // subscription's items the same morning.
+            const customerId = typeof obj.customer === 'string' ? obj.customer
+              : (obj.customer && obj.customer.id) || null;
+            if (!customerId) {
+              // No invoice and no customer: nothing to resolve
+              // through. On this shared Stripe account that is another
+              // business's one-off charge. Not ours; acknowledge quietly.
+              console.log('charge.refunded: charge', obj.id, 'has no invoice and no customer — nothing to do');
+              break;
+            }
+            const candidates = await stripeCustomerSubscriptions(env, customerId);
+            if (!candidates) {
+              // The list could not be read — transient until proven
+              // otherwise, exactly like an unreadable invoice on the
+              // primary route: fail the delivery and let Stripe retry.
+              throw new Error('charge.refunded: subscriptions for customer ' + customerId + ' could not be read from Stripe');
+            }
+            // What each candidate IS, by the existing recognizers.
+            // 'package' / 'addon': a live purchase this refund can
+            // belong to. 'records': the subscription already sits
+            // entirely on the $9 records-only price — only the swap
+            // below ever puts one there — so this is a package refund
+            // ALREADY processed, and this delivery is its redelivery.
+            const involved = [];
+            for (const cand of candidates) {
+              const a = addonFromSubscription(cand);
+              if (a) { involved.push({ sub: cand, kind: 'addon', addonTier: a.tier }); continue; }
+              const p = planFromSubscription(cand);
+              if (p.tier && p.tier.pkg) { involved.push({ sub: cand, kind: 'package', tier: p.tier, pkgPriceId: p.priceId }); continue; }
+              if (recordsOnlyFromSubscription(env, cand)) involved.push({ sub: cand, kind: 'records' });
+            }
+            let chosen = null;
+            if (involved.length === 1) {
+              chosen = involved[0];
+            } else if (involved.length > 1) {
+              // The charge belongs to ONE of them. Strongest first:
+              // ownership — a candidate whose latest invoice names
+              // this charge (or its payment intent) is the refunded
+              // one, whichever kind it is. That is also what keeps a
+              // redelivery (whose subscription is the records-only
+              // one, and whose latest invoice IS the refunded invoice)
+              // from landing on a housemate's live subscription, and
+              // vice versa. With no determinable owner, a live
+              // purchase outranks a records-only tail — a fresh
+              // refund's subscription still sits on its purchase
+              // price — and the most recently created wins within a
+              // kind.
+              for (const x of involved) {
+                const invRef = typeof x.sub.latest_invoice === 'string' ? x.sub.latest_invoice
+                  : (x.sub.latest_invoice && x.sub.latest_invoice.id) || null;
+                if (!invRef) continue;
+                const inv = await stripeInvoice(env, invRef);
+                if (inv && invoiceNamesCharge(inv, obj)) { chosen = x; break; }
+              }
+              if (!chosen) {
+                const byCreatedDesc = (a, b) => (b.sub.created || 0) - (a.sub.created || 0);
+                chosen = involved.filter(x => x.kind !== 'records').sort(byCreatedDesc)[0]
+                  || involved.slice().sort(byCreatedDesc)[0];
+              }
+            }
+            if (chosen) {
+              refundSub = chosen.sub;
+              refundSubId = chosen.sub.id;
+              if (chosen.kind === 'package') { tier = chosen.tier; pkgPriceId = chosen.pkgPriceId; }
+              else if (chosen.kind === 'addon') { addonTier = chosen.addonTier; }
+              else {
+                // REDELIVERY of a package refund already processed.
+                // The items now name only the $9 price, so rebuild the
+                // tier from the plan the first pass left on the
+                // subscriptions row and let the package branch below
+                // run its idempotent tail: the swap is skipped
+                // (alreadyRecords), the state patch is a no-op write,
+                // and the emails are stopped by their claims. (The
+                // primary route needs no such rebuild: the invoice
+                // lines still name the original price.) If the tier
+                // cannot be rebuilt, alreadyProcessedRecords takes the
+                // shorter tail after attribution.
+                const rebuilt = packageTierForPlan(await subscriptionRowPlan(env, chosen.sub.id));
+                if (rebuilt) { tier = rebuilt.tier; pkgPriceId = rebuilt.priceId; }
+                else alreadyProcessedRecords = true;
+              }
+            }
+            refundEmail = await stripeCustomerEmail(env, customerId);
           }
-          if (!tier && !addonTier) {
+          if (!tier && !addonTier && !alreadyProcessedRecords) {
             // Not a package and not the training add-on — a legacy plan
             // (no training inside it to cancel) or another product on
             // the shared account. Nothing in Eli's rule reaches it.
@@ -1439,7 +1653,6 @@ export default {
             break;
           }
 
-          const refundEmail = invoice.customer_email || await stripeCustomerEmail(env, invoice.customer || obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: refundSubId, email: refundEmail });
           if (!userId) {
             // Fail closed, exactly like the add-on path: nothing is
@@ -1449,6 +1662,29 @@ export default {
             // then heals itself for.
             console.error('Unattributed refund', obj.id, 'email', refundEmail || '(none)');
             return new Response('No matching user for refund — will retry', { status: 409 });
+          }
+
+          if (alreadyProcessedRecords) {
+            // The refund was already processed — flag off, package
+            // cleared, subscription swapped to $9 — and only the tier
+            // rebuild failed (no subscriptions-row plan to read; the
+            // first pass writes one, so this should not happen). The
+            // state written below is already the records-only state;
+            // re-stamp it so this answer stays true even if the first
+            // pass was interrupted mid-tail, and say in the body why
+            // the emails were not re-asked: without the tier their
+            // payloads cannot be built honestly, and their dedupe
+            // claims already stand guard over the original sends.
+            await patchProfile(env, userId, {
+              title22_training_included: false,
+              title22_package: null,
+            });
+            const note = 'REFUND REDELIVERY — charge ' + obj.id + ': subscription ' + (refundSubId || '(none)') +
+              ' already sits on the $9 records-only price, so this refund was already processed; the original' +
+              ' package tier could not be reconstructed, state re-stamped, refund emails not re-asked.';
+            console.error(note);
+            warning = note;
+            break;
           }
 
           if (tier) {
