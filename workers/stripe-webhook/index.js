@@ -706,7 +706,14 @@ async function writeLedgerForInvoice(env, invoice) {
     const lines = (invoice.lines && invoice.lines.data) || [];
     let tier = null, priceId = null;
     for (const line of lines) {
-      const pid = line.price && line.price.id;
+      // Read through linePriceId(), the helper the refund handler
+      // uses (2026-11-23): a classic-only read (line.price.id)
+      // recognises nothing on a current-shape line — the price nested
+      // at pricing.price_details.price, or named only by plan.id —
+      // and the failure here is silent in the worst way: no tier, the
+      // return null below, no row, no warning. A paid package invoice
+      // that splits nothing and says so nowhere.
+      const pid = linePriceId(line);
       if (pid && PRICE_PLANS[pid] && PRICE_PLANS[pid].pkg) { tier = PRICE_PLANS[pid]; priceId = pid; break; }
     }
     if (!tier) return null;                    // not a package invoice — nothing to split
@@ -1406,10 +1413,15 @@ export default {
           }
           // Name the plan from the invoice's own lines when a line carries
           // a mapped price; otherwise the email template falls back to
-          // generic wording. The ledger reads lines the same way.
+          // generic wording. Both loops below — and the ledger — read
+          // lines through linePriceId() (2026-11-23), the helper the
+          // refund handler uses: a classic-only line.price.id read
+          // names nothing on a current-shape line, so the failure
+          // email would have fallen back to generic wording for a
+          // package or add-on it could perfectly well have named.
           let invPlan = null, invPkg = null, invTraining = false;
           for (const line of (obj.lines && obj.lines.data) || []) {
-            const t = line.price && PRICE_PLANS[line.price.id];
+            const t = PRICE_PLANS[linePriceId(line)];
             if (t) {
               invPlan = normalisePlan(t.plan);
               invPkg = t.pkg || null;
@@ -1424,7 +1436,7 @@ export default {
           let invAddon = null;
           if (!invPlan) {
             for (const line of (obj.lines && obj.lines.data) || []) {
-              const at = line.price && ADDON_PRICES[line.price.id];
+              const at = ADDON_PRICES[linePriceId(line)];
               if (at) { invAddon = at; invTraining = true; break; }
             }
           }
