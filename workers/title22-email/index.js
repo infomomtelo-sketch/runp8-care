@@ -1,322 +1,194 @@
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+// title22-alerts — sends Web Push notifications for Title22 phone alerts.
+//
+// Endpoints (all JSON):
+//   GET  /health  -> { ok: true }
+//   POST /test    -> header x-alerts-key: <ALERTS_TEST_KEY>; body { user_id }
+//                    Sends the fixed test alert to every subscription the
+//                    user has stored. This is the proof path.
+//   POST /send    -> header x-alerts-key: <ALERTS_TEST_KEY>;
+//                    body { user_id, title, body, url?, tag? }
+//                    The delivery path the scheduled checker will call.
+//
+// Subscriptions live in Supabase push_subscriptions (see the package's
+// push_subscriptions.sql). This Worker reads them with the service key
+// and deletes rows the push services report as gone (404/410).
+//
+// By product rule an alert NEVER names a resident or a medication.
+// Callers pass counts and plain words only; the detail lives behind
+// sign-in, in the app.
+//
+// Secrets (set on the Worker, never in wrangler.toml):
+//   SUPABASE_SERVICE_KEY — service_role key; reads push_subscriptions
+//                          for a user who is not the caller.
+//   VAPID_PRIVATE_JWK    — the VAPID private key as a JWK JSON string.
+//                          Its public half is T22_VAPID_PUBLIC in the
+//                          app and VAPID_PUBLIC in wrangler.toml [vars];
+//                          the three must stay one keypair.
+//   ALERTS_TEST_KEY      — shared key gating /test and /send.
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-  });
+const enc = new TextEncoder();
+
+function b64uToBytes(s) {
+  const pad = '='.repeat((4 - (s.length % 4)) % 4);
+  const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
 }
 
-async function getUserFromToken(token, env) {
-  if (!token) return null;
-  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+function bytesToB64u(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function concat(...parts) {
+  let len = 0;
+  for (const p of parts) len += p.length;
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const p of parts) { out.set(p, off); off += p.length; }
+  return out;
+}
+
+async function hmac(keyBytes, data) {
+  const k = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', k, data));
+}
+
+// VAPID (RFC 8292): an ES256 JWT the push service can verify against
+// the public key in the Authorization header.
+async function buildVapidJwt(endpoint, env) {
+  const aud = new URL(endpoint).origin;
+  const seg = (o) => bytesToB64u(enc.encode(JSON.stringify(o)));
+  const unsigned = seg({ typ: 'JWT', alg: 'ES256' }) + '.' + seg({
+    aud,
+    exp: Math.floor(Date.now() / 1000) + 12 * 3600,
+    sub: env.VAPID_SUBJECT || 'mailto:hello@title-22.com',
+  });
+  const jwk = JSON.parse(env.VAPID_PRIVATE_JWK);
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, enc.encode(unsigned));
+  return unsigned + '.' + bytesToB64u(new Uint8Array(sig));
+}
+
+// Message encryption (RFC 8291 with the RFC 8188 aes128gcm encoding).
+async function encryptPushPayload(uaPublicB64, authB64, plaintext) {
+  const uaPublic = b64uToBytes(uaPublicB64);
+  const authSecret = b64uToBytes(authB64);
+  const eph = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const senderPublic = new Uint8Array(await crypto.subtle.exportKey('raw', eph.publicKey));
+  const uaKey = await crypto.subtle.importKey('raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, eph.privateKey, 256));
+
+  const prkKey = await hmac(authSecret, shared);
+  const ikm = await hmac(prkKey, concat(enc.encode('WebPush: info\0'), uaPublic, senderPublic, new Uint8Array([1])));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hmac(salt, ikm);
+  const cek = (await hmac(prk, concat(enc.encode('Content-Encoding: aes128gcm\0'), new Uint8Array([1])))).slice(0, 16);
+  const nonce = (await hmac(prk, concat(enc.encode('Content-Encoding: nonce\0'), new Uint8Array([1])))).slice(0, 12);
+
+  const record = concat(enc.encode(plaintext), new Uint8Array([2]));
+  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, record));
+
+  const rs = new Uint8Array(4);
+  new DataView(rs.buffer).setUint32(0, 4096);
+  return concat(salt, rs, new Uint8Array([senderPublic.length]), senderPublic, ct);
+}
+
+async function sendPush(sub, payload, env) {
+  const body = await encryptPushPayload(sub.p256dh, sub.auth, JSON.stringify(payload));
+  const jwt = await buildVapidJwt(sub.endpoint, env);
+  const res = await fetch(sub.endpoint, {
+    method: 'POST',
     headers: {
-      'apikey': env.SUPABASE_SERVICE_KEY,
-      'Authorization': 'Bearer ' + token,
-    }
+      'Authorization': 'vapid t=' + jwt + ', k=' + env.VAPID_PUBLIC,
+      'Content-Encoding': 'aes128gcm',
+      'Content-Type': 'application/octet-stream',
+      'TTL': '86400',
+    },
+    body,
   });
-  if (!res.ok) return null;
-  return await res.json();
+  return res.status;
 }
 
-function displayName(user, fallbackName) {
-  return fallbackName || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'there';
+async function listSubscriptions(env, userId) {
+  const url = env.SUPABASE_URL + '/rest/v1/push_subscriptions?user_id=eq.' +
+    encodeURIComponent(userId) + '&select=endpoint,p256dh,auth';
+  const res = await fetch(url, {
+    headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + env.SUPABASE_SERVICE_KEY },
+  });
+  if (!res.ok) throw new Error('subscription lookup failed');
+  return res.json();
 }
 
-function normalizePlan(plan) {
-  const labels = {
-    starter: 'Starter',
-    pro: 'Facility',
-    specialist: 'Multi-Facility',
-    agency: 'Agency',
-    edu: 'Education',
-  };
-  return labels[String(plan || '').toLowerCase()] || 'paid';
+async function deleteSubscription(env, endpoint) {
+  const url = env.SUPABASE_URL + '/rest/v1/push_subscriptions?endpoint=eq.' + encodeURIComponent(endpoint);
+  await fetch(url, {
+    method: 'DELETE',
+    headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + env.SUPABASE_SERVICE_KEY },
+  }).catch(() => {});
 }
 
-function emailTemplate(template, payload) {
-  const appUrl = payload.app_url || 'https://title22.app/';
-  const name = payload.name || 'there';
-  if (template === 'welcome') {
-    return {
-      subject: 'Welcome to Title22',
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
-          <h2 style="margin:0 0 12px">Welcome to Title22, ${name}.</h2>
-          <p>Your free trial is ready. Add your facility, invite your team, and start tracking the records an inspector will ask to see.</p>
-          <p><a href="${payload.onboarding_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
-          <div style="border:1px solid #d8e2dc;border-radius:10px;padding:14px 16px;margin-top:20px">
-            <p style="margin:0 0 6px"><strong>One optional extra, only if it helps:</strong> training courses from our partner CTC are available inside Title22 as an add-on. Your staff train online, and each completion lands in their Title22 staff record.</p>
-            <p style="margin:0 0 6px">It is priced by the size of your home &mdash; $29 to $100 a month, depending on licensed beds. It is entirely your choice: nothing is added and nothing is charged unless you pick it.</p>
-            <p style="margin:0"><a href="https://title22-addon-pay.pages.dev/">See the training add-on</a></p>
-          </div>
-          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
-        </div>
-      `,
-    };
+async function deliver(env, userId, payload) {
+  const subs = await listSubscriptions(env, userId);
+  const results = [];
+  for (const sub of subs) {
+    try {
+      const status = await sendPush(sub, payload, env);
+      if (status === 404 || status === 410) {
+        await deleteSubscription(env, sub.endpoint);
+        results.push({ status, cleaned: true });
+      } else {
+        results.push({ status });
+      }
+    } catch (e) {
+      results.push({ status: 0 });
+    }
   }
-  if (template === 'trial_warning') {
-    const daysLeft = Number(payload.days_left) || 3;
-    return {
-      subject: `Your Title22 trial ends in ${daysLeft} days`,
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
-          <h2 style="margin:0 0 12px">A heads-up, nothing more.</h2>
-          <p>Hi ${name}, your Title22 trial ends in <strong>${daysLeft} days</strong>.</p>
-          <p>There is no card on file, so nothing will be charged and there is nothing to cancel. When the trial ends your account turns read-only: everything you entered stays, and you can pick a plan whenever you are ready.</p>
-          <p><a href="${payload.upgrade_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">See the plans</a></p>
-          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
-        </div>
-      `,
-    };
-  }
-  if (template === 'subscription_confirmed') {
-    return {
-      subject: `Your Title22 ${normalizePlan(payload.plan)} plan is active`,
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
-          <h2 style="margin:0 0 12px">Subscription confirmed.</h2>
-          <p>Hi ${name}, your <strong>${normalizePlan(payload.plan)}</strong> plan is now active.</p>
-          <p>You can go straight back into Title22 and keep working.</p>
-          <p><a href="${payload.access_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
-        </div>
-      `,
-    };
-  }
-  if (template === 'payment_failed') {
-    return {
-      subject: 'Your Title22 payment needs attention',
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
-          <h2 style="margin:0 0 12px">We could not process your payment.</h2>
-          <p>Hi ${name}, please update your billing details to keep your Title22 access active.</p>
-          <p><a href="${payload.retry_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Review billing</a></p>
-        </div>
-      `,
-    };
-  }
-  return null;
+  return results;
 }
 
-// ─── Signup notifications ──────────────────────────────────────────────────
-//
-// A Supabase Database Webhook on public.profiles POSTs here, and this mails
-// the OWNER — not the customer. It is a different shape from every template
-// above: no JWT, because a database cannot hold one, so it authenticates on a
-// shared secret set as a custom header on the webhook.
-//
-// WATCH public.profiles, NOT auth.users, and subscribe to INSERT **AND**
-// UPDATE. Both halves of that matter:
-//
-//  - profiles is SHARED with the other apps on this Supabase project, so a
-//    plain INSERT there may be a TheJudgy or Thelo signup and not a Title22
-//    one. And somebody who already used one of those apps gets an UPDATE when
-//    they join Title22, never an INSERT — an INSERT-only webhook misses them
-//    silently, which is the worst kind of missing.
-//  - profiles carries referred_by. That is how a trainer's student is
-//    attributed, and finding out at payout instead of on the day is how a
-//    partner relationship goes quiet.
-//
-// So the row transition is what decides, not the event type.
-const T22_PAID_PLANS = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency'];
-
-// Constant-time compare. The secret is short and the endpoint is public, so a
-// naive === leaks its length and prefix to anyone willing to time it.
-function secretMatches(given, expected) {
-  if (typeof given !== 'string' || typeof expected !== 'string') return false;
-  if (given.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
-  return diff === 0;
-}
-
-// Returns null when this row change is not a Title22 signup or conversion —
-// which is most of them, and is NOT an error. See the 200 in the handler.
-function signupEvent(record, oldRecord) {
-  const now = record && record.title22_plan;
-  const before = oldRecord && oldRecord.title22_plan;
-  if (!now) return null;                                   // not a Title22 user
-  if (!before) {
-    return T22_PAID_PLANS.includes(now)
-      ? { kind: 'signup_paid', plan: now }                 // paid before they signed up
-      : { kind: 'signup', plan: now };
-  }
-  if (before === now) return null;                         // unrelated column changed
-  if (T22_PAID_PLANS.includes(now) && !T22_PAID_PLANS.includes(before)) {
-    return { kind: 'converted', plan: now, from: before };
-  }
-  return null;                                             // trial -> trial, plan relabel, etc.
-}
-
-function esc(v) {
-  return String(v == null ? '' : v).replace(/[&<>"]/g, c => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
-  ));
-}
-
-function signupEmail(event, record) {
-  const ref = record.referred_by;
-  const subject =
-    event.kind === 'converted'   ? `Title22: ${record.email || 'someone'} upgraded to ${event.plan}` :
-    event.kind === 'signup_paid' ? `Title22: new PAID signup (${event.plan})` :
-                                   `Title22: new signup${ref ? ' via ' + ref : ''}`;
-  const rows = [
-    ['Email',       record.email || '(not on the profile row)'],
-    ['Plan',        event.plan + (event.from ? ` (was ${event.from})` : '')],
-    ['Referred by', ref ? ref + '  ← trainer code' : '—'],
-    ['UTM source',  record.title22_utm_source || '—'],
-    ['UTM campaign',record.title22_utm_campaign || '—'],
-    ['Trial ends',  record.title22_trial_ends_at || '—'],
-    ['Profile id',  record.id || '—'],
-  ];
-  return {
-    subject,
-    html:
-      '<div style="font-family:-apple-system,Arial,sans-serif;line-height:1.55;color:#16312b">' +
-      `<h2 style="margin:0 0 4px;font-size:18px">${esc(subject)}</h2>` +
-      `<p style="margin:0 0 14px;color:#5b6b66;font-size:13px">${esc(new Date().toISOString())}</p>` +
-      '<table style="border-collapse:collapse;font-size:14px">' +
-      rows.map(([k, v]) =>
-        `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">${esc(k)}</td>` +
-        `<td style="padding:4px 0"><strong>${esc(v)}</strong></td></tr>`).join('') +
-      '</table></div>',
-  };
+function json(status, obj) {
+  return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
 export default {
-  async fetch(request, env) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS });
-    }
-
-    if (request.method === 'GET') {
-      const bindings = {
-        resend_api_key: !!env.RESEND_API_KEY,
-        email_from: !!env.EMAIL_FROM,
-        supabase_url: !!env.SUPABASE_URL,
-        supabase_service_key: !!env.SUPABASE_SERVICE_KEY,
-      };
-      const ok = Object.values(bindings).every(Boolean);
-      // Reported separately, and deliberately NOT folded into `ok`: the signup
-      // notifier is an optional route, and a health check that goes red because
-      // an unused feature is unconfigured is a health check people stop reading.
-      const signupNotify = {
-        secret: !!env.SIGNUP_WEBHOOK_SECRET,
-        notify_to: !!env.SIGNUP_NOTIFY_TO,
-      };
-      return json({
-        status: ok ? 'ok' : 'misconfigured',
-        bindings,
-        signup_notify_ready: Object.values(signupNotify).every(Boolean),
-        signup_notify: signupNotify,
-      }, ok ? 200 : 500);
-    }
-
-    if (request.method !== 'POST') {
-      return json({ error: 'Method not allowed' }, 405);
-    }
-
-    // Signup notification from the Supabase Database Webhook. Checked BEFORE
-    // the JWT path below, because this caller has no JWT and never will.
-    if (new URL(request.url).pathname.endsWith('/notify-signup')) {
-      return notifySignup(request, env);
-    }
-
+  async fetch(req, env) {
     try {
-      const token = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-      const user = await getUserFromToken(token, env);
-      if (!user?.id || !user?.email) return json({ error: 'Unauthorized' }, 401);
-
-      const body = await request.json();
-      const template = body?.template;
-      const message = emailTemplate(template, {
-        ...body,
-        name: displayName(user, body?.name),
-      });
-      if (!message) return json({ error: 'Unknown template' }, 400);
-
-      const to = String(body?.email || user.email || '').trim().toLowerCase();
-      if (!to || to !== String(user.email || '').trim().toLowerCase()) {
-        return json({ error: 'Email mismatch' }, 403);
+      const url = new URL(req.url);
+      if (req.method === 'GET' && url.pathname === '/health') {
+        return json(200, { ok: true });
       }
-
-      const resendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + env.RESEND_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: env.EMAIL_FROM,
-          to: [to],
-          subject: message.subject,
-          html: message.html,
-        }),
-      });
-      const resendData = await resendRes.json().catch(() => ({}));
-      if (!resendRes.ok) return json({ error: resendData }, 502);
-
-      return json({ ok: true, id: resendData.id || null });
-    } catch (err) {
-      return json({ error: err.message }, 500);
+      if (req.method === 'POST' && (url.pathname === '/test' || url.pathname === '/send')) {
+        if (!env.ALERTS_TEST_KEY || req.headers.get('x-alerts-key') !== env.ALERTS_TEST_KEY) {
+          return json(401, { error: 'unauthorized' });
+        }
+        const body = await req.json().catch(() => null);
+        if (!body || !body.user_id) return json(400, { error: 'user_id required' });
+        let payload;
+        if (url.pathname === '/test') {
+          payload = { title: 'Tello', body: 'Phone alerts are on. This is your test alert.', url: '/', tag: 'title22-test' };
+        } else {
+          const title = typeof body.title === 'string' ? body.title.slice(0, 80) : '';
+          const text = typeof body.body === 'string' ? body.body.slice(0, 240) : '';
+          if (!title || !text) return json(400, { error: 'title and body required' });
+          payload = {
+            title,
+            body: text,
+            url: typeof body.url === 'string' && body.url.startsWith('/') ? body.url : '/',
+            tag: typeof body.tag === 'string' && body.tag ? body.tag.slice(0, 64) : 'title22-alert',
+          };
+        }
+        const results = await deliver(env, body.user_id, payload);
+        return json(200, { sent: results.filter((r) => r.status >= 200 && r.status < 300).length, results });
+      }
+      return json(404, { error: 'not found' });
+    } catch (e) {
+      return json(500, { error: 'alerts error' });
     }
-  }
+  },
 };
 
-
-async function notifySignup(request, env) {
-  // Fail closed and say which binding is missing, in the BODY. Supabase records
-  // the response against the delivery, and a Worker that answers "misconfigured"
-  // is findable; one that answers 500 "error" is four days of guessing. That
-  // lesson cost a week on stripe-webhook — see CLAUDE.md.
-  const missing = ['RESEND_API_KEY', 'EMAIL_FROM', 'SIGNUP_WEBHOOK_SECRET', 'SIGNUP_NOTIFY_TO']
-    .filter(name => !env[name]);
-  if (missing.length) {
-    return json({ error: 'Worker misconfigured — missing binding(s): ' + missing.join(', ') }, 500);
-  }
-
-  const given = request.headers.get('X-Title22-Signup-Secret') || '';
-  if (!secretMatches(given, env.SIGNUP_WEBHOOK_SECRET)) {
-    return json({ error: 'Bad or missing X-Title22-Signup-Secret' }, 401);
-  }
-
-  let body;
-  try { body = await request.json(); }
-  catch { return json({ error: 'Body is not JSON' }, 400); }
-
-  const record = body && body.record;
-  if (!record) return json({ error: 'No record in payload' }, 400);
-
-  const event = signupEvent(record, body.old_record);
-  if (!event) {
-    // 200 ON PURPOSE. Most row changes on this shared table are not a Title22
-    // signup — another app's user, a column touched by something else, a trial
-    // re-stamp. Answering with an error would make pg_net retry a non-event and
-    // fill the webhook log with red, and a log that is always red is a log
-    // nobody reads. Distinguishing "not ours" from "ours and broken" is the
-    // whole point; see the same split in workers/stripe-webhook.
-    return json({ ok: true, skipped: 'not a Title22 signup or conversion' });
-  }
-
-  const message = signupEmail(event, record);
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + env.RESEND_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: [env.SIGNUP_NOTIFY_TO],
-      subject: message.subject,
-      html: message.html,
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return json({ error: 'Resend refused', detail: data }, 502);
-  return json({ ok: true, kind: event.kind, id: data.id || null });
-}
+export { encryptPushPayload, buildVapidJwt };
