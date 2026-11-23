@@ -506,7 +506,10 @@
   .nav-item:hover{background:var(--white);color:var(--text)}
   .nav-item.active{background:var(--white);color:var(--teal);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.06)}
   .nav-item svg{width:18px;height:18px;flex-shrink:0}
-  .main-content{flex:1;padding:2rem;overflow-y:auto;min-width:0;max-width:1100px;margin:0 auto;width:100%;background:var(--gray-bg)}
+  /* Extra room at the bottom of every app screen, so the last card can
+     scroll fully clear of Tello's floating button and the setup pill —
+     both position:fixed at the bottom right, up to ~100px tall together. */
+  .main-content{flex:1;padding:2rem 2rem 120px;overflow-y:auto;min-width:0;max-width:1100px;margin:0 auto;width:100%;background:var(--gray-bg)}
   .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
   .page-header h1{font-size:1.4rem;font-weight:700}
   .score-banner{background:linear-gradient(135deg,var(--teal) 0%,#0a5442 100%);border-radius:var(--radius-lg);padding:1.5rem 2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px}
@@ -654,7 +657,7 @@
     .sidebar-facility{display:none}
     .nav-item{flex-direction:column;gap:3px;padding:8px 12px;font-size:11px;flex-shrink:0;border-radius:var(--radius);min-width:60px;text-align:center}
     .nav-item svg{width:20px;height:20px}
-    .main-content{padding:1rem}
+    .main-content{padding:1rem 1rem 120px}
     .page-header h1{font-size:1.1rem}
     .score-banner{padding:1rem}
     .score-number{font-size:2rem}
