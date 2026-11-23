@@ -305,6 +305,57 @@ async function stripePrice(env, priceId) {
   return await res.json().catch(() => null);
 }
 
+// Retrieve an invoice by ID. The charge.refunded handler (2026-11-23)
+// starts from a charge, and the invoice is what names the subscription
+// and — in its lines — what was actually paid for.
+async function stripeInvoice(env, invoiceId) {
+  if (!invoiceId || !env.STRIPE_SECRET_KEY) return null;
+  const res = await fetch(`https://api.stripe.com/v1/invoices/${encodeURIComponent(invoiceId)}`, {
+    headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY },
+  });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+
+// Retrieve a subscription by ID — the refund handler needs the live
+// object (its items carry the price being swapped away from), which the
+// charge and invoice events do not embed.
+async function stripeSubscription(env, subscriptionId) {
+  if (!subscriptionId || !env.STRIPE_SECRET_KEY) return null;
+  const res = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY },
+  });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+
+// Swap one item of a subscription to a different price (the refund rule,
+// 2026-11-23): the subscription CONTINUES on the new price rather than
+// ending. proration_behavior 'none' — the refund already settled the
+// current cycle's money, so Stripe must not invent a proration on top of
+// it; the new price first bites at the next renewal, which is exactly
+// what the buyer email says. Returns the updated subscription, or null
+// when Stripe refused — the caller degrades loudly, never silently.
+async function stripeSwapSubscriptionPrice(env, sub, itemIndex, priceId) {
+  if (!sub || !sub.id || !env.STRIPE_SECRET_KEY) return null;
+  const item = ((sub.items && sub.items.data) || [])[itemIndex];
+  if (!item || !item.id) return null;
+  const form = new URLSearchParams();
+  form.set(`items[${itemIndex}][id]`, item.id);
+  form.set(`items[${itemIndex}][price]`, priceId);
+  form.set('proration_behavior', 'none');
+  const res = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(sub.id)}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: form.toString(),
+  });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+
 // Human-readable, for the 422 body: "$29.00/month".
 function describePrice(price) {
   if (!price) return 'price could not be read from Stripe';
@@ -389,6 +440,43 @@ function addonFromSubscription(sub) {
     return { tier: md.tier, priceId: (first && first.id) || null, viaFallback: 'metadata' };
   }
   return null;
+}
+
+// Is this subscription sitting on the $9 RECORDS-ONLY price (2026-11-23)?
+// That is the state Eli's refund rule leaves a package subscription in:
+// the refund handler (charge.refunded, below) cancels the training and
+// swaps the subscription to this price so it continues at $9. The swap
+// itself fires a customer.subscription.updated carrying this price, and
+// every later update for that subscription carries it too — so the
+// subscription handler has to recognise it, or it refuses those events
+// with the loud 422 below ("Unmapped price"): nothing would be written,
+// but the delivery log would grow red rows and Stripe would keep
+// retrying an event that can never resolve.
+//
+// The ID is read from env.RECORDS_ONLY_PRICE_ID — the same [vars] entry
+// the refund handler swaps TO — so recognition and the swap can never
+// disagree about which price is the records-only one. It is
+// deliberately NOT in PRICE_PLANS, PRODUCT_PLANS or the ADDON_* maps:
+// nothing is sold on this price (no Payment Link exists for it, so no
+// checkout can ever stamp it as a purchase), and a PRICE_PLANS entry
+// would hand planFromSubscription() a plan to stamp — the records-only
+// state has no plan of its own. The buyer's profile keeps whatever plan
+// it already had; only the training flag and the package are cleared,
+// which is exactly the stamp the refund handler writes.
+//
+// EVERY item must be the records price. A subscription carrying it
+// alongside another price is recognised by that other price instead —
+// the purchasable price wins — because planFromSubscription() and
+// addonFromSubscription() both scan all items and simply skip this one.
+function recordsOnlyFromSubscription(env, sub) {
+  const recordsPrice = String((env && env.RECORDS_ONLY_PRICE_ID) || '').trim();
+  if (!recordsPrice) return null;
+  const items = (sub.items && sub.items.data) || [];
+  if (!items.length) return null;
+  for (const it of items) {
+    if (!it.price || it.price.id !== recordsPrice) return null;
+  }
+  return { priceId: recordsPrice };
 }
 
 // The "Title22 account email" a buyer typed at checkout. Payment Link
@@ -715,6 +803,46 @@ async function notifyOwnerAlert(env, payload) {
   }
 }
 
+// The OWNER alert for a refund (2026-11-23), the mirror of
+// notifyOwnerAlert above: same rail (the email Worker's own route,
+// /notify-refund-owner), same secret, same never-throws contract, its
+// own dedupe key (refund_owner_alert:<charge id>). A refunded buyer was
+// promised nothing by hand — but their staff were ENROLLED by hand on
+// activation, so a refund leaves an unenrollment only the owner can do,
+// and this call is what tells him it is due. Failures are loud twice,
+// like the activation alert's: console.error AND the warning string in
+// the 200 body.
+async function notifyRefundOwnerAlert(env, payload) {
+  try {
+    if ((!emailWorkerBinding(env) && !env.EMAIL_WORKER_URL) || !env.EMAIL_SERVICE_SECRET) {
+      const note = 'REFUND OWNER ALERT SKIPPED — EMAIL_WORKER / EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET not configured ' +
+        'on stripe-webhook, so no unenrollment alert was requested for charge ' +
+        (payload.charge_id || '(unknown)') + '. The refund handling itself is unaffected.';
+      console.error(note);
+      return note;
+    }
+    const res = await postToEmailWorker(env, '/notify-refund-owner', payload);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const note = 'REFUND OWNER ALERT FAILED — title22-email answered HTTP ' + res.status + ' for charge ' +
+        (payload.charge_id || '(unknown)') + ' (' + (data.error || 'no detail') + '). ' +
+        'The refund handling itself is unaffected; the unenrollment is still due by hand.';
+      console.error(note);
+      return note;
+    }
+    // data.skipped means the dedupe log already holds this key — the
+    // alert went out on an earlier delivery. The design working, not a
+    // warning.
+    return null;
+  } catch (e) {
+    const note = 'REFUND OWNER ALERT FAILED — could not reach title22-email for charge ' +
+      (payload.charge_id || '(unknown)') + ': ' + ((e && e.message) || String(e)) +
+      '. The refund handling itself is unaffected; the unenrollment is still due by hand.';
+    console.error(note);
+    return note;
+  }
+}
+
 // Everything this Worker needs from its environment, checked before any of it
 // is used. This exists because of the 2026-09-13 outage, and the shape of that
 // outage is the argument for it:
@@ -941,6 +1069,40 @@ export default {
             }
             break;
           }
+          // Records-only (2026-11-23): the subscription is sitting on
+          // the $9 price the refund handler swapped it to (see
+          // recordsOnlyFromSubscription above). Stamp EXACTLY the state
+          // the refund handler stamps — the training off, the package
+          // cleared, title22_plan left untouched — and keep the
+          // subscriptions row current on the same terms as the normal
+          // path below, minus the plan: this state has no plan of its
+          // own to write, and the refund handler's row already carries
+          // the plan the buyer kept. Idempotent by construction: a
+          // redelivery, or the swap's own update arriving after the
+          // refund handler already stamped, writes the same two fields
+          // again and nothing else.
+          //
+          // NO email of any kind here, and that is load-bearing: this
+          // branch breaks before the firstActivation block below, so a
+          // records-only 'created' can never fire subscription_confirmed
+          // and an update can never fire an alert. A $9 renewal is the
+          // continuation of a refunded subscription, not an activation —
+          // the buyer already got the refund email from the refund
+          // handler, and a "your subscription is confirmed" arriving on
+          // top of it would tell them the opposite of what happened.
+          if (recordsOnlyFromSubscription(env, obj)) {
+            await patchProfile(env, userId, {
+              title22_training_included: false,
+              title22_package: null,
+            });
+            await upsertSubscription(env, {
+              user_id: userId,
+              status: obj.status,
+              stripe_subscription_id: obj.id,
+              current_period_end: periodEndOf(obj),
+            });
+            break;
+          }
           if (!plan) {
             // The price did not match. Before refusing a payment, ask Stripe
             // what this price IS and try to name the tier from its product —
@@ -1071,12 +1233,15 @@ export default {
           // title22_plan_expires_at, which the app reads as the PLAN
           // ending — running it here would lock a package subscriber's
           // access at period end for cancelling a $20 extra. The
-          // training flag is NOT cleared either, deliberately: the
-          // package path never un-stamps title22_training_included
-          // anywhere in this file, so the add-on mirrors it rather than
-          // inventing a second semantics. Switching training off when an
-          // add-on or package ends is a product decision that has not
-          // been taken; until it is, both paths behave the same way.
+          // training flag is NOT cleared either, deliberately: a
+          // cancellation never un-stamps title22_training_included in
+          // this file, so the add-on mirrors the package path rather
+          // than inventing a second semantics. Switching training off
+          // when an add-on or package ENDS is a product decision that
+          // has not been taken; until it is, both paths behave the
+          // same way. (The one un-stamp that exists — a verified FULL
+          // REFUND, charge.refunded below — is a different decision,
+          // Eli's refund rule of 2026-11-23, and reaches nothing here.)
           if (addonFromSubscription(obj)) break;
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
@@ -1185,6 +1350,225 @@ export default {
           break;
         }
 
+        // A refund (added 2026-11-23, Eli's refund rule, in his words:
+        // "If refunded the subscription should continue $9 because only
+        // the training is cancelled" — "They will have full refund but
+        // renew the $9 and keeps offering the training add-on"). The
+        // refund itself is issued in Stripe by a human or a Stripe flow;
+        // this case only REACTS to it, and only to a FULL refund: the
+        // training is cancelled (the flag comes off — the first and only
+        // un-stamp of title22_training_included in this file, kept
+        // deliberately narrow: a verified full refund, nothing else), a
+        // package subscription is swapped to the $9 records-only price
+        // so it CONTINUES at $9 instead of ending, and both sides are
+        // emailed. The training add-on "keeps being offered" on its own:
+        // the app's training gate keys off the flag, so flag-off is the
+        // offer coming back — no app change, no code here for it.
+        // A partial refund changes nothing: the buyer kept part of the
+        // product, so the product stays.
+        //
+        // NOTE: the `memorable-wonder` destination must be subscribed to
+        // charge.refunded in the Stripe dashboard, or this case never
+        // runs — the same silent-never-runs failure mode as the invoice
+        // events before it. See wrangler.toml.
+        case 'charge.refunded': {
+          if (typeof obj.amount !== 'number' || obj.amount <= 0) break;
+          if ((obj.amount_refunded || 0) < obj.amount) {
+            console.log('charge.refunded: partial refund on charge', obj.id,
+              '($' + ((obj.amount_refunded || 0) / 100).toFixed(2) + ' of $' + (obj.amount / 100).toFixed(2) +
+              ') — no action; full refunds only');
+            break;
+          }
+          const invoiceRef = typeof obj.invoice === 'string' ? obj.invoice
+            : (obj.invoice && obj.invoice.id) || null;
+          if (!invoiceRef) {
+            // A charge with no invoice is not a subscription payment —
+            // on this shared Stripe account it is usually another
+            // business's one-off charge. Not ours; acknowledge quietly.
+            console.log('charge.refunded: charge', obj.id, 'has no invoice — not a subscription charge, nothing to do');
+            break;
+          }
+          const invoice = (obj.invoice && typeof obj.invoice === 'object')
+            ? obj.invoice
+            : await stripeInvoice(env, invoiceRef);
+          if (!invoice) {
+            // The invoice EXISTS (the charge names it) but could not be
+            // read — transient until proven otherwise, so fail the
+            // delivery and let Stripe retry, rather than acknowledge a
+            // refund we never processed.
+            throw new Error('charge.refunded: invoice ' + invoiceRef + ' could not be read from Stripe');
+          }
+          const refundSubId = typeof invoice.subscription === 'string' ? invoice.subscription
+            : (invoice.subscription && invoice.subscription.id) || null;
+
+          // What was refunded? The invoice's own lines are the record of
+          // what was PAID FOR — they still name the package or add-on
+          // price after the subscription's price has been swapped, which
+          // is what makes a redelivery of this event recognisable. The
+          // subscription's current items are the fallback, read the same
+          // way the subscription handler reads them.
+          let tier = null, pkgPriceId = null, addonTier = null;
+          const lines = (invoice.lines && invoice.lines.data) || [];
+          for (const line of lines) {
+            const t = line.price && PRICE_PLANS[line.price.id];
+            if (t && t.pkg) { tier = t; pkgPriceId = line.price.id; break; }
+          }
+          if (!tier) {
+            for (const line of lines) {
+              const at = line.price && ADDON_PRICES[line.price.id];
+              if (at) { addonTier = at; break; }
+            }
+          }
+          let refundSub = null;
+          if (!tier && !addonTier && refundSubId) {
+            refundSub = await stripeSubscription(env, refundSubId);
+            if (refundSub) {
+              const a = addonFromSubscription(refundSub);
+              if (a) addonTier = a.tier;
+              else {
+                const p = planFromSubscription(refundSub);
+                if (p.tier && p.tier.pkg) { tier = p.tier; pkgPriceId = p.priceId; }
+              }
+            }
+          }
+          if (!tier && !addonTier) {
+            // Not a package and not the training add-on — a legacy plan
+            // (no training inside it to cancel) or another product on
+            // the shared account. Nothing in Eli's rule reaches it.
+            console.log('charge.refunded: charge', obj.id, 'is not a package or training add-on charge — nothing to do');
+            break;
+          }
+
+          const refundEmail = invoice.customer_email || await stripeCustomerEmail(env, invoice.customer || obj.customer);
+          const userId = await resolveUserId(env, { subscriptionId: refundSubId, email: refundEmail });
+          if (!userId) {
+            // Fail closed, exactly like the add-on path: nothing is
+            // stamped, nothing is swapped, nothing is emailed — and the
+            // non-2xx makes Stripe retry for ~3 days, the window in
+            // which a pay-before-account buyer creates the account this
+            // then heals itself for.
+            console.error('Unattributed refund', obj.id, 'email', refundEmail || '(none)');
+            return new Response('No matching user for refund — will retry', { status: 409 });
+          }
+
+          if (tier) {
+            // PACKAGE refund. The price swap is attempted BEFORE the
+            // emails, so the buyer copy can say only what actually
+            // happened: records_renewal is true only when the
+            // subscription really sits on the $9 price afterwards.
+            if (!refundSub && refundSubId) refundSub = await stripeSubscription(env, refundSubId);
+            const recordsPrice = String(env.RECORDS_ONLY_PRICE_ID || '').trim();
+            const items = (refundSub && refundSub.items && refundSub.items.data) || [];
+            const alreadyRecords = !!recordsPrice &&
+              items.some(it => it.price && it.price.id === recordsPrice);
+            let swapFailed = null;
+            if (!recordsPrice) {
+              swapFailed = 'RECORDS_ONLY_PRICE_ID is not configured on stripe-webhook, so no $9 records-only price exists to swap to';
+            } else if (!refundSub) {
+              swapFailed = 'subscription ' + (refundSubId || '(none)') + ' could not be read from Stripe';
+            } else if (!alreadyRecords) {
+              if (!items.length) {
+                swapFailed = 'subscription ' + refundSub.id + ' has no items to swap';
+              } else {
+                let idx = items.findIndex(it => it.price && it.price.id === pkgPriceId);
+                if (idx < 0) idx = 0;
+                const updated = await stripeSwapSubscriptionPrice(env, refundSub, idx, recordsPrice);
+                if (!updated) swapFailed = 'Stripe refused the price swap on subscription ' + refundSub.id;
+              }
+            }
+            const swapOk = !swapFailed;
+
+            // The records-only state, mirroring the package stamp's
+            // shape: the PLAN is untouched (tracking continues), the
+            // package is cleared, the training is off. The subscriptions
+            // row is kept current on the same terms as the subscription
+            // handler keeps it.
+            await patchProfile(env, userId, {
+              title22_training_included: false,
+              title22_package: null,
+            });
+            if (refundSub) {
+              await upsertSubscription(env, {
+                user_id: userId,
+                plan: normalisePlan(tier.plan),
+                status: refundSub.status,
+                stripe_subscription_id: refundSub.id,
+                current_period_end: periodEndOf(refundSub),
+              });
+            }
+            if (swapFailed) {
+              const note = 'REFUND PRICE SWAP FAILED — ' + swapFailed + ' (charge ' + obj.id +
+                ', subscription ' + (refundSubId || '(none)') + '). Training was still switched off and ' +
+                'both refund emails still sent; swap the subscription to the $9 records-only price by hand.';
+              console.error(note);
+              warning = note;
+            }
+            const buyerNote = await notifyCustomerEmail(env, {
+              template: 'refund_training_removed',
+              dedupe_key: 'refund_buyer:' + obj.id,
+              user_id: userId,
+              email: refundEmail,
+              plan: normalisePlan(tier.plan),
+              package: tier.pkg,
+              training_included: false,
+              refund_kind: 'package',
+              records_renewal: swapOk,
+              refund_amount: obj.amount / 100,
+            });
+            if (buyerNote && !warning) warning = buyerNote;
+            const alertNote = await notifyRefundOwnerAlert(env, {
+              dedupe_key: 'refund_owner_alert:' + obj.id,
+              user_id: userId,
+              buyer_email: refundEmail,
+              kind: 'package',
+              package: tier.pkg,
+              addon: null,
+              swap_failed: !swapOk,
+              swap_note: swapFailed,
+              subscription_id: refundSubId,
+              charge_id: obj.id,
+            });
+            if (alertNote && !warning) warning = alertNote;
+            break;
+          }
+
+          // ADD-ON refund: the add-on WAS the training, so cancelling
+          // it is the whole job — flag off, both emails, and NO price
+          // swap (there is no package subscription to continue). The
+          // buyer's plan and package stamps are not touched, and no
+          // subscriptions row is written — the add-on branch of the
+          // subscription handler never writes one either.
+          await patchProfile(env, userId, { title22_training_included: false });
+          const buyerNote = await notifyCustomerEmail(env, {
+            template: 'refund_training_removed',
+            dedupe_key: 'refund_buyer:' + obj.id,
+            user_id: userId,
+            email: refundEmail,
+            plan: null,
+            package: null,
+            training_included: false,
+            addon: addonTier,
+            refund_kind: 'addon',
+            records_renewal: false,
+            refund_amount: obj.amount / 100,
+          });
+          if (buyerNote && !warning) warning = buyerNote;
+          const alertNote = await notifyRefundOwnerAlert(env, {
+            dedupe_key: 'refund_owner_alert:' + obj.id,
+            user_id: userId,
+            buyer_email: refundEmail,
+            kind: 'addon',
+            package: null,
+            addon: addonTier,
+            swap_failed: false,
+            swap_note: null,
+            subscription_id: refundSubId,
+            charge_id: obj.id,
+          });
+          if (alertNote && !warning) warning = alertNote;
+          break;
+        }
+
         default:
           // Everything else is acknowledged and ignored. Returning anything
           // other than 2xx makes Stripe retry an event we do not want.
@@ -1215,4 +1599,4 @@ export default {
 // Named exports for the test suite (test.mjs), following the convention of
 // the other Workers in this repo: the default export above is the Worker
 // itself; these are the pure pieces a test can check without a network.
-export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };
+export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };

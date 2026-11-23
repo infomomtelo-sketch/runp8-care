@@ -200,6 +200,53 @@ function emailTemplate(template, payload) {
       `,
     };
   }
+  if (template === 'refund_training_removed') {
+    // The buyer's half of Eli's refund rule (Nov 23, 2026): a FULL
+    // refund cancels ONLY the training. What the copy may say is set by
+    // what stripe-webhook actually did and passes in — for a package,
+    // records_renewal is true only when the subscription really sits on
+    // the $9 records-only price afterwards (swapped, or already there).
+    // When the swap failed, the $9 renewal is NOT promised here: the
+    // refund and the training cancellation are stated, the records are
+    // stated safe, and the owner alert names the failed swap for a
+    // by-hand fix. The add-on variant has no subscription to continue:
+    // the add-on WAS the training, so its copy says the account itself
+    // is untouched. Both variants keep the door open in words, matching
+    // the app: with the flag off, the training add-on is offered again.
+    const info = planInfo(payload);
+    const amount = payload.refund_amount != null && Number.isFinite(Number(payload.refund_amount))
+      ? `$${Number(payload.refund_amount).toFixed(2)}` : (info.price || null);
+    if (payload.refund_kind === 'addon' || info.addon) {
+      return {
+        subject: 'Your add-on refund is complete',
+        html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
+          <h2 style="margin:0 0 12px">Your refund is complete.</h2>
+          <p>Hi ${name}, the full refund${amount ? ` of <strong>${amount}</strong>` : ''} for your <strong>${info.label}</strong> is complete. The add-on is cancelled, and staff training is now off.</p>
+          <p>Your Title22 account itself is untouched: your home, your records, and everything you entered stay right where they are.</p>
+          <p>You can add training back any time — the training add-on is still offered inside Title22 whenever your team needs it.</p>
+          <p><a href="${payload.access_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
+          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
+        </div>
+      `,
+      };
+    }
+    return {
+      subject: 'Your refund is complete — training is cancelled',
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
+          <h2 style="margin:0 0 12px">Your refund is complete.</h2>
+          <p>Hi ${name}, the full refund${amount ? ` of <strong>${amount}</strong>` : ''} for your <strong>${info.label}</strong> is complete. Staff training is cancelled, and it is now off in your account.</p>
+          ${payload.records_renewal
+            ? '<p>Your subscription itself continues — as records only. From your next renewal it is <strong>$9/month</strong>: your home, your records, and everything you entered stay right where they are. Only the training is gone.</p>'
+            : '<p>Your home, your records, and everything you entered stay right where they are. Only the training is gone.</p>'}
+          <p>You can add training back any time — the training add-on is still offered inside Title22 whenever your team needs it.</p>
+          <p><a href="${payload.access_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
+          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
+        </div>
+      `,
+    };
+  }
   if (template === 'addon_owner_alert') {
     // Not a customer template: the OWNER's task notice for a training
     // add-on activation, built by addonOwnerAlertEmail() below and sent
@@ -207,6 +254,14 @@ function emailTemplate(template, payload) {
     // it rides sendOnce — the one claim-before-send path — like every
     // other phase-2 email.
     return addonOwnerAlertEmail(payload);
+  }
+  if (template === 'refund_owner_alert') {
+    // Likewise not a customer template: the OWNER's task notice for a
+    // refund, built by refundOwnerAlertEmail() below and sent only by
+    // /notify-refund-owner to SIGNUP_NOTIFY_TO — the mirror of the
+    // activation alert above (activation enrolls by hand; a refund
+    // UNenrolls by hand).
+    return refundOwnerAlertEmail(payload);
   }
   return null;
 }
@@ -306,6 +361,51 @@ function addonOwnerAlertEmail(payload) {
   };
 }
 
+// The refund owner alert (2026-11-23, Eli's refund rule): the mirror of
+// the activation alert above. Activation's by-hand half is enrolling the
+// home's staff on CTC's LearnUpon platform; a full refund's by-hand half
+// is UNenrolling them, and until this existed nothing told the owner
+// that job was due either. Same shape as the activation alert (owner
+// mail, not customer mail), same claim-before-send path, its own dedupe
+// key (refund_owner_alert:<charge id>). When the package price swap
+// failed, the Subscription row says so in as many words — this alert is
+// the by-hand fix list, not just a notification.
+function refundOwnerAlertEmail(payload) {
+  const isAddon = payload.kind === 'addon';
+  const info = isAddon
+    ? (ADDON_INFO[String(payload.addon || '').toLowerCase()] || { label: 'Staff Training Add-On', price: null })
+    : (PACKAGE_INFO[String(payload.package || '').toLowerCase()] || { label: 'Title22 package', price: null });
+  const buyer = payload.buyer_email || '(buyer email not supplied)';
+  const subject = `Refund: ${buyer} — training off, enrollment check due`;
+  const subscriptionRow = isAddon
+    ? 'No package subscription — nothing to swap'
+    : payload.swap_failed
+      ? 'PRICE SWAP FAILED — ' + (payload.swap_note || 'see the stripe-webhook delivery log') + ' — swap it to the $9 records-only price by hand'
+      : 'Continues at $9/month, records only, from the next renewal';
+  const rows = [
+    ['Buyer account', buyer],
+    ['Refunded', info.label + (info.price ? ` (${info.price})` : '')],
+    ['Training', 'Cancelled — now off in their account'],
+    ['Subscription', subscriptionRow],
+    ['Stripe subscription', payload.subscription_id || '—'],
+    ['Stripe charge', payload.charge_id || '—'],
+  ];
+  return {
+    subject,
+    html:
+      '<div style="font-family:-apple-system,Arial,sans-serif;line-height:1.55;color:#16312b">' +
+      `<h2 style="margin:0 0 4px;font-size:18px">${esc(subject)}</h2>` +
+      `<p style="margin:0 0 14px;color:#5b6b66;font-size:13px">${esc(new Date().toISOString())}</p>` +
+      '<table style="border-collapse:collapse;font-size:14px">' +
+      rows.map(([k, v]) =>
+        `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">${esc(k)}</td>` +
+        `<td style="padding:4px 0"><strong>${esc(v)}</strong></td></tr>`).join('') +
+      '</table>' +
+      `<p style="margin:14px 0 0;font-size:14px">The job: UNENROLL the home's staff on CTC's LearnUpon platform — this refund cancelled their training, and their course access ends with it. The refund, the training flag and the buyer's email are already handled; the unenrollment is the by-hand half.</p>` +
+      '</div>',
+  };
+}
+
 function signupEmail(event, record) {
   const ref = record.referred_by;
   const subject =
@@ -356,6 +456,19 @@ function signupEmail(event, record) {
 //                              the OWNER's notice (to SIGNUP_NOTIFY_TO)
 //                              that the by-hand CTC enrollment check the
 //                              buyer's confirmation promised is now due.
+//   refund_training_removed <- POST /notify-payment (the same route, a
+//                              third template), called by stripe-webhook
+//                              reacting to a FULL charge.refunded: the
+//                              training is off, and a package buyer is
+//                              told their subscription continues at $9
+//                              records-only — only when it really does.
+//   refund_owner_alert      <- POST /notify-refund-owner, the refund's
+//                              sibling of the activation alert: the
+//                              OWNER's notice (to SIGNUP_NOTIFY_TO) that
+//                              the home's staff must be UNENROLLED on
+//                              CTC's platform, and — when the price swap
+//                              failed — that the swap is his to do by
+//                              hand.
 //   trial_warning           <- this Worker's own cron (see [triggers] in
 //                              wrangler.toml): a daily scan of profiles for
 //                              trials ending within 3 days.
@@ -523,6 +636,9 @@ export default {
     }
     if (new URL(request.url).pathname.endsWith('/notify-addon-owner')) {
       return notifyAddonOwner(request, env);
+    }
+    if (new URL(request.url).pathname.endsWith('/notify-refund-owner')) {
+      return notifyRefundOwner(request, env);
     }
 
     try {
@@ -709,8 +825,8 @@ async function notifyPayment(request, env) {
   catch { return json({ error: 'Body is not JSON' }, 400); }
 
   const template = body && body.template;
-  if (template !== 'subscription_confirmed' && template !== 'payment_failed') {
-    return json({ error: 'template must be subscription_confirmed or payment_failed' }, 400);
+  if (template !== 'subscription_confirmed' && template !== 'payment_failed' && template !== 'refund_training_removed') {
+    return json({ error: 'template must be subscription_confirmed, payment_failed or refund_training_removed' }, 400);
   }
   const dedupeKey = String((body && body.dedupe_key) || '');
   if (!dedupeKey || dedupeKey.length > 200) {
@@ -736,6 +852,12 @@ async function notifyPayment(request, env) {
         addon: body.addon || null,
         training_included: !!body.training_included,
         amount_due: body.amount_due != null ? body.amount_due : null,
+        // Refund template only (2026-11-23): which half of the rule
+        // fired, whether the $9 records-only renewal is real (the
+        // template promises it only then), and the refunded amount.
+        refund_kind: body.refund_kind || null,
+        records_renewal: !!body.records_renewal,
+        refund_amount: body.refund_amount != null ? body.refund_amount : null,
         retry_url: body.retry_url || null,
         access_url: body.access_url || null,
       },
@@ -807,6 +929,85 @@ async function notifyAddonOwner(request, env) {
         buyer_email: buyerEmail,
         addon,
         subscription_id: body.subscription_id || null,
+      },
+    });
+    if (!outcome.sent) return json({ ok: true, skipped: outcome.skipped });
+    return json({ ok: true, id: outcome.id });
+  } catch (err) {
+    return json({ error: err.message, detail: err.detail || undefined }, 502);
+  }
+}
+
+// ─── Refund owner alert, called by stripe-webhook ──────────────────────────
+//
+// The refund's sibling of /notify-addon-owner above: same caller, same
+// shared secret (EMAIL_SERVICE_SECRET), same claim-before-send path,
+// same recipient (SIGNUP_NOTIFY_TO) — but the task runs the other way.
+// Activation's alert says an enrollment check is due; this one says an
+// UNenrollment is due, because a full refund cancelled the training the
+// enrollment fed. The caller names the dedupe key
+// (refund_owner_alert:<charge id>) — its own key, separate from the
+// buyer's refund_buyer:<charge id>, so neither send can block the
+// other. kind says which half of the rule fired: a package refund
+// (package named; swap_failed carried through so the alert can name a
+// swap the owner must do by hand) or an add-on refund (tier named; no
+// swap exists). Buyer-email resolution matches the activation alert:
+// the auth record's account email outranks the Stripe payer email the
+// caller passes.
+async function notifyRefundOwner(request, env) {
+  const missing = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_SERVICE_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SIGNUP_NOTIFY_TO']
+    .filter(name => !env[name]);
+  if (missing.length) {
+    return json({ error: 'Worker misconfigured — missing binding(s): ' + missing.join(', ') }, 500);
+  }
+
+  const given = request.headers.get('X-Title22-Service-Secret') || '';
+  if (!secretMatches(given, env.EMAIL_SERVICE_SECRET)) {
+    return json({ error: 'Bad or missing X-Title22-Service-Secret' }, 401);
+  }
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Body is not JSON' }, 400); }
+
+  const dedupeKey = String((body && body.dedupe_key) || '');
+  if (!dedupeKey || dedupeKey.length > 200) {
+    return json({ error: 'dedupe_key is required (max 200 chars)' }, 400);
+  }
+  const kind = String((body && body.kind) || '').toLowerCase();
+  if (kind !== 'package' && kind !== 'addon') {
+    return json({ error: 'kind must be package or addon' }, 400);
+  }
+  const addon = String((body && body.addon) || '').toLowerCase();
+  if (kind === 'addon' && !ADDON_INFO[addon]) {
+    return json({ error: 'addon must be one of: ' + Object.keys(ADDON_INFO).join(', ') }, 400);
+  }
+  const pkg = String((body && body.package) || '').toLowerCase();
+  if (kind === 'package' && !PACKAGE_INFO[pkg]) {
+    return json({ error: 'package must be one of: ' + Object.keys(PACKAGE_INFO).join(', ') }, 400);
+  }
+
+  try {
+    const user = body.user_id ? await lookupAuthUser(env, body.user_id) : null;
+    const buyerEmail = String((user && user.email) || body.buyer_email || '').trim().toLowerCase();
+    if (!buyerEmail) {
+      return json({ error: 'No buyer email (auth lookup and body.buyer_email both empty)' }, 422);
+    }
+
+    const outcome = await sendOnce(env, {
+      dedupeKey,
+      userId: body.user_id || null,
+      template: 'refund_owner_alert',
+      to: env.SIGNUP_NOTIFY_TO,
+      payload: {
+        buyer_email: buyerEmail,
+        kind,
+        package: kind === 'package' ? pkg : null,
+        addon: kind === 'addon' ? addon : null,
+        swap_failed: !!body.swap_failed,
+        swap_note: body.swap_note || null,
+        subscription_id: body.subscription_id || null,
+        charge_id: body.charge_id || null,
       },
     });
     if (!outcome.sent) return json({ ok: true, skipped: outcome.skipped });
