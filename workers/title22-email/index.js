@@ -263,6 +263,14 @@ function emailTemplate(template, payload) {
     // UNenrolls by hand).
     return refundOwnerAlertEmail(payload);
   }
+  if (template === 'addon_blocked_no_agreement') {
+    // Likewise not a customer template: the OWNER's task notice for a
+    // Resident Binder add-on that was paid for but NOT activated
+    // because no signed agreement is on file, built by
+    // addonBlockedEmail() below and sent only by
+    // /notify-addon-blocked to SIGNUP_NOTIFY_TO.
+    return addonBlockedEmail(payload);
+  }
   return null;
 }
 
@@ -357,6 +365,38 @@ function addonOwnerAlertEmail(payload) {
         `<td style="padding:4px 0"><strong>${esc(v)}</strong></td></tr>`).join('') +
       '</table>' +
       `<p style="margin:14px 0 0;font-size:14px">The job: check this order by hand, enroll the home's staff on CTC's LearnUpon platform, then email the buyer at <strong>${esc(buyer)}</strong> when their staff can start. That by-hand check is what the buyer's confirmation email promised them.</p>` +
+      '</div>',
+  };
+}
+
+// The add-on blocked owner alert: when a Resident Binder add-on is
+// paid for but stripe-webhook refuses to activate it because no signed
+// agreement is on file for the buyer's home (Eli's rule: no signature,
+// no add-on), the buyer has paid for something that stayed off and only
+// a human can unstick it. Same shape as the activation alert above
+// (owner mail, not customer mail), same claim-before-send path, its
+// own dedupe key named by the caller.
+function addonBlockedEmail(payload) {
+  const buyer = payload.buyer_email || '(buyer email not supplied)';
+  const subject = `Binder add-on NOT active: ${buyer} — no signed agreement`;
+  const rows = [
+    ['Buyer account', buyer],
+    ['Add-on', 'Resident Binder (MAR + ADL + resident binders)'],
+    ['Stripe subscription', payload.subscription_id || '—'],
+    ['Price ID', payload.price_id || '—'],
+  ];
+  return {
+    subject,
+    html:
+      '<div style="font-family:-apple-system,Arial,sans-serif;line-height:1.55;color:#16312b">' +
+      `<h2 style="margin:0 0 4px;font-size:18px">${esc(subject)}</h2>` +
+      `<p style="margin:0 0 14px;color:#5b6b66;font-size:13px">${esc(new Date().toISOString())}</p>` +
+      '<table style="border-collapse:collapse;font-size:14px">' +
+      rows.map(([k, v]) =>
+        `<tr><td style="padding:4px 16px 4px 0;color:#5b6b66;vertical-align:top">${esc(k)}</td>` +
+        `<td style="padding:4px 0"><strong>${esc(v)}</strong></td></tr>`).join('') +
+      '</table>' +
+      `<p style="margin:14px 0 0;font-size:14px">The job: the buyer paid for the Resident Binder add-on, but no signed agreement is on file for their home, so the add-on was NOT switched on. The fix is the home's administrator signs the agreement in Title22 (Billing → Resident Binder agreement), after which activation follows the signature. Until then the buyer has paid for something that is off — contact them.</p>` +
       '</div>',
   };
 }
@@ -636,6 +676,9 @@ export default {
     }
     if (new URL(request.url).pathname.endsWith('/notify-addon-owner')) {
       return notifyAddonOwner(request, env);
+    }
+    if (new URL(request.url).pathname.endsWith('/notify-addon-blocked')) {
+      return notifyAddonBlocked(request, env);
     }
     if (new URL(request.url).pathname.endsWith('/notify-refund-owner')) {
       return notifyRefundOwner(request, env);
@@ -929,6 +972,65 @@ async function notifyAddonOwner(request, env) {
         buyer_email: buyerEmail,
         addon,
         subscription_id: body.subscription_id || null,
+      },
+    });
+    if (!outcome.sent) return json({ ok: true, skipped: outcome.skipped });
+    return json({ ok: true, id: outcome.id });
+  } catch (err) {
+    return json({ error: err.message, detail: err.detail || undefined }, 502);
+  }
+}
+
+// ─── Add-on blocked owner alert, called by stripe-webhook ──────────────────
+//
+// The blocked sibling of /notify-addon-owner above: same caller, same
+// shared secret (EMAIL_SERVICE_SECRET), same claim-before-send path,
+// same recipient (SIGNUP_NOTIFY_TO) — but nothing activated. stripe-
+// webhook calls this when a Resident Binder add-on subscription was
+// paid for and refused because no signed agreement is on file, and
+// names the dedupe key — its OWN key, separate from any buyer send, so
+// neither can block the other. There is no tier to validate: the
+// Resident Binder add-on is a single thing, not an ADDON_INFO tier.
+// Buyer-email resolution matches the activation alert: the auth
+// record's account email outranks the Stripe payer email the caller
+// passes.
+async function notifyAddonBlocked(request, env) {
+  const missing = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_SERVICE_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SIGNUP_NOTIFY_TO']
+    .filter(name => !env[name]);
+  if (missing.length) {
+    return json({ error: 'Worker misconfigured — missing binding(s): ' + missing.join(', ') }, 500);
+  }
+
+  const given = request.headers.get('X-Title22-Service-Secret') || '';
+  if (!secretMatches(given, env.EMAIL_SERVICE_SECRET)) {
+    return json({ error: 'Bad or missing X-Title22-Service-Secret' }, 401);
+  }
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Body is not JSON' }, 400); }
+
+  const dedupeKey = String((body && body.dedupe_key) || '');
+  if (!dedupeKey || dedupeKey.length > 200) {
+    return json({ error: 'dedupe_key is required (max 200 chars)' }, 400);
+  }
+
+  try {
+    const user = body.user_id ? await lookupAuthUser(env, body.user_id) : null;
+    const buyerEmail = String((user && user.email) || body.buyer_email || '').trim().toLowerCase();
+    if (!buyerEmail) {
+      return json({ error: 'No buyer email (auth lookup and body.buyer_email both empty)' }, 422);
+    }
+
+    const outcome = await sendOnce(env, {
+      dedupeKey,
+      userId: body.user_id || null,
+      template: 'addon_blocked_no_agreement',
+      to: env.SIGNUP_NOTIFY_TO,
+      payload: {
+        buyer_email: buyerEmail,
+        subscription_id: body.subscription_id || null,
+        price_id: body.price_id || null,
       },
     });
     if (!outcome.sent) return json({ ok: true, skipped: outcome.skipped });

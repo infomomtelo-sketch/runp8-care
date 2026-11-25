@@ -138,6 +138,18 @@ const ADDON_PRODUCTS = Object.fromEntries(
   Object.entries(ADDON_TIERS).map(([tier, info]) => [info.product, tier])
 );
 
+// The Resident Binder Add-On prices (MAR + ADL + resident binders).
+// EMPTY, ON PURPOSE: no binder/MAR Stripe price exists yet — there is
+// no payment link, so the add-on cannot be bought today. When Eli
+// creates the MAR/binder price (after the agreement door is
+// receiver-proven), its ID goes here, and agreementAddonFromSubscription
+// below starts recognising it by price. Until then the ONLY signal is
+// the subscription metadata the future Payment Link will stamp
+// (product_kind=binder_addon), and the guard branch in the subscription
+// handler is the defence in depth that makes Eli's rule — NO signed
+// agreement, NO add-on activation — live the moment a price/link exists.
+const AGREEMENT_ADDON_PRICES = {};
+
 // The plan keys the app actually understands. index.html's TIER_LIMITS and
 // T22_PAID are keyed on exactly these, so a plan written here that is not in
 // this list is worse than writing nothing: T22_PAID would not match it, so the
@@ -533,6 +545,68 @@ function addonFromSubscription(sub) {
     return { tier: md.tier, priceId: (first && first.id) || null, viaFallback: 'metadata' };
   }
   return null;
+}
+
+// Is this subscription a Resident Binder Add-On purchase? The mirror
+// of addonFromSubscription(), with the same discipline — the price map
+// is the authority, metadata is the fallback, and a fallback hit comes
+// back with viaFallback named so the caller can be loud about it:
+//   1. an item price in AGREEMENT_ADDON_PRICES. (The map is EMPTY
+//      today — no binder price exists yet — so this loop cannot hit
+//      until Eli creates the price and its ID is added there.)
+//   2. subscription metadata product_kind=binder_addon, which the
+//      future Payment Link will stamp through subscription_data,
+//      exactly as the training links stamp ctc_addon.
+// Returns null when this is not a binder add-on subscription at all.
+function agreementAddonFromSubscription(sub) {
+  const items = (sub.items && sub.items.data) || [];
+  for (const it of items) {
+    const priceId = it.price && it.price.id;
+    if (priceId && Object.prototype.hasOwnProperty.call(AGREEMENT_ADDON_PRICES, priceId)) {
+      return { priceId, viaFallback: null };
+    }
+  }
+  const md = sub.metadata || {};
+  if (md.product_kind === 'binder_addon') {
+    const first = items[0] && items[0].price;
+    return { priceId: (first && first.id) || null, viaFallback: 'metadata' };
+  }
+  return null;
+}
+
+// Has this account FILED a signed Resident Binder agreement? The
+// agreement is signed inside the app and filed in public.binder_
+// agreements, one row per facility. The check walks the account's
+// facilities (facilities.user_id -> facilities.id) and asks whether
+// ANY of them has an agreement row.
+//
+// FAIL CLOSED: any fetch error or non-OK response returns false. A
+// lookup that cannot prove a signature must not activate the add-on —
+// that is the whole rule. The failure is recoverable, not final: the
+// next customer.subscription.updated redelivery re-runs this check,
+// and the blocked branch's owner alert makes the block visible to a
+// human in the meantime.
+async function hasFiledBinderAgreement(env, userId) {
+  try {
+    const facRes = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/facilities?user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { headers: sbHeaders(env) }
+    );
+    if (!facRes.ok) return false;
+    const facRows = await facRes.json().catch(() => null);
+    if (!Array.isArray(facRows) || !facRows.length) return false;
+    const ids = facRows.map(f => f && f.id).filter(Boolean);
+    if (!ids.length) return false;
+    const res = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/binder_agreements?facility_id=in.(${encodeURIComponent(ids.join(','))})&select=id&limit=1`,
+      { headers: sbHeaders(env) }
+    );
+    if (!res.ok) return false;
+    const rows = await res.json().catch(() => null);
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) {
+    return false;
+  }
 }
 
 // Is this subscription sitting on the $9 RECORDS-ONLY price (2026-11-23)?
@@ -943,6 +1017,47 @@ async function notifyRefundOwnerAlert(env, payload) {
   }
 }
 
+// The OWNER alert for a BLOCKED Resident Binder add-on activation:
+// the mirror of notifyOwnerAlert above — same rail (the email Worker's
+// own route, /notify-addon-blocked), same secret, same never-throws
+// contract, its own dedupe key (addon_blocked_no_agreement:<subscription
+// id>), named by the caller. This fires when a buyer PAID for the binder
+// add-on but no signed agreement is on file, so nothing was activated:
+// the buyer is waiting on something that stayed off, and only a human
+// can unstick it — which is why failures are console.error'd here as
+// well as returned, like the activation alert's.
+async function notifyBlockedAlert(env, payload) {
+  try {
+    if ((!emailWorkerBinding(env) && !env.EMAIL_WORKER_URL) || !env.EMAIL_SERVICE_SECRET) {
+      const note = 'ADDON BLOCKED ALERT SKIPPED — EMAIL_WORKER / EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET not configured ' +
+        'on stripe-webhook, so no blocked-activation alert was requested for subscription ' +
+        (payload.subscription_id || '(unknown)') + '. The add-on was NOT activated (no signed agreement on file); ' +
+        'the block itself stands either way.';
+      console.error(note);
+      return note;
+    }
+    const res = await postToEmailWorker(env, '/notify-addon-blocked', payload);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const note = 'ADDON BLOCKED ALERT FAILED — title22-email answered HTTP ' + res.status + ' for subscription ' +
+        (payload.subscription_id || '(unknown)') + ' (' + (data.error || 'no detail') + '). ' +
+        'The add-on was NOT activated (no signed agreement on file); the block itself stands either way.';
+      console.error(note);
+      return note;
+    }
+    // data.skipped means the dedupe log already holds this key — the
+    // alert went out on an earlier delivery. The design working, not a
+    // warning.
+    return null;
+  } catch (e) {
+    const note = 'ADDON BLOCKED ALERT FAILED — could not reach title22-email for subscription ' +
+      (payload.subscription_id || '(unknown)') + ': ' + ((e && e.message) || String(e)) +
+      '. The add-on was NOT activated (no signed agreement on file); the block itself stands either way.';
+    console.error(note);
+    return note;
+  }
+}
+
 // Everything this Worker needs from its environment, checked before any of it
 // is used. This exists because of the 2026-09-13 outage, and the shape of that
 // outage is the argument for it:
@@ -1102,6 +1217,76 @@ export default {
             // "Free Trial" after being charged.
             console.error('Unattributed subscription', obj.id, 'email', email || '(none)');
             return new Response('No matching user for subscription — will retry', { status: 409 });
+          }
+          // Resident Binder Add-On — the AGREEMENT GUARD. Eli's rule:
+          // NO signed agreement, NO add-on activation. This branch sits
+          // BEFORE the training add-on branch, and it has to: a binder
+          // price is in NO existing map, so without it a binder
+          // subscription would fall through to the 422 refusal below —
+          // the buyer paid, and Title22 refused the event instead of
+          // making the one decision the rule requires. The add-on
+          // cannot be bought yet (AGREEMENT_ADDON_PRICES is empty and
+          // no payment link exists); this is defence in depth, built
+          // now so the guard is already live the moment a binder
+          // price/link exists. A binder purchase stamps
+          // profiles.title22_binder_addon and NOTHING else — never a
+          // plan, never a package, never the training flag.
+          const bagree = agreementAddonFromSubscription(obj);
+          if (bagree) {
+            if (bagree.viaFallback) {
+              // Loud even though it worked — same rule as the other
+              // rescues. The map is incomplete and somebody has to
+              // complete it.
+              const note =
+                `PRICE MAP IS WRONG — this binder add-on event was recognised via its ${bagree.viaFallback}, ` +
+                `not its price. Stripe sent price ${bagree.priceId || '(none)'}. ` +
+                `Add that price to AGREEMENT_ADDON_PRICES in workers/stripe-webhook/index.js.`;
+              console.error(note);
+              if (!warning) warning = note;
+            }
+            // Non-active statuses stamp nothing and send nothing —
+            // the training branch's discipline, mirrored.
+            if (obj.status === 'active' || obj.status === 'trialing') {
+              if (await hasFiledBinderAgreement(env, userId)) {
+                await patchProfile(env, userId, { title22_binder_addon: true });
+                // NO buyer confirmation email, deliberately. The only
+                // template available is subscription_confirmed, and
+                // with plan:null, package:null, training_included:false
+                // and no addon field it renders a generic "Your
+                // Title22 plan is active" — the binder add-on is not a
+                // plan, the copy never names the binder, and its
+                // "nothing else is charged unless you choose an add-on
+                // yourself" line contradicts the purchase it would be
+                // confirming. Sending it would tell the buyer the
+                // wrong thing; a binder-specific template is a
+                // title22-email build for when the add-on goes on sale.
+              } else {
+                // Paid, but NOT activated: no agreement on file. Stamp
+                // nothing, and make the block impossible to miss — the
+                // buyer paid for something that stayed off, so a human
+                // must see this: a loud console line AND the owner
+                // alert. The alert's note is APPENDED to any warning
+                // already set (not dropped behind the price-map note
+                // above), because this is the note that carries a job.
+                console.error(
+                  'BINDER ADD-ON BLOCKED — subscription', obj.id,
+                  'for account', userId, '(buyer', email || '(unknown email)', ')',
+                  'paid for the Resident Binder add-on, but NO signed binder agreement is on file ' +
+                  'for any of the account\'s facilities. title22_binder_addon was NOT stamped. ' +
+                  'The home must sign the agreement in the app; the next subscription.updated ' +
+                  'redelivery re-runs the check.'
+                );
+                const alertNote = await notifyBlockedAlert(env, {
+                  dedupe_key: 'addon_blocked_no_agreement:' + obj.id,
+                  user_id: userId,
+                  buyer_email: email,
+                  subscription_id: obj.id,
+                  price_id: bagree.priceId,
+                });
+                if (alertNote) warning = warning ? warning + ' ' + alertNote : alertNote;
+              }
+            }
+            break;
           }
           // Staff Training Add-On (2026-11-22). A training-only purchase:
           // it stamps the training flag and NOTHING else — never
@@ -1353,6 +1538,16 @@ export default {
           if (!userId) {
             console.warn('Unattributed cancellation', obj.id, '— acknowledged, nothing to do');
             return new Response('No matching user for cancellation', { status: 202 });
+          }
+          // A cancelled BINDER add-on ends only the binder add-on, on
+          // the same terms as the training add-on above: it never
+          // reaches the generic path below (which would stamp
+          // title22_plan_expires_at and read as the PLAN ending). Its
+          // one stamp is the mirror of its activation — the flag the
+          // guard branch set comes off.
+          if (agreementAddonFromSubscription(obj)) {
+            await patchProfile(env, userId, { title22_binder_addon: false });
+            break;
           }
           const periodEnd = periodEndOf(obj) || new Date().toISOString();
           await patchProfile(env, userId, { title22_plan_expires_at: periodEnd });
@@ -1847,4 +2042,4 @@ export default {
 // Named exports for the test suite (test.mjs), following the convention of
 // the other Workers in this repo: the default export above is the Worker
 // itself; these are the pure pieces a test can check without a network.
-export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };
+export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, hasFiledBinderAgreement, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };

@@ -13,7 +13,7 @@
 // (mirroring the deployed deletion handler). 29 original checks + 6
 // cap-fix checks = 35.
 import { createHmac } from 'node:crypto';
-import worker, { PRICE_PLANS, portionForBeds, cappedPortion, splitAmounts } from './index.js';
+import worker, { PRICE_PLANS, portionForBeds, cappedPortion, splitAmounts, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, hasFiledBinderAgreement } from './index.js';
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
@@ -55,6 +55,7 @@ const db = {
     [U.G]: [{ id: 'fg1', capacity: 6, is_demo: false }],
   },
   ledger: [],
+  agreements: new Set(),  // facility ids with a filed binder_agreements row
   ledgerFail: false,
   profilePatches: [],  // { userId, body }
 };
@@ -104,6 +105,13 @@ globalThis.fetch = async (url, init = {}) => {
       db.subs[row.stripe_subscription_id] = row;
       return new Response('', { status: 201 });
     }
+  }
+
+  if (url.startsWith('https://db.example/rest/v1/binder_agreements')) {
+    const raw = q.get('facility_id') || '';
+    const ids = raw.startsWith('in.(') && raw.endsWith(')') ? raw.slice(4, -1).split(',').filter(Boolean) : [];
+    const rows = ids.filter(id => db.agreements.has(id)).map(id => ({ id: 'agr-' + id }));
+    return new Response(JSON.stringify(rows), { status: 200 });
   }
 
   if (url.startsWith('https://db.example/rest/v1/facilities')) {
@@ -351,6 +359,84 @@ ok(PRICE_PLANS[PKG1].training && PRICE_PLANS[PKG2].training && PRICE_PLANS[PKG3]
   const body = await res.json().catch(() => ({}));
   ok(res.status === 200 && typeof body.warning === 'string' && body.warning.includes('CTC LEDGER SKIPPED'),
     'unattributed package invoice: 200 with a SKIPPED warning, no crash, no row');
+}
+
+// ---------- Resident Binder add-on: the agreement guard ----------
+// No binder price exists yet, so every binder subscription below is
+// recognised ONLY by its metadata (product_kind=binder_addon) on an
+// unmapped price — exactly the shape the future Payment Link will send.
+// The test env carries no EMAIL_WORKER_URL / EMAIL_SERVICE_SECRET, so
+// notifyBlockedAlert returns its SKIPPED note and the handler surfaces
+// it in the response warning — that is what "the blocked alert was
+// attempted" is asserted on.
+const BINDER_PRICE = 'price_binder_unmapped_test';
+const binderSubEvent = (id, cusKey) => ({
+  type: 'customer.subscription.created',
+  data: {
+    object: {
+      id, customer: CUS[cusKey], status: 'active', metadata: { product_kind: 'binder_addon' },
+      items: { data: [{ price: { id: BINDER_PRICE }, current_period_end: 1799999999 }] },
+    },
+  },
+});
+const patchesSince = n => db.profilePatches.slice(n);
+
+ok(AGREEMENT_ADDON_PRICES && Object.keys(AGREEMENT_ADDON_PRICES).length === 0,
+  'binder guard: AGREEMENT_ADDON_PRICES is empty — no binder price exists yet');
+{
+  const r = agreementAddonFromSubscription(binderSubEvent('sub_probe', 'A').data.object);
+  ok(r && r.viaFallback === 'metadata' && r.priceId === BINDER_PRICE,
+    'binder guard: recognizer names the metadata fallback and the price');
+  ok(agreementAddonFromSubscription(subEvent('sub_probe2', PKG1, 'A').data.object) === null,
+    'binder guard: recognizer returns null for a package subscription');
+  ok(await hasFiledBinderAgreement(env, U.B) === false,
+    'binder guard: hasFiledBinderAgreement is false when no agreement row exists');
+}
+{
+  // (a) Binder subscription, NO agreement on file: handled (200, NOT
+  // the 422 an unmapped price would otherwise get), nothing stamped,
+  // and the blocked alert was attempted.
+  const before = db.profilePatches.length;
+  const res = await send(binderSubEvent('sub_binder_b', 'B'));
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 200, 'binder guard (a): no agreement on file — 200, not 422');
+  ok(!patchesSince(before).some(p => 'title22_binder_addon' in p.body),
+    'binder guard (a): no agreement on file — title22_binder_addon NOT stamped');
+  ok(typeof body.warning === 'string' && body.warning.includes('ADDON BLOCKED ALERT SKIPPED'),
+    'binder guard (a): blocked alert attempted — SKIPPED note rides in the warning');
+}
+{
+  // (b) Same subscription, WITH an agreement row on one of the
+  // account's facilities (A has fa1 + fa-demo): the flag is stamped.
+  db.agreements.add('fa1');
+  ok(await hasFiledBinderAgreement(env, U.A) === true,
+    'binder guard (b): hasFiledBinderAgreement is true with a row on fa1');
+  const before = db.profilePatches.length;
+  const res = await send(binderSubEvent('sub_binder_a', 'A'));
+  ok(res.status === 200 && patchesSince(before).some(p => p.userId === U.A && p.body.title22_binder_addon === true),
+    'binder guard (b): agreement on file — title22_binder_addon: true stamped');
+}
+{
+  // (c) Binder subscription for an account with NO facilities at all
+  // (D has none in db.facilities): there is nowhere an agreement could
+  // be filed, so it is blocked and nothing is stamped.
+  const before = db.profilePatches.length;
+  const res = await send(binderSubEvent('sub_binder_d', 'D'));
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 200 && !patchesSince(before).some(p => 'title22_binder_addon' in p.body)
+    && typeof body.warning === 'string' && body.warning.includes('ADDON BLOCKED ALERT SKIPPED'),
+    'binder guard (c): account with no facilities — blocked, no stamp, alert attempted');
+}
+{
+  // Cancellation of a binder subscription clears ONLY the binder flag —
+  // it never reaches the generic path's plan-expiry stamp.
+  const res = await send({ type: 'customer.subscription.deleted', data: { object: {
+    id: 'sub_binder_a', customer: CUS.A, status: 'canceled', metadata: { product_kind: 'binder_addon' },
+    items: { data: [{ price: { id: BINDER_PRICE }, current_period_end: 1799999999 }] },
+  } } });
+  const p = lastPatchFor(U.A);
+  ok(res.status === 200 && p && p.body.title22_binder_addon === false && !('title22_plan_expires_at' in p.body),
+    'binder guard: cancellation clears title22_binder_addon only — no plan-expiry stamp');
 }
 
 console.log(fails ? `\n${fails} FAILURES` : '\nALL PASS');
