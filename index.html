@@ -1948,18 +1948,113 @@
               <div><div style="font-weight:700;font-size:15px">Staff Training</div><div style="font-size:13px;color:var(--text2)">Online staff courses from Community Training Connection. Completions land in your staff files.</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">$20&ndash;$100/mo by licensed beds</div><button onclick="window.open('https://title22-addon-pay.pages.dev/','_blank')" class="btn btn-outline" style="font-size:13px">See courses &amp; prices</button></div>
             </div>
-            <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div id="billing-mar-addon-row" style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">Medication Administration Record (MAR)</div><div style="font-size:13px;color:var(--text2)">The daily med pass, recorded in Title22 &mdash; given, refused, held, missed.</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
+              <div id="binder-addon-state-mar" style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
             </div>
-            <div style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div id="billing-adl-addon-row" style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div><div style="font-weight:700;font-size:15px">ADL Charting</div><div style="font-size:13px;color:var(--text2)">Daily care records &mdash; bathing, dressing, meals, mobility, toileting &mdash; written at the bedside.</div></div>
-              <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
+              <div id="binder-addon-state-adl" style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
             </div>
           </div>
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- RESIDENT BINDER AGREEMENT DOOR: the agreement is signed here, in
+     Title22, before the Resident Binder add-on can be checked out or
+     activated (Eli, Nov 20 + 24, 2026). The text below is the served
+     agreement, version v1.0 — the draft in the agreement-door package
+     with its attorney-review markers removed; the markers live in the
+     source draft only. One signature covers MAR + ADL + the binders. -->
+<div class="modal-overlay" id="binder-agreement-modal" onclick="if(event.target===this)closeBinderAgreement()">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header"><h3>Resident Binder Agreement</h3><button class="modal-close" onclick="closeBinderAgreement()" aria-label="Close">&times;</button></div>
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-weight:600;margin-bottom:14px">Before this add-on: the agreement is signed in Title22. No signed agreement, no resident binder.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-outline" style="font-size:13px" onclick="printBinderAgreement()">Print</button>
+      <button class="btn btn-outline" style="font-size:13px" onclick="shareBinderAgreement()">Share a copy</button>
+    </div>
+    <div id="binder-agreement-text" style="font-size:15px;line-height:1.65;color:var(--text)">
+      <p><strong>Between:</strong> Title22 (&ldquo;Title22&rdquo;)</p>
+      <p><strong>And:</strong> the care home named in the signature block at the end of this agreement (&ldquo;the Home&rdquo;), a California Residential Care Facility for the Elderly (RCFE) or Adult Residential Facility (ARF) licensed by the California Department of Social Services, Community Care Licensing Division.</p>
+      <h4 style="margin:18px 0 6px">1. What this agreement covers</h4>
+      <p>This agreement covers the <strong>Resident Binder</strong> add-on to Title22: the resident binders, the Daily Binder, the medication administration record (MAR), the ADL Tracker, and every page inside them. One signed agreement covers the whole package. The Home does not sign again for MAR or ADL separately.</p>
+      <p>This agreement does <strong>not</strong> cover the rest of Title22 (staff files, training, certificates). The core Title22 app holds staff records only and needs no agreement of this kind.</p>
+      <h4 style="margin:18px 0 6px">2. The information the Resident Binder holds</h4>
+      <p>The Resident Binder holds information about the Home&rsquo;s residents, including:</p>
+      <ul style="margin:6px 0 6px 20px">
+        <li>Names, dates of birth, and identity documents (photo ID, Social Security card, insurance cards) the Home scans in</li>
+        <li>Physician, pharmacy, and emergency-contact information</li>
+        <li>Medication records: the medication list (LIC 622), the MAR, PRN records, and medication destruction records</li>
+        <li>Care plans, appraisals, and daily-care (ADL) charting</li>
+        <li>Incident records and the other resident-file documents the Home keeps in the binder</li>
+      </ul>
+      <p>This is health and personal information. Both sides treat it that way in everything below.</p>
+      <h4 style="margin:18px 0 6px">3. Where the information lives</h4>
+      <p>Resident information in the Resident Binder is stored in a separate computing environment (the &ldquo;corner&rdquo;) run on Amazon Web Services (AWS), kept apart from the core Title22 app and its database. Title22 has a signed business associate agreement with AWS covering that environment (signed November 3, 2026), and resident information is kept only in services covered by it.</p>
+      <p>The core Title22 app and its database <strong>never</strong> hold resident information: no MAR marks, no resident pages, no charting events &mdash; not even as lines in Title22&rsquo;s activity log. Title22&rsquo;s log records only Title22-side events (this agreement being signed, the add-on being added, billing, sign-ins).</p>
+      <h4 style="margin:18px 0 6px">4. What Title22 will do</h4>
+      <p>Title22 will:</p>
+      <ul style="margin:6px 0 6px 20px">
+        <li>Use the resident information <strong>only</strong> to run the Resident Binder for the Home &mdash; to store it, show it back to the Home&rsquo;s authorized users, and keep it safe. Title22 will not sell it, share it for marketing, or use it for any other product.</li>
+        <li>Limit access to the Home&rsquo;s own authorized users, under the Home&rsquo;s Title22 account. Access is per person, by sign-in &mdash; not a shared password for the whole home.</li>
+        <li>Protect the information with encryption in transit and at rest, and with administrative safeguards proportionate to its sensitivity.</li>
+        <li>Use only service providers that are bound by agreements at least as protective as this one for any resident information they touch.</li>
+        <li>Tell the Home, without unreasonable delay, if Title22 discovers that resident information was accessed, taken, or disclosed without authorization &mdash; and cooperate with the Home&rsquo;s own notifications.</li>
+      </ul>
+      <h4 style="margin:18px 0 6px">5. What the Home will do</h4>
+      <p>The Home will:</p>
+      <ul style="margin:6px 0 6px 20px">
+        <li>Keep its Title22 account credentials and its binder access code under the control of the administrator and authorized staff only, and remove access promptly when a staff member leaves.</li>
+        <li>Make sure the people who sign in are the people the Home has authorized, and that charting is done by the person whose initials appear on it.</li>
+        <li>Keep the underlying facts accurate: Title22 stores what the Home&rsquo;s staff enter. The Home remains responsible for its residents&rsquo; care, its medication practices, and its compliance with Title 22 and its licensing duties. The Resident Binder is a record-keeping tool; it does not give care, make care decisions, or replace the Home&rsquo;s own judgment.</li>
+        <li>Tell Title22 promptly about any suspected unauthorized access to the Home&rsquo;s account that the Home becomes aware of.</li>
+      </ul>
+      <h4 style="margin:18px 0 6px">6. Signing, and when the add-on unlocks</h4>
+      <p>This agreement is presented inside Title22. The person who signs must be authorized to sign for the Home.</p>
+      <p>Signing means: the signer draws their signature on screen, prints their name, and the date is recorded. The signed copy &mdash; signature, printed name, date, the Home&rsquo;s name and license number, and the version of this agreement that was signed &mdash; is kept with the Home&rsquo;s Title22 records, and the signing is written into Title22&rsquo;s activity log.</p>
+      <p><strong>Until this agreement is signed, the Resident Binder add-on cannot be checked out or activated.</strong> An unsigned home keeps full use of the rest of Title22; only the Resident Binder stays locked.</p>
+      <h4 style="margin:18px 0 6px">7. How long it lasts, and ending it</h4>
+      <p>This agreement starts when it is signed and lasts while the Home has the Resident Binder add-on. Either side may end the add-on as the subscription terms allow.</p>
+      <p>When the add-on ends (cancellation, refund, or non-payment):</p>
+      <ul style="margin:6px 0 6px 20px">
+        <li>Access to the Resident Binder ends.</li>
+        <li>The records are <strong>not</strong> deleted. Resident records are kept for at least the period California requires for resident records after a resident leaves the Home.</li>
+        <li>The Home may print or export its complete resident binders before access ends, so the Home always holds its own paper.</li>
+      </ul>
+      <p style="font-size:13px;color:var(--text2);margin-top:16px"><em>The signed copy is filed with the Home&rsquo;s records in Title22. The Home can print or share a copy at any time from the same page where it was signed.</em></p>
+    </div>
+    <div id="binder-agreement-signview">
+      <div style="border-top:1.5px solid var(--border);margin-top:18px;padding-top:16px">
+        <p style="font-size:14px;margin-bottom:12px">By signing, I state that I am authorized to sign for the Home named below, and the Home agrees to this Resident Binder Agreement (version v1.0).</p>
+        <div style="background:var(--gray-bg);border-radius:var(--radius);padding:12px 14px;font-size:14px;margin-bottom:14px">
+          <div><strong>Home:</strong> <span id="binder-facility-name"></span></div>
+          <div><strong>Facility license number:</strong> <span id="binder-facility-license"></span></div>
+          <div><strong>Title22 account email:</strong> <span id="binder-account-email"></span></div>
+          <div><strong>Date:</strong> <span id="binder-sign-date"></span></div>
+          <div style="font-size:12px;color:var(--text2);margin-top:6px">These come from this home&rsquo;s Title22 records. If any of them is wrong, fix it on the Facility page first &mdash; the agreement files them as they stand.</div>
+        </div>
+        <div class="form-group"><label>Signer printed name</label><input type="text" id="binder-signer-name" autocomplete="off" placeholder="Your full name" oninput="updateBinderSignBtn()"/></div>
+        <div class="form-group"><label>Signer title</label><input type="text" id="binder-signer-title" autocomplete="off" placeholder="Licensee, Administrator, &hellip;"/></div>
+        <div class="form-group"><label>Signature &mdash; draw it in the box</label>
+          <canvas id="binder-sig-pad" style="width:100%;height:160px;border:1.5px solid var(--border);border-radius:var(--radius);background:#fff;touch-action:none;display:block"></canvas>
+          <div style="margin-top:6px"><button class="btn btn-outline" style="font-size:12px" onclick="clearBinderSignature()">Clear signature</button></div>
+        </div>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:12px 0;cursor:pointer"><input type="checkbox" id="binder-auth-check" onchange="updateBinderSignBtn()" style="margin-top:3px"/> I am authorized to sign for this home.</label>
+        <div id="binder-agreement-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeBinderAgreement()">Not now</button><button class="btn btn-primary" id="binder-sign-btn" onclick="signBinderAgreement()" disabled>Sign agreement</button></div>
+      </div>
+    </div>
+    <div id="binder-agreement-filedview" style="display:none">
+      <div style="border-top:1.5px solid var(--border);margin-top:18px;padding-top:16px">
+        <div id="binder-agreement-done-line" style="background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:15px;font-weight:600;color:var(--teal);margin-bottom:14px"></div>
+        <div id="binder-agreement-filed-details" style="font-size:14px"></div>
+        <div class="modal-footer"><button class="btn btn-primary" onclick="closeBinderAgreement()">Done</button></div>
+      </div>
     </div>
   </div>
 </div>
@@ -4360,6 +4455,157 @@ async function readPackage(){
     if(error||!data)return null;
     return ['pkg1','pkg2','pkg3'].includes(data.title22_package)?data.title22_package:null;
   }catch(e){return null;}
+}
+
+// ===== RESIDENT BINDER AGREEMENT DOOR =====
+// The agreement is signed in Title22 before the Resident Binder add-on
+// can be checked out or activated (Eli, Nov 20 + 24, 2026). The signed
+// copy lives in public.binder_agreements — Title22-side paper, the
+// home's own business record, never resident data — and the insert
+// lands in the audit log through the shared title22_audit() trigger.
+// One signature per facility covers MAR + ADL + the binders.
+// Fail-safe shape, mirroring readTrainingIncluded/readPackage: while
+// the table is missing or unreadable the state reads NOT KNOWN and the
+// Billing rows keep their shipped "Coming soon" text untouched — the
+// door appears only once the signed state can actually be read, so
+// shipping this before the migration runs changes nothing on screen.
+const T22_BINDER_AGREEMENT_VERSION='v1.0';
+let t22BinderAgreement=null;
+let t22BinderAgreementKnown=false;
+let binderSigDrawn=false;
+let binderSigCtx=null;
+
+async function readBinderAgreement(){
+  try{
+    if(!currentFacility)return{known:false,agreement:null};
+    const{data,error}=await sb.from('binder_agreements').select('*').eq('facility_id',currentFacility.id).order('signed_at',{ascending:false}).limit(1).maybeSingle();
+    if(error)return{known:false,agreement:null};
+    return{known:true,agreement:data||null};
+  }catch(e){return{known:false,agreement:null};}
+}
+
+async function refreshBinderAddonRows(){
+  const marEl=document.getElementById('binder-addon-state-mar');
+  const adlEl=document.getElementById('binder-addon-state-adl');
+  if(!marEl&&!adlEl)return;
+  if(!currentFacility||currentFacility.is_demo)return;
+  const res=await readBinderAgreement();
+  if(!res.known)return;
+  t22BinderAgreement=res.agreement;t22BinderAgreementKnown=true;
+  let html;
+  if(res.agreement){
+    const a=res.agreement;
+    html=`<div><div style="font-size:13px;font-weight:700;color:var(--teal)">&#10003; Agreement signed</div><div style="font-size:12px;color:var(--text2)">${esc(a.signer_name)} &middot; ${esc(new Date(a.signed_at).toLocaleDateString())} &middot; checkout opens when the Resident Binder launches</div></div><button class="btn btn-outline" style="font-size:13px" onclick="openBinderAgreement()">View signed copy</button>`;
+  }else if(currentUserRole==='administrator'){
+    html=`<div><div style="font-size:13px;font-weight:700">Starts with a signed agreement</div><div style="font-size:12px;color:var(--text2)">No signed agreement, no resident binder.</div></div><button class="btn btn-primary" style="font-size:13px" onclick="openBinderAgreement()">Read &amp; sign the agreement</button>`;
+  }else{
+    html=`<div><div style="font-size:13px;font-weight:700">Starts with a signed agreement</div><div style="font-size:12px;color:var(--text2)">Your administrator signs it here, in Billing.</div></div>`;
+  }
+  if(marEl)marEl.innerHTML=html;
+  if(adlEl)adlEl.innerHTML=html;
+}
+
+function openBinderAgreement(){
+  const m=document.getElementById('binder-agreement-modal');if(!m)return;
+  const signView=document.getElementById('binder-agreement-signview');
+  const filedView=document.getElementById('binder-agreement-filedview');
+  if(t22BinderAgreementKnown&&t22BinderAgreement){
+    showBinderFiledView('Signed \u2014 '+t22BinderAgreement.signer_name+', '+new Date(t22BinderAgreement.signed_at).toLocaleDateString()+'. Your copy is filed in Title22.');
+  }else{
+    if(filedView)filedView.style.display='none';
+    if(signView)signView.style.display='';
+    document.getElementById('binder-facility-name').textContent=currentFacility?.name||'';
+    document.getElementById('binder-facility-license').textContent=currentFacility?.license_number||'\u2014';
+    document.getElementById('binder-account-email').textContent=currentUser?.email||'';
+    document.getElementById('binder-sign-date').textContent=new Date().toLocaleDateString();
+    const err=document.getElementById('binder-agreement-error');if(err)err.style.display='none';
+  }
+  m.classList.add('open');
+  if(!(t22BinderAgreementKnown&&t22BinderAgreement))setTimeout(setupBinderSigPad,50);
+}
+function closeBinderAgreement(){document.getElementById('binder-agreement-modal')?.classList.remove('open');}
+
+function showBinderFiledView(doneLine){
+  const a=t22BinderAgreement;if(!a)return;
+  document.getElementById('binder-agreement-signview').style.display='none';
+  const fv=document.getElementById('binder-agreement-filedview');fv.style.display='';
+  document.getElementById('binder-agreement-done-line').textContent=doneLine;
+  document.getElementById('binder-agreement-filed-details').innerHTML=
+    `<div style="display:grid;gap:6px">
+       <div><strong>Home:</strong> ${esc(a.facility_name||'')}</div>
+       <div><strong>Facility license number:</strong> ${esc(a.license_number||'\u2014')}</div>
+       <div><strong>Signed by:</strong> ${esc(a.signer_name)}${a.signer_title?' ('+esc(a.signer_title)+')':''}</div>
+       <div><strong>Date:</strong> ${esc(new Date(a.signed_at).toLocaleString())}</div>
+       <div><strong>Agreement version:</strong> ${esc(a.agreement_version||'')}</div>
+       <div><strong>Signature:</strong></div>
+       <img src="${a.signature_image}" alt="Filed signature" style="max-width:340px;width:100%;border:1.5px solid var(--border);border-radius:var(--radius);background:#fff"/>
+     </div>`;
+}
+
+function setupBinderSigPad(){
+  const pad=document.getElementById('binder-sig-pad');if(!pad)return;
+  const dpr=window.devicePixelRatio||1;
+  const w=pad.clientWidth||600;
+  pad.width=w*dpr;pad.height=160*dpr;
+  const ctx=pad.getContext('2d');ctx.scale(dpr,dpr);ctx.lineWidth=2;ctx.lineCap='round';ctx.strokeStyle='#1a1a18';
+  binderSigCtx=ctx;binderSigDrawn=false;updateBinderSignBtn();
+  let drawing=false,last=null;
+  const pos=e=>{const r=pad.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+  pad.onpointerdown=e=>{drawing=true;last=pos(e);try{pad.setPointerCapture(e.pointerId);}catch(err){}};
+  pad.onpointermove=e=>{if(!drawing)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;if(!binderSigDrawn){binderSigDrawn=true;updateBinderSignBtn();}};
+  pad.onpointerup=pad.onpointercancel=()=>{drawing=false;};
+}
+function clearBinderSignature(){
+  const pad=document.getElementById('binder-sig-pad');if(!pad||!binderSigCtx)return;
+  binderSigCtx.clearRect(0,0,pad.width,pad.height);binderSigDrawn=false;updateBinderSignBtn();
+}
+function updateBinderSignBtn(){
+  const btn=document.getElementById('binder-sign-btn');if(!btn)return;
+  const name=(document.getElementById('binder-signer-name')?.value||'').trim();
+  const ok=binderSigDrawn&&name.length>0&&!!document.getElementById('binder-auth-check')?.checked;
+  btn.disabled=!ok;
+}
+
+async function signBinderAgreement(){
+  const name=(document.getElementById('binder-signer-name')?.value||'').trim();
+  const title=(document.getElementById('binder-signer-title')?.value||'').trim();
+  const err=document.getElementById('binder-agreement-error');
+  const btn=document.getElementById('binder-sign-btn');
+  if(!binderSigDrawn||!name||!document.getElementById('binder-auth-check')?.checked)return;
+  if(!currentFacility||!currentUser)return;
+  btn.disabled=true;btn.textContent='Signing\u2026';
+  try{
+    const pad=document.getElementById('binder-sig-pad');
+    const payload={facility_id:currentFacility.id,signed_by:currentUser.id,signer_name:name,signer_title:title||null,facility_name:currentFacility.name,license_number:currentFacility.license_number||null,account_email:currentUser.email||null,agreement_version:T22_BINDER_AGREEMENT_VERSION,signature_image:pad.toDataURL('image/png')};
+    const{data,error}=await sb.from('binder_agreements').insert(payload).select().single();
+    if(error)throw error;
+    t22BinderAgreement=data;t22BinderAgreementKnown=true;
+    showBinderFiledView('Signed \u2014 '+data.signer_name+', '+new Date(data.signed_at).toLocaleDateString()+'. Your copy is filed in Title22.');
+    refreshBinderAddonRows();
+  }catch(e){
+    if(err){err.textContent='The signature could not be filed ('+(e.message||e)+'). Nothing was signed \u2014 try again, and if it keeps failing, email hello@title-22.com.';err.style.display='';}
+    btn.disabled=false;btn.textContent='Sign agreement';
+  }
+}
+
+function printBinderAgreement(){
+  const textEl=document.getElementById('binder-agreement-text');if(!textEl)return;
+  let filed='';
+  const a=t22BinderAgreement;
+  if(a){
+    filed=`<hr style="margin:20px 0"/><p><strong>Filed signed copy</strong></p><p>Home: ${esc(a.facility_name||'')}<br/>Facility license number: ${esc(a.license_number||'\u2014')}<br/>Signed by: ${esc(a.signer_name)}${a.signer_title?' ('+esc(a.signer_title)+')':''}<br/>Date: ${esc(new Date(a.signed_at).toLocaleString())}<br/>Agreement version: ${esc(a.agreement_version||'')}</p><img src="${a.signature_image}" style="max-width:340px;border:1px solid #999"/>`;
+  }
+  const w=window.open('','_blank');
+  if(!w){t22Toast('Allow pop-ups to print the agreement.');return;}
+  w.document.write('<!DOCTYPE html><html><head><title>Resident Binder Agreement</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#1a1a18;line-height:1.6;font-size:14px}h4{margin:18px 0 6px}</style></head><body><p><em>This is a copy.</em></p><h2>Resident Binder Agreement</h2>'+textEl.innerHTML+filed+'</body></html>');
+  w.document.close();w.focus();setTimeout(()=>{try{w.print();}catch(e){}},250);
+}
+
+async function shareBinderAgreement(){
+  const text='Resident Binder Agreement \u2014 Title22. The agreement is read and signed inside Title22 (Billing, on the MAR / ADL Charting rows) before the Resident Binder add-on can start. Sign in at https://title22.app';
+  if(navigator.share){try{await navigator.share({title:'Resident Binder Agreement',text});return;}catch(e){}}
+  try{await navigator.clipboard.writeText(text);t22Toast('Copied \u2014 paste it anywhere to share the agreement note.');}
+  catch(e){t22Toast('Use Print to take a copy of the agreement.');}
 }
 
 // A paid subscription lives in public.subscriptions, written by Stripe —
@@ -11204,11 +11450,11 @@ async function loadAuditLog(){
     return;
   }
   if(!data||!data.length){el.innerHTML='<div class="empty">No audit entries yet. Changes to staff, incidents and documents will appear here.</div>';return;}
-  const tableLabels={residents:'Resident',medications:'Medication',mar_entries:'MAR entry',staff:'Staff',incidents:'Incident'};
+  const tableLabels={residents:'Resident',medications:'Medication',mar_entries:'MAR entry',staff:'Staff',incidents:'Incident',binder_agreements:'Binder agreement'};
   const actionBadge={INSERT:'<span class="badge badge-green">Created</span>',UPDATE:'<span class="badge badge-amber">Updated</span>',DELETE:'<span class="badge badge-red">Deleted</span>'};
   const summarize=r=>{
     const rec=r.record||{};
-    return rec.name||rec.full_name||rec.medication_name||rec.incident_type||(rec.status?'status: '+rec.status:'')||'';
+    return rec.signer_name||rec.name||rec.full_name||rec.medication_name||rec.incident_type||(rec.status?'status: '+rec.status:'')||'';
   };
   el.innerHTML=data.map(r=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
     <div style="flex-shrink:0;width:150px;color:var(--text2);font-size:12px">${new Date(r.created_at).toLocaleString()}</div>
@@ -11320,6 +11566,7 @@ async function loadBilling(){
     // button would charge them a second time for a facility already paid for.
     if(t22CoveredByFacility){
       el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-users"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">Covered by ${esc(t22CoveredByFacility)}</div><div style="font-size:14px;color:var(--text2)">You were invited onto this team — its administrator manages the subscription.</div></div><span class="badge badge-green" style="margin-left:auto">✓ Active</span></div><div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2)">There is nothing for you to pay. If you also want a facility of your own, you would subscribe separately for it.</div>`;
+      refreshBinderAddonRows();
       return;
     }
     const ent=await resolveEntitlement();
@@ -11344,6 +11591,7 @@ async function loadBilling(){
     }
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planName}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
+  refreshBinderAddonRows();
 }
 
 // ===== DAILY LOG =====
