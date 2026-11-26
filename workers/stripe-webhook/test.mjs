@@ -419,8 +419,10 @@ const binderSubEvent = (id, cusKey) => ({
 });
 const patchesSince = n => db.profilePatches.slice(n);
 
-ok(AGREEMENT_ADDON_PRICES && Object.keys(AGREEMENT_ADDON_PRICES).length === 0,
-  'binder guard: AGREEMENT_ADDON_PRICES is empty — no binder price exists yet');
+ok(AGREEMENT_ADDON_PRICES && AGREEMENT_ADDON_PRICES['price_1Ug6wxAH9qPFLg89CFw5tymd'] === 'with-package'
+  && AGREEMENT_ADDON_PRICES['price_1Ug6z2AH9qPFLg8916PYrvMJ'] === 'standalone'
+  && Object.keys(AGREEMENT_ADDON_PRICES).length === 2,
+  'binder guard: AGREEMENT_ADDON_PRICES holds exactly the two Resident Binder prices created Nov 26, 2026');
 {
   const r = agreementAddonFromSubscription(binderSubEvent('sub_probe', 'A').data.object);
   ok(r && r.viaFallback === 'metadata' && r.priceId === BINDER_PRICE,
@@ -490,8 +492,11 @@ ok(ADDON_PRICES[CHECKOUT_PRICES.training.small] === 'small' && ADDON_PRICES[CHEC
   'one checkout: CHECKOUT_PRICES training IDs match ADDON_PRICES, tier for tier');
 ok(CHECKOUT_PRICES.staffRegular === STAFF && STAFF_PRICES[STAFF] === 'regular',
   'one checkout: the Tello Staff $10 price is the same ID in CHECKOUT_PRICES and STAFF_PRICES');
-ok(CHECKOUT_PRICES.binderWithPackage === '' && CHECKOUT_PRICES.binderStandalone === '' && CHECKOUT_PRICES.staffBundle === '',
-  'one checkout: STAGED STATE — binder $20/$30 and staff-bundle $5 slots are empty until Eli creates those Stripe prices');
+ok(CHECKOUT_PRICES.binderWithPackage === 'price_1Ug6wxAH9qPFLg89CFw5tymd' && CHECKOUT_PRICES.binderStandalone === 'price_1Ug6z2AH9qPFLg8916PYrvMJ' && CHECKOUT_PRICES.staffBundle === 'price_1Ug73VAH9qPFLg894objAdv5',
+  'one checkout: binder $20/$30 and staff-bundle $5 slots hold the Stripe prices Eli created Nov 26, 2026');
+ok(STAFF_PRICES[CHECKOUT_PRICES.staffBundle] === 'bundle' && AGREEMENT_ADDON_PRICES[CHECKOUT_PRICES.binderWithPackage] === 'with-package'
+  && AGREEMENT_ADDON_PRICES[CHECKOUT_PRICES.binderStandalone] === 'standalone',
+  'one checkout: the same three IDs are recognised in STAFF_PRICES and AGREEMENT_ADDON_PRICES — no drift between maps');
 {
   const s = staffFromSubscription({ items: { data: [{ price: { id: STAFF } }] } });
   ok(s && s.kind === 'regular' && s.priceId === STAFF, 'staff recognizer: the $10 price names a regular staff line');
@@ -521,13 +526,14 @@ const ACCT_NONE = { packageOnAccount: false, trainingIncluded: false, binderOnAc
 }
 {
   const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 2, staffHomes: 0 }, { ...ACCT_NONE, agreementFiled: true });
-  ok(r.unpriced.length === 1 && r.unpriced[0] === 'Resident Binder' && r.items.length === 0,
-    'cart math: binder with an agreement but no Stripe price yet is refused BY NAME — never dropped, never charged');
+  ok(r.unpriced.length === 0 && r.items.length === 1 && r.items[0].price === 'price_1Ug6z2AH9qPFLg8916PYrvMJ' && r.items[0].quantity === 2,
+    'cart math: binder with an agreement prices at the $30 standalone price, per home');
 }
 {
   const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 1, staffHomes: 1 }, { ...ACCT_NONE, agreementFiled: true });
-  ok(r.unpriced.includes('Resident Binder') && r.unpriced.includes('Tello Staff at the $5 binder price'),
-    'cart math: binder + staff names BOTH unpriced lines (the $5 bundle slot is empty too)');
+  ok(r.unpriced.length === 0 && r.items.some(i => i.price === 'price_1Ug6z2AH9qPFLg8916PYrvMJ')
+    && r.items.some(i => i.price === 'price_1Ug73VAH9qPFLg894objAdv5'),
+    'cart math: binder + staff prices both lines — binder at $30 standalone, staff at the $5 binder price');
 }
 {
   const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 0, staffHomes: 3 }, ACCT_NONE);
@@ -675,15 +681,16 @@ db.profileRows[U.B] = { title22_package: null, title22_training_included: false,
 db.agreements.add('fb0');  // B signs, in the app, between the two attempts
 {
   const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: null, trainingTier: null, binderHomes: 1, staffHomes: 0 } } }), env);
-  const body = await res.json().catch(() => ({}));
-  ok(res.status === 422 && body.error.includes('Resident Binder') && body.error.includes('not on sale yet'),
-    'checkout route: binder after signing is refused BY NAME — its Stripe price does not exist yet, nothing charged');
+  const f = db.lastCheckoutForm;
+  ok(res.status === 200 && f && f.get('line_items[0][price]') === 'price_1Ug6z2AH9qPFLg8916PYrvMJ' && f.get('line_items[0][quantity]') === '1',
+    'checkout route: binder after signing checks out at the $30 standalone price');
 }
 {
   const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: null, trainingTier: null, binderHomes: 1, staffHomes: 1 } } }), env);
-  const body = await res.json().catch(() => ({}));
-  ok(res.status === 422 && body.error.includes('Resident Binder') && body.error.includes('Tello Staff at the $5 binder price'),
-    'checkout route: binder + staff refusal names every unpriced line, not just the first');
+  const f = db.lastCheckoutForm;
+  const sentPrices = f ? [f.get('line_items[0][price]'), f.get('line_items[1][price]')] : [];
+  ok(res.status === 200 && sentPrices.includes('price_1Ug6z2AH9qPFLg8916PYrvMJ') && sentPrices.includes('price_1Ug73VAH9qPFLg894objAdv5'),
+    'checkout route: binder + staff checks out with both lines — binder $30, staff at the $5 binder price');
 }
 {
   const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: 'pkg2', trainingTier: 'small', binderHomes: 0, staffHomes: 0 } } }), env);

@@ -41,9 +41,9 @@ ok(T22_CART_TABLE.packages.pkg1.price === 29 && T22_CART_TABLE.packages.pkg2.pri
 ok(T22_CART_TABLE.binderWithPackage === 20 && T22_CART_TABLE.binderStandalone === 30
   && T22_CART_TABLE.staffRegular === 10 && T22_CART_TABLE.staffBundle === 5,
   'table: binder $20 with a package / $30 standalone; staff $5 with the binder / $10 regular');
-ok(T22_CART_PRICE_READY.staffRegular === true && T22_CART_PRICE_READY.binderWithPackage === false
-  && T22_CART_PRICE_READY.binderStandalone === false && T22_CART_PRICE_READY.staffBundle === false,
-  'staged state: only the staff $10 price exists in Stripe — binder and $5 bundle lines read as unpriced');
+ok(T22_CART_PRICE_READY.staffRegular === true && T22_CART_PRICE_READY.binderWithPackage === true
+  && T22_CART_PRICE_READY.binderStandalone === true && T22_CART_PRICE_READY.staffBundle === true,
+  'priced state: all four Stripe prices exist (binder $20/$30 and staff $5 created Nov 26, 2026) — every line can really be charged');
 
 // ---------- training tiers by pooled beds ----------
 ok(t22TrainingTierForBeds(6).price === 20 && t22TrainingTierForBeds(7).price === 35
@@ -58,7 +58,7 @@ ok(t22TrainingTierForBeds(6).price === 20 && t22TrainingTierForBeds(7).price ===
     && r.total === 54, 'mock cart: pkg1 $29 + binder $20 (package price) + staff $5 (binder price) = $54/mo');
   ok(line(r, 'binder').detail.includes('$20 per home — the package price'),
     're-price words: the binder line says why it is $20');
-  ok(r.unpricedNames.length === 2, 'mock cart today: binder and $5 staff lines are both unpriced (Stripe prices not created yet)');
+  ok(r.unpricedNames.length === 0, 'mock cart priced: no line is unpriced — the binder and $5 staff prices exist in Stripe');
 }
 
 // ---------- the mirror: binder first, then a package joins ----------

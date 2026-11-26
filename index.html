@@ -4886,7 +4886,7 @@ const T22_CART_TABLE = {
 // same commit. While a flag is false, a cart holding that line shows
 // why it cannot be checked out — the line is never dropped quietly,
 // and the server refuses it by name as well.
-const T22_CART_PRICE_READY = { binderWithPackage: false, binderStandalone: false, staffBundle: false, staffRegular: true };
+const T22_CART_PRICE_READY = { binderWithPackage: true, binderStandalone: true, staffBundle: true, staffRegular: true };
 
 function t22TrainingTierForBeds(beds) {
   for (const t of T22_CART_TABLE.trainingTiers) if (beds <= t.maxBeds) return t;

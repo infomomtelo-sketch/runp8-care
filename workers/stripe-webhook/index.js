@@ -139,16 +139,16 @@ const ADDON_PRODUCTS = Object.fromEntries(
 );
 
 // The Resident Binder Add-On prices (MAR + ADL + resident binders).
-// EMPTY, ON PURPOSE: no binder/MAR Stripe price exists yet — there is
-// no payment link, so the add-on cannot be bought today. When Eli
-// creates the MAR/binder price (after the agreement door is
-// receiver-proven), its ID goes here, and agreementAddonFromSubscription
-// below starts recognising it by price. Until then the ONLY signal is
-// the subscription metadata the future Payment Link will stamp
-// (product_kind=binder_addon), and the guard branch in the subscription
-// handler is the defence in depth that makes Eli's rule — NO signed
-// agreement, NO add-on activation — live the moment a price/link exists.
-const AGREEMENT_ADDON_PRICES = {};
+// Filled Nov 26, 2026, when Eli created the Resident Binder product in
+// Stripe with its two prices. agreementAddonFromSubscription below
+// recognises binder subscriptions by these price IDs; the subscription
+// metadata (product_kind=binder_addon) remains the fallback signal, and
+// the guard branch in the subscription handler is the defence in depth
+// behind Eli's rule — NO signed agreement, NO add-on activation.
+const AGREEMENT_ADDON_PRICES = {
+  'price_1Ug6wxAH9qPFLg89CFw5tymd': 'with-package',  // $20/mo per home with a Title22 package
+  'price_1Ug6z2AH9qPFLg8916PYrvMJ': 'standalone',    // $30/mo per home on its own
+};
 
 // The Tello Staff Add-On price (one-checkout prep, 2026-11-25). Tello
 // Staff has been sold since 2026-11-07 on its own Payment Link
@@ -164,10 +164,7 @@ const AGREEMENT_ADDON_PRICES = {};
 // column can never poison another component's stamp).
 const STAFF_PRICES = {
   'price_1UZHsXAH9qPFLg89SZaz4ISX': 'regular',  // $10/mo per home, Tello Staff
-  // The $5/home/mo binder-bundle price does NOT exist yet — Eli
-  // creates it in Stripe (one-checkout build list step 2). When it
-  // exists, its ID goes here as 'bundle' in the same commit that
-  // fills CHECKOUT_PRICES.staffBundle below.
+  'price_1Ug73VAH9qPFLg894objAdv5': 'bundle',   // $5/mo per home with the Resident Binder — created in Stripe Nov 26, 2026
 };
 
 // --- One checkout: the cart price map (2026-11-25, build list steps 5 + 9) ---
@@ -194,10 +191,10 @@ const CHECKOUT_PRICES = {
     large: 'price_1UV0KzAH9qPFLg89c8oG81U7',   // $60/mo
     xl: 'price_1UV0LXAH9qPFLg89talQ2iGg',      // $100/mo
   },
-  binderWithPackage: '',  // Resident Binder $20/mo per home — NOT CREATED IN STRIPE YET
-  binderStandalone: '',   // Resident Binder $30/mo per home — NOT CREATED IN STRIPE YET
+  binderWithPackage: 'price_1Ug6wxAH9qPFLg89CFw5tymd',  // Resident Binder $20/mo per home — created in Stripe Nov 26, 2026
+  binderStandalone: 'price_1Ug6z2AH9qPFLg8916PYrvMJ',   // Resident Binder $30/mo per home — created in Stripe Nov 26, 2026
   staffRegular: 'price_1UZHsXAH9qPFLg89SZaz4ISX',  // $10/mo per home — STAFF_PRICES above
-  staffBundle: '',        // Tello Staff $5/mo per home with the binder — NOT CREATED IN STRIPE YET
+  staffBundle: 'price_1Ug73VAH9qPFLg894objAdv5',        // Tello Staff $5/mo per home with the binder — created in Stripe Nov 26, 2026
 };
 
 // Buyer-facing names for the unpriced refusals: they name the thing in
@@ -695,9 +692,8 @@ function addonFromSubscription(sub) {
 // of addonFromSubscription(), with the same discipline — the price map
 // is the authority, metadata is the fallback, and a fallback hit comes
 // back with viaFallback named so the caller can be loud about it:
-//   1. an item price in AGREEMENT_ADDON_PRICES. (The map is EMPTY
-//      today — no binder price exists yet — so this loop cannot hit
-//      until Eli creates the price and its ID is added there.)
+//   1. an item price in AGREEMENT_ADDON_PRICES. (Filled Nov 26, 2026
+//      with the two Resident Binder prices Eli created in Stripe.)
 //   2. subscription metadata product_kind=binder_addon, which the
 //      future Payment Link will stamp through subscription_data,
 //      exactly as the training links stamp ctc_addon.
