@@ -1948,13 +1948,19 @@
               <div><div style="font-weight:700;font-size:15px">Staff Training</div><div style="font-size:13px;color:var(--text2)">Online staff courses from Community Training Connection. Completions land in your staff files.</div></div>
               <div style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">$20&ndash;$100/mo by licensed beds</div><button onclick="window.open('https://title22-addon-pay.pages.dev/','_blank')" class="btn btn-outline" style="font-size:13px">See courses &amp; prices</button></div>
             </div>
-            <div id="billing-mar-addon-row" style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">Medication Administration Record (MAR)</div><div style="font-size:13px;color:var(--text2)">The daily med pass, recorded in Title22 &mdash; given, refused, held, missed.</div></div>
-              <div id="binder-addon-state-mar" style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
-            </div>
-            <div id="billing-adl-addon-row" style="border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-              <div><div style="font-weight:700;font-size:15px">ADL Charting</div><div style="font-size:13px;color:var(--text2)">Daily care records &mdash; bathing, dressing, meals, mobility, toileting &mdash; written at the bedside.</div></div>
-              <div id="binder-addon-state-adl" style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
+            <div id="billing-binder-addon-row" style="border:2px solid var(--teal);border-radius:var(--radius);padding:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:#f7f3ea">
+              <div style="display:flex;align-items:center;gap:14px;min-width:260px;flex:1">
+                <div aria-hidden="true" style="flex:none;width:96px;height:66px;display:flex;align-items:flex-end;justify-content:center;gap:3px;border-bottom:5px solid #b08954;padding:0 6px">
+                  <div style="width:22px;height:52px;background:#f5efe2;border:1.5px solid #8a7a5c;border-left:5px solid var(--teal);border-radius:2px 2px 0 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px"><span style="font-size:7px;font-weight:700;color:#5c5342">MAR</span></div>
+                  <div style="width:26px;height:56px;background:#f5efe2;border:1.5px solid #8a7a5c;border-left:5px solid var(--teal);border-radius:2px 2px 0 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px"><span style="font-size:7px;font-weight:700;color:#5c5342">ADL</span></div>
+                  <div style="width:20px;height:48px;background:#3c4147;border:1.5px solid #23272c;border-radius:2px 2px 0 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px"><span style="font-size:7px;font-weight:700;color:#e8e2d2">LIC</span></div>
+                </div>
+                <div><div style="font-weight:700;font-size:15px">Resident Binder &mdash; MAR &middot; ADL &middot; resident records</div><div style="font-size:13px;color:var(--text2)">One package: the daily med pass &mdash; given, refused, held, missed &mdash; and daily care records &mdash; bathing, dressing, meals, mobility, toileting &mdash; written at the bedside, in the binder on your shelf, on your phone.</div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+                <div style="text-align:right"><span style="font-size:1.4rem;font-weight:700">$20</span><span style="font-size:13px;font-weight:400;color:var(--text2)">/mo per Home</span><div style="font-size:12px;color:var(--text2)">with a Title22 package &middot; $30/mo standalone</div></div>
+                <div id="binder-addon-state" style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -4485,9 +4491,8 @@ async function readBinderAgreement(){
 }
 
 async function refreshBinderAddonRows(){
-  const marEl=document.getElementById('binder-addon-state-mar');
-  const adlEl=document.getElementById('binder-addon-state-adl');
-  if(!marEl&&!adlEl)return;
+  const stateEl=document.getElementById('binder-addon-state');
+  if(!stateEl)return;
   if(!currentFacility||currentFacility.is_demo)return;
   const res=await readBinderAgreement();
   if(!res.known)return;
@@ -4501,8 +4506,7 @@ async function refreshBinderAddonRows(){
   }else{
     html=`<div><div style="font-size:13px;font-weight:700">Starts with a signed agreement</div><div style="font-size:12px;color:var(--text2)">Your administrator signs it here, in Billing.</div></div>`;
   }
-  if(marEl)marEl.innerHTML=html;
-  if(adlEl)adlEl.innerHTML=html;
+  stateEl.innerHTML=html;
 }
 
 function openBinderAgreement(){
