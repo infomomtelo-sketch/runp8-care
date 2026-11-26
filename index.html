@@ -1958,7 +1958,7 @@
                 <div><div style="font-weight:700;font-size:15px">Resident Binder &mdash; MAR &middot; ADL &middot; resident records</div><div style="font-size:13px;color:var(--text2)">One package: the daily med pass &mdash; given, refused, held, missed &mdash; and daily care records &mdash; bathing, dressing, meals, mobility, toileting &mdash; written at the bedside, in the binder on your shelf, on your phone.</div></div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-                <div style="text-align:right"><span style="font-size:1.4rem;font-weight:700">$20</span><span style="font-size:13px;font-weight:400;color:var(--text2)">/mo per Home</span><div style="font-size:12px;color:var(--text2)">with a Title22 package &middot; $30/mo standalone</div></div>
+                <div id="binder-addon-price" style="text-align:right"><span style="font-size:1.4rem;font-weight:700">$30</span><span style="font-size:13px;font-weight:400;color:var(--text2)">/mo per Home</span><div style="font-size:12px;color:var(--text2)">with a Title22 package &middot; $20/mo</div></div>
                 <div id="binder-addon-state" style="display:flex;align-items:center;gap:12px"><div style="font-size:13px;font-weight:600;color:var(--text2)">Coming soon</div></div>
               </div>
             </div>
@@ -4585,6 +4585,12 @@ async function readBinderAgreement(){
 async function refreshBinderAddonRows(){
   const stateEl=document.getElementById('binder-addon-state');
   if(!stateEl)return;
+  const priceEl=document.getElementById('binder-addon-price');
+  if(priceEl){
+    priceEl.innerHTML = t22Package
+      ? '<span style="font-size:1.4rem;font-weight:700">$20</span><span style="font-size:13px;font-weight:400;color:var(--text2)">/mo per Home</span><div style="font-size:12px;color:var(--text2)">your package price &middot; $30/mo on its own</div>'
+      : '<span style="font-size:1.4rem;font-weight:700">$30</span><span style="font-size:13px;font-weight:400;color:var(--text2)">/mo per Home</span><div style="font-size:12px;color:var(--text2)">with a Title22 package &middot; $20/mo</div>';
+  }
   if(!currentFacility||currentFacility.is_demo)return;
   const res=await readBinderAgreement();
   if(!res.known)return;
@@ -4592,7 +4598,7 @@ async function refreshBinderAddonRows(){
   let html;
   if(res.agreement){
     const a=res.agreement;
-    html=`<div><div style="font-size:13px;font-weight:700;color:var(--teal)">&#10003; Agreement signed</div><div style="font-size:12px;color:var(--text2)">${esc(a.signer_name)} &middot; ${esc(new Date(a.signed_at).toLocaleDateString())} &middot; checkout opens when the Resident Binder launches</div></div><button class="btn btn-outline" style="font-size:13px" onclick="openBinderAgreement()">View signed copy</button>`;
+    html=`<div><div style="font-size:13px;font-weight:700;color:var(--teal)">&#10003; Agreement signed</div><div style="font-size:12px;color:var(--text2)">${esc(a.signer_name)} &middot; ${esc(new Date(a.signed_at).toLocaleDateString())} &middot; add it in Your checkout below to start it</div></div><button class="btn btn-outline" style="font-size:13px" onclick="openBinderAgreement()">View signed copy</button>`;
   }else if(currentUserRole==='administrator'){
     html=`<div><div style="font-size:13px;font-weight:700">Starts with a signed agreement</div><div style="font-size:12px;color:var(--text2)">No signed agreement, no resident binder.</div></div><button class="btn btn-primary" style="font-size:13px" onclick="openBinderAgreement()">Read &amp; sign the agreement</button>`;
   }else{
