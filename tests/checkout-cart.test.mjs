@@ -29,6 +29,7 @@ const base = {
   ownedHomes: 1, pooledBeds: 6, hasPaidPlan: false, activePackage: null,
   trainingIncluded: false, binderActive: false, staffActive: false,
   agreementKnown: true, agreementFiled: true,
+  pkgAgreementKnown: true, pkgAgreementFiled: true,
   sel: { pkg: null, training: false, binder: false, binderHomes: 1, staff: false, staffHomes: 1 },
 };
 const cart = (over = {}, selOver = {}) => t22CartCompute({ ...base, ...over, sel: { ...base.sel, ...selOver } });
@@ -132,6 +133,33 @@ ok(t22TrainingTierForBeds(6).price === 20 && t22TrainingTierForBeds(7).price ===
     'a package already on the account prices the binder at $20 too — and shows as Already on, not a new line');
 }
 
+// ---------- the package agreement gate (Nov 25, 2026) ----------
+{
+  const r = cart({ pkgAgreementFiled: false }, { pkg: 'pkg1' });
+  ok(r.pkgAgreementBlocked === true && r.pkgAgreementUnknown === false,
+    'package picked, agreement not filed: checkout is blocked by the package door');
+  ok(line(r, 'package').amount === 29, 'blocked package: the line still shows its price — the buyer sees what they are signing for');
+}
+{
+  const r = cart({}, { pkg: 'pkg1' });
+  ok(r.pkgAgreementBlocked === false && r.pkgAgreementUnknown === false,
+    'package picked, agreement filed: no block — checkout may proceed');
+}
+{
+  const r = cart({ pkgAgreementKnown: false, pkgAgreementFiled: false }, { pkg: 'pkg2' });
+  ok(r.pkgAgreementUnknown === true && r.pkgAgreementBlocked === false,
+    'package picked, agreement unreadable: checkout waits — fail closed, never waved through');
+}
+{
+  const r = cart({ pkgAgreementFiled: false }, { binder: true, staff: true });
+  ok(r.pkgAgreementBlocked === false && r.pkgAgreementUnknown === false,
+    'add-on-only cart (binder + staff, no package): the package door does not apply');
+}
+{
+  const r = cart({ pkgAgreementFiled: false }, {});
+  ok(r.pkgAgreementBlocked === false, 'no package picked: no block, whatever the agreement state');
+}
+
 // ---------- the panel's wiring, on the served file ----------
 ok(html.includes('id="checkout-panel"'), 'panel: the Your checkout card is in Billing');
 ok(html.includes("stripe-webhook.infomomtelo.workers.dev/checkout"), 'panel: the checkout route URL is the stripe-webhook Worker');
@@ -139,6 +167,14 @@ ok(html.includes("openStripe('pkg1')") && html.includes('buy.stripe.com/5kQ00ieq
   && html.includes('title22-addon-pay.pages.dev'), 'not yet retired: the separate buy buttons all still stand (removal is the post-walk flip)');
 ok(html.includes("t22CartBinderWanted=false;t22CartSel.binder=true"),
   'door in-flow: signing from the cart toggle completes the toggle — the same door, no second one');
+ok(html.includes('id="package-agreement-modal"') && html.includes('id="package-sig-pad"') && html.includes('id="package-sign-btn"'),
+  'package door: its own modal, signature pad and sign button stand in the page, alongside the binder door');
+ok(html.includes("sb.from('title22_package_agreements')"),
+  'package door: signatures file into title22_package_agreements — its own table, mirroring binder_agreements');
+ok(html.includes('t22CartSel.pkg=t22CartPkgWanted'),
+  'package door in-flow: signing from the cart pick completes the pick');
+ok(html.includes('id="binder-agreement-modal"') && html.includes('function signBinderAgreement()'),
+  'boundary: the binder door still stands untouched beside the new package door');
 
 console.log(fails ? `\n${fails} FAILURES` : '\nALL PASS');
 process.exit(fails ? 1 : 0);

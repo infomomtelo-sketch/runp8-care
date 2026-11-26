@@ -221,7 +221,10 @@ const CHECKOUT_LINE_NAMES = {
 //            trainingTier: 'small'|'medium'|'large'|'xl'|null,
 //            binderHomes: int >= 0, staffHomes: int >= 0 }
 // account: { packageOnAccount, trainingIncluded, binderOnAccount,
-//            staffOnAccount, agreementFiled }  (all booleans)
+//            staffOnAccount, agreementFiled, packageAgreementFiled }
+//            (all booleans; the two agreement flags are the two doors —
+//            binder_agreements for the binder line,
+//            title22_package_agreements for a package line)
 function computeCheckoutLines(cart, account) {
   const errors = [];
   const unpriced = [];
@@ -230,6 +233,12 @@ function computeCheckoutLines(cart, account) {
   if (cart.package) {
     if (account.packageOnAccount) {
       errors.push('Your account already has a Title22 package — it stays as it is, and the cart cannot sell you a second one.');
+    } else if (!account.packageAgreementFiled) {
+      // The package agreement door (Eli, Nov 25, 2026): every package,
+      // when selected, requires its signed agreement before checkout —
+      // the same rule as the binder's door, enforced here as well as
+      // in the panel, so the two can never disagree.
+      errors.push('The Title22 package needs its signed agreement first — sign the Title22 Package Agreement in Billing, then come back to your checkout.');
     } else {
       items.push({ price: CHECKOUT_PRICES[cart.package], quantity: 1, kind: 'package' });
     }
@@ -750,6 +759,36 @@ async function hasFiledBinderAgreement(env, userId) {
     if (!ids.length) return false;
     const res = await fetch(
       `${env.SUPABASE_URL}/rest/v1/binder_agreements?facility_id=in.(${encodeURIComponent(ids.join(','))})&select=id&limit=1`,
+      { headers: sbHeaders(env) }
+    );
+    if (!res.ok) return false;
+    const rows = await res.json().catch(() => null);
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// The package door's filed check — the exact mirror of
+// hasFiledBinderAgreement against title22_package_agreements (the
+// table arrives with migrations/2026-11-25_title22_package_agreements.sql).
+// Fail-closed the same way: while the table is missing or unreadable
+// this returns false and a package line cannot be checked out through
+// the cart. The package payment links live today do not pass through
+// here at all — this check serves only the cart's /checkout route.
+async function hasFiledPackageAgreement(env, userId) {
+  try {
+    const facRes = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/facilities?user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { headers: sbHeaders(env) }
+    );
+    if (!facRes.ok) return false;
+    const facRows = await facRes.json().catch(() => null);
+    if (!Array.isArray(facRows) || !facRows.length) return false;
+    const ids = facRows.map(f => f && f.id).filter(Boolean);
+    if (!ids.length) return false;
+    const res = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/title22_package_agreements?facility_id=in.(${encodeURIComponent(ids.join(','))})&select=id&limit=1`,
       { headers: sbHeaders(env) }
     );
     if (!res.ok) return false;
@@ -1385,10 +1424,13 @@ async function handleCheckout(request, env) {
   if (!account) {
     return checkoutJson(request, 502, { error: 'Your account could not be read just now — nothing was charged. Try again in a moment.' });
   }
-  // The agreement check runs only when the binder is in the cart —
-  // and it is the same fail-closed check the webhook guard runs, so
-  // the door in the flow and the guard behind it can never disagree.
+  // The agreement checks run only when their component is in the
+  // cart — the binder's against binder_agreements (the same
+  // fail-closed check the webhook guard runs, so the door in the flow
+  // and the guard behind it can never disagree), the package's
+  // against title22_package_agreements.
   account.agreementFiled = cart.binderHomes > 0 ? await hasFiledBinderAgreement(env, user.id) : false;
+  account.packageAgreementFiled = cart.package ? await hasFiledPackageAgreement(env, user.id) : false;
 
   const { items, errors, unpriced } = computeCheckoutLines(cart, account);
   if (errors.length) return checkoutJson(request, 422, { error: errors[0], errors });
@@ -2638,4 +2680,4 @@ export default {
 // Named exports for the test suite (test.mjs), following the convention of
 // the other Workers in this repo: the default export above is the Worker
 // itself; these are the pure pieces a test can check without a network.
-export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, STAFF_PRICES, staffFromSubscription, CHECKOUT_PRICES, computeCheckoutLines, normaliseCheckoutCart, hasFiledBinderAgreement, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };
+export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, STAFF_PRICES, staffFromSubscription, CHECKOUT_PRICES, computeCheckoutLines, normaliseCheckoutCart, hasFiledBinderAgreement, hasFiledPackageAgreement, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };

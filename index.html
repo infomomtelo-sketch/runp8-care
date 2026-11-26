@@ -2074,6 +2074,81 @@
   </div>
 </div>
 
+<!-- Title22 Package Agreement door (added Nov 25, 2026, alongside the
+     binder door above — additional only, nothing above changed). The
+     served text below follows the binder precedent: it is the
+     PACKAGE-AGREEMENT-TEXT-DRAFT.md text with its attorney-review
+     markers removed; the markers live in the source draft only. A
+     package picked in the checkout panel is signed here first. -->
+<div class="modal-overlay" id="package-agreement-modal" onclick="if(event.target===this)closePackageAgreement()">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header"><h3>Title22 Package Agreement</h3><button class="modal-close" onclick="closePackageAgreement()" aria-label="Close">&times;</button></div>
+    <div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-weight:600;margin-bottom:14px">Before a package: the agreement is signed in Title22. No signed agreement, no package checkout.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-outline" style="font-size:13px" onclick="printPackageAgreement()">Print</button>
+      <button class="btn btn-outline" style="font-size:13px" onclick="sharePackageAgreement()">Share a copy</button>
+    </div>
+    <div id="package-agreement-text" style="font-size:15px;line-height:1.65;color:var(--text)">
+      <p><strong>Between:</strong> Title22 (&ldquo;Title22&rdquo;)</p>
+      <p><strong>And:</strong> the care home named in the signature block at the end of this agreement (&ldquo;the Home&rdquo;), a California Residential Care Facility for the Elderly (RCFE) or Adult Residential Facility (ARF) licensed by the California Department of Social Services, Community Care Licensing Division.</p>
+      <h4 style="margin:18px 0 6px">1. What this agreement covers</h4>
+      <p>This agreement covers the <strong>Title22 package</strong> the Home selects at checkout: the 1-home package ($29/month), the 2&ndash;5 home package ($79/month), or the 6-or-more home package ($139/month). One signed agreement covers whichever package the Home selects. The Home does not sign again to move between package sizes &mdash; the new size is billed at the new price from the change.</p>
+      <p>This agreement does <strong>not</strong> cover add-ons bought on their own (staff training or Tello Staff without a package), and it does not cover the Resident Binder add-on, which has its own agreement.</p>
+      <h4 style="margin:18px 0 6px">2. What the package includes</h4>
+      <p>The package includes, for the homes it covers:</p>
+      <ul style="margin:6px 0 6px 20px">
+        <li>Staff files: every staff member&rsquo;s documents, clearances, and certificates in one place &mdash; CPR, First Aid, TB, LiveScan, and the rest of the staff file.</li>
+        <li>Staff training: the training courses the Home&rsquo;s staff take through Title22, with every certificate and its hours filed straight onto the staff member&rsquo;s record when a course is finished, and reminders before anything expires.</li>
+        <li>The morning briefing and the compliance checklists Title22 provides.</li>
+      </ul>
+      <p>The first home on a Title22 account is free, with no time limit, and it stays free whether or not the Home ever takes a package. The package is what the Home adds when it needs staff training.</p>
+      <h4 style="margin:18px 0 6px">3. Training is provided by CTC</h4>
+      <p>The training courses themselves are provided by <strong>Community Training Connection (CTC)</strong>, a CDSS-approved training organization, under CTC&rsquo;s own terms. Title22 enrolls the Home&rsquo;s staff, and when a staff member finishes a course, the certificate and hours are filed onto that staff member&rsquo;s record in Title22. Title22 does not teach the courses and does not issue the certificates.</p>
+      <h4 style="margin:18px 0 6px">4. Billing</h4>
+      <p>The package is billed monthly, in advance, through Stripe, at the price of the package size the Home has selected. The price is the one shown in the checkout before the Home pays &mdash; there are no other package charges. If the Home&rsquo;s number of homes moves it into a different package size, the price changes to that size&rsquo;s price.</p>
+      <h4 style="margin:18px 0 6px">5. Cancelling</h4>
+      <p>The Home may cancel the package at any time, from its Billing page or by contacting Title22. Cancelling stops the next monthly charge. The Home&rsquo;s free first home stays free after a cancellation; cancelling never removes the free home or the records already filed on it.</p>
+      <h4 style="margin:18px 0 6px">6. Refunds</h4>
+      <p>If a package payment is refunded, the refund is for the <strong>full</strong> amount paid. A refund cancels the training part of the package only. After a refund, the subscription renews at <strong>$9/month for records only</strong> &mdash; the staff files stay, the training is off &mdash; and the training add-on keeps being offered, so the Home can add training back whenever it chooses. The Home may cancel the $9 records-only plan at any time; cancelling stops the $9, and the free home underneath never goes away.</p>
+      <h4 style="margin:18px 0 6px">7. What the Home is responsible for</h4>
+      <p>Title22 keeps the records the Home&rsquo;s staff enter and files the certificates training sends back. The Home remains responsible for its residents&rsquo; care, its staff, and its compliance with Title 22 and its licensing duties. Title22 is a record-keeping and training-access tool; it does not give care, make care decisions, or replace the Home&rsquo;s own judgment.</p>
+      <h4 style="margin:18px 0 6px">8. Signing</h4>
+      <p>This agreement is presented inside Title22. The person who signs must be authorized to sign for the Home.</p>
+      <p>Signing means: the signer draws their signature on screen, prints their name, and the date is recorded. The signed copy &mdash; signature, printed name, date, the Home&rsquo;s name and license number, and the version of this agreement that was signed &mdash; is kept with the Home&rsquo;s Title22 records, and the signing is written into Title22&rsquo;s activity log.</p>
+      <p><strong>Until this agreement is signed, a selected package cannot be checked out.</strong> An unsigned home keeps full use of the free home and of any add-ons it already has; only the package waits.</p>
+      <p style="font-size:13px;color:var(--text2);margin-top:16px"><em>The signed copy is filed with the Home&rsquo;s records in Title22. The Home can print or share a copy at any time from the same page where it was signed.</em></p>
+    </div>
+    <div id="package-agreement-signview">
+      <div style="border-top:1.5px solid var(--border);margin-top:18px;padding-top:16px">
+        <p style="font-size:14px;margin-bottom:12px">By signing, I state that I am authorized to sign for the Home named below, and the Home agrees to this Title22 Package Agreement (version v1.0).</p>
+        <div style="background:var(--gray-bg);border-radius:var(--radius);padding:12px 14px;font-size:14px;margin-bottom:14px">
+          <div><strong>Home:</strong> <span id="package-facility-name"></span></div>
+          <div><strong>Facility license number:</strong> <span id="package-facility-license"></span></div>
+          <div><strong>Title22 account email:</strong> <span id="package-account-email"></span></div>
+          <div><strong>Date:</strong> <span id="package-sign-date"></span></div>
+          <div style="font-size:12px;color:var(--text2);margin-top:6px">These come from this home&rsquo;s Title22 records. If any of them is wrong, fix it on the Facility page first &mdash; the agreement files them as they stand.</div>
+        </div>
+        <div class="form-group"><label>Signer printed name</label><input type="text" id="package-signer-name" autocomplete="off" placeholder="Your full name" oninput="updatePkgSignBtn()"/></div>
+        <div class="form-group"><label>Signer title</label><input type="text" id="package-signer-title" autocomplete="off" placeholder="Licensee, Administrator, &hellip;"/></div>
+        <div class="form-group"><label>Signature &mdash; draw it in the box</label>
+          <canvas id="package-sig-pad" style="width:100%;height:160px;border:1.5px solid var(--border);border-radius:var(--radius);background:#fff;touch-action:none;display:block"></canvas>
+          <div style="margin-top:6px"><button class="btn btn-outline" style="font-size:12px" onclick="clearPackageSignature()">Clear signature</button></div>
+        </div>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:12px 0;cursor:pointer"><input type="checkbox" id="package-auth-check" onchange="updatePkgSignBtn()" style="margin-top:3px"/> I am authorized to sign for this home.</label>
+        <div id="package-agreement-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closePackageAgreement()">Not now</button><button class="btn btn-primary" id="package-sign-btn" onclick="signPackageAgreement()" disabled>Sign agreement</button></div>
+      </div>
+    </div>
+    <div id="package-agreement-filedview" style="display:none">
+      <div style="border-top:1.5px solid var(--border);margin-top:18px;padding-top:16px">
+        <div id="package-agreement-done-line" style="background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;font-size:15px;font-weight:600;color:var(--teal);margin-bottom:14px"></div>
+        <div id="package-agreement-filed-details" style="font-size:14px"></div>
+        <div class="modal-footer"><button class="btn btn-primary" onclick="closePackageAgreement()">Done</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPABASE_URL = 'https://nwlhsshvqmbhemhxcran.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGhzc2h2cW1iaGVtaHhjcmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTEzOTIsImV4cCI6MjA5NTU2NzM5Mn0.2yASMx57IUNjEW8bMs8FwXnIz4cLsE1ftqD35QAOqE8';
@@ -4634,6 +4709,142 @@ async function shareBinderAgreement(){
   catch(e){t22Toast('Use Print to take a copy of the agreement.');}
 }
 
+// ===== TITLE22 PACKAGE AGREEMENT DOOR (2026-11-25) =====
+// The second door, built ADDITIONALLY alongside the binder door above
+// (Eli, Nov 25, 2026: "all package should have agreement when
+// selected"; boundary the same evening: this layer is additional
+// only — nothing live is touched). A package picked in the checkout
+// panel needs this agreement signed first; the binder door, the
+// package payment links, and every existing flow keep working exactly
+// as they did. Same pattern as the binder door, its own table
+// (title22_package_agreements, staged migration
+// 2026-11-25_title22_package_agreements.sql) and its own state.
+// Fail-safe shape, mirroring readBinderAgreement: while the table is
+// missing or unreadable the state reads NOT KNOWN and the cart's
+// package pick waits — the door appears only once the signed state
+// can actually be read.
+const T22_PACKAGE_AGREEMENT_VERSION='v1.0';
+let t22PackageAgreement=null;
+let t22PackageAgreementKnown=false;
+let pkgSigDrawn=false;
+let pkgSigCtx=null;
+
+async function readPackageAgreement(){
+  try{
+    if(!currentFacility)return{known:false,agreement:null};
+    const{data,error}=await sb.from('title22_package_agreements').select('*').eq('facility_id',currentFacility.id).order('signed_at',{ascending:false}).limit(1).maybeSingle();
+    if(error)return{known:false,agreement:null};
+    return{known:true,agreement:data||null};
+  }catch(e){return{known:false,agreement:null};}
+}
+
+function openPackageAgreement(){
+  const m=document.getElementById('package-agreement-modal');if(!m)return;
+  const signView=document.getElementById('package-agreement-signview');
+  const filedView=document.getElementById('package-agreement-filedview');
+  if(t22PackageAgreementKnown&&t22PackageAgreement){
+    showPackageFiledView('Signed \u2014 '+t22PackageAgreement.signer_name+', '+new Date(t22PackageAgreement.signed_at).toLocaleDateString()+'. Your copy is filed in Title22.');
+  }else{
+    if(filedView)filedView.style.display='none';
+    if(signView)signView.style.display='';
+    document.getElementById('package-facility-name').textContent=currentFacility?.name||'';
+    document.getElementById('package-facility-license').textContent=currentFacility?.license_number||'\u2014';
+    document.getElementById('package-account-email').textContent=currentUser?.email||'';
+    document.getElementById('package-sign-date').textContent=new Date().toLocaleDateString();
+    const err=document.getElementById('package-agreement-error');if(err)err.style.display='none';
+  }
+  m.classList.add('open');
+  if(!(t22PackageAgreementKnown&&t22PackageAgreement))setTimeout(setupPkgSigPad,50);
+}
+function closePackageAgreement(){document.getElementById('package-agreement-modal')?.classList.remove('open');}
+
+function showPackageFiledView(doneLine){
+  const a=t22PackageAgreement;if(!a)return;
+  document.getElementById('package-agreement-signview').style.display='none';
+  const fv=document.getElementById('package-agreement-filedview');fv.style.display='';
+  document.getElementById('package-agreement-done-line').textContent=doneLine;
+  document.getElementById('package-agreement-filed-details').innerHTML=
+    `<div style="display:grid;gap:6px">
+       <div><strong>Home:</strong> ${esc(a.facility_name||'')}</div>
+       <div><strong>Facility license number:</strong> ${esc(a.license_number||'\u2014')}</div>
+       <div><strong>Signed by:</strong> ${esc(a.signer_name)}${a.signer_title?' ('+esc(a.signer_title)+')':''}</div>
+       <div><strong>Date:</strong> ${esc(new Date(a.signed_at).toLocaleString())}</div>
+       <div><strong>Agreement version:</strong> ${esc(a.agreement_version||'')}</div>
+       <div><strong>Signature:</strong></div>
+       <img src="${a.signature_image}" alt="Filed signature" style="max-width:340px;width:100%;border:1.5px solid var(--border);border-radius:var(--radius);background:#fff"/>
+     </div>`;
+}
+
+function setupPkgSigPad(){
+  const pad=document.getElementById('package-sig-pad');if(!pad)return;
+  const dpr=window.devicePixelRatio||1;
+  const w=pad.clientWidth||600;
+  pad.width=w*dpr;pad.height=160*dpr;
+  const ctx=pad.getContext('2d');ctx.scale(dpr,dpr);ctx.lineWidth=2;ctx.lineCap='round';ctx.strokeStyle='#1a1a18';
+  pkgSigCtx=ctx;pkgSigDrawn=false;updatePkgSignBtn();
+  let drawing=false,last=null;
+  const pos=e=>{const r=pad.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+  pad.onpointerdown=e=>{drawing=true;last=pos(e);try{pad.setPointerCapture(e.pointerId);}catch(err){}};
+  pad.onpointermove=e=>{if(!drawing)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;if(!pkgSigDrawn){pkgSigDrawn=true;updatePkgSignBtn();}};
+  pad.onpointerup=pad.onpointercancel=()=>{drawing=false;};
+}
+function clearPackageSignature(){
+  const pad=document.getElementById('package-sig-pad');if(!pad||!pkgSigCtx)return;
+  pkgSigCtx.clearRect(0,0,pad.width,pad.height);pkgSigDrawn=false;updatePkgSignBtn();
+}
+function updatePkgSignBtn(){
+  const btn=document.getElementById('package-sign-btn');if(!btn)return;
+  const name=(document.getElementById('package-signer-name')?.value||'').trim();
+  const ok=pkgSigDrawn&&name.length>0&&!!document.getElementById('package-auth-check')?.checked;
+  btn.disabled=!ok;
+}
+
+async function signPackageAgreement(){
+  const name=(document.getElementById('package-signer-name')?.value||'').trim();
+  const title=(document.getElementById('package-signer-title')?.value||'').trim();
+  const err=document.getElementById('package-agreement-error');
+  const btn=document.getElementById('package-sign-btn');
+  if(!pkgSigDrawn||!name||!document.getElementById('package-auth-check')?.checked)return;
+  if(!currentFacility||!currentUser)return;
+  btn.disabled=true;btn.textContent='Signing\u2026';
+  try{
+    const pad=document.getElementById('package-sig-pad');
+    const payload={facility_id:currentFacility.id,signed_by:currentUser.id,signer_name:name,signer_title:title||null,facility_name:currentFacility.name,license_number:currentFacility.license_number||null,account_email:currentUser.email||null,agreement_version:T22_PACKAGE_AGREEMENT_VERSION,signature_image:pad.toDataURL('image/png')};
+    const{data,error}=await sb.from('title22_package_agreements').insert(payload).select().single();
+    if(error)throw error;
+    t22PackageAgreement=data;t22PackageAgreementKnown=true;
+    showPackageFiledView('Signed \u2014 '+data.signer_name+', '+new Date(data.signed_at).toLocaleDateString()+'. Your copy is filed in Title22.');
+    // One checkout: if this signing came from the cart panel's package
+    // pick, the signature was the last thing the pick was waiting
+    // for — complete it and re-render the panel from fresh state.
+    if(t22CartPkgWanted){t22CartSel.pkg=t22CartPkgWanted;t22CartPkgWanted=null;}
+    if(document.getElementById('checkout-panel'))renderCheckoutPanel(true);
+  }catch(e){
+    if(err){err.textContent='The signature could not be filed ('+(e.message||e)+'). Nothing was signed \u2014 try again, and if it keeps failing, email hello@title-22.com.';err.style.display='';}
+    btn.disabled=false;btn.textContent='Sign agreement';
+  }
+}
+
+function printPackageAgreement(){
+  const textEl=document.getElementById('package-agreement-text');if(!textEl)return;
+  let filed='';
+  const a=t22PackageAgreement;
+  if(a){
+    filed=`<hr style="margin:20px 0"/><p><strong>Filed signed copy</strong></p><p>Home: ${esc(a.facility_name||'')}<br/>Facility license number: ${esc(a.license_number||'\u2014')}<br/>Signed by: ${esc(a.signer_name)}${a.signer_title?' ('+esc(a.signer_title)+')':''}<br/>Date: ${esc(new Date(a.signed_at).toLocaleString())}<br/>Agreement version: ${esc(a.agreement_version||'')}</p><img src="${a.signature_image}" style="max-width:340px;border:1px solid #999"/>`;
+  }
+  const w=window.open('','_blank');
+  if(!w){t22Toast('Allow pop-ups to print the agreement.');return;}
+  w.document.write('<!DOCTYPE html><html><head><title>Title22 Package Agreement</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#1a1a18;line-height:1.6;font-size:14px}h4{margin:18px 0 6px}</style></head><body><p><em>This is a copy.</em></p><h2>Title22 Package Agreement</h2>'+textEl.innerHTML+filed+'</body></html>');
+  w.document.close();w.focus();setTimeout(()=>{try{w.print();}catch(e){}},250);
+}
+
+async function sharePackageAgreement(){
+  const text='Title22 Package Agreement \u2014 Title22. The agreement is read and signed inside Title22 (Billing, in Your checkout) before a Title22 package can be checked out. Sign in at https://title22.app';
+  if(navigator.share){try{await navigator.share({title:'Title22 Package Agreement',text});return;}catch(e){}}
+  try{await navigator.clipboard.writeText(text);t22Toast('Copied \u2014 paste it anywhere to share the agreement note.');}
+  catch(e){t22Toast('Use Print to take a copy of the agreement.');}
+}
+
 // ===== ONE CHECKOUT — THE CART PANEL =====
 // Billing's "Your checkout" panel (Nov 25, 2026, one-checkout build
 // list step 8): the account's homes, package choice and add-on
@@ -4685,10 +4896,11 @@ function t22TrainingTierForBeds(beds) {
 // input: { ownedHomes, pooledBeds, hasPaidPlan, activePackage,
 //          trainingIncluded, binderActive, staffActive,
 //          agreementKnown, agreementFiled,
+//          pkgAgreementKnown, pkgAgreementFiled,
 //          sel: { pkg, training, binder, binderHomes, staff, staffHomes } }
 // output: { lines, haveLines, total, unpricedNames,
 //           modes: { training, binder, staff }, binderUnit, staffUnit,
-//           tier }
+//           tier, pkgAgreementBlocked, pkgAgreementUnknown }
 function t22CartCompute(input) {
   const sel = input.sel;
   const pkgPresent = !!sel.pkg || !!input.activePackage;
@@ -4763,9 +4975,17 @@ function t22CartCompute(input) {
       });
     }
   }
+  // The package agreement gate (Eli, Nov 25, 2026 — "all package
+  // should have agreement when selected"): a package in the cart
+  // needs its signed Title22 Package Agreement filed before checkout,
+  // the same shape as the binder's door. An unread state blocks too
+  // (fail closed) — it never waves a package through. Add-on-only
+  // carts carry no agreement at all.
+  const pkgAgreementBlocked = !!sel.pkg && !!input.pkgAgreementKnown && !input.pkgAgreementFiled;
+  const pkgAgreementUnknown = !!sel.pkg && !input.pkgAgreementKnown;
   const total = lines.reduce((sum, l) => sum + l.amount, 0);
   const unpricedNames = lines.filter(l => l.unpriced).map(l => l.kind === 'binder' ? 'The Resident Binder' : (l.kind === 'staff' ? 'Tello Staff at the $5 binder price' : l.label));
-  return { lines, haveLines, total, unpricedNames, modes: { training: trainingMode, binder: binderMode, staff: staffMode }, binderUnit, staffUnit, tier };
+  return { lines, haveLines, total, unpricedNames, modes: { training: trainingMode, binder: binderMode, staff: staffMode }, binderUnit, staffUnit, tier, pkgAgreementBlocked, pkgAgreementUnknown };
 }
 // === END CART LOGIC ===
 
@@ -4774,6 +4994,7 @@ let t22CartSel = { pkg: null, training: false, binder: false, binderHomes: 1, st
 let t22CartCtx = null;        // last gathered account state + compute result
 let t22CartProbe = null;      // null = not probed yet, true/false = the /checkout route answered
 let t22CartBinderWanted = false;  // binder toggled on, waiting on the agreement signature
+let t22CartPkgWanted = null;      // package picked, waiting on the package agreement signature
 
 // profiles.title22_binder_addon, the webhook's stamp. Fail-safe FALSE
 // on any error, mirroring readTrainingIncluded: an unread flag leaves
@@ -4826,6 +5047,8 @@ async function renderCheckoutPanel(force) {
     const ent = await resolveEntitlement();
     const paidPlans = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency', 'edu'];
     const agr = await readBinderAgreement();
+    const pkgAgr = await readPackageAgreement();
+    if (pkgAgr.known) { t22PackageAgreement = pkgAgr.agreement; t22PackageAgreementKnown = true; }
     t22CartCtx = {
       ownedHomes: owned.length,
       facilityIds: owned.map(f => f.id),
@@ -4838,6 +5061,9 @@ async function renderCheckoutPanel(force) {
       agreementKnown: agr.known,
       agreementFiled: !!(agr.known && agr.agreement),
       agreement: agr.agreement || null,
+      pkgAgreementKnown: pkgAgr.known,
+      pkgAgreementFiled: !!(pkgAgr.known && pkgAgr.agreement),
+      pkgAgreement: pkgAgr.agreement || null,
     };
     if (t22CartSel.binderHomes < 1 || t22CartSel.binderHomes > Math.max(1, t22CartCtx.ownedHomes)) t22CartSel.binderHomes = Math.max(1, t22CartCtx.ownedHomes);
     if (t22CartSel.staffHomes < 1 || t22CartSel.staffHomes > Math.max(1, t22CartCtx.ownedHomes)) t22CartSel.staffHomes = Math.max(1, t22CartCtx.ownedHomes);
@@ -4868,6 +5094,9 @@ async function renderCheckoutPanel(force) {
     h += opt('pkg1', 'Package — 1 Home', 'Tracking + training included · 1 facility', 29);
     h += opt('pkg2', 'Package — 2–5 Homes', 'Tracking + training included · up to 5 facilities', 79);
     h += opt('pkg3', 'Package — 6+ Homes', 'Tracking + training included · 6 or more facilities', 139);
+    h += ctx.pkgAgreementFiled
+      ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px"><div style="font-size:12px;color:var(--teal)">&#10003; Package agreement signed — ${esc(ctx.pkgAgreement.signer_name)}, ${esc(new Date(ctx.pkgAgreement.signed_at).toLocaleDateString())}. One signature covers whichever package you pick.</div><button class="btn btn-outline" style="font-size:12px" onclick="openPackageAgreement()">View signed copy</button></div>`
+      : `<div style="font-size:12px;color:var(--text2);margin-top:2px">Picking a package opens the Title22 Package Agreement here, in Title22 — it is signed before checkout.</div>`;
   }
 
   // Staff Training.
@@ -4931,6 +5160,12 @@ async function renderCheckoutPanel(force) {
   h += '<div style="margin-top:14px">';
   if (!r.lines.length) {
     h += '<button class="btn btn-primary" style="font-size:14px" disabled>Your cart is empty</button>';
+  } else if (r.pkgAgreementUnknown) {
+    h += `<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:10px">We couldn&rsquo;t check your package agreement just now, so checkout waits — try again in a moment.</div>`;
+    h += '<button class="btn btn-primary" style="font-size:14px" disabled>Go to checkout</button>';
+  } else if (r.pkgAgreementBlocked) {
+    h += `<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:10px">The package in your cart starts with its signed agreement — pick the package above and the Title22 Package Agreement opens here, in Title22. Nothing is charged before it is signed.</div>`;
+    h += '<button class="btn btn-primary" style="font-size:14px" disabled>Go to checkout</button>';
   } else if (r.unpricedNames.length) {
     h += `<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:10px">${esc(r.unpricedNames.join(' and '))} ${r.unpricedNames.length === 1 ? 'is' : 'are'} not on sale yet — the Stripe price is still being set up, so this checkout cannot take it yet. Nothing will be charged for it. The rest can still be bought with the buttons above, one at a time.</div>`;
     h += '<button class="btn btn-primary" style="font-size:14px" disabled>Go to checkout</button>';
@@ -4949,6 +5184,19 @@ async function renderCheckoutPanel(force) {
 }
 
 function t22CartSetPkg(key) {
+  if (key) {
+    // The package agreement door, in-flow: picking a package without
+    // a filed Title22 Package Agreement opens the package agreement
+    // door (its own modal, the binder door's pattern — the binder
+    // door itself is untouched). The package joins the cart only once
+    // the signature is filed; signPackageAgreement completes the pick
+    // from its success path. The package buttons in the cards above
+    // keep their own flow exactly as before — this door belongs to
+    // the cart only (the layer is additional only, Eli, Nov 25, 2026).
+    const ctx = t22CartCtx;
+    if (!ctx || !ctx.pkgAgreementKnown) { t22Toast("We couldn't check your package agreement just now — try again in a moment."); return; }
+    if (!ctx.pkgAgreementFiled) { t22CartPkgWanted = key; openPackageAgreement(); return; }
+  }
   t22CartSel.pkg = key;
   renderCheckoutPanel();
 }
@@ -4978,7 +5226,7 @@ function t22CartHomes(which, delta) {
 async function t22CartCheckout(btn) {
   if (!t22CartCtx) return;
   const r = t22CartCompute({ ...t22CartCtx, sel: t22CartSel });
-  if (!r.lines.length || r.unpricedNames.length) return;
+  if (!r.lines.length || r.unpricedNames.length || r.pkgAgreementBlocked || r.pkgAgreementUnknown) return;
   const cart = {
     package: t22CartSel.pkg,
     trainingTier: (t22CartSel.training && r.modes.training === 'offer') ? r.tier.tier : null,

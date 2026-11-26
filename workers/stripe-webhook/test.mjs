@@ -56,6 +56,7 @@ const db = {
   },
   ledger: [],
   agreements: new Set(),  // facility ids with a filed binder_agreements row
+  pkgAgreements: new Set(['fb0']),  // facility ids with a filed title22_package_agreements row (B signed)
   ledgerFail: false,
   profilePatches: [],  // { userId, body }
   profileRows: {},     // userId -> profiles row the /checkout route reads
@@ -141,6 +142,13 @@ globalThis.fetch = async (url, init = {}) => {
     const raw = q.get('facility_id') || '';
     const ids = raw.startsWith('in.(') && raw.endsWith(')') ? raw.slice(4, -1).split(',').filter(Boolean) : [];
     const rows = ids.filter(id => db.agreements.has(id)).map(id => ({ id: 'agr-' + id }));
+    return new Response(JSON.stringify(rows), { status: 200 });
+  }
+
+  if (url.startsWith('https://db.example/rest/v1/title22_package_agreements')) {
+    const raw = q.get('facility_id') || '';
+    const ids = raw.startsWith('in.(') && raw.endsWith(')') ? raw.slice(4, -1).split(',').filter(Boolean) : [];
+    const rows = ids.filter(id => db.pkgAgreements.has(id)).map(id => ({ id: 'pkgagr-' + id }));
     return new Response(JSON.stringify(rows), { status: 200 });
   }
 
@@ -492,7 +500,7 @@ ok(CHECKOUT_PRICES.binderWithPackage === '' && CHECKOUT_PRICES.binderStandalone 
 }
 
 // computeCheckoutLines — the pure pricing/refusal core of the route.
-const ACCT_NONE = { packageOnAccount: false, trainingIncluded: false, binderOnAccount: false, staffOnAccount: false, agreementFiled: false };
+const ACCT_NONE = { packageOnAccount: false, trainingIncluded: false, binderOnAccount: false, staffOnAccount: false, agreementFiled: false, packageAgreementFiled: true };
 {
   const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 0, staffHomes: 0 }, ACCT_NONE);
   ok(r.items.length === 0 && r.errors.length === 1, 'cart math: an empty cart is refused as empty');
@@ -705,6 +713,45 @@ db.profileRows[U.C] = { title22_package: 'pkg1', title22_training_included: true
     'checkout completed: metadata account_id attributes the purchase with no email match');
   ok(rec && rec.state === 'completed' && rec.stripe_subscription_id === 'sub_meta1',
     'checkout completed: the session record walks forward — subscription linked, state completed');
+}
+
+// --- The package agreement door, server side (2026-11-25) ---
+// Every package selected in the cart requires its signed Title22
+// Package Agreement before checkout (Eli, Nov 25, 2026) — enforced in
+// computeCheckoutLines and end-to-end through the route. Add-on-only
+// carts carry no agreement, exactly as before.
+{
+  const unfiled = computeCheckoutLines({ package: 'pkg1', trainingTier: null, binderHomes: 0, staffHomes: 0 }, { ...ACCT_NONE, packageAgreementFiled: false });
+  ok(unfiled.items.length === 0 && unfiled.errors.length === 1 && unfiled.errors[0].includes('signed agreement first'),
+    'package door (compute): a package with no filed package agreement is refused, naming the agreement');
+  const filed = computeCheckoutLines({ package: 'pkg1', trainingTier: null, binderHomes: 0, staffHomes: 0 }, ACCT_NONE);
+  ok(filed.errors.length === 0 && filed.items.length === 1 && filed.items[0].kind === 'package',
+    'package door (compute): the same cart with the agreement filed prices the package');
+  const addonOnly = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 0, staffHomes: 2 }, { ...ACCT_NONE, packageAgreementFiled: false });
+  ok(addonOnly.errors.length === 0 && addonOnly.items.length === 1 && addonOnly.items[0].kind === 'staff',
+    'package door (compute): an add-on-only cart needs no package agreement');
+  const alreadyHas = computeCheckoutLines({ package: 'pkg2', trainingTier: null, binderHomes: 0, staffHomes: 0 }, { ...ACCT_NONE, packageOnAccount: true, packageAgreementFiled: false });
+  ok(alreadyHas.errors.length === 1 && alreadyHas.errors[0].includes('already has a Title22 package'),
+    'package door (compute): the already-has-a-package refusal still speaks first');
+}
+db.profileRows[U.D] = { title22_package: null, title22_training_included: false, title22_binder_addon: false, title22_staff_addon: false };
+{
+  // D has no facilities and no filed package agreement: the route
+  // refuses the package cart, naming the agreement.
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-D', body: { cart: { package: 'pkg1', trainingTier: null, binderHomes: 0, staffHomes: 0 }, facility_ids: [] } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 422 && String(body.error || '').includes('signed agreement first'),
+    'package door (route): no filed package agreement -> 422 naming the agreement, nothing charged');
+}
+{
+  // D signs (a facility appears with a filed agreement): the same
+  // cart now checks out.
+  db.facilities[U.D] = [{ id: 'fd0', capacity: 6, is_demo: false }];
+  db.pkgAgreements.add('fd0');
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-D', body: { cart: { package: 'pkg1', trainingTier: null, binderHomes: 0, staffHomes: 0 }, facility_ids: ['fd0'] } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 200 && !!body.url,
+    'package door (route): with the agreement filed, the package cart checks out');
 }
 
 console.log(fails ? `\n${fails} FAILURES` : '\nALL PASS');
