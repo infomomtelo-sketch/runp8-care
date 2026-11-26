@@ -13,7 +13,7 @@
 // (mirroring the deployed deletion handler). 29 original checks + 6
 // cap-fix checks = 35.
 import { createHmac } from 'node:crypto';
-import worker, { PRICE_PLANS, portionForBeds, cappedPortion, splitAmounts, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, hasFiledBinderAgreement } from './index.js';
+import worker, { PRICE_PLANS, ADDON_PRICES, portionForBeds, cappedPortion, splitAmounts, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, STAFF_PRICES, staffFromSubscription, CHECKOUT_PRICES, computeCheckoutLines, normaliseCheckoutCart, hasFiledBinderAgreement } from './index.js';
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
@@ -58,6 +58,9 @@ const db = {
   agreements: new Set(),  // facility ids with a filed binder_agreements row
   ledgerFail: false,
   profilePatches: [],  // { userId, body }
+  profileRows: {},     // userId -> profiles row the /checkout route reads
+  checkoutSessions: [],  // rows recorded by the /checkout route
+  lastCheckoutForm: null,  // URLSearchParams of the last Stripe session create
 };
 
 const eq = (q, name) => { const v = q.get(name); return v && v.startsWith('eq.') ? v.slice(3) : null; };
@@ -78,13 +81,40 @@ globalThis.fetch = async (url, init = {}) => {
     const users = Object.keys(U).map(k => ({ id: U[k], email: EMAIL[k] }));
     return new Response(JSON.stringify({ users }), { status: 200 });
   }
+  if (url === 'https://db.example/auth/v1/user') {
+    const auth = (init.headers && (init.headers.Authorization || init.headers.authorization)) || '';
+    const key = Object.keys(U).find(k => auth === 'Bearer tok-' + k);
+    if (!key) return new Response(JSON.stringify({ message: 'bad token' }), { status: 401 });
+    return new Response(JSON.stringify({ id: U[key], email: EMAIL[key] }), { status: 200 });
+  }
+  if (url.startsWith('https://api.stripe.com/v1/checkout/sessions')) {
+    db.lastCheckoutForm = new URLSearchParams(String(init.body || ''));
+    return new Response(JSON.stringify({ id: 'cs_test_123', url: 'https://checkout.stripe.com/pay/cs_test_123' }), { status: 200 });
+  }
 
   const q = new URL(url).searchParams;
 
   if (url.startsWith('https://db.example/rest/v1/profiles')) {
     const userId = eq(q, 'id');
+    if (method === 'GET') {
+      const row = db.profileRows[userId];
+      return new Response(JSON.stringify(row ? [row] : []), { status: 200 });
+    }
     db.profilePatches.push({ userId, body: JSON.parse(init.body) });
     return new Response(JSON.stringify([{ id: userId }]), { status: 200 });
+  }
+
+  if (url.startsWith('https://db.example/rest/v1/checkout_sessions')) {
+    if (method === 'POST') {
+      db.checkoutSessions.push(JSON.parse(init.body));
+      return new Response('', { status: 201 });
+    }
+    if (method === 'PATCH') {
+      const sid = eq(q, 'stripe_session_id');
+      const row = db.checkoutSessions.find(r => r.stripe_session_id === sid);
+      if (row) Object.assign(row, JSON.parse(init.body));
+      return new Response('', { status: 200 });
+    }
   }
 
   if (url.startsWith('https://db.example/rest/v1/subscriptions')) {
@@ -437,6 +467,244 @@ ok(AGREEMENT_ADDON_PRICES && Object.keys(AGREEMENT_ADDON_PRICES).length === 0,
   const p = lastPatchFor(U.A);
   ok(res.status === 200 && p && p.body.title22_binder_addon === false && !('title22_plan_expires_at' in p.body),
     'binder guard: cancellation clears title22_binder_addon only — no plan-expiry stamp');
+}
+
+// ---------- One checkout (2026-11-25): maps, staff, multi-line, /checkout ----------
+const STAFF = 'price_1UZHsXAH9qPFLg89SZaz4ISX';
+const TRAIN_SMALL = 'price_1UV0GvAH9qPFLg89xaIcDW3j';
+
+// The checkout map must agree with the maps the webhook stamps from —
+// two copies of an ID that drift apart is the September bug again.
+ok(CHECKOUT_PRICES.pkg1 === PKG1 && CHECKOUT_PRICES.pkg2 === PKG2 && CHECKOUT_PRICES.pkg3 === PKG3,
+  'one checkout: CHECKOUT_PRICES package IDs match PRICE_PLANS');
+ok(ADDON_PRICES[CHECKOUT_PRICES.training.small] === 'small' && ADDON_PRICES[CHECKOUT_PRICES.training.medium] === 'medium'
+  && ADDON_PRICES[CHECKOUT_PRICES.training.large] === 'large' && ADDON_PRICES[CHECKOUT_PRICES.training.xl] === 'xl',
+  'one checkout: CHECKOUT_PRICES training IDs match ADDON_PRICES, tier for tier');
+ok(CHECKOUT_PRICES.staffRegular === STAFF && STAFF_PRICES[STAFF] === 'regular',
+  'one checkout: the Tello Staff $10 price is the same ID in CHECKOUT_PRICES and STAFF_PRICES');
+ok(CHECKOUT_PRICES.binderWithPackage === '' && CHECKOUT_PRICES.binderStandalone === '' && CHECKOUT_PRICES.staffBundle === '',
+  'one checkout: STAGED STATE — binder $20/$30 and staff-bundle $5 slots are empty until Eli creates those Stripe prices');
+{
+  const s = staffFromSubscription({ items: { data: [{ price: { id: STAFF } }] } });
+  ok(s && s.kind === 'regular' && s.priceId === STAFF, 'staff recognizer: the $10 price names a regular staff line');
+  ok(staffFromSubscription(subEvent('sub_probe3', PKG1, 'A').data.object) === null,
+    'staff recognizer: null for a package subscription');
+}
+
+// computeCheckoutLines — the pure pricing/refusal core of the route.
+const ACCT_NONE = { packageOnAccount: false, trainingIncluded: false, binderOnAccount: false, staffOnAccount: false, agreementFiled: false };
+{
+  const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 0, staffHomes: 0 }, ACCT_NONE);
+  ok(r.items.length === 0 && r.errors.length === 1, 'cart math: an empty cart is refused as empty');
+}
+{
+  const r = computeCheckoutLines({ package: 'pkg1', trainingTier: null, binderHomes: 0, staffHomes: 0 }, ACCT_NONE);
+  ok(r.items.length === 1 && r.items[0].price === PKG1 && r.items[0].quantity === 1 && !r.errors.length,
+    'cart math: package-only cart prices exactly as today');
+}
+{
+  const r = computeCheckoutLines({ package: 'pkg2', trainingTier: 'small', binderHomes: 0, staffHomes: 0 }, ACCT_NONE);
+  ok(r.errors.some(e => e.includes('already inside your package')) && !r.items.some(i => i.kind === 'training'),
+    'cart math: training beside a package is refused — never charged twice');
+}
+{
+  const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 1, staffHomes: 0 }, ACCT_NONE);
+  ok(r.errors.some(e => e.includes('signed agreement first')), 'cart math: binder without a filed agreement is refused, naming the agreement');
+}
+{
+  const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 2, staffHomes: 0 }, { ...ACCT_NONE, agreementFiled: true });
+  ok(r.unpriced.length === 1 && r.unpriced[0] === 'Resident Binder' && r.items.length === 0,
+    'cart math: binder with an agreement but no Stripe price yet is refused BY NAME — never dropped, never charged');
+}
+{
+  const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 1, staffHomes: 1 }, { ...ACCT_NONE, agreementFiled: true });
+  ok(r.unpriced.includes('Resident Binder') && r.unpriced.includes('Tello Staff at the $5 binder price'),
+    'cart math: binder + staff names BOTH unpriced lines (the $5 bundle slot is empty too)');
+}
+{
+  const r = computeCheckoutLines({ package: null, trainingTier: null, binderHomes: 0, staffHomes: 3 }, ACCT_NONE);
+  ok(r.items.length === 1 && r.items[0].price === STAFF && r.items[0].quantity === 3,
+    'cart math: staff alone prices at the regular $10 price, per home');
+}
+{
+  const r = computeCheckoutLines({ package: 'pkg3', trainingTier: null, binderHomes: 0, staffHomes: 0 }, { ...ACCT_NONE, packageOnAccount: true });
+  ok(r.errors.some(e => e.includes('already has a Title22 package')), 'cart math: a second package on one account is refused');
+}
+ok(normaliseCheckoutCart({ package: 'pkg9', trainingTier: null, binderHomes: 0, staffHomes: 0 }) === null
+  && normaliseCheckoutCart({ package: null, trainingTier: null, binderHomes: 1.5, staffHomes: 0 }) === null
+  && !!normaliseCheckoutCart({ package: 'pkg1', trainingTier: null, binderHomes: 1, staffHomes: 0 }),
+  'cart shape: unknown package keys and fractional home counts are refused whole; a plain cart passes');
+
+// Multi-line subscription events — the one-checkout shape. Each
+// component stamps by its own branch's rules; nothing is dropped
+// because another component rode in the same subscription.
+const multiSubEvent = (type, id, cusKey, priceIds, metadata = {}) => ({
+  type,
+  data: {
+    object: {
+      id, customer: CUS[cusKey], status: 'active', metadata,
+      items: { data: priceIds.map(pid => ({ price: { id: pid }, current_period_end: 1799999999 })) },
+    },
+  },
+});
+db.agreements.add('fa1');  // A has a filed agreement (also set by the guard suite above)
+{
+  const before = db.profilePatches.length;
+  const res = await send(multiSubEvent('customer.subscription.created', 'sub_m1', 'A', [PKG1, BINDER_PRICE], { product_kind: 'binder_addon' }));
+  const ps = patchesSince(before);
+  ok(res.status === 200 && ps.some(p => p.userId === U.A && p.body.title22_plan === 'lite' && p.body.title22_package === 'pkg1')
+    && ps.some(p => p.userId === U.A && p.body.title22_binder_addon === true),
+    'multi-line: package + binder (agreement filed) — plan AND binder flag both stamped');
+}
+{
+  const before = db.profilePatches.length;
+  const res = await send(multiSubEvent('customer.subscription.created', 'sub_m2', 'B', [PKG1, BINDER_PRICE], { product_kind: 'binder_addon' }));
+  const body = await res.json().catch(() => ({}));
+  const ps = patchesSince(before);
+  ok(res.status === 200 && ps.some(p => p.userId === U.B && p.body.title22_plan === 'lite')
+    && !ps.some(p => 'title22_binder_addon' in p.body)
+    && typeof body.warning === 'string' && body.warning.includes('ADDON BLOCKED ALERT SKIPPED'),
+    'multi-line: package + binder (NO agreement) — package stamps, binder blocked, alert attempted');
+}
+{
+  const before = db.profilePatches.length;
+  const res = await send(multiSubEvent('customer.subscription.created', 'sub_m3', 'A', [BINDER_PRICE, TRAIN_SMALL, STAFF], { product_kind: 'binder_addon' }));
+  const ps = patchesSince(before);
+  ok(res.status === 200 && ps.some(p => p.body.title22_training_included === true)
+    && ps.some(p => p.body.title22_binder_addon === true) && ps.some(p => p.body.title22_staff_addon === true)
+    && !ps.some(p => 'title22_plan' in p.body),
+    'multi-line: binder-first cart (binder + training + staff) — all three flags stamped, no plan written');
+}
+{
+  const before = db.profilePatches.length;
+  const res = await send(multiSubEvent('customer.subscription.created', 'sub_m4', 'C', [PKG2, STAFF]));
+  const ps = patchesSince(before);
+  ok(res.status === 200 && ps.some(p => p.userId === U.C && p.body.title22_plan === 'multi')
+    && ps.some(p => p.userId === U.C && p.body.title22_staff_addon === true),
+    'multi-line: package + staff — plan multi AND staff flag stamped');
+}
+{
+  // A LONE staff subscription: handled by its own branch now, not
+  // refused 422 as an unmapped price.
+  const before = db.profilePatches.length;
+  const res = await send(multiSubEvent('customer.subscription.created', 'sub_m5', 'D', [STAFF]));
+  const ps = patchesSince(before);
+  ok(res.status === 200 && ps.some(p => p.userId === U.D && p.body.title22_staff_addon === true),
+    'staff alone: 200, staff flag stamped — no longer an unmapped-price refusal');
+}
+{
+  // Cancelling a cart subscription ends every component on it: the
+  // staff flag comes off AND the plan component takes the generic
+  // period-end path.
+  const res = await send({ ...multiSubEvent('customer.subscription.deleted', 'sub_m4', 'C', [PKG2, STAFF]), data: { object: { ...multiSubEvent('customer.subscription.deleted', 'sub_m4', 'C', [PKG2, STAFF]).data.object, status: 'canceled' } } });
+  const p = lastPatchFor(U.C);
+  const ps = db.profilePatches.filter(x => x.userId === U.C);
+  ok(res.status === 200 && ps.some(x => x.body.title22_staff_addon === false)
+    && p && !!p.body.title22_plan_expires_at,
+    'multi-line cancellation: staff flag off AND plan expiry stamped');
+}
+{
+  const before = db.profilePatches.length;
+  const res = await send({ type: 'customer.subscription.deleted', data: { object: {
+    id: 'sub_m5', customer: CUS.D, status: 'canceled',
+    items: { data: [{ price: { id: STAFF }, current_period_end: 1799999999 }] },
+  } } });
+  const ps = patchesSince(before);
+  ok(res.status === 200 && ps.some(p => p.userId === U.D && p.body.title22_staff_addon === false)
+    && !ps.some(p => 'title22_plan_expires_at' in p.body),
+    'staff cancellation alone: staff flag off only — no plan-expiry stamp');
+}
+
+// The /checkout route. Requests carry a Supabase session token, never
+// a Stripe signature — the stub maps tok-<key> to the suite's users.
+const checkoutReq = (method, { token, body } = {}) => new Request('https://worker.example/checkout', {
+  method,
+  headers: {
+    ...(token ? { Authorization: 'Bearer ' + token } : {}),
+    'Content-Type': 'application/json',
+    Origin: 'https://title22.app',
+  },
+  body: body ? JSON.stringify(body) : undefined,
+});
+{
+  const res = await worker.fetch(checkoutReq('GET', {}), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 200 && body.ok === true, 'checkout route: GET probe answers 200 — how the app knows the route is live');
+}
+{
+  const res = await worker.fetch(checkoutReq('POST', { body: { cart: { package: 'pkg1' } } }), env);
+  ok(res.status === 401, 'checkout route: no session token — 401, nothing created');
+}
+db.profileRows[U.B] = { title22_package: null, title22_training_included: false, title22_binder_addon: false, title22_staff_addon: false };
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: 'pkg1', trainingTier: null, binderHomes: 0, staffHomes: 0 }, facility_ids: ['fb0', 'not-mine'] } }), env);
+  const body = await res.json().catch(() => ({}));
+  const f = db.lastCheckoutForm;
+  ok(res.status === 200 && body.url === 'https://checkout.stripe.com/pay/cs_test_123',
+    'checkout route: package-only cart returns a Stripe checkout URL');
+  ok(f && f.get('mode') === 'subscription' && f.get('line_items[0][price]') === PKG1 && f.get('line_items[0][quantity]') === '1',
+    'checkout route: the session carries the package line, subscription mode');
+  ok(f && f.get('client_reference_id') === U.B && f.get('metadata[account_id]') === U.B
+    && f.get('subscription_data[metadata][account_id]') === U.B,
+    'checkout route: the account id rides client_reference_id AND both metadata slots');
+  const rec = db.checkoutSessions.find(r => r.stripe_session_id === 'cs_test_123');
+  ok(rec && rec.account_id === U.B && rec.state === 'created' && rec.lines[0].kind === 'package'
+    && JSON.stringify(rec.facility_ids) === JSON.stringify(['fb0']),
+    'checkout route: the session record is written — account, lines, and only the account\'s own facility ids');
+}
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: null, trainingTier: null, binderHomes: 0, staffHomes: 2 } } }), env);
+  const f = db.lastCheckoutForm;
+  ok(res.status === 200 && f && f.get('line_items[0][price]') === STAFF && f.get('line_items[0][quantity]') === '2',
+    'checkout route: staff-only cart prices at the $10 price, quantity per home');
+}
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: null, trainingTier: null, binderHomes: 1, staffHomes: 0 } } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 422 && typeof body.error === 'string' && body.error.includes('signed agreement first'),
+    'checkout route: binder before the agreement is refused, naming the agreement');
+}
+db.agreements.add('fb0');  // B signs, in the app, between the two attempts
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: null, trainingTier: null, binderHomes: 1, staffHomes: 0 } } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 422 && body.error.includes('Resident Binder') && body.error.includes('not on sale yet'),
+    'checkout route: binder after signing is refused BY NAME — its Stripe price does not exist yet, nothing charged');
+}
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: null, trainingTier: null, binderHomes: 1, staffHomes: 1 } } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 422 && body.error.includes('Resident Binder') && body.error.includes('Tello Staff at the $5 binder price'),
+    'checkout route: binder + staff refusal names every unpriced line, not just the first');
+}
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-B', body: { cart: { package: 'pkg2', trainingTier: 'small', binderHomes: 0, staffHomes: 0 } } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 422 && body.error.includes('already inside your package'),
+    'checkout route: package + training is refused — training is inside the package');
+}
+db.profileRows[U.C] = { title22_package: 'pkg1', title22_training_included: true, title22_binder_addon: false, title22_staff_addon: false };
+{
+  const res = await worker.fetch(checkoutReq('POST', { token: 'tok-C', body: { cart: { package: 'pkg2', trainingTier: null, binderHomes: 0, staffHomes: 0 } } }), env);
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 422 && body.error.includes('already has a Title22 package'),
+    'checkout route: an account with a package cannot buy a second one');
+}
+{
+  // The completed session resolves from its metadata account_id —
+  // no client_reference_id, an email that matches nobody — and the
+  // checkout record walks forward to completed.
+  const res = await send({ type: 'checkout.session.completed', data: { object: {
+    id: 'cs_test_123', subscription: 'sub_meta1',
+    metadata: { account_id: U.D },
+    customer_details: { email: 'nobody@example.com' },
+  } } });
+  const p = lastPatchFor(U.D);
+  const rec = db.checkoutSessions.find(r => r.stripe_session_id === 'cs_test_123');
+  ok(res.status === 200 && p && p.body.title22_subscription_id === 'sub_meta1',
+    'checkout completed: metadata account_id attributes the purchase with no email match');
+  ok(rec && rec.state === 'completed' && rec.stripe_subscription_id === 'sub_meta1',
+    'checkout completed: the session record walks forward — subscription linked, state completed');
 }
 
 console.log(fails ? `\n${fails} FAILURES` : '\nALL PASS');

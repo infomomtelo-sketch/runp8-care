@@ -95,6 +95,21 @@ compatibility_date = "2026-09-07"
 # storing the unfolded string would read as unpaid AND drop the subscriber to
 # one facility with no Tello.
 
+# ONE CHECKOUT (2026-11-25): index.js also serves a /checkout route —
+# the signed-in app POSTs a cart to it and it creates the Stripe
+# Checkout Session (build list steps 5 + 9). It needs NO new bindings:
+# it verifies the buyer's Supabase session token with the service key
+# and creates sessions with STRIPE_SECRET_KEY, both already here. No
+# new Stripe dashboard events either — the sessions it creates report
+# through the same checkout.session.completed / customer.subscription.*
+# events the destination already subscribes to. Two things land with
+# it, both Eli's hands: migrations/2026-11-25_title22_checkout_sessions.sql
+# (the checkout_sessions table + profiles.title22_staff_addon — run it
+# BEFORE this deploy, or the staff stamp fails loudly on its own patch)
+# and the binder / staff-bundle price IDs for CHECKOUT_PRICES in
+# index.js (created in Stripe, build list steps 1-2; the slots ship
+# EMPTY and any cart naming one is refused by name until they exist).
+
 # SERVICE BINDING (2026-11-22): how stripe-webhook reaches title22-email.
 # A Worker fetching another Worker's workers.dev URL gets a bare platform
 # 404 — no body, and the callee's code never runs — so the EMAIL_WORKER_URL

@@ -1964,6 +1964,15 @@
             </div>
           </div>
         </div>
+        <!-- ONE CHECKOUT (Nov 25, 2026): the cart panel. Everything in
+             it is rendered by renderCheckoutPanel() from the account's
+             real state — homes, package, flags, agreement — and its
+             prices come from t22CartCompute(), never from markup, so
+             this static shell names nothing the account has not got. -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Your checkout</div>
+          <div id="checkout-panel"><div class="empty">Loading...</div></div>
+        </div>
       </div>
 
     </div>
@@ -2748,6 +2757,14 @@ document.addEventListener('visibilitychange',()=>{
 // https://title22.app/?plan=<tier>&utm_source=<source>&utm_campaign=<campaign>
 (async function () {
   const params = new URLSearchParams(window.location.search);
+  // One checkout returns here (success_url / cancel_url on the Stripe
+  // session). Stash the outcome for loadBilling to announce — the
+  // buyer lands back on the app, and Billing is where the state they
+  // just changed is shown.
+  const checkoutRet = params.get('checkout');
+  if (checkoutRet === 'success' || checkoutRet === 'cancel') {
+    try { sessionStorage.setItem('title22_checkout_return', checkoutRet); } catch (e) {}
+  }
   // Normalised to what title22_create_trainer stores (lowercase; letters,
   // digits, hyphens). title22_check_trainer_code lowercases its input, so a
   // ?ref=JSmith link always got the trainer's trial length; but the payout
@@ -4586,6 +4603,11 @@ async function signBinderAgreement(){
     t22BinderAgreement=data;t22BinderAgreementKnown=true;
     showBinderFiledView('Signed \u2014 '+data.signer_name+', '+new Date(data.signed_at).toLocaleDateString()+'. Your copy is filed in Title22.');
     refreshBinderAddonRows();
+    // One checkout: if this signing came from the cart panel's binder
+    // toggle, the signature was the last thing the toggle was waiting
+    // for — complete it and re-render the panel from fresh state.
+    if(t22CartBinderWanted){t22CartBinderWanted=false;t22CartSel.binder=true;}
+    if(document.getElementById('checkout-panel'))renderCheckoutPanel(true);
   }catch(e){
     if(err){err.textContent='The signature could not be filed ('+(e.message||e)+'). Nothing was signed \u2014 try again, and if it keeps failing, email hello@title-22.com.';err.style.display='';}
     btn.disabled=false;btn.textContent='Sign agreement';
@@ -4610,6 +4632,377 @@ async function shareBinderAgreement(){
   if(navigator.share){try{await navigator.share({title:'Resident Binder Agreement',text});return;}catch(e){}}
   try{await navigator.clipboard.writeText(text);t22Toast('Copied \u2014 paste it anywhere to share the agreement note.');}
   catch(e){t22Toast('Use Print to take a copy of the agreement.');}
+}
+
+// ===== ONE CHECKOUT — THE CART PANEL =====
+// Billing's "Your checkout" panel (Nov 25, 2026, one-checkout build
+// list step 8): the account's homes, package choice and add-on
+// toggles composing ONE cart, checked out through the stripe-webhook
+// Worker's /checkout route (step 9) as one Stripe session with the
+// components as line items. The separate buy buttons above stay until
+// the post-walk flip retires them into this panel — the panel says so
+// on its face, and package checkout through those buttons works
+// exactly as it did before this panel existed.
+//
+// === CART LOGIC (pure — extracted by tests/checkout-cart.test.mjs) ===
+// The locked price table (Eli, Nov 25, 2026) and nothing else. Prices
+// are COMPUTED here, never chosen: the binder is $20/home/mo with any
+// Title22 package and $30/home/mo on its own; Tello Staff is $5/home/mo
+// with the binder and $10/home/mo on its own; training is the bed tier
+// over the account's pooled beds; a package includes training, so the
+// cart can never sell training beside one.
+const T22_CART_TABLE = {
+  packages: {
+    pkg1: { name: 'Package — 1 Home', detail: '1 facility · tracking + training included', price: 29 },
+    pkg2: { name: 'Package — 2–5 Homes', detail: 'Up to 5 facilities · tracking + training included', price: 79 },
+    pkg3: { name: 'Package — 6+ Homes', detail: '6 or more facilities · tracking + training included', price: 139 },
+  },
+  trainingTiers: [
+    { tier: 'small', maxBeds: 6, bedsLabel: '1–6 licensed beds', price: 20 },
+    { tier: 'medium', maxBeds: 15, bedsLabel: '7–15 licensed beds', price: 35 },
+    { tier: 'large', maxBeds: 49, bedsLabel: '16–49 licensed beds', price: 60 },
+    { tier: 'xl', maxBeds: Infinity, bedsLabel: '50+ licensed beds', price: 100 },
+  ],
+  binderWithPackage: 20,
+  binderStandalone: 30,
+  staffRegular: 10,
+  staffBundle: 5,
+};
+// Which lines Stripe can actually charge today. The binder prices and
+// the $5 staff bundle price do not exist in Stripe yet — Eli creates
+// them (build list steps 1-2) and their IDs go into CHECKOUT_PRICES in
+// workers/stripe-webhook/index.js; flip the matching flag here in the
+// same commit. While a flag is false, a cart holding that line shows
+// why it cannot be checked out — the line is never dropped quietly,
+// and the server refuses it by name as well.
+const T22_CART_PRICE_READY = { binderWithPackage: false, binderStandalone: false, staffBundle: false, staffRegular: true };
+
+function t22TrainingTierForBeds(beds) {
+  for (const t of T22_CART_TABLE.trainingTiers) if (beds <= t.maxBeds) return t;
+  return T22_CART_TABLE.trainingTiers[T22_CART_TABLE.trainingTiers.length - 1];
+}
+
+// input: { ownedHomes, pooledBeds, hasPaidPlan, activePackage,
+//          trainingIncluded, binderActive, staffActive,
+//          agreementKnown, agreementFiled,
+//          sel: { pkg, training, binder, binderHomes, staff, staffHomes } }
+// output: { lines, haveLines, total, unpricedNames,
+//           modes: { training, binder, staff }, binderUnit, staffUnit,
+//           tier }
+function t22CartCompute(input) {
+  const sel = input.sel;
+  const pkgPresent = !!sel.pkg || !!input.activePackage;
+  const tier = t22TrainingTierForBeds(input.pooledBeds);
+  const lines = [];
+  const haveLines = [];
+  if (input.activePackage) {
+    haveLines.push({ label: T22_CART_TABLE.packages[input.activePackage].name + ' (Tracking + Training)', note: 'Already on' });
+  }
+  if (sel.pkg) {
+    const p = T22_CART_TABLE.packages[sel.pkg];
+    lines.push({ kind: 'package', label: p.name + ' (Tracking + Training)', detail: p.detail, amount: p.price, unpriced: false });
+  }
+  // Training: on, included, offered standalone, or the package step-up.
+  let trainingMode;
+  if (input.trainingIncluded) {
+    trainingMode = 'on';
+    haveLines.push({ label: 'Staff Training', note: 'Already on' });
+  } else if (pkgPresent) {
+    trainingMode = 'included';
+  } else if (input.hasPaidPlan || input.binderActive || sel.binder) {
+    trainingMode = 'offer';
+    if (sel.training) {
+      lines.push({ kind: 'training', label: 'Staff Training', detail: 'Online staff courses from Community Training Connection — ' + tier.bedsLabel + ', priced by your licensed beds (' + input.pooledBeds + ' in total).', amount: tier.price, unpriced: false });
+    }
+  } else {
+    // A free account is never offered the standalone training door
+    // (the Nov 23 gate, closed structurally): training reaches it as
+    // part of a package, or beside the binder it is buying first.
+    trainingMode = 'stepup';
+  }
+  // The binder: on, unknowable, or offered behind the agreement door.
+  let binderMode, binderUnit = null;
+  if (input.binderActive) {
+    binderMode = 'on';
+    haveLines.push({ label: 'Resident Binder — MAR · ADL · resident records', note: 'Already on' });
+  } else if (!input.agreementKnown) {
+    binderMode = 'unknown';
+  } else {
+    binderMode = 'offer';
+    binderUnit = pkgPresent ? T22_CART_TABLE.binderWithPackage : T22_CART_TABLE.binderStandalone;
+    if (sel.binder) {
+      lines.push({
+        kind: 'binder',
+        label: 'Resident Binder — ' + sel.binderHomes + (sel.binderHomes === 1 ? ' home' : ' homes'),
+        detail: pkgPresent
+          ? 'Binder: $20 per home — the package price. On its own it is $30.'
+          : 'Binder: $30 per home — on its own. With a package it is $20.',
+        amount: binderUnit * sel.binderHomes,
+        unpriced: !(pkgPresent ? T22_CART_PRICE_READY.binderWithPackage : T22_CART_PRICE_READY.binderStandalone),
+      });
+    }
+  }
+  // Tello Staff: on, or offered at the computed per-home price.
+  let staffMode, staffUnit = null;
+  if (input.staffActive) {
+    staffMode = 'on';
+    haveLines.push({ label: 'Tello Staff', note: 'Already on' });
+  } else {
+    staffMode = 'offer';
+    const bundled = !!sel.binder || input.binderActive;
+    staffUnit = bundled ? T22_CART_TABLE.staffBundle : T22_CART_TABLE.staffRegular;
+    if (sel.staff) {
+      lines.push({
+        kind: 'staff',
+        label: 'Tello Staff — ' + sel.staffHomes + (sel.staffHomes === 1 ? ' home' : ' homes'),
+        detail: bundled
+          ? 'Staff: $5 per home — with the Resident Binder. On its own it is $10.'
+          : 'Staff: $10 per home. With the Resident Binder it is $5.',
+        amount: staffUnit * sel.staffHomes,
+        unpriced: !(bundled ? T22_CART_PRICE_READY.staffBundle : T22_CART_PRICE_READY.staffRegular),
+      });
+    }
+  }
+  const total = lines.reduce((sum, l) => sum + l.amount, 0);
+  const unpricedNames = lines.filter(l => l.unpriced).map(l => l.kind === 'binder' ? 'The Resident Binder' : (l.kind === 'staff' ? 'Tello Staff at the $5 binder price' : l.label));
+  return { lines, haveLines, total, unpricedNames, modes: { training: trainingMode, binder: binderMode, staff: staffMode }, binderUnit, staffUnit, tier };
+}
+// === END CART LOGIC ===
+
+const T22_CHECKOUT_URL = 'https://stripe-webhook.infomomtelo.workers.dev/checkout';
+let t22CartSel = { pkg: null, training: false, binder: false, binderHomes: 1, staff: false, staffHomes: 1 };
+let t22CartCtx = null;        // last gathered account state + compute result
+let t22CartProbe = null;      // null = not probed yet, true/false = the /checkout route answered
+let t22CartBinderWanted = false;  // binder toggled on, waiting on the agreement signature
+
+// profiles.title22_binder_addon, the webhook's stamp. Fail-safe FALSE
+// on any error, mirroring readTrainingIncluded: an unread flag leaves
+// the binder offered in the cart, it never takes anything away — and
+// the server re-checks before it would ever charge for the line.
+async function readBinderAddonActive() {
+  try {
+    const { data, error } = await sb.from('profiles').select('title22_binder_addon').eq('id', currentUser.id).maybeSingle();
+    return !error && !!data && data.title22_binder_addon === true;
+  } catch (e) { return false; }
+}
+
+// profiles.title22_staff_addon, the same shape. The column arrives
+// with the checkout-sessions migration; until Eli runs it, the read
+// errors and this returns false — the cart offers staff, and the
+// server's own read degrades the same way, so the two never disagree.
+async function readStaffAddonActive() {
+  try {
+    const { data, error } = await sb.from('profiles').select('title22_staff_addon').eq('id', currentUser.id).maybeSingle();
+    return !error && !!data && data.title22_staff_addon === true;
+  } catch (e) { return false; }
+}
+
+// Is one-checkout actually switched on? The Worker deployed before
+// the /checkout route existed answers every GET with a bare 405; the
+// route answers 200. The button lights only on the 200 — until then
+// the panel says the separate buttons still work, because they do.
+function t22CartProbeRoute() {
+  if (t22CartProbe !== null) return;
+  t22CartProbe = false;
+  fetch(T22_CHECKOUT_URL, { method: 'GET' })
+    .then(r => { t22CartProbe = r.ok; if (document.getElementById('checkout-panel')) renderCheckoutPanel(); })
+    .catch(() => { t22CartProbe = false; });
+}
+
+async function renderCheckoutPanel(force) {
+  const el = document.getElementById('checkout-panel');
+  if (!el || !currentUser) return;
+  if (t22CoveredByFacility) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text2)">Your plan is managed by your facility&rsquo;s administrator — there is nothing for you to check out.</div>';
+    return;
+  }
+  if (demoMode) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text2)">The checkout is off in the sample home — it opens on a real account.</div>';
+    return;
+  }
+  if (!t22CartCtx || force) {
+    const owned = (allFacilities || []).filter(f => f && f.user_id === currentUser.id && !isSampleFacility(f));
+    const pooledBeds = owned.reduce((sum, f) => sum + (typeof f.capacity === 'number' ? f.capacity : 0), 0);
+    const ent = await resolveEntitlement();
+    const paidPlans = ['lite', 'multi', 'starter', 'pro', 'specialist', 'agency', 'edu'];
+    const agr = await readBinderAgreement();
+    t22CartCtx = {
+      ownedHomes: owned.length,
+      facilityIds: owned.map(f => f.id),
+      pooledBeds,
+      hasPaidPlan: paidPlans.includes(ent.plan),
+      activePackage: t22Package,
+      trainingIncluded: t22TrainingIncluded,
+      binderActive: await readBinderAddonActive(),
+      staffActive: await readStaffAddonActive(),
+      agreementKnown: agr.known,
+      agreementFiled: !!(agr.known && agr.agreement),
+      agreement: agr.agreement || null,
+    };
+    if (t22CartSel.binderHomes < 1 || t22CartSel.binderHomes > Math.max(1, t22CartCtx.ownedHomes)) t22CartSel.binderHomes = Math.max(1, t22CartCtx.ownedHomes);
+    if (t22CartSel.staffHomes < 1 || t22CartSel.staffHomes > Math.max(1, t22CartCtx.ownedHomes)) t22CartSel.staffHomes = Math.max(1, t22CartCtx.ownedHomes);
+  }
+  const ctx = t22CartCtx;
+  const r = t22CartCompute({ ...ctx, sel: t22CartSel });
+  t22CartProbeRoute();
+
+  const rowBox = 'border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px';
+  const selBox = 'border:2px solid var(--teal);background:var(--teal-light);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px';
+  const head = '<div style="font-weight:700;font-size:14px;margin:16px 0 8px">';
+  let h = '';
+
+  h += `<div style="font-size:13px;color:var(--text2)">Your homes: <strong style="color:var(--text)">${ctx.ownedHomes}</strong> · ${ctx.pooledBeds} licensed beds in total. Everything you pick below goes in one checkout — one payment, one subscription.</div>`;
+
+  // Package choice.
+  h += head + 'Title22 package</div>';
+  if (ctx.activePackage) {
+    h += `<div style="${rowBox}"><span style="font-weight:600">${esc(T22_CART_TABLE.packages[ctx.activePackage].name)}</span> <span class="badge badge-green">Already on</span><div style="font-size:12px;color:var(--text2);margin-top:4px">It stays as it is — the cart never sells you a second package.</div></div>`;
+  } else if (ctx.hasPaidPlan) {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Your current plan</span> <span class="badge badge-green">Already on</span><div style="font-size:12px;color:var(--text2);margin-top:4px">It stays as it is. The add-ons below can ride on their own.</div></div>`;
+  } else {
+    const opt = (key, label, detail, price) => {
+      const on = t22CartSel.pkg === key;
+      return `<div style="${on ? selBox : rowBox};display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-weight:600;font-size:14px">${label}</div><div style="font-size:12px;color:var(--text2)">${detail}</div></div><div style="display:flex;align-items:center;gap:10px">${price ? `<span style="font-weight:700">$${price}<span style="font-size:12px;font-weight:400;color:var(--text2)">/mo</span></span>` : ''}<button class="btn ${on ? 'btn-primary' : 'btn-outline'}" style="font-size:13px" onclick="t22CartSetPkg(${key ? `'${key}'` : 'null'})">${on ? '✓ In your checkout' : (key ? 'Add' : 'Choose')}</button></div></div>`;
+    };
+    h += opt(null, 'No package', 'Just the add-ons below — your first home stays free.', 0);
+    h += opt('pkg1', 'Package — 1 Home', 'Tracking + training included · 1 facility', 29);
+    h += opt('pkg2', 'Package — 2–5 Homes', 'Tracking + training included · up to 5 facilities', 79);
+    h += opt('pkg3', 'Package — 6+ Homes', 'Tracking + training included · 6 or more facilities', 139);
+  }
+
+  // Staff Training.
+  h += head + 'Staff Training</div>';
+  if (r.modes.training === 'on') {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Staff Training</span> <span class="badge badge-green">Already on</span></div>`;
+  } else if (r.modes.training === 'included') {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Staff Training</span> <span style="font-size:13px;color:var(--teal);font-weight:600">Included in your package — no extra charge.</span></div>`;
+  } else if (r.modes.training === 'stepup') {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Staff Training</span><div style="font-size:12px;color:var(--text2);margin-top:4px">Staff training comes with a Title22 package — choose a package above and the courses are included in it. It is not sold on its own to a free account.</div></div>`;
+  } else {
+    const on = t22CartSel.training;
+    h += `<div style="${on ? selBox : rowBox};display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-weight:600;font-size:14px">Staff Training — $${r.tier.price}/mo</div><div style="font-size:12px;color:var(--text2)">Online staff courses from Community Training Connection. Priced by licensed beds — yours are ${ctx.pooledBeds} in total (${esc(r.tier.bedsLabel)}).</div></div><button class="btn ${on ? 'btn-primary' : 'btn-outline'}" style="font-size:13px" onclick="t22CartToggle('training')">${on ? '✓ In your checkout' : 'Add'}</button></div>`;
+  }
+
+  // Resident Binder.
+  h += head + 'Resident Binder</div>';
+  if (r.modes.binder === 'on') {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Resident Binder — MAR · ADL · resident records</span> <span class="badge badge-green">Already on</span></div>`;
+  } else if (r.modes.binder === 'unknown') {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Resident Binder</span><div style="font-size:12px;color:var(--text2);margin-top:4px">We couldn&rsquo;t check your agreement just now, so the binder stays off until we can — try again in a moment.</div></div>`;
+  } else {
+    const on = t22CartSel.binder;
+    h += `<div style="${on ? selBox : rowBox}">`
+      + `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-weight:600;font-size:14px">Resident Binder — $${r.binderUnit}/mo per home</div><div style="font-size:12px;color:var(--text2)">${r.binderUnit === 20 ? 'The package price — with any Title22 package. On its own it is $30.' : 'On its own. With a Title22 package it is $20.'}</div></div><button class="btn ${on ? 'btn-primary' : 'btn-outline'}" style="font-size:13px" onclick="t22CartToggle('binder')">${on ? '✓ In your checkout' : 'Add'}</button></div>`
+      + (on ? `<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:13px">Homes covered:</span><button class="btn btn-outline" style="font-size:13px;padding:2px 10px" onclick="t22CartHomes('binder',-1)">−</button><strong>${t22CartSel.binderHomes}</strong><button class="btn btn-outline" style="font-size:13px;padding:2px 10px" onclick="t22CartHomes('binder',1)">+</button></div>` : '')
+      + (ctx.agreementFiled
+        ? `<div style="font-size:12px;color:var(--teal);margin-top:8px">Agreement on file — signed ${esc(ctx.agreement.signer_name)}, ${esc(new Date(ctx.agreement.signed_at).toLocaleDateString())}.</div>`
+        : `<div style="font-size:12px;color:var(--text2);margin-top:8px">Starts with a signed agreement — tapping Add opens it here, in Title22. No signed agreement, no resident binder.</div>`)
+      + `</div>`;
+  }
+
+  // Tello Staff.
+  h += head + 'Tello Staff</div>';
+  if (r.modes.staff === 'on') {
+    h += `<div style="${rowBox}"><span style="font-weight:600">Tello Staff</span> <span class="badge badge-green">Already on</span></div>`;
+  } else {
+    const on = t22CartSel.staff;
+    h += `<div style="${on ? selBox : rowBox}">`
+      + `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-weight:600;font-size:14px">Tello Staff — $${r.staffUnit}/mo per home</div><div style="font-size:12px;color:var(--text2)">${r.staffUnit === 5 ? 'With the Resident Binder. On its own it is $10.' : 'Schedule board · Today&rsquo;s Board · staff directory · Ask Tello copilot. With the Resident Binder it is $5.'}</div></div><button class="btn ${on ? 'btn-primary' : 'btn-outline'}" style="font-size:13px" onclick="t22CartToggle('staff')">${on ? '✓ In your checkout' : 'Add'}</button></div>`
+      + (on ? `<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:13px">Homes covered:</span><button class="btn btn-outline" style="font-size:13px;padding:2px 10px" onclick="t22CartHomes('staff',-1)">−</button><strong>${t22CartSel.staffHomes}</strong><button class="btn btn-outline" style="font-size:13px;padding:2px 10px" onclick="t22CartHomes('staff',1)">+</button></div>` : '')
+      + `</div>`;
+  }
+
+  // The lines + total.
+  if (r.haveLines.length || r.lines.length) {
+    h += '<div style="border-top:1px solid var(--border);margin-top:18px;padding-top:12px">';
+    for (const l of r.haveLines) {
+      h += `<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0"><span>${esc(l.label)}</span><span style="color:var(--teal);font-weight:600">${esc(l.note)}</span></div>`;
+    }
+    for (const l of r.lines) {
+      h += `<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0"><span>${esc(l.label)}<span style="display:block;font-size:12px;color:var(--text2)">${esc(l.detail)}</span></span><span style="font-weight:700;white-space:nowrap">$${l.amount}/mo</span></div>`;
+    }
+    if (r.lines.length) {
+      h += `<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid var(--border);margin-top:8px;padding-top:8px"><span>Total</span><span>$${r.total}/mo</span></div>`;
+    }
+    h += '</div>';
+  }
+
+  // The action.
+  h += '<div style="margin-top:14px">';
+  if (!r.lines.length) {
+    h += '<button class="btn btn-primary" style="font-size:14px" disabled>Your cart is empty</button>';
+  } else if (r.unpricedNames.length) {
+    h += `<div style="background:var(--amber-light);border:1.5px solid #e6c170;border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:10px">${esc(r.unpricedNames.join(' and '))} ${r.unpricedNames.length === 1 ? 'is' : 'are'} not on sale yet — the Stripe price is still being set up, so this checkout cannot take it yet. Nothing will be charged for it. The rest can still be bought with the buttons above, one at a time.</div>`;
+    h += '<button class="btn btn-primary" style="font-size:14px" disabled>Go to checkout</button>';
+  } else if (t22CartProbe !== true) {
+    h += `<div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:10px">One checkout is not switched on yet — each item above can still be bought on its own, with its own button, exactly as before.</div>`;
+    h += '<button class="btn btn-primary" style="font-size:14px" disabled>Go to checkout</button>';
+  } else {
+    h += `<button class="btn btn-primary" style="font-size:14px" onclick="t22CartCheckout(this)">Go to checkout — $${r.total}/mo</button>`;
+  }
+  h += '</div>';
+
+  h += '<div style="font-size:12px;color:var(--text2);margin-top:12px">This panel is where the separate buy buttons above are moving — one checkout for everything. Until the move is finished, those buttons keep working.</div>';
+  h += '<div style="font-size:12px;color:var(--text2);margin-top:6px">Your first home in Title22 stays free either way. If you do nothing, nothing is charged. Cancel anytime — the free home never goes away.</div>';
+
+  el.innerHTML = h;
+}
+
+function t22CartSetPkg(key) {
+  t22CartSel.pkg = key;
+  renderCheckoutPanel();
+}
+
+function t22CartToggle(which) {
+  if (which === 'binder' && !t22CartSel.binder) {
+    // The agreement door, in-flow (build list step 8): toggling the
+    // binder without a filed agreement opens the EXISTING door modal
+    // and its filed-state check — no second door. The binder joins
+    // the cart only once the signature is filed; signBinderAgreement
+    // completes the toggle from its success path.
+    const ctx = t22CartCtx;
+    if (!ctx || !ctx.agreementKnown) { t22Toast("We couldn't check your agreement just now — try again in a moment."); return; }
+    if (!ctx.agreementFiled) { t22CartBinderWanted = true; openBinderAgreement(); return; }
+  }
+  t22CartSel[which] = !t22CartSel[which];
+  renderCheckoutPanel();
+}
+
+function t22CartHomes(which, delta) {
+  const key = which === 'binder' ? 'binderHomes' : 'staffHomes';
+  const max = Math.max(1, (t22CartCtx && t22CartCtx.ownedHomes) || 1);
+  t22CartSel[key] = Math.min(max, Math.max(1, t22CartSel[key] + delta));
+  renderCheckoutPanel();
+}
+
+async function t22CartCheckout(btn) {
+  if (!t22CartCtx) return;
+  const r = t22CartCompute({ ...t22CartCtx, sel: t22CartSel });
+  if (!r.lines.length || r.unpricedNames.length) return;
+  const cart = {
+    package: t22CartSel.pkg,
+    trainingTier: (t22CartSel.training && r.modes.training === 'offer') ? r.tier.tier : null,
+    binderHomes: t22CartSel.binder ? t22CartSel.binderHomes : 0,
+    staffHomes: t22CartSel.staff ? t22CartSel.staffHomes : 0,
+  };
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening checkout…'; }
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session || !session.access_token) throw new Error('Sign in first, then try your checkout again.');
+    const res = await fetch(T22_CHECKOUT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({ cart, facility_ids: t22CartCtx.facilityIds }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) throw new Error(data.error || 'Checkout could not be opened — nothing was charged.');
+    track('checkout_started', { plan: 'cart:' + r.lines.map(l => l.kind).join('+') });
+    try { if (currentUser?.email) localStorage.setItem(CHECKOUT_EMAIL_KEY, currentUser.email.toLowerCase()); } catch (e) {}
+    window.location.href = data.url;
+  } catch (e) {
+    t22Toast((e && e.message) || 'Checkout could not be opened — nothing was charged.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Go to checkout — $' + r.total + '/mo'; }
+  }
 }
 
 // A paid subscription lives in public.subscriptions, written by Stripe —
@@ -11564,6 +11957,18 @@ async function grantClassroomAccount(){
 async function loadBilling(){
 
   const el=document.getElementById('billing-plan-details');if(!el)return;
+  // A return from the one-checkout Stripe session announces itself
+  // once, here — success names what happens next, cancel names that
+  // nothing was charged. The entitlement itself arrives on the
+  // webhook's stamps, never on this flag.
+  try{
+    const ret=sessionStorage.getItem('title22_checkout_return');
+    if(ret){
+      sessionStorage.removeItem('title22_checkout_return');
+      if(ret==='success')t22Toast('Welcome back — your payment went through. What you bought switches on here in a moment; if it does not appear, use "I\'ve paid — refresh my access" above.');
+      else if(ret==='cancel')t22Toast('Checkout was cancelled — nothing was charged.');
+    }
+  }catch(e){}
   try{
     // Their access is the facility owner's subscription. Showing them
     // "Facility plan · Active" would read as their own, and a Subscribe
@@ -11571,6 +11976,7 @@ async function loadBilling(){
     if(t22CoveredByFacility){
       el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-users"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">Covered by ${esc(t22CoveredByFacility)}</div><div style="font-size:14px;color:var(--text2)">You were invited onto this team — its administrator manages the subscription.</div></div><span class="badge badge-green" style="margin-left:auto">✓ Active</span></div><div style="background:var(--gray-bg);border-radius:var(--radius);padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2)">There is nothing for you to pay. If you also want a facility of your own, you would subscribe separately for it.</div>`;
       refreshBinderAddonRows();
+      renderCheckoutPanel(true);
       return;
     }
     const ent=await resolveEntitlement();
@@ -11596,6 +12002,7 @@ async function loadBilling(){
     el.innerHTML=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="width:56px;height:56px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:24px"><svg class="ic ic-lg"><use href="#i-card"/></svg></div><div><div style="font-size:1.2rem;font-weight:700;color:var(--teal)">${planName}</div><div style="font-size:14px;color:var(--text2)">${planPrices[plan]||''} · ${currentFacility?.name||''}</div></div>${plan!=='trial'?'<span class="badge badge-green" style="margin-left:auto">✓ Active</span>':'<span class="badge badge-amber" style="margin-left:auto">Trial</span>'}</div>${trialHtml}`;
   }catch(e){el.innerHTML='<div class="empty">Unable to load billing info.</div>';}
   refreshBinderAddonRows();
+  renderCheckoutPanel(true);
 }
 
 // ===== DAILY LOG =====

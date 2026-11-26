@@ -150,6 +150,141 @@ const ADDON_PRODUCTS = Object.fromEntries(
 // agreement, NO add-on activation — live the moment a price/link exists.
 const AGREEMENT_ADDON_PRICES = {};
 
+// The Tello Staff Add-On price (one-checkout prep, 2026-11-25). Tello
+// Staff has been sold since 2026-11-07 on its own Payment Link
+// (buy.stripe.com/5kQ00ieqC6p0g2fbfUg360v — the link the app's Billing
+// button opens), but its price was never in any map here, so a Tello
+// Staff subscription event fell through to the plan path and was
+// refused 422 as unmapped. A staff purchase stamps
+// profiles.title22_staff_addon and NOTHING else — never a plan, never
+// a package, never the training flag. The column is added by
+// migrations/2026-11-25_title22_checkout_sessions.sql; until that
+// migration runs, the staff stamp's PATCH fails on its own (the
+// handlers below always patch the staff flag separately, so a missing
+// column can never poison another component's stamp).
+const STAFF_PRICES = {
+  'price_1UZHsXAH9qPFLg89SZaz4ISX': 'regular',  // $10/mo per home, Tello Staff
+  // The $5/home/mo binder-bundle price does NOT exist yet — Eli
+  // creates it in Stripe (one-checkout build list step 2). When it
+  // exists, its ID goes here as 'bundle' in the same commit that
+  // fills CHECKOUT_PRICES.staffBundle below.
+};
+
+// --- One checkout: the cart price map (2026-11-25, build list steps 5 + 9) ---
+//
+// The single place that names every price the /checkout route below
+// may sell. Packages and training tiers are the SAME IDs as
+// PRICE_PLANS / ADDON_PRICES above — the maps must agree, and the test
+// suite checks that they do. Three slots are EMPTY, on purpose: the
+// Resident Binder prices ($20 with a package / $30 standalone) and the
+// $5 Tello Staff bundle price do not exist in Stripe yet. Eli creates
+// them (build list steps 1-2); their IDs go here — copied from the
+// Stripe page that created them, never typed from memory — and
+// T22_CART_PRICE_READY in index.html flips in the same commit. While
+// a slot is empty, computeCheckoutLines() refuses any cart containing
+// that line BY NAME: the line is never silently dropped, and nothing
+// is charged for a cart that cannot be priced whole.
+const CHECKOUT_PRICES = {
+  pkg1: 'price_1UdhR6AH9qPFLg896m0ZBAaL',   // $29/mo — same ID as PRICE_PLANS
+  pkg2: 'price_1UdhZgAH9qPFLg89txlNvXye',   // $79/mo — verified 2026-11-19, see PRICE_PLANS
+  pkg3: 'price_1UdhdFAH9qPFLg89Td1Fs556',   // $139/mo — same ID as PRICE_PLANS
+  training: {
+    small: 'price_1UV0GvAH9qPFLg89xaIcDW3j',   // $20/mo — same IDs as ADDON_PRICES
+    medium: 'price_1UV0KKAH9qPFLg89zmjAtjfa',  // $35/mo
+    large: 'price_1UV0KzAH9qPFLg89c8oG81U7',   // $60/mo
+    xl: 'price_1UV0LXAH9qPFLg89talQ2iGg',      // $100/mo
+  },
+  binderWithPackage: '',  // Resident Binder $20/mo per home — NOT CREATED IN STRIPE YET
+  binderStandalone: '',   // Resident Binder $30/mo per home — NOT CREATED IN STRIPE YET
+  staffRegular: 'price_1UZHsXAH9qPFLg89SZaz4ISX',  // $10/mo per home — STAFF_PRICES above
+  staffBundle: '',        // Tello Staff $5/mo per home with the binder — NOT CREATED IN STRIPE YET
+};
+
+// Buyer-facing names for the unpriced refusals: they name the thing in
+// the cart, not the map slot it would have come from.
+const CHECKOUT_LINE_NAMES = {
+  binderWithPackage: 'Resident Binder',
+  binderStandalone: 'Resident Binder',
+  staffBundle: 'Tello Staff at the $5 binder price',
+};
+
+// Pure: a cart + the account's state -> the Stripe line items, or the
+// reasons this cart cannot be checked out. The /checkout route is a
+// thin shell over this; the test suite drives it directly. Prices are
+// COMPUTED here, never taken from the client: the binder is $20/home
+// when a package is in the cart or already on the account, $30/home
+// otherwise; staff is $5/home when the binder is in the cart or
+// already on the account, $10/home otherwise (FLOW.md §1 — "binder
+// present", the same reading for both).
+//
+// cart:    { package: 'pkg1'|'pkg2'|'pkg3'|null,
+//            trainingTier: 'small'|'medium'|'large'|'xl'|null,
+//            binderHomes: int >= 0, staffHomes: int >= 0 }
+// account: { packageOnAccount, trainingIncluded, binderOnAccount,
+//            staffOnAccount, agreementFiled }  (all booleans)
+function computeCheckoutLines(cart, account) {
+  const errors = [];
+  const unpriced = [];
+  const items = [];
+  const hasPkg = !!cart.package || !!account.packageOnAccount;
+  if (cart.package) {
+    if (account.packageOnAccount) {
+      errors.push('Your account already has a Title22 package — it stays as it is, and the cart cannot sell you a second one.');
+    } else {
+      items.push({ price: CHECKOUT_PRICES[cart.package], quantity: 1, kind: 'package' });
+    }
+  }
+  if (cart.trainingTier) {
+    if (cart.package || account.packageOnAccount) {
+      errors.push('Training is already inside your package — the cart cannot charge for it twice.');
+    } else if (account.trainingIncluded) {
+      errors.push('Staff training is already on for your account.');
+    } else {
+      items.push({ price: CHECKOUT_PRICES.training[cart.trainingTier], quantity: 1, kind: 'training' });
+    }
+  }
+  if (cart.binderHomes > 0) {
+    if (account.binderOnAccount) {
+      errors.push('The Resident Binder is already on for your account.');
+    } else if (!account.agreementFiled) {
+      errors.push('The Resident Binder needs the signed agreement first — sign it in Billing, then come back to your checkout.');
+    } else {
+      const slot = hasPkg ? 'binderWithPackage' : 'binderStandalone';
+      if (!CHECKOUT_PRICES[slot]) unpriced.push(CHECKOUT_LINE_NAMES[slot]);
+      else items.push({ price: CHECKOUT_PRICES[slot], quantity: cart.binderHomes, kind: 'binder' });
+    }
+  }
+  if (cart.staffHomes > 0) {
+    if (account.staffOnAccount) {
+      errors.push('Tello Staff is already on for your account.');
+    } else {
+      const slot = (cart.binderHomes > 0 || account.binderOnAccount) ? 'staffBundle' : 'staffRegular';
+      if (!CHECKOUT_PRICES[slot]) unpriced.push(CHECKOUT_LINE_NAMES[slot]);
+      else items.push({ price: CHECKOUT_PRICES[slot], quantity: cart.staffHomes, kind: 'staff' });
+    }
+  }
+  if (!items.length && !errors.length && !unpriced.length) errors.push('Your cart is empty.');
+  return { items, errors, unpriced };
+}
+
+// The cart arrives from the browser, so its shape is validated before
+// any of it is trusted: package and tier against whitelists, home
+// counts as whole numbers in a sane range. Anything else is refused
+// whole — a half-read cart is how a buyer gets charged for the wrong
+// thing.
+function normaliseCheckoutCart(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const pkg = raw.package == null ? null : raw.package;
+  if (pkg !== null && !['pkg1', 'pkg2', 'pkg3'].includes(pkg)) return null;
+  const tier = raw.trainingTier == null ? null : raw.trainingTier;
+  if (tier !== null && !['small', 'medium', 'large', 'xl'].includes(tier)) return null;
+  const homes = v => (Number.isInteger(v) && v >= 0 && v <= 50) ? v : null;
+  const binderHomes = homes(raw.binderHomes == null ? 0 : raw.binderHomes);
+  const staffHomes = homes(raw.staffHomes == null ? 0 : raw.staffHomes);
+  if (binderHomes === null || staffHomes === null) return null;
+  return { package: pkg, trainingTier: tier, binderHomes, staffHomes };
+}
+
 // The plan keys the app actually understands. index.html's TIER_LIMITS and
 // T22_PAID are keyed on exactly these, so a plan written here that is not in
 // this list is worse than writing nothing: T22_PAID would not match it, so the
@@ -570,6 +705,22 @@ function agreementAddonFromSubscription(sub) {
   if (md.product_kind === 'binder_addon') {
     const first = items[0] && items[0].price;
     return { priceId: (first && first.id) || null, viaFallback: 'metadata' };
+  }
+  return null;
+}
+
+// Is this subscription a Tello Staff Add-On purchase? Price map only,
+// on purpose: a subscription's metadata is one bag shared by every
+// line, so it cannot tag a single line the way the training and
+// binder Payment Links tag their whole subscription — and the cart
+// subscriptions this recognizer exists for are recognised by their
+// prices. Returns { kind: 'regular'|'bundle', priceId } or null.
+function staffFromSubscription(sub) {
+  const items = (sub.items && sub.items.data) || [];
+  for (const it of items) {
+    const priceId = it.price && it.price.id;
+    const kind = priceId && STAFF_PRICES[priceId];
+    if (kind) return { kind, priceId };
   }
   return null;
 }
@@ -1091,8 +1242,225 @@ function missingBindings(env) {
   return REQUIRED_BINDINGS.filter(name => !env || !env[name]);
 }
 
+// --- One checkout: the /checkout route (2026-11-25, build list step 9) ---
+//
+// Everything above is the webhook: Stripe calls it, signature first.
+// This route is the opposite direction — the signed-in app calls it to
+// OPEN a checkout. It shares the Worker because this Worker already
+// holds the Stripe secret and the Supabase service key; no new
+// bindings, no new secrets. Its auth is the buyer's own Supabase
+// session token, verified against GoTrue before anything is read or
+// created: the account a checkout belongs to is the account that
+// asked for it, never an id the request body claims.
+//
+// The session it creates carries the account id three ways —
+// client_reference_id, session metadata account_id, and
+// subscription_data metadata account_id — so the webhook events that
+// follow resolve the account from the session itself (the completed
+// handler below reads the metadata as its fallback), and the email
+// matching that anonymous Payment Link buyers needed becomes the
+// fallback it should always have been (FLOW.md §5).
+const CHECKOUT_ORIGIN = 'https://title22.app';
+
+function checkoutCors(request) {
+  const origin = request.headers.get('origin') || '';
+  if (origin !== CHECKOUT_ORIGIN) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Vary': 'Origin',
+  };
+}
+
+function checkoutJson(request, status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...checkoutCors(request) },
+  });
+}
+
+// Verify a Supabase session token and return its user, or null. The
+// service key is the apikey; the buyer's token is the credential.
+async function supabaseUserFromToken(env, token) {
+  if (!token) return null;
+  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+    headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + token },
+  });
+  if (!res.ok) return null;
+  const u = await res.json().catch(() => null);
+  return u && u.id ? u : null;
+}
+
+// The account state computeCheckoutLines() prices against, read from
+// profiles — the same columns the subscription handler stamps. The
+// staff flag is read in a SECOND query on purpose: its column is
+// added by the staged checkout-sessions migration, and until Eli runs
+// it the column does not exist — PostgREST would refuse the whole
+// select, and a not-yet-run migration must not take package checkout
+// down with it. A failed staff read degrades to "not on", which is
+// also what the stamp does until the column exists.
+async function accountCheckoutState(env, userId) {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=title22_package,title22_training_included,title22_binder_addon&limit=1`,
+    { headers: sbHeaders(env) }
+  );
+  if (!res.ok) return null;
+  const rows = await res.json().catch(() => []);
+  const p = (rows && rows[0]) || {};
+  let staffOnAccount = false;
+  try {
+    const sres = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=title22_staff_addon&limit=1`,
+      { headers: sbHeaders(env) }
+    );
+    if (sres.ok) {
+      const srows = await sres.json().catch(() => []);
+      staffOnAccount = !!(srows && srows[0] && srows[0].title22_staff_addon === true);
+    }
+  } catch (e) { /* column not migrated yet — staff reads as not on */ }
+  return {
+    packageOnAccount: !!p.title22_package,
+    trainingIncluded: p.title22_training_included === true,
+    binderOnAccount: p.title22_binder_addon === true,
+    staffOnAccount,
+  };
+}
+
+// The checkout record (build list step 4): one row per session, so a
+// purchase is traceable account -> session -> subscription without
+// email matching. BEST-EFFORT, and deliberately so: the table is
+// staged in migrations/2026-11-25_title22_checkout_sessions.sql and
+// may not be run yet when this route first serves. A failed insert is
+// logged and the checkout proceeds — the record is traceability, not
+// entitlement; the webhook stamps entitlement from the subscription
+// itself either way.
+async function recordCheckoutSession(env, row) {
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/checkout_sessions`, {
+      method: 'POST',
+      headers: { ...sbHeaders(env), 'Prefer': 'return=minimal' },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) {
+      console.error('checkout_sessions insert failed: HTTP ' + res.status +
+        ' — is migrations/2026-11-25_title22_checkout_sessions.sql run yet? The checkout itself is unaffected.');
+    }
+  } catch (e) {
+    console.error('checkout_sessions insert failed:', (e && e.message) || String(e));
+  }
+}
+
+async function handleCheckout(request, env) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: checkoutCors(request) });
+  }
+  // The app probes GET before it lights the checkout button: the
+  // Worker deployed before this route existed answers every GET with
+  // a bare 405, so a 200 here is how the panel knows one-checkout is
+  // actually switched on — the button never promises a door that is
+  // not there.
+  if (request.method === 'GET') return checkoutJson(request, 200, { ok: true, route: 'checkout' });
+  if (request.method !== 'POST') return checkoutJson(request, 405, { error: 'Method not allowed' });
+
+  const missing = missingBindings(env);
+  if (missing.length) {
+    console.error('checkout route is misconfigured — missing binding(s):', missing.join(', '));
+    return checkoutJson(request, 500, { error: 'Checkout is not set up yet — email hello@title-22.com and we will take it from there.' });
+  }
+
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+  const user = await supabaseUserFromToken(env, token);
+  if (!user) return checkoutJson(request, 401, { error: 'Sign in to Title22 first, then try your checkout again.' });
+
+  let body;
+  try { body = await request.json(); } catch (e) {
+    return checkoutJson(request, 400, { error: 'That checkout request could not be read — nothing was charged.' });
+  }
+  const cart = normaliseCheckoutCart(body && body.cart);
+  if (!cart) return checkoutJson(request, 400, { error: 'That cart could not be read — nothing was charged.' });
+
+  const account = await accountCheckoutState(env, user.id);
+  if (!account) {
+    return checkoutJson(request, 502, { error: 'Your account could not be read just now — nothing was charged. Try again in a moment.' });
+  }
+  // The agreement check runs only when the binder is in the cart —
+  // and it is the same fail-closed check the webhook guard runs, so
+  // the door in the flow and the guard behind it can never disagree.
+  account.agreementFiled = cart.binderHomes > 0 ? await hasFiledBinderAgreement(env, user.id) : false;
+
+  const { items, errors, unpriced } = computeCheckoutLines(cart, account);
+  if (errors.length) return checkoutJson(request, 422, { error: errors[0], errors });
+  if (unpriced.length) {
+    return checkoutJson(request, 422, {
+      error: unpriced.map(n => n + ' is not on sale yet — its price is still being set up. Nothing was charged.').join(' '),
+      unpriced,
+    });
+  }
+
+  // Facility ids for the record: the client's list, kept only where
+  // it names one of the account's own homes (accountFacilities is the
+  // ledger's reader — demo homes already excluded). A failed read
+  // degrades the record to no ids; it never blocks the checkout.
+  let facilityIds = [];
+  if (Array.isArray(body.facility_ids) && body.facility_ids.length) {
+    try {
+      const own = new Set((await accountFacilities(env, user.id)).map(f => f.id));
+      facilityIds = body.facility_ids.filter(id => typeof id === 'string' && own.has(id));
+    } catch (e) { facilityIds = []; }
+  }
+
+  const form = new URLSearchParams();
+  form.set('mode', 'subscription');
+  items.forEach((it, i) => {
+    form.set(`line_items[${i}][price]`, it.price);
+    form.set(`line_items[${i}][quantity]`, String(it.quantity));
+  });
+  form.set('client_reference_id', user.id);
+  form.set('metadata[account_id]', user.id);
+  form.set('metadata[cart]', items.map(it => it.kind).join('+'));
+  form.set('subscription_data[metadata][account_id]', user.id);
+  form.set('subscription_data[metadata][cart]', items.map(it => it.kind).join('+'));
+  if (user.email) form.set('customer_email', user.email);
+  form.set('success_url', CHECKOUT_ORIGIN + '/?checkout=success');
+  form.set('cancel_url', CHECKOUT_ORIGIN + '/?checkout=cancel');
+
+  const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: form.toString(),
+  });
+  const session = await res.json().catch(() => null);
+  if (!res.ok || !session || !session.url) {
+    console.error('checkout session creation failed: HTTP ' + res.status,
+      session && session.error ? session.error.message : '(no detail)');
+    return checkoutJson(request, 502, { error: 'Stripe could not open the checkout just now — nothing was charged. Try again in a moment.' });
+  }
+
+  await recordCheckoutSession(env, {
+    account_id: user.id,
+    facility_ids: facilityIds,
+    lines: items,
+    stripe_session_id: session.id,
+    state: 'created',
+  });
+  return checkoutJson(request, 200, { url: session.url, session_id: session.id });
+}
+
 export default {
   async fetch(request, env) {
+    // The one-checkout route, dispatched before the webhook flow: it
+    // is not a Stripe call, carries no Stripe signature, and must not
+    // be answered by the signature check below. Every other path on
+    // this Worker is the webhook, exactly as before.
+    let pathname = '';
+    try { pathname = new URL(request.url).pathname; } catch (e) { pathname = ''; }
+    if (pathname === '/checkout') return handleCheckout(request, env);
+
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
     // Before the signature check, deliberately. A missing STRIPE_WEBHOOK_SECRET
@@ -1165,9 +1533,15 @@ export default {
           // here; the payment email remains the fallback, unchanged for
           // every checkout that carries no custom field.
           const accountEmail = checkoutAccountEmail(obj);
+          // One checkout (2026-11-25): sessions the /checkout route
+          // creates carry the account id as metadata as well as
+          // client_reference_id — either names the account directly,
+          // ahead of every email path below.
+          const sessionAccountId = obj.client_reference_id
+            || (obj.metadata && obj.metadata.account_id) || null;
           let userId = await resolveUserId(env, {
             subscriptionId,
-            clientReferenceId: obj.client_reference_id,
+            clientReferenceId: sessionAccountId,
             email: accountEmail || email,
           });
           if (!userId && accountEmail && email && accountEmail.toLowerCase() !== email.toLowerCase()) {
@@ -1199,6 +1573,28 @@ export default {
               status: 'active',
               stripe_subscription_id: subscriptionId,
             });
+            // One checkout (2026-11-25): walk the checkout record
+            // forward — session -> subscription, state completed.
+            // Best-effort in the same sense as the insert that
+            // created the row: the staged table may not exist yet,
+            // and a missing trace row must never fail the mapping
+            // above, which is the part the buyer feels.
+            try {
+              const recRes = await fetch(
+                `${env.SUPABASE_URL}/rest/v1/checkout_sessions?stripe_session_id=eq.${encodeURIComponent(obj.id)}`,
+                {
+                  method: 'PATCH',
+                  headers: { ...sbHeaders(env), 'Prefer': 'return=minimal' },
+                  body: JSON.stringify({ stripe_subscription_id: subscriptionId, state: 'completed' }),
+                }
+              );
+              if (!recRes.ok) {
+                console.error('checkout_sessions update failed: HTTP ' + recRes.status +
+                  ' for session ' + obj.id + ' — the account mapping above is unaffected.');
+              }
+            } catch (e) {
+              console.error('checkout_sessions update failed:', (e && e.message) || String(e));
+            }
           }
           break;
         }
@@ -1217,6 +1613,150 @@ export default {
             // "Free Trial" after being charged.
             console.error('Unattributed subscription', obj.id, 'email', email || '(none)');
             return new Response('No matching user for subscription — will retry', { status: 409 });
+          }
+          // One checkout (2026-11-25, build list step 5): a
+          // subscription carrying MORE THAN ONE component — a
+          // package with the binder riding on it, a binder with
+          // staff, training beside either. The single-component
+          // branches below cannot serve it: each one BREAKS after
+          // stamping its own component, so a package+binder
+          // subscription would stamp whichever branch ran first and
+          // silently drop the other. Here every component is
+          // recognised by the SAME recognizers and stamped by the
+          // SAME rules as its single-component branch — the plan
+          // patch is the plan path's patch, the binder passes the
+          // same filed-agreement guard, the training flag and its
+          // emails are the add-on branch's. No second semantics.
+          // Single-component subscriptions never enter this branch:
+          // componentCount is 1 and they run the exact code they ran
+          // before this branch existed, 422s included.
+          const staffHit = staffFromSubscription(obj);
+          const multiAddon = addonFromSubscription(obj);
+          const multiBagree = agreementAddonFromSubscription(obj);
+          const planHit = (tier && plan) ? { plan, tier } : null;
+          const componentCount = [planHit, multiAddon, multiBagree, staffHit].filter(Boolean).length;
+          if (componentCount >= 2) {
+            const mActive = obj.status === 'active' || obj.status === 'trialing';
+            const mFirstActivation =
+              obj.status === 'active' &&
+              (event.type === 'customer.subscription.created' || prevAttrs.status === 'trialing');
+            // (a) The plan component — the plan path's own patch and
+            // subscriptions row, verbatim.
+            if (planHit) {
+              const periodEnd = periodEndOf(obj);
+              await patchProfile(env, userId, {
+                title22_plan: mActive ? plan : undefined,
+                title22_training_included: (mActive && tier && tier.training) ? true : undefined,
+                title22_package: (mActive && tier) ? (tier.pkg || null) : undefined,
+                title22_trial_ends_at: mActive ? null : undefined,
+                title22_subscription_id: obj.id,
+                title22_plan_expires_at: obj.cancel_at_period_end ? periodEnd : null,
+              });
+              await upsertSubscription(env, {
+                user_id: userId,
+                plan,
+                status: obj.status,
+                stripe_subscription_id: obj.id,
+                current_period_end: periodEnd,
+              });
+            }
+            // (b) A standalone training line beside the other
+            // components: the flag, on its own patch, and the same
+            // loud note when it was recognised by a fallback.
+            if (multiAddon) {
+              if (multiAddon.viaFallback) {
+                const note =
+                  `PRICE MAP IS WRONG — this add-on event was recognised via its ${multiAddon.viaFallback}, ` +
+                  `not its price. Stripe sent price ${multiAddon.priceId || '(none)'} for the ${multiAddon.tier} tier. ` +
+                  `Add that price to ADDON_PRICES in workers/stripe-webhook/index.js.`;
+                console.error(note);
+                if (!warning) warning = note;
+              }
+              if (mActive) await patchProfile(env, userId, { title22_training_included: true });
+            }
+            // (c) The binder component — the AGREEMENT GUARD,
+            // unchanged: filed -> stamp; not filed -> stamp nothing
+            // and fire the blocked owner alert. The other components
+            // stamp either way: a package the buyer paid for is not
+            // held hostage to the binder's paper.
+            if (multiBagree) {
+              if (multiBagree.viaFallback) {
+                const note =
+                  `PRICE MAP IS WRONG — this binder add-on event was recognised via its ${multiBagree.viaFallback}, ` +
+                  `not its price. Stripe sent price ${multiBagree.priceId || '(none)'}. ` +
+                  `Add that price to AGREEMENT_ADDON_PRICES in workers/stripe-webhook/index.js.`;
+                console.error(note);
+                if (!warning) warning = note;
+              }
+              if (mActive) {
+                if (await hasFiledBinderAgreement(env, userId)) {
+                  await patchProfile(env, userId, { title22_binder_addon: true });
+                } else {
+                  console.error(
+                    'BINDER ADD-ON BLOCKED — subscription', obj.id,
+                    'for account', userId, '(buyer', email || '(unknown email)', ')',
+                    'paid for the Resident Binder add-on, but NO signed binder agreement is on file ' +
+                    'for any of the account\'s facilities. title22_binder_addon was NOT stamped. ' +
+                    'The home must sign the agreement in the app; the next subscription.updated ' +
+                    'redelivery re-runs the check.'
+                  );
+                  const alertNote = await notifyBlockedAlert(env, {
+                    dedupe_key: 'addon_blocked_no_agreement:' + obj.id,
+                    user_id: userId,
+                    buyer_email: email,
+                    subscription_id: obj.id,
+                    price_id: multiBagree.priceId,
+                  });
+                  if (alertNote) warning = warning ? warning + ' ' + alertNote : alertNote;
+                }
+              }
+            }
+            // (d) The staff component — its own patch, deliberately:
+            // profiles.title22_staff_addon is added by the staged
+            // checkout-sessions migration, and until Eli runs it the
+            // column does not exist. A failed staff patch must fail
+            // THIS stamp alone, loudly, and nothing else in the cart.
+            if (staffHit && mActive) {
+              const staffOk = await patchProfile(env, userId, { title22_staff_addon: true });
+              if (!staffOk) {
+                const note = 'STAFF STAMP FAILED — subscription ' + obj.id +
+                  ': the title22_staff_addon patch was refused. Is migrations/2026-11-25_title22_checkout_sessions.sql run yet?' +
+                  ' Every other component of this subscription was stamped as normal.';
+                console.error(note);
+                if (!warning) warning = note;
+              }
+            }
+            // ONE confirmation email for the whole subscription.
+            // The email Worker dedupes on subscription_confirmed:<id>,
+            // so a second send for a second component would be
+            // swallowed anyway — the payload is built once, naming
+            // every component it can name. The binder names nothing
+            // here, exactly as in its own branch: no binder template
+            // exists yet, and the generic words would misdescribe it.
+            if (mFirstActivation && (planHit || multiAddon)) {
+              const note = await notifyCustomerEmail(env, {
+                template: 'subscription_confirmed',
+                dedupe_key: 'subscription_confirmed:' + obj.id,
+                user_id: userId,
+                email,
+                plan: planHit ? plan : null,
+                package: (tier && tier.pkg) || null,
+                training_included: !!((tier && tier.training) || multiAddon),
+                addon: multiAddon ? multiAddon.tier : null,
+              });
+              if (note && !warning) warning = note;
+              if (multiAddon) {
+                const alertNote = await notifyOwnerAlert(env, {
+                  dedupe_key: 'addon_owner_alert:' + obj.id,
+                  user_id: userId,
+                  buyer_email: email,
+                  addon: multiAddon.tier,
+                  subscription_id: obj.id,
+                });
+                if (alertNote && !warning) warning = alertNote;
+              }
+            }
+            break;
           }
           // Resident Binder Add-On — the AGREEMENT GUARD. Eli's rule:
           // NO signed agreement, NO add-on activation. This branch sits
@@ -1351,6 +1891,31 @@ export default {
                 subscription_id: obj.id,
               });
               if (alertNote && !warning) warning = alertNote;
+            }
+            break;
+          }
+          // Tello Staff Add-On (2026-11-25). A staff-only purchase:
+          // it stamps profiles.title22_staff_addon and NOTHING else —
+          // never a plan, never a package, never the training flag.
+          // Before this branch existed, the staff price was in no map
+          // at all, so a Tello Staff subscription fell through to the
+          // 422 below and the purchase activated nothing here. No
+          // buyer email, deliberately, on the binder branch's
+          // reasoning: the only template available is
+          // subscription_confirmed, whose words describe a Title22
+          // plan, and Tello Staff has its own app and its own
+          // sign-in — a "your Title22 plan is active" email would
+          // tell the buyer the wrong thing.
+          const staffSingle = staffFromSubscription(obj);
+          if (staffSingle) {
+            if (obj.status === 'active' || obj.status === 'trialing') {
+              const staffOk = await patchProfile(env, userId, { title22_staff_addon: true });
+              if (!staffOk) {
+                const note = 'STAFF STAMP FAILED — subscription ' + obj.id +
+                  ': the title22_staff_addon patch was refused. Is migrations/2026-11-25_title22_checkout_sessions.sql run yet?';
+                console.error(note);
+                if (!warning) warning = note;
+              }
             }
             break;
           }
@@ -1527,7 +2092,19 @@ export default {
           // same way. (The one un-stamp that exists — a verified FULL
           // REFUND, charge.refunded below — is a different decision,
           // Eli's refund rule of 2026-11-23, and reaches nothing here.)
-          if (addonFromSubscription(obj)) break;
+          //
+          // One checkout (2026-11-25): the recognizers run over the
+          // whole subscription first, because a cart subscription
+          // carries several components and ends as ONE cancellation.
+          // A single-component cancellation behaves exactly as it did
+          // before this block existed — the training break above all —
+          // and the multi-component path is marked where it diverges.
+          const dAddon = addonFromSubscription(obj);
+          const dBagree = agreementAddonFromSubscription(obj);
+          const dStaff = staffFromSubscription(obj);
+          const dPlanTier = planFromSubscription(obj).tier || null;
+          const dComponents = [dPlanTier, dAddon, dBagree, dStaff].filter(Boolean).length;
+          if (dAddon && dComponents < 2) break;
           const email = await stripeCustomerEmail(env, obj.customer);
           const userId = await resolveUserId(env, { subscriptionId: obj.id, email });
           // Deliberately still 202, and the only one. A cancellation we cannot
@@ -1545,9 +2122,28 @@ export default {
           // title22_plan_expires_at and read as the PLAN ending). Its
           // one stamp is the mirror of its activation — the flag the
           // guard branch set comes off.
-          if (agreementAddonFromSubscription(obj)) {
+          if (dBagree && dComponents < 2) {
             await patchProfile(env, userId, { title22_binder_addon: false });
             break;
+          }
+          // A cancelled Tello Staff add-on, alone, ends only itself —
+          // the mirror of the binder branch above, on its own patch.
+          if (dStaff && dComponents < 2) {
+            await patchProfile(env, userId, { title22_staff_addon: false });
+            break;
+          }
+          if (dComponents >= 2) {
+            // The whole cart subscription was cancelled, so every
+            // component on it ends together: the add-on flags come
+            // off (each on its own patch, as everywhere in this
+            // build), the training flag stays — the deliberate
+            // no-un-stamp above applies to the package it rode in
+            // on, unchanged — and a plan component takes the generic
+            // path below. With no plan component there is nothing
+            // further to stamp, and the cancellation is done.
+            if (dBagree) await patchProfile(env, userId, { title22_binder_addon: false });
+            if (dStaff) await patchProfile(env, userId, { title22_staff_addon: false });
+            if (!dPlanTier) break;
           }
           const periodEnd = periodEndOf(obj) || new Date().toISOString();
           await patchProfile(env, userId, { title22_plan_expires_at: periodEnd });
@@ -2042,4 +2638,4 @@ export default {
 // Named exports for the test suite (test.mjs), following the convention of
 // the other Workers in this repo: the default export above is the Worker
 // itself; these are the pure pieces a test can check without a network.
-export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, hasFiledBinderAgreement, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };
+export { PRICE_PLANS, ADDON_PRICES, ADDON_TIERS, addonFromSubscription, AGREEMENT_ADDON_PRICES, agreementAddonFromSubscription, STAFF_PRICES, staffFromSubscription, CHECKOUT_PRICES, computeCheckoutLines, normaliseCheckoutCart, hasFiledBinderAgreement, recordsOnlyFromSubscription, checkoutAccountEmail, portionForBeds, cappedPortion, splitAmounts };
