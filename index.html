@@ -1260,6 +1260,7 @@
       <button class="nav-item" id="nav-documents" onclick="switchTab('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Documents</button>
       <button class="nav-item" id="nav-medications" onclick="switchTab('medications')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5L3 13a4.95 4.95 0 117-7l7.5 7.5a4.95 4.95 0 11-7 7z"/><path d="M8.5 8.5l7 7"/></svg>Medications</button>
       <button class="nav-item" id="nav-mar" onclick="switchTab('mar')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>MAR</button>
+      <button class="nav-item" id="nav-binders" onclick="switchTab('binders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>Binders</button>
       <button class="nav-item" id="nav-team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Team</button>
       <button class="nav-item" id="nav-lessons" onclick="switchTab('lessons')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Lessons</button>
       <button class="nav-item" id="nav-ai" onclick="switchTab('ai')" style="color:var(--teal);font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Tello</button>
@@ -1886,6 +1887,13 @@
       </div>
 
       <!-- BILLING -->
+      <div id="tab-binders" style="display:none">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Resident Binder</div>
+          <p style="font-size:14px;color:var(--text2);margin:0 0 14px">The daily binder for this home — MAR, ADL charting, and resident records — living in its own corner under the signed agreement. It opens only for a subscriber with the agreement signed: both, together.</p>
+          <div id="binders-door"><div class="empty">Checking your binder...</div></div>
+        </div>
+      </div>
       <div id="tab-billing" style="display:none">
         <div class="page-header"><h1>Billing &amp; Subscription</h1></div>
         <div id="trial-expired-banner" style="display:none;background:var(--red-light);border:1.5px solid #e8a0a0;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:20px;align-items:center;gap:16px;flex-wrap:wrap">
@@ -3156,13 +3164,18 @@ function switchTab(name){
   // not a per-facility role — gated separately from allowedTabs().
   if(name==='partners'){
     if(!isPartnerAdmin){alert('You do not have permission to access this section.');return;}
+  }else if(name==='binders'){
+    // The Binders door is a status surface — it names the two gates and
+    // routes to them. The binder itself stays behind the corner's own
+    // gates (subscriber + signed agreement), so the door may be read by
+    // anyone signed in.
   }else if(!allowedTabs().includes(name)){alert('You do not have permission to access this section.');return;}
   closeUserMenu();
   t22SetDockAway('ai',name==='ai');
   if(name!=='ai')closeAiCabinet(true);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-app').classList.add('active');
-  ['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents'].forEach(t=>{
+  ['dashboard','launch','checklist','staff','forms','residents','incidents','daily','training','facility','medications','mar','team','lessons','ai','billing','audit','partners','documents','binders'].forEach(t=>{
     const tab=document.getElementById('tab-'+t);
     const nav=document.getElementById('nav-'+t);
     if(tab)tab.style.display='none';
@@ -3193,6 +3206,7 @@ function switchTab(name){
   if(name!=='dashboard'&&telloVoiceAudio&&!telloVoiceAudio.paused)telloVoiceStopClick();
   if(name==='ai')renderTelloVoiceSetting();
   if(name==='billing')loadBilling();
+  if(name==='binders')renderBindersDoor();
   if(name==='audit')loadAuditLog();
   if(name==='partners')loadPartners();
   if(name==='ai'){renderPortfolioCard();if(!document.getElementById('ai-chat-messages').children.length)addAIMessage('Hi, I’m Tello. Ask me anything — about your facility, or about anything else. I will tell you when I am reading your records and when I am just telling you what I know.','assistant');}
@@ -5011,6 +5025,74 @@ async function readBinderAddonActive() {
     const { data, error } = await sb.from('profiles').select('title22_binder_addon').eq('id', currentUser.id).maybeSingle();
     return !error && !!data && data.title22_binder_addon === true;
   } catch (e) { return false; }
+}
+
+/* ===== THE BINDERS DOOR (pairing build, Nov 26, 2026) =====
+   Eli's rule: inside Title22 the binder opens ONLY for a subscriber
+   with the agreement signed — both gates together. This door reads
+   the same two facts the binder app reads (the profiles flag the
+   webhook stamps, and the binder_agreements row), names whichever
+   gate is missing, and routes to it. The hand-off carries the user's
+   own Supabase session in the URL fragment — fragments never reach a
+   server — and the binder app stores it where its transport already
+   looks, then scrubs the fragment from the address bar. */
+const T22_BINDER_URL = 'https://binder.title22.app/app/';
+
+async function renderBindersDoor() {
+  const el = document.getElementById('binders-door');
+  if (!el) return;
+  if (!currentFacility || currentFacility.is_demo) {
+    el.innerHTML = '<div class="empty">Pick one of your homes first — the binder belongs to a home.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="empty">Checking your binder...</div>';
+  const [ag, subscribed] = await Promise.all([readBinderAgreement(), readBinderAddonActive()]);
+  const signed = ag.known && !!ag.agreement;
+  const home = esc(currentFacility.name || 'this home');
+  let html;
+  if (!ag.known) {
+    html = `<div style="font-size:14px">Title22 could not check the agreement just now, so the binder stays closed until it can.</div>`;
+  } else if (subscribed && signed) {
+    html = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><div style="font-weight:700;font-size:15px">&#10003; Your binder is open — ${home}</div>
+      <div style="font-size:13px;color:var(--text2)">Agreement signed by ${esc(ag.agreement.signer_name)} &middot; subscription active. Resident records live in the binder's own corner, never in Title22.</div></div>
+      <button class="btn btn-primary" style="font-size:14px" onclick="openBinderApp()">Open the binder</button></div>`;
+  } else if (signed && !subscribed) {
+    html = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><div style="font-weight:700;font-size:15px">Agreement on file &#10003; — one step left</div>
+      <div style="font-size:13px;color:var(--text2)">Signed by ${esc(ag.agreement.signer_name)}. The binder opens when it is added in Your checkout.</div></div>
+      <button class="btn btn-primary" style="font-size:14px" onclick="switchTab('billing')">Go to Your checkout</button></div>`;
+  } else if (subscribed && !signed) {
+    html = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><div style="font-weight:700;font-size:15px">Subscribed &#10003; — the agreement comes next</div>
+      <div style="font-size:13px;color:var(--text2)">No signed agreement, no resident binder. One signature covers the whole binder.</div></div>
+      <button class="btn btn-primary" style="font-size:14px" onclick="openBinderAgreement()">Read &amp; sign the agreement</button></div>`;
+  } else {
+    html = `<div style="font-size:14px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">Two steps open this binder</div>
+      <div style="color:var(--text2);margin-bottom:4px">1. Sign the Resident Binder agreement — one signature covers MAR, ADL charting, and resident records.</div>
+      <div style="color:var(--text2);margin-bottom:12px">2. Add the binder in Your checkout — it opens the moment both are done.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" style="font-size:14px" onclick="openBinderAgreement()">1 &middot; Read &amp; sign the agreement</button>
+        <button class="btn btn-outline" style="font-size:14px" onclick="switchTab('billing')">2 &middot; Go to Your checkout</button>
+      </div></div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function openBinderApp() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session || !session.access_token) { t22Toast('Sign in again, then open the binder.'); return; }
+    const payload = {
+      access_token: session.access_token,
+      refresh_token: session.refresh_token || '',
+      expires_at: session.expires_at || 0,
+      facility: currentFacility ? currentFacility.id : ''
+    };
+    const url = T22_BINDER_URL + '?facility=' + encodeURIComponent(payload.facility) + '#t22=' + encodeURIComponent(JSON.stringify(payload));
+    window.open(url, '_blank');
+  } catch (e) { t22Toast('The binder could not be opened just now — try again.'); }
 }
 
 // profiles.title22_staff_addon, the same shape. The column arrives
