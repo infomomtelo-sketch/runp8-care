@@ -5150,7 +5150,7 @@ async function readStaffAddonActive() {
    home's people land signed in. If no session can be read, the plain
    address still opens and the staff app's own sign-in is the fallback. */
 async function openStaffApp() {
-  const base = 'https://staff.tello.live';
+  const base = 'https://staff.tello.live/app/';  // the app itself — the root address is the marketing page
   try {
     const { data } = await sb.auth.getSession();
     const sess = data && data.session;
