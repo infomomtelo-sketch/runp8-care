@@ -1381,7 +1381,7 @@
           <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">Schedule board &amp; Today's Board for your homes.</div>
           <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">Free during your 30-day proof — then $10/mo per home, only if you choose it.</div>
           <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">Opens the separate Tello Staff app — it has its own sign-in.</div>
-          <a class="btn btn-primary" style="font-size:13px" href="https://staff.tello.live" target="_blank" rel="noopener">Open Tello Staff</a>
+          <a class="btn btn-primary" style="font-size:13px" href="https://staff.tello.live" target="_blank" rel="noopener" onclick="openStaffApp();return false;">Open Tello Staff</a>
         </div>
         <div style="margin-top:20px" class="card">
           <div class="card-title">Quick actions</div>
@@ -5030,7 +5030,33 @@ let t22CartPkgWanted = null;      // package picked, waiting on the package agre
 // on any error, mirroring readTrainingIncluded: an unread flag leaves
 // the binder offered in the cart, it never takes anything away — and
 // the server re-checks before it would ever charge for the line.
+/* ----- Home-level add-on access (team access, Nov 26, 2026) -----
+   Eli's rule: an add-on belongs to the HOME. The owner buys it; the
+   home's team walks in on the same purchase. The flags live on the
+   owner's profile, which a member cannot read directly — so for a
+   member the app asks the home_addon_access RPC, which checks
+   membership on the server side and answers with the owner's flags.
+   Until that migration runs (or on any error) this returns null and
+   every reader keeps the own-profile behavior: owners unaffected,
+   members fail closed, nothing breaks. */
+let _homeAccessMemo = { fid: null, at: 0, val: null };
+async function readHomeAddonAccess() {
+  try {
+    if (!currentFacility || !currentUser) return null;
+    if (currentFacility.user_id === currentUser.id) return null;
+    const now = Date.now();
+    if (_homeAccessMemo.fid === currentFacility.id && now - _homeAccessMemo.at < 30000) return _homeAccessMemo.val;
+    const { data, error } = await sb.rpc('home_addon_access', { p_facility_id: currentFacility.id });
+    let val = null;
+    if (!error && data && data.member === true) val = { binder: data.binder === true, staff: data.staff === true };
+    _homeAccessMemo = { fid: currentFacility.id, at: now, val: val };
+    return val;
+  } catch (e) { return null; }
+}
+
 async function readBinderAddonActive() {
+  const home = await readHomeAddonAccess();
+  if (home) return home.binder;
   try {
     const { data, error } = await sb.from('profiles').select('title22_binder_addon').eq('id', currentUser.id).maybeSingle();
     return !error && !!data && data.title22_binder_addon === true;
@@ -5110,10 +5136,34 @@ async function openBinderApp() {
 // errors and this returns false — the cart offers staff, and the
 // server's own read degrades the same way, so the two never disagree.
 async function readStaffAddonActive() {
+  const home = await readHomeAddonAccess();
+  if (home) return home.staff;
   try {
     const { data, error } = await sb.from('profiles').select('title22_staff_addon').eq('id', currentUser.id).maybeSingle();
     return !error && !!data && data.title22_staff_addon === true;
   } catch (e) { return false; }
+}
+
+/* Tello Staff opens the way the binder does (Nov 26, 2026): the user's
+   own Title22 session rides the URL fragment — never sent to a server —
+   and the staff app stores it where its sign-in already looks, so the
+   home's people land signed in. If no session can be read, the plain
+   address still opens and the staff app's own sign-in is the fallback. */
+async function openStaffApp() {
+  const base = 'https://staff.tello.live';
+  try {
+    const { data } = await sb.auth.getSession();
+    const sess = data && data.session;
+    if (sess && currentFacility) {
+      const payload = encodeURIComponent(JSON.stringify({
+        access_token: sess.access_token, refresh_token: sess.refresh_token,
+        expires_at: sess.expires_at, facility: currentFacility.id
+      }));
+      window.open(base + '/#t22=' + payload, '_blank', 'noopener');
+      return;
+    }
+  } catch (e) { /* fall through to the plain open */ }
+  window.open(base, '_blank', 'noopener');
 }
 
 /* ---------- Checkout return confirmation (Nov 26, 2026) ----------
@@ -5148,7 +5198,7 @@ async function maybeShowCheckoutResult(){
   const on=[]; if(binder)on.push('Resident Binder'); if(staff)on.push('Tello Staff');
   let btns='';
   if(binder)btns+='<button class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0" onclick="switchTab(\'binders\')">Open the binder</button>';
-  if(staff)btns+='<a class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0;text-decoration:none;display:inline-flex;align-items:center" href="https://staff.tello.live" target="_blank" rel="noopener">Open Tello Staff</a>';
+  if(staff)btns+='<button class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0" onclick="openStaffApp()">Open Tello Staff</button>';
   bar.style.background='linear-gradient(90deg,#0F6E56,#1D9E75)';bar.style.color='#fff';bar.style.border='none';
   bar.innerHTML='<div style="font-size:14px"><strong>\u2713 Payment confirmed.</strong> '+(on.length?('Now active on your account: <strong>'+on.join(' \u00b7 ')+'</strong>. They live here in Title22, where you bought them.'):'Your purchase is switching on now \u2014 it will show in Billing within a minute.')+'</div><div style="display:flex;gap:8px;align-items:center;flex-shrink:0">'+btns+dismiss+'</div>';
   bar.style.display='flex';
