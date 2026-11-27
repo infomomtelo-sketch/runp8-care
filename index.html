@@ -1280,6 +1280,7 @@
       <button class="nav-item" id="nav-follow" onclick="openFollowSheet()" title="Short how-to videos and DSS tips"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Follow Title22</button>
     </div>
     <div class="main-content">
+      <div id="checkout-banner" style="display:none;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"></div>
       <div id="email-verify-banner" style="display:none;background:#fdf3e2;border:1.5px solid #e8a23d;border-radius:var(--radius);padding:10px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="font-size:13px;font-weight:500">Confirm your email to secure your account.</div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
@@ -5113,6 +5114,50 @@ async function readStaffAddonActive() {
     const { data, error } = await sb.from('profiles').select('title22_staff_addon').eq('id', currentUser.id).maybeSingle();
     return !error && !!data && data.title22_staff_addon === true;
   } catch (e) { return false; }
+}
+
+/* ---------- Checkout return confirmation (Nov 26, 2026) ----------
+   Stripe sends the buyer back to title22.app/?checkout=success|cancel.
+   Until now the app said nothing: the buyer landed on the dashboard
+   with no word that their add-ons were on, and went hunting for them.
+   This banner is the confirmation — it names only what the account's
+   own flags confirm (the same flags the doors read), and it carries
+   the doors themselves. */
+async function maybeShowCheckoutResult(){
+  let mode=null;
+  try{ mode=new URLSearchParams(window.location.search).get('checkout'); }catch(e){}
+  if(mode!=='success'&&mode!=='cancel')return;
+  history.replaceState(null,'',window.location.pathname);
+  const bar=document.getElementById('checkout-banner');
+  if(!bar)return;
+  const dismiss='<button class="btn btn-ghost" style="font-size:12px;padding:6px 8px" onclick="document.getElementById(\'checkout-banner\').style.display=\'none\'" aria-label="Dismiss">\u2715</button>';
+  if(mode==='cancel'){
+    bar.style.background='#fdf3e2';bar.style.border='1.5px solid #e8a23d';bar.style.color='#5b4320';
+    bar.innerHTML='<div style="font-size:14px"><strong>Checkout wasn\'t completed \u2014 nothing was charged.</strong> Your choices are still in Billing whenever you\'re ready.</div>'+dismiss;
+    bar.style.display='flex';return;
+  }
+  /* Success: the webhook can land a few seconds after Stripe does, so
+     read the flags a few times before settling for the softer line. */
+  let binder=false,staff=false,tries=0;
+  while(tries<4){
+    try{ binder=await readBinderAddonActive(); }catch(e){}
+    try{ staff=await readStaffAddonActive(); }catch(e){}
+    if(binder&&staff)break;
+    tries++; if(tries<4) await new Promise(r=>setTimeout(r,2500));
+  }
+  const on=[]; if(binder)on.push('Resident Binder'); if(staff)on.push('Tello Staff');
+  let btns='';
+  if(binder)btns+='<button class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0" onclick="switchTab(\'binders\')">Open the binder</button>';
+  if(staff)btns+='<a class="btn" style="background:#fff;color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border:none;flex-shrink:0;text-decoration:none;display:inline-flex;align-items:center" href="https://staff.tello.live" target="_blank" rel="noopener">Open Tello Staff</a>';
+  bar.style.background='linear-gradient(90deg,#0F6E56,#1D9E75)';bar.style.color='#fff';bar.style.border='none';
+  bar.innerHTML='<div style="font-size:14px"><strong>\u2713 Payment confirmed.</strong> '+(on.length?('Now active on your account: <strong>'+on.join(' \u00b7 ')+'</strong>. They live here in Title22, where you bought them.'):'Your purchase is switching on now \u2014 it will show in Billing within a minute.')+'</div><div style="display:flex;gap:8px;align-items:center;flex-shrink:0">'+btns+dismiss+'</div>';
+  bar.style.display='flex';
+}
+if(new URLSearchParams(window.location.search).has('checkout')){
+  let n=0; const iv=setInterval(()=>{ n++;
+    if(typeof currentUser!=='undefined'&&currentUser){ clearInterval(iv); maybeShowCheckoutResult(); }
+    if(n>40)clearInterval(iv);
+  },500);
 }
 
 // Is one-checkout actually switched on? The Worker deployed before
