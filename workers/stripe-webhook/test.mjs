@@ -761,5 +761,62 @@ db.profileRows[U.D] = { title22_package: null, title22_training_included: false,
     'package door (route): with the agreement filed, the package cart checks out');
 }
 
+
+{
+  // (d) Standalone binder on the REAL $30 price, agreement on file:
+  // stamped, and the binder_confirmed buyer email was attempted --
+  // observable here as its SKIPPED note (the test env has no email
+  // config), naming the template. No price-map warning competes:
+  // the price is mapped.
+  const BINDER30 = CHECKOUT_PRICES.binderStandalone;
+  const before = db.profilePatches.length;
+  const res = await send({ type: 'customer.subscription.created', data: { object: {
+    id: 'sub_binder_30', customer: CUS.A, status: 'active', metadata: {},
+    items: { data: [{ price: { id: BINDER30 }, current_period_end: 1799999999 }] },
+  } } });
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 200 && patchesSince(before).some(p => p.userId === U.A && p.body.title22_binder_addon === true),
+    'binder email (d): standalone $30 binder, agreement on file -- stamped');
+  ok(typeof body.warning === 'string' && body.warning.includes('CUSTOMER EMAIL SKIPPED') && body.warning.includes('binder_confirmed'),
+    'binder email (d): binder_confirmed buyer email attempted');
+}
+{
+  // (e) The Nov 26 cart shape -- binder + Tello Staff bundle, no
+  // package, no training add-on: both flags stamp, and the binder
+  // buyer email is attempted even though no subscription_confirmed
+  // email exists for this cart.
+  const before = db.profilePatches.length;
+  const res = await send({ type: 'customer.subscription.created', data: { object: {
+    id: 'sub_cart_bs', customer: CUS.A, status: 'active', metadata: {},
+    items: { data: [
+      { price: { id: CHECKOUT_PRICES.binderStandalone }, current_period_end: 1799999999 },
+      { price: { id: CHECKOUT_PRICES.staffBundle }, current_period_end: 1799999999 },
+    ] },
+  } } });
+  const body = await res.json().catch(() => ({}));
+  ok(res.status === 200 && patchesSince(before).some(p => p.userId === U.A && p.body.title22_binder_addon === true)
+    && patchesSince(before).some(p => p.userId === U.A && p.body.title22_staff_addon === true),
+    'binder email (e): binder+staff cart -- both flags stamped');
+  ok(typeof body.warning === 'string' && body.warning.includes('binder_confirmed'),
+    'binder email (e): binder_confirmed attempted for a binder-only cart');
+}
+{
+  // (f) Package + binder cart (binder at the $20 with-package
+  // price): plan and binder both stamp. (In this env only the first
+  // email's SKIPPED note survives in the warning -- the two sends
+  // are independent in production, each under its own dedupe key.)
+  const before = db.profilePatches.length;
+  const res = await send({ type: 'customer.subscription.created', data: { object: {
+    id: 'sub_cart_pb', customer: CUS.A, status: 'active', metadata: {},
+    items: { data: [
+      { price: { id: PKG1 }, current_period_end: 1799999999 },
+      { price: { id: CHECKOUT_PRICES.binderWithPackage }, current_period_end: 1799999999 },
+    ] },
+  } } });
+  ok(res.status === 200 && patchesSince(before).some(p => p.userId === U.A && p.body.title22_binder_addon === true)
+    && patchesSince(before).some(p => p.userId === U.A && 'title22_package' in p.body),
+    'binder email (f): package+binder cart -- plan and binder both stamped');
+}
+
 console.log(fails ? `\n${fails} FAILURES` : '\nALL PASS');
 process.exit(fails ? 1 : 0);

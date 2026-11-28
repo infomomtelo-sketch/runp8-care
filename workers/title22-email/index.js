@@ -149,6 +149,38 @@ function emailTemplate(template, payload) {
       `,
     };
   }
+  if (template === 'binder_confirmed') {
+    // The Resident Binder buyer's confirmation (2026-11-27) — the
+    // template stripe-webhook's binder branches were waiting for.
+    // The binder is not a plan and includes no training, so the copy
+    // names only what the buyer actually got: the binder itself
+    // (MAR, ADL tracking, resident records), the per-home price of
+    // the variant they bought, and the door — the binder opens from
+    // inside Title22, and the signed agreement they filed is what
+    // unlocked it. payload.binder is the variant stripe-webhook read
+    // off the price that was actually charged ('standalone' |
+    // 'with-package'); an unknown variant states no price at all
+    // rather than guessing one.
+    const binderPrice = payload.binder === 'with-package'
+      ? '$20/month per home'
+      : payload.binder === 'standalone'
+        ? '$30/month per home'
+        : null;
+    return {
+      subject: 'Your Resident Binder is active',
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16312b">
+          <h2 style="margin:0 0 12px">Your binder is open.</h2>
+          <p>Hi ${name}, your <strong>Resident Binder</strong> is now active${binderPrice ? ` at <strong>${binderPrice}</strong>` : ''}. It renews monthly until you cancel.</p>
+          <p>Inside it: your MAR, your ADL tracking, and your resident records — the same pages as the paper binder, on your phone, saved as your team works.</p>
+          <p>Open it from inside Title22: sign in, tap <strong>Binders</strong>, then <strong>Open the binder</strong>. Your signed binder agreement is already on file — that is the key that unlocked it, and there is nothing else to set up.</p>
+          <p><a href="${payload.access_url || appUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Title22</a></p>
+          <p>Cancel any time in Title22 under Billing. Your first home in Title22 stays free either way.</p>
+          <p style="font-size:13px;color:#5b6a63;margin-top:20px">Follow Title22: title-22.com/follow</p>
+        </div>
+      `,
+    };
+  }
   if (template === 'payment_failed') {
     const info = planInfo(payload);
     const amount = payload.amount_due != null && Number.isFinite(Number(payload.amount_due))
@@ -868,8 +900,8 @@ async function notifyPayment(request, env) {
   catch { return json({ error: 'Body is not JSON' }, 400); }
 
   const template = body && body.template;
-  if (template !== 'subscription_confirmed' && template !== 'payment_failed' && template !== 'refund_training_removed') {
-    return json({ error: 'template must be subscription_confirmed, payment_failed or refund_training_removed' }, 400);
+  if (template !== 'subscription_confirmed' && template !== 'payment_failed' && template !== 'refund_training_removed' && template !== 'binder_confirmed') {
+    return json({ error: 'template must be subscription_confirmed, payment_failed, refund_training_removed or binder_confirmed' }, 400);
   }
   const dedupeKey = String((body && body.dedupe_key) || '');
   if (!dedupeKey || dedupeKey.length > 200) {
@@ -901,6 +933,9 @@ async function notifyPayment(request, env) {
         refund_kind: body.refund_kind || null,
         records_renewal: !!body.records_renewal,
         refund_amount: body.refund_amount != null ? body.refund_amount : null,
+        // Binder confirmation only (2026-11-27): which binder price
+        // was charged, read by stripe-webhook off the price itself.
+        binder: body.binder || null,
         retry_url: body.retry_url || null,
         access_url: body.access_url || null,
       },

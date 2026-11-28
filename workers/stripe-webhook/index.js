@@ -1717,6 +1717,7 @@ export default {
             // and fire the blocked owner alert. The other components
             // stamp either way: a package the buyer paid for is not
             // held hostage to the binder's paper.
+            let binderStamped = false;
             if (multiBagree) {
               if (multiBagree.viaFallback) {
                 const note =
@@ -1729,6 +1730,7 @@ export default {
               if (mActive) {
                 if (await hasFiledBinderAgreement(env, userId)) {
                   await patchProfile(env, userId, { title22_binder_addon: true });
+                  binderStamped = true;
                 } else {
                   console.error(
                     'BINDER ADD-ON BLOCKED — subscription', obj.id,
@@ -1768,9 +1770,9 @@ export default {
             // The email Worker dedupes on subscription_confirmed:<id>,
             // so a second send for a second component would be
             // swallowed anyway — the payload is built once, naming
-            // every component it can name. The binder names nothing
-            // here, exactly as in its own branch: no binder template
-            // exists yet, and the generic words would misdescribe it.
+            // every component it can name. The binder is not
+            // named here — it gets its own binder_confirmed email
+            // below, in words that describe the binder itself.
             if (mFirstActivation && (planHit || multiAddon)) {
               const note = await notifyCustomerEmail(env, {
                 template: 'subscription_confirmed',
@@ -1793,6 +1795,22 @@ export default {
                 });
                 if (alertNote && !warning) warning = alertNote;
               }
+            }
+            // The binder component's own confirmation (2026-11-27):
+            // binder_confirmed, under its own dedupe key, so it can
+            // neither block nor be blocked by the subscription email
+            // above. Sent only when the binder actually stamped —
+            // a blocked binder (no agreement) sends the buyer nothing
+            // here; the owner alert in (c) carries that case.
+            if (mFirstActivation && binderStamped) {
+              const bNote = await notifyCustomerEmail(env, {
+                template: 'binder_confirmed',
+                dedupe_key: 'binder_confirmed:' + obj.id,
+                user_id: userId,
+                email,
+                binder: AGREEMENT_ADDON_PRICES[multiBagree.priceId] || null,
+              });
+              if (bNote && !warning) warning = bNote;
             }
             break;
           }
@@ -1827,17 +1845,22 @@ export default {
             if (obj.status === 'active' || obj.status === 'trialing') {
               if (await hasFiledBinderAgreement(env, userId)) {
                 await patchProfile(env, userId, { title22_binder_addon: true });
-                // NO buyer confirmation email, deliberately. The only
-                // template available is subscription_confirmed, and
-                // with plan:null, package:null, training_included:false
-                // and no addon field it renders a generic "Your
-                // Title22 plan is active" — the binder add-on is not a
-                // plan, the copy never names the binder, and its
-                // "nothing else is charged unless you choose an add-on
-                // yourself" line contradicts the purchase it would be
-                // confirming. Sending it would tell the buyer the
-                // wrong thing; a binder-specific template is a
-                // title22-email build for when the add-on goes on sale.
+                // The buyer confirmation (2026-11-27): the binder
+                // template this branch was waiting for now exists in
+                // title22-email (binder_confirmed), so the buyer hears
+                // from Title22 in words that name the binder -- never
+                // the generic plan copy, which would misdescribe the
+                // purchase. The variant is read off the price that
+                // was charged. Deduped on binder_confirmed:<sub id>,
+                // so a redelivery cannot send it twice.
+                const bNote = await notifyCustomerEmail(env, {
+                  template: 'binder_confirmed',
+                  dedupe_key: 'binder_confirmed:' + obj.id,
+                  user_id: userId,
+                  email,
+                  binder: AGREEMENT_ADDON_PRICES[bagree.priceId] || null,
+                });
+                if (bNote && !warning) warning = bNote;
               } else {
                 // Paid, but NOT activated: no agreement on file. Stamp
                 // nothing, and make the block impossible to miss — the
